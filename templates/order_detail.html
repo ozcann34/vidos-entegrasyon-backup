@@ -1,0 +1,221 @@
+{% extends "_base.html" %}
+
+{% block title %}Sipariş Detayı - VIDOS Yönetimi{% endblock %}
+
+{% block page_title %}📦 Sipariş Detayı{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('main.orders_page') }}" class="btn btn-sm btn-outline-secondary mb-3">
+    <i class="bi bi-arrow-left me-2"></i>Siparişlere Dön
+</a>
+
+<div class="row g-4">
+    <!-- Order Info Card -->
+    <div class="col-md-8">
+        <div class="card p-4 mb-4">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                    <h5 class="mb-1">Sipariş #{{ order.order_number }}</h5>
+                    <p class="text-muted small mb-0">{{ order.created_at.strftime('%d %B %Y, %H:%M') if order.created_at
+                        else '—' }}</p>
+                </div>
+                <div class="text-end">
+                    {% if order.marketplace == 'trendyol' %}
+                    <span class="badge bg-success fs-6">Trendyol</span>
+                    {% elif order.marketplace == 'pazarama' %}
+                    <span class="badge bg-primary fs-6">Pazarama</span>
+                    {% else %}
+                    <span class="badge bg-secondary fs-6">{{ order.marketplace|title }}</span>
+                    {% endif %}
+                    <br>
+                    {% if order.status in ['Delivered', 'Teslim Edildi'] %}
+                    <span class="badge bg-success mt-2">{{ order.status }}</span>
+                    {% elif order.status in ['Shipped', 'Kargoya Verildi'] %}
+                    <span class="badge bg-info mt-2">{{ order.status }}</span>
+                    {% elif order.status in ['Cancelled', 'İptal Edildi'] %}
+                    <span class="badge bg-danger mt-2">{{ order.status }}</span>
+                    {% else %}
+                    <span class="badge bg-warning mt-2">{{ order.status }}</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <hr>
+
+            <!-- Order Items -->
+            <h6 class="mb-3"><i class="bi bi-box-seam me-2"></i>Sipariş Kalemleri</h6>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Ürün</th>
+                            <th>Barkod</th>
+                            <th class="text-center">Adet</th>
+                            <th class="text-end">Birim Fiyat</th>
+                            <th class="text-end">Toplam</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if order.items %}
+                        {% for item in order.items %}
+                        <tr>
+                            <td>
+                                <strong>{{ item.product_name or '—' }}</strong>
+                                {% if item.status %}
+                                <br><small class="text-muted">{{ item.status }}</small>
+                                {% endif %}
+                            </td>
+                            <td><code>{{ item.barcode or '—' }}</code></td>
+                            <td class="text-center">{{ item.quantity }}</td>
+                            <td class="text-end">{{ "%.2f"|format(item.unit_price) }} {{ item.currency }}</td>
+                            <td class="text-end"><strong>{{ "%.2f"|format(item.unit_price * item.quantity) }} {{
+                                    item.currency }}</strong></td>
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted">Ürün bilgisi bulunamadı</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                    <tfoot>
+                        <tr class="table-active">
+                            <th colspan="4" class="text-end">Toplam Tutar:</th>
+                            <th class="text-end">{{ "%.2f"|format(order.total_price) }} {{ order.currency }}</th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- Raw Data (Collapsible) -->
+        {% if order.raw_data %}
+        <div class="card p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-code-square me-2"></i>Ham Veri (Debug)</h6>
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#rawDataCollapse">
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+            </div>
+            <div class="collapse mt-3" id="rawDataCollapse">
+                <pre class="bg-light p-3 rounded"
+                    style="max-height: 400px; overflow-y: auto;"><code>{{ order.raw_data }}</code></pre>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Customer Info Card -->
+    <div class="col-md-4">
+        <div class="card p-4">
+            <h6 class="mb-3"><i class="bi bi-person-circle me-2"></i>Müşteri Bilgileri</h6>
+            {% if order.customer %}
+            <div class="mb-3">
+                <label class="text-muted small">Ad Soyad</label>
+                <p class="mb-0"><strong>{{ order.customer.first_name }} {{ order.customer.last_name }}</strong></p>
+            </div>
+            {% if order.customer.email %}
+            <div class="mb-3">
+                <label class="text-muted small">E-posta</label>
+                <p class="mb-0">{{ order.customer.email }}</p>
+            </div>
+            {% endif %}
+            {% if order.customer.phone and order.marketplace != 'pazarama' %}
+            <div class="mb-3">
+                <label class="text-muted small">Telefon</label>
+                <p class="mb-0">{{ order.customer.phone }}</p>
+            </div>
+            {% endif %}
+            {% if order.customer.address %}
+            <div class="mb-3">
+                <label class="text-muted small">Adres</label>
+                <p class="mb-0">{{ order.customer.address }}</p>
+                {% if order.customer.district or order.customer.city %}
+                <small class="text-muted">
+                    {{ order.customer.district }}{% if order.customer.district and order.customer.city %}, {% endif %}{{
+                    order.customer.city }}
+                </small>
+                {% endif %}
+                </p>
+            </div>
+            {% endif %}
+            {% else %}
+            <p class="text-muted">Müşteri bilgisi bulunmuyor</p>
+            {% endif %}
+        </div>
+
+        <!-- Order Timeline (Optional) -->
+        <div class="card p-4 mt-3">
+            <h6 class="mb-3"><i class="bi bi-clock-history me-2"></i>Sipariş Zaman Çizelgesi</h6>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-marker bg-success"></div>
+                    <div class="timeline-content">
+                        <small class="text-muted">{{ order.created_at.strftime('%d.%m.%Y %H:%M') if order.created_at
+                            else '—' }}</small>
+                        <p class="mb-0">Sipariş Oluşturuldu</p>
+                    </div>
+                </div>
+                {% if order.updated_at and order.updated_at != order.created_at %}
+                <div class="timeline-item">
+                    <div class="timeline-marker bg-info"></div>
+                    <div class="timeline-content">
+                        <small class="text-muted">{{ order.updated_at.strftime('%d.%m.%Y %H:%M') }}</small>
+                        <p class="mb-0">Son Güncelleme</p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block head_scripts %}
+<style>
+    .timeline {
+        position: relative;
+        padding-left: 30px;
+    }
+
+    .timeline-item {
+        position: relative;
+        padding-bottom: 20px;
+    }
+
+    .timeline-item:last-child {
+        padding-bottom: 0;
+    }
+
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -23px;
+        top: 8px;
+        bottom: -12px;
+        width: 2px;
+        background: #dee2e6;
+    }
+
+    .timeline-item:last-child::before {
+        display: none;
+    }
+
+    .timeline-marker {
+        position: absolute;
+        left: -30px;
+        top: 0;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 3px solid #fff;
+        box-shadow: 0 0 0 2px #dee2e6;
+    }
+
+    .timeline-content small {
+        display: block;
+        margin-bottom: 4px;
+    }
+</style>
+{% endblock %}

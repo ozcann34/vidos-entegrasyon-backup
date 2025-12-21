@@ -1,0 +1,152 @@
+{% extends "admin/_base.html" %}
+
+{% block title %}{{ user.full_name or user.email }} - İzinler{% endblock %}
+
+{% block content %}
+<div class="admin-header animate__animated animate__fadeIn">
+    <h1>
+        <a href="{{ url_for('admin.user_detail', user_id=user.id) }}" class="text-muted text-decoration-none me-2">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        Kullanıcı İzinleri
+    </h1>
+    <p class="text-muted">{{ user.full_name or user.email }} kullanıcısının erişim yetkilerini yönetin.</p>
+</div>
+
+<div class="row g-4">
+    <!-- User Info Card -->
+    <div class="col-lg-3">
+        <div class="admin-card animate__animated animate__fadeInLeft">
+            <div class="text-center mb-4">
+                <div class="rounded-circle bg-primary bg-gradient d-inline-flex align-items-center justify-content-center text-white shadow"
+                    style="width: 80px; height: 80px;">
+                    <i class="bi bi-person-fill display-4"></i>
+                </div>
+                <h5 class="mt-3 mb-1 fw-bold">{{ user.full_name or 'İsimsiz Kullanıcı' }}</h5>
+                <p class="text-muted small mb-0">{{ user.email }}</p>
+                <div class="mt-2 text-center">
+                    <span
+                        class="badge bg-{{ 'success' if user.subscription and user.subscription.plan == 'enterprise' else 'primary' if user.subscription and user.subscription.plan == 'pro' else 'secondary' }}">
+                        {{ user.subscription.plan_display_name if user.subscription else 'Paket Yok' }}
+                    </span>
+                </div>
+            </div>
+
+            {% if user.is_admin %}
+            <div class="alert alert-warning border-0 shadow-sm text-center">
+                <i class="bi bi-shield-lock-fill me-2"></i>
+                <strong>Admin Yetkisi</strong><br>
+                <small>Admin kullanıcıları tüm kısıtlamalardan muaftır.</small>
+            </div>
+            {% endif %}
+
+            <div class="mt-3">
+                <h6 class="fw-bold small text-uppercase text-muted mb-3">Bilgi</h6>
+                <ul class="list-unstyled small text-muted">
+                    <li class="mb-2"><i class="bi bi-info-circle me-2"></i>Pasif edilen özellikler kullanıcı panelinde
+                        gizlenir.</li>
+                    <li class="mb-2"><i class="bi bi-shield-check me-2"></i>Global sistem kapatmaları bireysel
+                        izinlerden önceliklidir.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Permissions Form -->
+    <div class="col-lg-9">
+        <form method="POST" class="animate__animated animate__fadeInRight">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            {% for category, permissions in available_permissions.items() %}
+            <div class="admin-card mb-4 border-0 shadow-sm">
+                <h5 class="card-title mb-4 pb-2 border-bottom">
+                    <i class="bi bi-grid-3x3-gap text-primary me-2"></i>
+                    {{ category }}
+                </h5>
+                <div class="row g-3">
+                    {% for perm_key, perm_label in permissions.items() %}
+                    <div class="col-md-6 col-xl-4">
+                        <div class="permission-item p-3 rounded-3 border transition-all h-100 bg-dark-subtle">
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" id="{{ perm_key }}"
+                                    name="{{ perm_key }}" {% if current_permissions.get(perm_key, True) %}checked{%
+                                    endif %} {% if user.is_admin %}disabled{% endif %}>
+                                <label class="form-check-label fw-semibold ms-2" for="{{ perm_key }}">
+                                    {% if perm_key == 'dashboard' %}<i class="bi bi-speedometer2 me-2"></i>
+                                    {% elif perm_key == 'orders' %}<i class="bi bi-box-seam me-2"></i>
+                                    {% elif perm_key == 'order_actions' %}<i class="bi bi-printer me-2"></i>
+                                    {% elif perm_key == 'settings' %}<i class="bi bi-gear me-2"></i>
+                                    {% elif perm_key == 'user_manual' %}<i class="bi bi-book me-2"></i>
+                                    {% elif perm_key == 'xml_products' %}<i class="bi bi-file-earmark-code me-2"></i>
+                                    {% elif perm_key == 'excel_products' %}<i class="bi bi-file-earmark-excel me-2"></i>
+                                    {% elif perm_key == 'manual_product_add' %}<i class="bi bi-plus-circle me-2"></i>
+                                    {% elif perm_key == 'bulk_excel_update' %}<i class="bi bi-arrow-repeat me-2"></i>
+                                    {% elif perm_key == 'xml_updates' %}<i class="bi bi-cloud-download me-2"></i>
+                                    {% elif perm_key == 'archive' %}<i class="bi bi-archive me-2"></i>
+                                    {% elif perm_key == 'trendyol' %}<i class="bi bi-caret-right-square me-2"></i>
+                                    {% elif perm_key == 'hepsiburada' %}<i class="bi bi-caret-right-square me-2"></i>
+                                    {% elif perm_key == 'pazarama' %}<i class="bi bi-caret-right-square me-2"></i>
+                                    {% elif perm_key == 'n11' %}<i class="bi bi-caret-right-square me-2"></i>
+                                    {% elif perm_key == 'idefix' %}<i class="bi bi-caret-right-square me-2"></i>
+                                    {% elif perm_key == 'auto_sync' %}<i class="bi bi-sync me-2"></i>
+                                    {% elif perm_key == 'instagram_panel' %}<i class="bi bi-instagram me-2"></i>
+                                    {% elif perm_key == 'batch_logs' %}<i class="bi bi-list-task me-2"></i>
+                                    {% elif perm_key == 'reports' %}<i class="bi bi-bar-chart me-2"></i>
+                                    {% elif perm_key == 'trendyol_questions' %}<i class="bi bi-chat-dots me-2"></i>
+                                    {% elif perm_key == 'trendyol_claims' %}<i class="bi bi-arrow-return-left me-2"></i>
+                                    {% elif perm_key == 'blacklist' %}<i class="bi bi-slash-circle me-2"></i>
+                                    {% endif %}
+                                    {{ perm_label }}
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+
+            {% if not user.is_admin %}
+            <div
+                class="mt-4 sticky-bottom py-3 bg-body-tertiary border-top px-3 rounded shadow-sm d-flex justify-content-between align-items-center">
+                <div class="text-muted small">
+                    <i class="bi bi-exclamation-triangle me-2"></i>Değişiklikleri kaydetmeyi unutmayın.
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('admin.user_detail', user_id=user.id) }}"
+                        class="btn btn-outline-secondary px-4">
+                        <i class="bi bi-x me-1"></i> Vazgeç
+                    </a>
+                    <button type="submit" class="btn btn-primary px-5 shadow">
+                        <i class="bi bi-check2-circle me-1"></i> İzinleri Güncelle
+                    </button>
+                </div>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<style>
+    .permission-item {
+        transition: all 0.2s ease;
+        border-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .permission-item:hover {
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        border-color: var(--bs-primary);
+        transform: translateY(-2px);
+    }
+
+    [data-theme="light"] .permission-item {
+        background-color: #f8f9fa !important;
+        border-color: #dee2e6;
+    }
+
+    [data-theme="light"] .permission-item:hover {
+        background-color: #fff !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+</style>
+{% endblock %}

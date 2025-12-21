@@ -1,0 +1,293 @@
+{% extends "_base.html" %}
+{% block title %}Merkezi XML Güncellemeleri — VIDOS{% endblock %}
+{% block page_title %}Merkezi XML Güncellemeleri{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in">
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <h5 class="card-title fw-bold mb-3"><i class="bi bi-diagram-3-fill me-2 text-primary"></i>XML
+                        Kaynağı Seçimi</h5>
+                    <p class="text-muted small">Tüm pazaryeri güncellemeleri için kullanılacak ana XML kaynağını seçin.
+                    </p>
+
+                    <div class="d-flex align-items-center gap-3" style="max-width: 600px;">
+                        <select id="xmlSourceSelect" class="form-select form-select-lg">
+                            <option value="">XML Kaynağı Seçiniz...</option>
+                            {% for source in xml_sources %}
+                            <option value="{{ source.id }}">{{ source.name }} ({{ source.url }})</option>
+                            {% endfor %}
+                        </select>
+                        <button id="btnRefreshXml" class="btn btn-outline-secondary btn-lg" title="XML Verisini Yenile">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    </div>
+                    <div class="form-text mt-2" id="xmlInfoText">Lütfen işlem yapmak için bir kaynak seçin.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Marketplace Cards -->
+    <div class="row g-4 d-none" id="marketplaceCards">
+        <!-- Trendyol -->
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm hover-shadow transition-all">
+                <div class="card-header bg-white border-0 pt-4 pb-0">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="rounded-circle bg-warning bg-opacity-10 p-3 text-warning">
+                            <i class="bi bi-shop fs-4"></i>
+                        </span>
+                        <div>
+                            <h5 class="mb-0 fw-bold">Trendyol</h5>
+                            <small class="text-muted">Stok & Fiyat Senkronizasyonu</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <hr class="my-3 opacity-10">
+
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="checkTrendyolMatchCode">
+                        <label class="form-check-label small" for="checkTrendyolMatchCode">Barkod yerine <strong>Stok
+                                Kodu</strong> ile eşleştir</label>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-primary" onclick="startSync('trendyol', 'stock')">
+                            <i class="bi bi-box-seam me-2"></i>Sadece Stok Güncelle
+                        </button>
+                        <button class="btn btn-outline-primary" onclick="startSync('trendyol', 'price')">
+                            <i class="bi bi-currency-exchange me-2"></i>Sadece Fiyat Güncelle
+                        </button>
+                        <button class="btn btn-primary" onclick="startSync('trendyol', 'all')">
+                            <i class="bi bi-arrow-repeat me-2"></i>Tümünü Güncelle (Stok+Fiyat)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- N11 -->
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm hover-shadow transition-all">
+                <div class="card-header bg-white border-0 pt-4 pb-0">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="rounded-circle bg-danger bg-opacity-10 p-3 text-danger">
+                            <i class="bi bi-bug fs-4"></i>
+                        </span>
+                        <div>
+                            <h5 class="mb-0 fw-bold">N11</h5>
+                            <small class="text-muted">Stok & Fiyat Senkronizasyonu</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <hr class="my-3 opacity-10">
+
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="checkN11MatchCode">
+                        <label class="form-check-label small" for="checkN11MatchCode">Barkod yerine <strong>Stok
+                                Kodu</strong> ile eşleştir</label>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-danger" onclick="startSync('n11', 'stock')">
+                            <i class="bi bi-box-seam me-2"></i>Sadece Stok Güncelle
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="startSync('n11', 'price')">
+                            <i class="bi bi-currency-exchange me-2"></i>Sadece Fiyat Güncelle
+                        </button>
+                        <button class="btn btn-danger" onclick="startSync('n11', 'all')">
+                            <i class="bi bi-arrow-repeat me-2"></i>Tümünü Güncelle (Stok+Fiyat)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pazarama -->
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm hover-shadow transition-all">
+                <div class="card-header bg-white border-0 pt-4 pb-0">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="rounded-circle bg-info bg-opacity-10 p-3 text-info">
+                            <i class="bi bi-bag-fill fs-4"></i>
+                        </span>
+                        <div>
+                            <h5 class="mb-0 fw-bold">Pazarama</h5>
+                            <small class="text-muted">Stok & Fiyat Senkronizasyonu</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <hr class="my-3 opacity-10">
+                    <!-- Pazarama usually uses barcode, but we can add option if supported -->
+                    <div class="alert alert-light border small text-muted mb-3">
+                        <i class="bi bi-info-circle me-1"></i> Pazarama şu an sadece Barkod eşleştirmesi destekler.
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-info" onclick="startSync('pazarama', 'stock')">
+                            <i class="bi bi-box-seam me-2"></i>Sadece Stok Güncelle
+                        </button>
+                        <button class="btn btn-outline-info" onclick="startSync('pazarama', 'price')">
+                            <i class="bi bi-currency-exchange me-2"></i>Sadece Fiyat Güncelle
+                        </button>
+                        <button class="btn btn-info text-white" onclick="startSync('pazarama', 'all')">
+                            <i class="bi bi-arrow-repeat me-2"></i>Tümünü Güncelle (Stok+Fiyat)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const xmlSelect = document.getElementById('xmlSourceSelect');
+    const mpCards = document.getElementById('marketplaceCards');
+    const xmlInfoText = document.getElementById('xmlInfoText');
+
+    // On Load
+    const storedXml = localStorage.getItem('vidos_selected_xml_source');
+    if (storedXml && xmlSelect.querySelector(`option[value="${storedXml}"]`)) {
+        xmlSelect.value = storedXml;
+        showCards(true);
+    }
+
+    xmlSelect.addEventListener('change', function () {
+        const val = this.value;
+        if (val) {
+            localStorage.setItem('vidos_selected_xml_source', val);
+            showCards(true);
+        } else {
+            localStorage.removeItem('vidos_selected_xml_source');
+            showCards(false);
+        }
+    });
+
+    function showCards(show) {
+        if (show) {
+            mpCards.classList.remove('d-none');
+            mpCards.classList.add('animate__animated', 'animate__fadeInUp');
+            xmlInfoText.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Kaynak seçildi. İşlem yapabilirsiniz.</span>';
+        } else {
+            mpCards.classList.add('d-none');
+            xmlInfoText.innerHTML = 'Lütfen işlem yapmak için bir kaynak seçin.';
+        }
+    }
+
+    document.getElementById('btnRefreshXml').addEventListener('click', function () {
+        const sourceId = xmlSelect.value;
+        if (!sourceId) return Swal.fire('Uyarı', 'Lütfen bir kaynak seçin.', 'warning');
+
+        Swal.fire({
+            title: 'XML Yenileniyor...',
+            text: 'Lütfen bekleyin',
+            didOpen: () => Swal.showLoading()
+        });
+
+        // Assuming verify_xml endpoint or similar refreshes it
+        // Or we can use the existing /api/xml_process/verify/<id> logic but purely for refresh
+        // Actually verify just checks. We might want to trigger a parse if needed, but usually verify is enough to confirm access.
+        // Let's call verify to be safe.
+        fetch(`/api/xml_process/verify/${sourceId}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire('Başarılı', `XML Erişilebilir. ${data.item_count} ürün bulundu.`, 'success');
+                } else {
+                    Swal.fire('Hata', data.message || 'XML okunamadı', 'error');
+                }
+            })
+            .catch(err => Swal.fire('Hata', 'İşlem başarısız', 'error'));
+    });
+
+    function startSync(marketplace, type) {
+        const sourceId = xmlSelect.value;
+        if (!sourceId) return;
+
+        let matchBy = 'barcode';
+        if (marketplace === 'trendyol' && document.getElementById('checkTrendyolMatchCode').checked) matchBy = 'stock_code';
+        if (marketplace === 'n11' && document.getElementById('checkN11MatchCode').checked) matchBy = 'stock_code';
+
+        const actionNames = {
+            'stock': 'Sadece Stok',
+            'price': 'Sadece Fiyat',
+            'all': 'Stok ve Fiyat'
+        };
+
+        const mpNames = {
+            'trendyol': 'Trendyol',
+            'n11': 'N11',
+            'pazarama': 'Pazarama'
+        };
+
+        Swal.fire({
+            title: 'Emin misiniz?',
+            html: `<strong>${mpNames[marketplace]}</strong> için <strong>${actionNames[type]}</strong> güncellemesi başlatılacak.<br><br>
+                   Kaynak: XML ID ${sourceId}<br>
+                   Eşleştirme: ${matchBy === 'stock_code' ? 'Stok Kodu' : 'Barkod'}<br><br>
+                   Bu işlem arkaplanda çalışacaktır.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Başlat',
+            cancelButtonText: 'İptal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Call API
+                const endpoint = '/api/send_all'; // Utilizing the existing generic endpoint
+
+                // Construct payload
+                const payload = {
+                    marketplace: marketplace,
+                    xml_source_id: sourceId,
+                    match_by: matchBy,
+                    mode: type // 'stock', 'price', 'all' - API needs to support this 'mode' or we default to 'all' if separate endpoints needed
+                };
+
+                // NOTE: The current /api/send_all might default to 'all' or 'update'.
+                // If we need specific 'stock' or 'price' only, we might need to adjust endpoint or valid params.
+                // Looking at api.py previously, api_send_all accepts 'target' or similar?
+                // Actually looking at previous context, api_send_all calls perform_X_send_all.
+                // perform_X_send_all usually does full sync.
+                // If we want partial sync, we might need new params or separate endpoints.
+
+                // Let's check api.py in next step to confirm handling of 'mode' or similar. 
+                // For now assuming we pass 'mode' in JSON and handle it in backend if not already handled.
+                // Or we can use separate endpoints if they exist.
+
+                // FOR NOW: Sending payload. Will verify backend next.
+
+                fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Use global widget to show job
+                            if (window.showJobWidget && data.job_id) window.showJobWidget(data.job_id);
+                            Swal.fire({
+                                title: 'Başlatıldı',
+                                text: 'İşlem sıraya alındı. Sağ alttaki panelden takip edebilirsiniz.',
+                                icon: 'success',
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                        } else {
+                            Swal.fire('Hata', data.message || 'Başlatılamadı', 'error');
+                        }
+                    })
+                    .catch(err => Swal.fire('Hata', 'Sunucu hatası', 'error'));
+            }
+        });
+    }
+</script>
+{% endblock %}

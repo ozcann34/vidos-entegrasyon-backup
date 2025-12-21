@@ -1,0 +1,2035 @@
+{% extends "_base.html" %}
+{% block title %}{{ marketplace_name or marketplace|capitalize }} Ürün Listesi — VIDOS{% endblock %}
+{% block page_title %}{{ marketplace_name or marketplace|capitalize }} Ürünleri{% endblock %}
+
+{% block content %}
+<ul class="nav nav-tabs mb-3" id="innerTabs">
+  <li class="nav-item">
+    <a href="#" class="nav-link active" data-tab="mp">
+      <i class="bi bi-shop me-2"></i>
+      <span class="d-none d-sm-inline">{{ marketplace_name or marketplace|capitalize }} Ürünleri</span>
+      <span class="d-sm-none">{{ marketplace|capitalize }}</span>
+    </a>
+  </li>
+  <li class="nav-item">
+    <a href="#" class="nav-link" data-tab="xml">
+      <i class="bi bi-file-earmark-code me-2"></i>
+      <span class="d-none d-sm-inline">XML Listesi & Eşleştirme</span>
+      <span class="d-sm-none">XML</span>
+    </a>
+  </li>
+</ul>
+
+<div id="tabMarketplace">
+  <!-- Modern Toolbar & Filter System -->
+  <div class="card border-0 shadow-sm mb-4" style="background: var(--card);">
+    <div class="card-body p-2">
+      <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
+        <!-- Search Bar (Flexible Pivot) -->
+        <div class="input-group flex-grow-1" style="min-width: 250px; max-width: 600px;">
+          <span class="input-group-text border-end-0"
+            style="background: var(--input-bg); border-color: var(--input-border); color: var(--muted);"><i
+              class="bi bi-search"></i></span>
+          <input type="text" id="searchInput" class="form-control border-start-0 ps-0"
+            style="background: var(--input-bg); border-color: var(--input-border); color: var(--text);"
+            placeholder="Ürün adı, barkod veya stok kodu ara...">
+          {% if marketplace in ['n11', 'trendyol', 'idefix'] %}
+          <button id="btnFetchFromMp" class="btn btn-outline-warning" title="Pazaryerinden Veri Çek"><i
+              class="bi bi-cloud-download"></i></button>
+          {% endif %}
+        </div>
+
+        <!-- Toolbar Right: View Toggles & Bulk Actions -->
+        <div class="d-flex gap-2 align-items-center">
+          <!-- Advanced Filter Toggle -->
+          <button class="btn btn-outline-secondary" type="button" data-bs-toggle="collapse"
+            data-bs-target="#advancedFilterPanel" aria-expanded="false" aria-controls="advancedFilterPanel">
+            <i class="bi bi-sliders me-1"></i> Filtrele
+          </button>
+
+          <!-- View Toggles -->
+          <div class="btn-group" role="group" aria-label="Görünüm">
+            <button type="button" class="btn btn-outline-secondary view-toggle active" data-view="table"
+              title="Tablo"><i class="bi bi-table"></i></button>
+            <button type="button" class="btn btn-outline-secondary view-toggle" data-view="grid" title="Kart"><i
+                class="bi bi-grid-3x3-gap"></i></button>
+            <button type="button" class="btn btn-outline-secondary view-toggle" data-view="compact" title="Kompakt"><i
+                class="bi bi-list"></i></button>
+          </div>
+
+          <div class="vr mx-1 d-none d-md-block text-secondary"></div>
+
+        </div>
+
+        <div class="vr mx-1 d-none d-md-block text-secondary"></div>
+
+        <!-- Bulk Actions -->
+        <div class="dropdown">
+          <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="mainActionsDropdown"
+            data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-three-dots-vertical"></i>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="mainActionsDropdown">
+            <li><button id="btnBulkUpdate" class="dropdown-item" disabled><i
+                  class="bi bi-pencil-square me-2"></i>Seçiliyi Güncelle</button></li>
+            <li><button id="btnBulkDelete" class="dropdown-item text-danger" disabled><i
+                  class="bi bi-trash me-2"></i>Seçiliyi Sil</button></li>
+            <li>
+              <hr class="dropdown-divider">
+            </li>
+            <li><button id="btnRefreshList" class="dropdown-item"><i class="bi bi-arrow-repeat me-2"></i>Listeyi
+                Yenile</button></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Collapsible Advanced Filter Panel -->
+  <div class="collapse" id="advancedFilterPanel">
+    <div class="card-footer border-top-0 p-3" style="background: var(--card);">
+      <div class="row g-3">
+        <!-- Status Filters -->
+        <div class="col-md-6 col-lg-4">
+          <label class="form-label small text-muted fw-bold">Durum</label>
+          <div class="btn-group w-100" role="group">
+            <button type="button" class="btn btn-outline-secondary btn-sm filter-btn" data-filter="status"
+              data-value="all">Tümü</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm filter-btn" data-filter="status"
+              data-value="active">Aktif</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm filter-btn" data-filter="status"
+              data-value="pending">Onay</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm filter-btn" data-filter="status"
+              data-value="passive">Pasif</button>
+          </div>
+        </div>
+
+        <!-- Stock Level Filters -->
+        <div class="col-md-6 col-lg-3">
+          <label class="form-label small text-muted fw-bold">Stok Durumu</label>
+          <div class="btn-group w-100" role="group">
+            <button type="button" class="btn btn-outline-secondary btn-sm filter-btn" data-filter="stock"
+              data-value="all">Tümü</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm filter-btn" data-filter="stock"
+              data-value="low">Kritik (&lt;10)</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm filter-btn" data-filter="stock"
+              data-value="out">Tükenmiş</button>
+          </div>
+        </div>
+
+        <!-- Range Inputs -->
+        <div class="col-md-6 col-lg-3">
+          <label class="form-label small text-muted fw-bold">Fiyat Aralığı</label>
+          <div class="input-group input-group-sm">
+            <span class="input-group-text">Min</span>
+            <input type="number" id="filterPriceMin" class="form-control" placeholder="0">
+            <span class="input-group-text">Max</span>
+            <input type="number" id="filterPriceMax" class="form-control" placeholder="∞">
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-2">
+          <label class="form-label small text-muted fw-bold">Stok Aralığı</label>
+          <div class="input-group input-group-sm">
+            <input type="number" id="filterStockMin" class="form-control" placeholder="Min">
+            <span class="input-group-text">-</span>
+            <input type="number" id="filterStockMax" class="form-control" placeholder="Max">
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="col-12 d-flex justify-content-end gap-2 border-top pt-2 mt-2">
+          <button id="clearFiltersBtn" class="btn btn-sm btn-link text-muted text-decoration-none">Temizle ve
+            Kapat</button>
+          <button id="applyFiltersBtn" class="btn btn-sm btn-primary px-4">Uygula</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-2 px-1">
+  <span id="productCount" class="text-muted small fw-semibold">Toplam 0 ürün</span>
+</div>
+
+<div class="table-responsive shadow" id="viewTableWrapper">
+  <table class="table table-hover align-middle mb-0" id="mpTableView">
+    <thead class="table-light">
+      <tr>
+        <th style="width:40px;"><input type="checkbox" id="mpSelectAll"></th>
+        <th style="width:80px;">Görsel</th>
+        <th style="width:25%">Ürün Adı</th>
+        <th>Barkod / Stok Kodu</th>
+        <th>Fiyat / Stok</th>
+        <th>Durum</th>
+        <th>İşlem</th>
+      </tr>
+    </thead>
+    <tbody id="productListBody" data-page-size="{{ 20 if marketplace == 'pazarama' else 25 }}"></tbody>
+  </table>
+</div>
+<div id="viewGridWrapper" class="d-none">
+  <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 row-cols-xxl-4 g-3" id="productGridBody"></div>
+</div>
+<div id="viewCompactWrapper" class="d-none">
+  <div class="list-group" id="productCompactBody"></div>
+</div>
+<nav class="mt-4">
+  <ul class="pagination justify-content-center" id="pagination"></ul>
+</nav>
+</div>
+
+<div id="tabXML" class="d-none">
+  <!-- XML Toolbar -->
+  <!-- XML Toolbar -->
+  <div class="card border-0 shadow-sm mb-4" style="background: var(--card);">
+    <div class="card-body p-2">
+      <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
+        <div class="d-flex gap-2 flex-grow-1" style="min-width: 300px;">
+          <select id="mpXmlSourceSelect" class="form-select" style="max-width: 200px;">
+            <option value="">Kaynak Seç...</option>
+          </select>
+          <div class="input-group flex-grow-1">
+            <span class="input-group-text border-end-0"
+              style="background: var(--input-bg); border-color: var(--input-border); color: var(--muted);"><i
+                class="bi bi-search"></i></span>
+            <input type="text" id="xmlSearchInput" class="form-control border-start-0 ps-0"
+              style="background: var(--input-bg); border-color: var(--input-border); color: var(--text);"
+              placeholder="XML içinde ara...">
+          </div>
+        </div>
+        <div>
+          <button id="btnGenerateRandomCodes" class="btn btn-outline-secondary"
+            title="Barkodu olmayanlar için rastgele kod üret">
+            <i class="bi bi-magic me-1"></i> Rastgele Kod
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- XML List -->
+  <div class="table-responsive shadow" id="xmlListWrapper">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th style="width:40px;"><input type="checkbox" id="xmlSelectAll"></th>
+          <th>Görsel</th>
+          <th>XML Ürün Adı</th>
+          <th>Barkod / Stok Kodu</th>
+          <th>Fiyat / Stok</th>
+          <th>Eşleşme</th>
+        </tr>
+      </thead>
+      <tbody id="xmlListBody"></tbody>
+    </table>
+  </div>
+
+  <!-- XML Pagination -->
+  <nav class="mt-4">
+    <ul class="pagination justify-content-center" id="xmlPagination"></ul>
+  </nav>
+  <div class="text-center text-muted small mt-2" id="xmlCountSpan"></div>
+
+  <div class="fixed-bottom p-3 bg-white border-top shadow-lg d-flex justify-content-between align-items-center"
+    id="xmlBatchActionPanel" style="display:none !important; z-index: 1040;">
+    <div>
+      <span class="fw-bold text-primary" id="xmlSelectedCount">0</span> ürün seçildi.
+    </div>
+    <button id="btnSendSelectedXml" class="btn btn-primary">
+      <i class="bi bi-cloud-upload me-1"></i> Seçilileri Gönder
+    </button>
+  </div>
+</div>
+
+<!-- Floating Job Monitor Panel -->
+<div id="jobMonitorPanel" class="job-monitor-panel d-none">
+  <div class="job-monitor-header" id="jobMonitorHeader">
+    <div class="d-flex align-items-center gap-2">
+      <div class="job-monitor-spinner spinner-border spinner-border-sm text-light" role="status"></div>
+      <span class="job-monitor-title">İş İzleme</span>
+    </div>
+    <div class="job-monitor-controls">
+      <button type="button" class="btn btn-sm btn-outline-light" id="jobMonitorMinimize" title="Küçült">
+        <i class="bi bi-dash-lg"></i>
+      </button>
+    </div>
+  </div>
+  <div class="job-monitor-body" id="jobMonitorBody">
+    <div class="job-monitor-status mb-2">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <span class="job-monitor-status-text" id="jobMonitorStatusText">Hazırlanıyor...</span>
+        <span class="job-monitor-progress-text" id="jobMonitorProgressText">0%</span>
+      </div>
+      <div class="progress" style="height: 6px;">
+        <div class="progress-bar progress-bar-striped progress-bar-animated" id="jobMonitorProgressBar"
+          style="width: 0%"></div>
+      </div>
+    </div>
+    <div class="job-monitor-actions mb-2">
+      <button type="button" class="btn btn-sm btn-warning" id="jobMonitorPause" title="Duraklat">
+        <i class="bi bi-pause-fill"></i> Duraklat
+      </button>
+      <button type="button" class="btn btn-sm btn-success d-none" id="jobMonitorResume" title="Devam Et">
+        <i class="bi bi-play-fill"></i> Devam
+      </button>
+      <button type="button" class="btn btn-sm btn-danger" id="jobMonitorCancel" title="İptal Et">
+        <i class="bi bi-x-circle"></i> İptal
+      </button>
+    </div>
+    <div class="job-monitor-logs" id="jobMonitorLogs">
+      <div class="job-monitor-log-item text-muted">Loglar burada görünecek...</div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .job-monitor-panel {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 400px;
+    max-width: 90vw;
+    background: var(--bs-dark, #212529);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    z-index: 1050;
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+
+  .job-monitor-panel.minimized .job-monitor-body {
+    display: none !important;
+  }
+
+  .job-monitor-panel.minimized {
+    width: auto;
+  }
+
+  .job-monitor-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+  }
+
+  .job-monitor-title {
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .job-monitor-body {
+    padding: 16px;
+    color: #e9ecef;
+    max-height: 350px;
+    overflow-y: auto;
+  }
+
+  .job-monitor-logs {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 10px;
+    max-height: 180px;
+    overflow-y: auto;
+    font-family: 'Consolas', monospace;
+    font-size: 12px;
+  }
+
+  .job-monitor-log-item {
+    padding: 3px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .job-monitor-log-item:last-child {
+    border-bottom: none;
+  }
+
+  .job-monitor-log-item.log-error {
+    color: #f87171;
+  }
+
+  .job-monitor-log-item.log-warning {
+    color: #fbbf24;
+  }
+
+  .job-monitor-log-item.log-info {
+    color: #60a5fa;
+  }
+
+  .job-monitor-controls button {
+    padding: 2px 8px;
+    border: none;
+  }
+
+  .job-monitor-spinner {
+    display: inline-block;
+  }
+
+  .job-monitor-panel.completed .job-monitor-spinner,
+  .job-monitor-panel.failed .job-monitor-spinner {
+    display: none;
+  }
+
+  .job-monitor-panel.completed .job-monitor-header {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  }
+
+  .job-monitor-panel.failed .job-monitor-header {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  }
+</style>
+
+
+
+<!-- Product Details Edit Modal -->
+<div class="modal fade" id="productEditModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Ürün Detay Düzenle</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+      </div>
+      <div class="modal-body">
+        <form id="productEditForm">
+          <input type="hidden" id="editProductBarcode">
+          <input type="hidden" id="editProductMarketplace" value="{{ marketplace }}">
+
+          <!-- Basic Info -->
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label for="editProductStockCode" class="form-label small">Stok Kodu / Barkod</label>
+              <input type="text" class="form-control" id="editProductStockCode" readonly>
+              <div class="form-text small text-muted">Stok kodu değiştirilemez.</div>
+            </div>
+            <div class="col-md-6">
+              <label for="editProductVatRate" class="form-label small">KDV Oranı</label>
+              <select class="form-select" id="editProductVatRate">
+                <option value="0">0</option>
+                <option value="1">1</option>
+                <option value="8">8</option>
+                <option value="10">10</option>
+                <option value="18">18</option>
+                <option value="20">20</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label for="editProductTitle" class="form-label small">Ürün Başlığı</label>
+              <input type="text" class="form-control" id="editProductTitle" required>
+            </div>
+          </div>
+
+          <!-- Price & Stock -->
+          <h6 class="border-bottom pb-2 mb-3">Fiyat ve Stok</h6>
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <label for="editProductListPrice" class="form-label small">Liste Fiyatı (Üstü Çizili)</label>
+              <input type="number" class="form-control" id="editProductListPrice" step="0.01" min="0">
+            </div>
+            <div class="col-md-4">
+              <label for="editProductSalePrice" class="form-label small">Satış Fiyatı</label>
+              <input type="number" class="form-control" id="editProductSalePrice" step="0.01" min="0" required>
+            </div>
+            <div class="col-md-4">
+              <label for="editProductQuantity" class="form-label small">Stok Adedi</label>
+              <input type="number" class="form-control" id="editProductQuantity" min="0" required>
+            </div>
+          </div>
+
+          <!-- Description & Images -->
+          <h6 class="border-bottom pb-2 mb-3">İçerik</h6>
+          <div class="mb-3">
+            <label for="editProductDescription" class="form-label small">Ürün Açıklaması</label>
+            <textarea class="form-control" id="editProductDescription" rows="5"></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="editProductImages" class="form-label small">Görseller (Her satıra bir URL)</label>
+            <textarea class="form-control font-monospace small" id="editProductImages" rows="3"
+              placeholder="https://..."></textarea>
+          </div>
+
+          <!-- Alert Area -->
+          <div id="editProductAlert" class="alert alert-danger d-none my-2 p-2 small"></div>
+
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+        <button type="button" class="btn btn-primary" id="saveProductDetailsBtn">
+          <span class="spinner-border spinner-border-sm d-none me-1" role="status" aria-hidden="true"></span>
+          Kaydet ve Güncelle
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // DOM refs (declare before any usage)
+  const productListBody = document.getElementById('productListBody');
+  const productGridBody = document.getElementById('productGridBody');
+  const productCompactBody = document.getElementById('productCompactBody');
+  const viewTableWrapper = document.getElementById('viewTableWrapper');
+  const viewGridWrapper = document.getElementById('viewGridWrapper');
+  const viewCompactWrapper = document.getElementById('viewCompactWrapper');
+  const pagination = document.getElementById('pagination');
+  const productCountSpan = document.getElementById('productCount');
+  const searchInput = document.getElementById('searchInput');
+  // Filters
+  const filterStockMin = document.getElementById('filterStockMin');
+  const filterStockMax = document.getElementById('filterStockMax');
+  const filterPriceMin = document.getElementById('filterPriceMin');
+  const filterPriceMax = document.getElementById('filterPriceMax');
+  const applyFiltersBtn = document.getElementById('applyFiltersBtn');
+  const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+
+  const filterButtons = document.querySelectorAll('.filter-btn');
+  const viewToggleButtons = document.querySelectorAll('.view-toggle');
+  const mpSelectAll = document.getElementById('mpSelectAll');
+  const btnBulkUpdate = document.getElementById('btnBulkUpdate');
+  const btnBulkDelete = document.getElementById('btnBulkDelete');
+  const btnRefreshList = document.getElementById('btnRefreshList');
+
+  // Define mpXmlSourceSelect
+  const mpXmlSourceSelect = document.getElementById('mpXmlSourceSelect');
+
+  const innerTabs = document.getElementById('innerTabs');
+  const tabMarketplace = document.getElementById('tabMarketplace');
+
+  // XML Elements - Updated
+  const tabXML = document.getElementById('tabXML');
+  const xmlSourceSelect = document.getElementById('mpXmlSourceSelect'); // Reused ID
+  const xmlListBody = document.getElementById('xmlListBody');
+  const xmlPagination = document.getElementById('xmlPagination');
+  const xmlCountSpan = document.getElementById('xmlCountSpan');
+  const btnSendSelectedXml = document.getElementById('btnSendSelectedXml');
+  const xmlSelectAll = document.getElementById('xmlSelectAll');
+  const xmlSearch = document.getElementById('xmlSearchInput');
+  const btnGenerateRandomCodes = document.getElementById('btnGenerateRandomCodes');
+  let selectedXmlBarcodes = null;
+  let selectedMpBarcodes = new Set();
+  let mpXmlSourceId = '';
+  // Removed Pazarama summary refs
+
+  const CURRENT_MARKETPLACE = '{{ marketplace }}';
+
+  const STORAGE_PREFIX = `vidos_mp_{{ marketplace }}`;
+  const STATUS_STORAGE_KEY = `${STORAGE_PREFIX}_status_v2`;
+  const STOCK_STORAGE_KEY = `${STORAGE_PREFIX}_stock_v2`;
+  const VIEW_STORAGE_KEY = `${STORAGE_PREFIX}_view_v2`;
+  const TAB_STORAGE_KEY = `${STORAGE_PREFIX}_active_tab`;
+  const FILTER_PANEL_STORAGE_KEY = `${STORAGE_PREFIX}_filter_panel`;
+  const allowedStatusValues = ['all', 'active', 'pending', 'passive'];
+  const allowedStockValues = ['all', 'low', 'out'];
+  const CACHE_STORAGE_KEY = `${STORAGE_PREFIX}_cache_v1`;
+  const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+  const CACHE_MAX_ENTRIES = 12;
+  const JOB_POLL_INTERVAL_MS = 2000;
+  const JOB_POLL_TIMEOUT_MS = 5 * 60 * 1000;
+
+  function escapeHtml(value) {
+    if (value === null || value === undefined) { return ''; }
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function loadCacheStore() {
+    if (window._mpCacheStore && window._mpCacheStore[CACHE_STORAGE_KEY]) {
+      return window._mpCacheStore[CACHE_STORAGE_KEY];
+    }
+    try {
+      const raw = localStorage.getItem(CACHE_STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      window._mpCacheStore = window._mpCacheStore || {};
+      window._mpCacheStore[CACHE_STORAGE_KEY] = parsed;
+      return parsed;
+    } catch (e) {
+      window._mpCacheStore = window._mpCacheStore || {};
+      window._mpCacheStore[CACHE_STORAGE_KEY] = {};
+      return window._mpCacheStore[CACHE_STORAGE_KEY];
+    }
+  }
+
+  function saveCacheStore(store) {
+    window._mpCacheStore = window._mpCacheStore || {};
+    window._mpCacheStore[CACHE_STORAGE_KEY] = store;
+    try {
+      localStorage.setItem(CACHE_STORAGE_KEY, JSON.stringify(store));
+    } catch (e) {
+      // ignore quota errors
+    }
+  }
+
+  function pruneCache(store) {
+    const entries = Object.entries(store);
+    if (entries.length <= CACHE_MAX_ENTRIES) {
+      return;
+    }
+    entries.sort((a, b) => (a[1].timestamp || 0) - (b[1].timestamp || 0));
+    const excess = entries.length - CACHE_MAX_ENTRIES;
+    for (let i = 0; i < excess; i += 1) {
+      const key = entries[i][0];
+      delete store[key];
+    }
+  }
+
+  function getCachedResponse(cacheKey) {
+    if (!cacheKey) { return null; }
+    const store = loadCacheStore();
+    const entry = store[cacheKey];
+    if (!entry) { return null; }
+    if (!entry.timestamp || (Date.now() - entry.timestamp) > CACHE_TTL_MS) {
+      delete store[cacheKey];
+      saveCacheStore(store);
+      return null;
+    }
+    return entry;
+  }
+
+  function setCachedResponse(cacheKey, payload) {
+    if (!cacheKey || !payload) { return; }
+    const store = loadCacheStore();
+    store[cacheKey] = {
+      timestamp: Date.now(),
+      data: payload,
+    };
+    pruneCache(store);
+    saveCacheStore(store);
+  }
+
+  function invalidateCacheKey(cacheKey) {
+    if (!cacheKey) { return; }
+    const store = loadCacheStore();
+    if (store && Object.prototype.hasOwnProperty.call(store, cacheKey)) {
+      delete store[cacheKey];
+      saveCacheStore(store);
+    }
+  }
+
+  function clearMarketplaceCache() {
+    const store = loadCacheStore();
+    if (!store) { return; }
+    let changed = false;
+    Object.keys(store).forEach(key => {
+      try {
+        const parsed = JSON.parse(key);
+        if (parsed && parsed.mp === CURRENT_MARKETPLACE) {
+          delete store[key];
+          changed = true;
+        }
+      } catch (e) {
+        // ignore malformed keys
+      }
+    });
+    if (changed) {
+      saveCacheStore(store);
+    }
+  }
+
+  function updateFilterButtonStates() {
+    filterButtons.forEach(btn => {
+      const filter = btn.getAttribute('data-filter');
+      const value = btn.getAttribute('data-value');
+      if (filter === 'status') {
+        btn.classList.toggle('active', value === currentStatus);
+      } else if (filter === 'stock') {
+        btn.classList.toggle('active', value === currentStock);
+      }
+    });
+  }
+
+  function resetFilters() {
+    currentStatus = 'all';
+    currentStock = 'all';
+    currentSearchQuery = '';
+    searchInput.value = '';
+    localStorage.removeItem(STATUS_STORAGE_KEY);
+    localStorage.removeItem(STOCK_STORAGE_KEY);
+    updateFilterButtonStates();
+    currentPage = 1;
+    updateFilterButtonStates();
+    filterStockMin.value = ''; filterStockMax.value = '';
+    filterPriceMin.value = ''; filterPriceMax.value = '';
+    currentPage = 1;
+    fetchProducts();
+  }
+
+  window.resetMpFilters = resetFilters;
+
+  function updatePazaramaSummary(summary) {
+    if (!pazaramaSummary) { return; }
+    const data = summary || {};
+    const outOfStockText = `${Number(data.out_of_stock || 0)} Ürün`;
+    if (summaryFields.out_of_stock) {
+      summaryFields.out_of_stock.textContent = outOfStockText;
+    }
+    if (summary) {
+      pazaramaSummary.classList.remove('opacity-50');
+    } else {
+      pazaramaSummary.classList.add('opacity-50');
+    }
+  }
+
+  function updateMarketplaceXmlButtons() {
+    const hasXml = !!mpXmlSourceId;
+    const btn = btnSyncAll;
+    if (btn) {
+      btn.disabled = !hasXml;
+      btn.classList.toggle('btn-outline-primary', hasXml);
+      btn.classList.toggle('btn-outline-secondary', !hasXml);
+    }
+  }
+
+  // XML TAB FUNCTIONS (moved into scripts block)
+  function buildPagination(container, totalPages, current, onClick) {
+    container.innerHTML = '';
+    if (!totalPages || totalPages <= 1) { return; }
+    const addItem = (label, page, opts = {}) => {
+      const li = document.createElement('li');
+      li.className = `page-item${opts.active ? ' active' : ''}${opts.disabled ? ' disabled' : ''}`;
+      const a = document.createElement('a');
+      a.className = 'page-link';
+      a.href = '#';
+      a.textContent = label;
+      if (!opts.disabled && !opts.active) { a.addEventListener('click', e => { e.preventDefault(); onClick(page); }); }
+      li.appendChild(a);
+      container.appendChild(li);
+    };
+    // Prev
+    addItem('«', Math.max(1, current - 1), { disabled: current <= 1 });
+
+    // Prev
+    addItem('«', Math.max(1, current - 1), { disabled: current <= 1 });
+
+    const win = 2;
+    const pages = [];
+    pages.push(1);
+    const start = Math.max(2, current - win);
+    const end = Math.min(totalPages - 1, current + win);
+    if (start > 2) pages.push('...');
+    for (let p = start; p <= end; p++) { if (p >= 2 && p <= totalPages - 1) pages.push(p); }
+    if (end < totalPages - 1) pages.push('...');
+    if (totalPages > 1) pages.push(totalPages);
+    pages.forEach(p => {
+      if (p === '...') {
+        const li = document.createElement('li'); li.className = 'page-item disabled';
+        li.innerHTML = '<span class="page-link">…</span>'; container.appendChild(li);
+      } else {
+        addItem(String(p), p, { active: p === current });
+      }
+    });
+    // Next
+    addItem('»', Math.min(totalPages, current + 1), { disabled: current >= totalPages });
+  }
+
+  function updatePazaramaButtons() {
+    const hasXml = !!mpXmlSourceId;
+    [btnPazaramaSyncStock, btnPazaramaSyncPrice].forEach(btn => {
+      if (!btn) return;
+      btn.disabled = !hasXml;
+      btn.classList.toggle('btn-outline-primary', hasXml);
+      btn.classList.toggle('btn-outline-secondary', !hasXml);
+    });
+  }
+
+  function renderJobLogs(job) {
+    if (!job || !Array.isArray(job.logs) || job.logs.length === 0) { return ''; }
+    const latest = job.logs.slice(-6);
+    const items = latest.map(entry => {
+      const when = new Date(entry.ts || Date.now()).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      return `<li><span class="text-muted">[${when}]</span> <span class="badge bg-${entry.level === 'ERROR' ? 'danger' : 'secondary'} me-1">${entry.level}</span>${entry.message}</li>`;
+    }).join('');
+    return `<div class="mt-3 text-start"><strong>Son Loglar:</strong><ul class="small mb-0 ps-3">${items}</ul></div>`;
+  }
+
+  function showSyncJobResult(title, data, job) {
+    const rows = [];
+    if (job && job.id) { rows.push(`<div><strong>İş No:</strong> <code>${job.id}</code></div>`); }
+    if (data && typeof data.message === 'string') { rows.push(`<div class="mt-1">${data.message}</div>`); }
+    if (data) {
+      rows.push(`<div class="mt-2"><strong>Gönderilen:</strong> ${data.updated_count || 0}</div>`);
+      if ('zeroed_count' in data) { rows.push(`<div><strong>Stoğu sıfırlanan:</strong> ${data.zeroed_count || 0}</div>`); }
+      if (data.multiplier) { rows.push(`<div><strong>Fiyat çarpanı:</strong> x${Number(data.multiplier).toFixed(2)}</div>`); }
+      if (Array.isArray(data.missing_codes) && data.missing_codes.length) { rows.push(`<div class="mt-2"><strong>XML'de bulunmayan ilk ${data.missing_codes.length} ürün:</strong><br>${data.missing_codes.map(c => `<code>${c}</code>`).join(', ')}</div>`); }
+      if (Array.isArray(data.skipped_zero_price) && data.skipped_zero_price.length) { rows.push(`<div class="mt-2 text-warning"><strong>Fiyatı 0 olanlar:</strong> ${data.skipped_zero_price.map(c => `<code>${c}</code>`).join(', ')}</div>`); }
+      if (Array.isArray(data.samples) && data.samples.length) {
+        rows.push('<div class="mt-2"><strong>Örnek değişiklikler:</strong></div>');
+        rows.push('<ul class="small">' + data.samples.map(s => `<li><code>${s.code}</code> ${Number(s.from || 0).toFixed(2)} → ${Number(s.to || 0).toFixed(2)}</li>`).join('') + '</ul>');
+      }
+      if (Array.isArray(data.data_ids) && data.data_ids.length) { rows.push(`<div class="mt-2"><strong>Batch/Data ID:</strong> ${data.data_ids.map(id => `<code>${id}</code>`).join(', ')}</div>`); }
+    }
+    if (job) {
+      rows.push(renderJobLogs(job));
+    }
+    const filtered = rows.filter(Boolean).join('');
+    Swal.fire({ title, html: filtered || '<div>İşlem tamamlandı.</div>', icon: data && data.success === False ? 'error' : 'info' });
+  }
+
+  // ============= JOB MONITOR PANEL SYSTEM =============
+  const JOB_STORAGE_KEY = 'vidos_active_job';
+  const jobMonitorPanel = document.getElementById('jobMonitorPanel');
+  const jobMonitorHeader = document.getElementById('jobMonitorHeader');
+  const jobMonitorBody = document.getElementById('jobMonitorBody');
+  const jobMonitorMinimize = document.getElementById('jobMonitorMinimize');
+  const jobMonitorStatusText = document.getElementById('jobMonitorStatusText');
+  const jobMonitorProgressText = document.getElementById('jobMonitorProgressText');
+  const jobMonitorProgressBar = document.getElementById('jobMonitorProgressBar');
+  const jobMonitorLogs = document.getElementById('jobMonitorLogs');
+  const jobMonitorPause = document.getElementById('jobMonitorPause');
+  const jobMonitorResume = document.getElementById('jobMonitorResume');
+  const jobMonitorCancel = document.getElementById('jobMonitorCancel');
+
+  let activeJobId = null;
+  let jobPollingInterval = null;
+  let jobOnComplete = null;
+
+  // Save active job to localStorage
+  function saveJobState(jobId, title) {
+    if (jobId) {
+      localStorage.setItem(JOB_STORAGE_KEY, JSON.stringify({ jobId, title, ts: Date.now() }));
+    } else {
+      localStorage.removeItem(JOB_STORAGE_KEY);
+    }
+  }
+
+  // Load and restore job state on page load
+  function restoreJobState() {
+    try {
+      const saved = localStorage.getItem(JOB_STORAGE_KEY);
+      if (!saved) return;
+      const { jobId, title, ts } = JSON.parse(saved);
+      // Only restore if less than 30 minutes old
+      if (Date.now() - ts > 30 * 60 * 1000) {
+        localStorage.removeItem(JOB_STORAGE_KEY);
+        return;
+      }
+      // Check if job still exists and is running
+      fetch(`/api/mp_jobs/${jobId}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(job => {
+          if (!job) {
+            localStorage.removeItem(JOB_STORAGE_KEY);
+            return;
+          }
+          if (job.status === 'running' || job.status === 'pending' || job.status === 'pausing') {
+            // Restore panel and start polling
+            showJobMonitor(title || 'İş İzleme');
+            startJobPolling(jobId, (j) => {
+              saveJobState(null); // Clear on complete
+              fetchProducts();
+            });
+          } else if (job.status === 'completed' || job.status === 'failed') {
+            // Show completed state briefly
+            showJobMonitor(title || 'İş İzleme');
+            updateJobMonitor(job);
+            saveJobState(null); // Clear
+          }
+        });
+    } catch (e) {
+      localStorage.removeItem(JOB_STORAGE_KEY);
+    }
+  }
+
+
+  function showJobMonitor(title) {
+    if (jobMonitorPanel) {
+      jobMonitorPanel.classList.remove('d-none', 'minimized', 'completed', 'failed');
+      jobMonitorPanel.querySelector('.job-monitor-title').textContent = title || 'İş İzleme';
+      jobMonitorStatusText.textContent = 'Hazırlanıyor...';
+      jobMonitorProgressText.textContent = '0%';
+      jobMonitorProgressBar.style.width = '0%';
+      jobMonitorLogs.innerHTML = '<div class="job-monitor-log-item text-muted">İşlem başlatılıyor...</div>';
+      jobMonitorPause.classList.remove('d-none');
+      jobMonitorResume.classList.add('d-none');
+      jobMonitorCancel.disabled = false;
+      jobMonitorPause.disabled = false;
+    }
+  }
+
+  function hideJobMonitor() {
+    if (jobMonitorPanel) {
+      jobMonitorPanel.classList.add('d-none');
+    }
+  }
+
+  function updateJobMonitor(job) {
+    if (!job) return;
+
+    const status = job.status || 'bilinmiyor';
+    const progress = job.progress || {};
+    const logs = job.logs || [];
+    const isPaused = job.pause_requested;
+    const isCancelled = job.cancel_requested;
+
+    // Update status text
+    let statusLabel = status;
+    if (status === 'running') statusLabel = 'Çalışıyor';
+    else if (status === 'completed') statusLabel = 'Tamamlandı';
+    else if (status === 'failed') statusLabel = 'Başarısız';
+    else if (status === 'pending') statusLabel = 'Bekliyor';
+    if (isPaused) statusLabel = 'Duraklatıldı';
+    if (isCancelled) statusLabel = 'İptal Ediliyor...';
+
+    jobMonitorStatusText.textContent = statusLabel;
+
+    // Update progress
+    const current = progress.current || 0;
+    const total = progress.total || 1;
+    const percent = total > 0 ? Math.round((current / total) * 100) : 0;
+    jobMonitorProgressText.textContent = `${percent}% (${current}/${total})`;
+    jobMonitorProgressBar.style.width = `${percent}%`;
+
+    // Update logs (show last 15)
+    if (logs.length > 0) {
+      jobMonitorLogs.innerHTML = logs.slice(-15).map(entry => {
+        const when = new Date(entry.ts || Date.now()).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const levelClass = entry.level === 'ERROR' ? 'log-error' : (entry.level === 'WARNING' ? 'log-warning' : 'log-info');
+        return `<div class="job-monitor-log-item ${levelClass}">[${when}] ${entry.message}</div>`;
+      }).join('');
+      // Auto scroll to bottom
+      jobMonitorLogs.scrollTop = jobMonitorLogs.scrollHeight;
+    }
+
+    // Update pause/resume buttons
+    if (isPaused) {
+      jobMonitorPause.classList.add('d-none');
+      jobMonitorResume.classList.remove('d-none');
+    } else {
+      jobMonitorPause.classList.remove('d-none');
+      jobMonitorResume.classList.add('d-none');
+    }
+
+    // Update panel state
+    if (status === 'completed') {
+      jobMonitorPanel.classList.add('completed');
+      jobMonitorPanel.classList.remove('failed');
+      jobMonitorPause.disabled = true;
+      jobMonitorCancel.disabled = true;
+    } else if (status === 'failed') {
+      jobMonitorPanel.classList.add('failed');
+      jobMonitorPanel.classList.remove('completed');
+      jobMonitorPause.disabled = true;
+      jobMonitorCancel.disabled = true;
+    }
+  }
+
+  function startJobPolling(jobId, onComplete) {
+    activeJobId = jobId;
+    jobOnComplete = onComplete;
+
+    // Clear any existing polling
+    if (jobPollingInterval) {
+      clearInterval(jobPollingInterval);
+    }
+
+    function poll() {
+      if (!activeJobId) return;
+
+      fetch(`/api/mp_jobs/${activeJobId}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(job => {
+          if (!job || !activeJobId) return;
+
+          updateJobMonitor(job);
+
+          if (job.status === 'completed') {
+            stopJobPolling();
+            if (jobOnComplete) jobOnComplete(job);
+          } else if (job.status === 'failed') {
+            stopJobPolling();
+          }
+        })
+        .catch(() => { });
+    }
+
+    poll();
+    jobPollingInterval = setInterval(poll, 2000);
+  }
+
+  function stopJobPolling() {
+    if (jobPollingInterval) {
+      clearInterval(jobPollingInterval);
+      jobPollingInterval = null;
+    }
+  }
+
+  function sendJobControl(action) {
+    if (!activeJobId) return Promise.resolve();
+    return fetch('/api/job/control', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ job_id: activeJobId, action })
+    }).then(r => r.json());
+  }
+
+  // Panel minimize toggle
+  jobMonitorHeader && jobMonitorHeader.addEventListener('click', (e) => {
+    if (e.target.closest('#jobMonitorMinimize') || e.target.closest('.job-monitor-controls')) return;
+    jobMonitorPanel.classList.toggle('minimized');
+  });
+
+  jobMonitorMinimize && jobMonitorMinimize.addEventListener('click', () => {
+    jobMonitorPanel.classList.toggle('minimized');
+  });
+
+  // Pause button
+  jobMonitorPause && jobMonitorPause.addEventListener('click', () => {
+    sendJobControl('pause').then(r => {
+      if (r && r.success) {
+        jobMonitorPause.classList.add('d-none');
+        jobMonitorResume.classList.remove('d-none');
+      }
+    });
+  });
+
+  // Resume button
+  jobMonitorResume && jobMonitorResume.addEventListener('click', () => {
+    sendJobControl('resume').then(r => {
+      if (r && r.success) {
+        jobMonitorResume.classList.add('d-none');
+        jobMonitorPause.classList.remove('d-none');
+      }
+    });
+  });
+
+  // Cancel button
+  jobMonitorCancel && jobMonitorCancel.addEventListener('click', () => {
+    Swal.fire({
+      title: 'İptal Et?',
+      text: 'İşlem iptal edilecek. Emin misiniz?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Evet, İptal Et',
+      cancelButtonText: 'Hayır'
+    }).then(res => {
+      if (res.isConfirmed) {
+        sendJobControl('cancel').then(r => {
+          if (r && r.success) {
+            jobMonitorCancel.disabled = true;
+            jobMonitorPause.disabled = true;
+            jobMonitorStatusText.textContent = 'İptal Ediliyor...';
+          }
+        });
+      }
+    });
+  });
+
+  // New pollMpJob that uses the GLOBAL widget from _base.html
+  function pollMpJob(jobId, title, onSuccess, opts = {}) {
+    // Use global widget from _base.html
+    if (typeof window.showJobWidget === 'function') {
+      window.showJobWidget(jobId);
+    }
+  }
+
+
+  function bindMpSelectionHandlers() {
+    const boxes = productListBody.querySelectorAll('.mpSel');
+    boxes.forEach(b => {
+      b.addEventListener('change', () => {
+        const bc = b.getAttribute('data-bc');
+        if (b.checked) { selectedMpBarcodes.add(bc); } else { selectedMpBarcodes.delete(bc); }
+        refreshBulkButtons();
+      });
+    });
+  }
+
+  function refreshBulkButtons() {
+    const hasSel = selectedMpBarcodes.size > 0;
+    if (btnBulkUpdate) btnBulkUpdate.disabled = !hasSel;
+    if (btnBulkDelete) btnBulkDelete.disabled = !hasSel;
+    if (mpSelectAll) {
+      const boxes = productListBody.querySelectorAll('.mpSel');
+      const allChecked = boxes.length > 0 && Array.from(boxes).every(x => x.checked);
+      mpSelectAll.checked = allChecked;
+    }
+  }
+
+  mpSelectAll && mpSelectAll.addEventListener('change', () => {
+    const boxes = productListBody.querySelectorAll('.mpSel');
+    boxes.forEach(b => { b.checked = mpSelectAll.checked; const bc = b.getAttribute('data-bc'); if (b.checked) { selectedMpBarcodes.add(bc); } else { selectedMpBarcodes.delete(bc); } });
+    refreshBulkButtons();
+  });
+
+  function openUpdateModal(barcode, price, quantity) {
+    try {
+      console.log('openUpdateModal called for:', barcode);
+      const product = window._lastProductPayload ? window._lastProductPayload.find(p => p.barcode === barcode) : null;
+      if (!product) {
+        Swal.fire('Hata', 'Ürün verisi bulunamadı: ' + barcode, 'error');
+        return;
+      }
+
+      // Helper to safely set values
+      const setValue = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.value = val;
+        } else {
+          console.error('Missing Element ID:', id);
+          // Optional: alert('Missing DOM Element: ' + id);
+        }
+      };
+
+      // Populate Modal
+      setValue('editProductBarcode', barcode);
+      setValue('editProductStockCode', product.stockCode || barcode);
+      setValue('editProductTitle', product.title || '');
+
+      // Price & Stock
+      const salePrice = Number(product.salePrice || product.price || price || 0);
+      const listPrice = Number(product.listPrice || product.comparePrice || product.marketPrice || salePrice);
+      const qty = parseInt(product.quantity || product.stock || product.stockCount || quantity || 0);
+
+      setValue('editProductSalePrice', salePrice.toFixed(2));
+      setValue('editProductListPrice', listPrice.toFixed(2));
+      setValue('editProductQuantity', qty);
+
+      // VAT
+      const vat = product.vatRate || product.tax || 0;
+      const vatSelect = document.getElementById('editProductVatRate');
+      if (vatSelect) vatSelect.value = parseInt(vat) || 18;
+      else console.error('Missing Element ID: editProductVatRate');
+
+      // Description & Images
+      setValue('editProductDescription', product.description || '');
+
+      let images = '';
+      if (Array.isArray(product.images) && product.images.length > 0) {
+        images = product.images.map(img => typeof img === 'string' ? img : img.url).join('\n');
+      } else if (product.primary_image) {
+        images = product.primary_image;
+      } else if (product.imageUrl) {
+        images = product.imageUrl;
+      }
+      setValue('editProductImages', images);
+
+      // Reset Alert
+      const alertBox = document.getElementById('editProductAlert');
+      if (alertBox) {
+        alertBox.classList.add('d-none');
+        alertBox.textContent = '';
+      }
+
+      // Show Modal
+      const modalEl = document.getElementById('productEditModal');
+      if (modalEl) {
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+      } else {
+        console.error('Modal element #productEditModal not found!');
+        alert('Hata: Modal HTML içinde bulunamadı!');
+      }
+
+    } catch (e) {
+      console.error('openUpdateModal Crash:', e);
+      alert('Beklenmeyen hata: ' + e.message);
+    }
+  }
+
+  // Bind Save Button Event (Bind once)
+  document.addEventListener('DOMContentLoaded', () => {
+    const saveBtn = document.getElementById('saveProductDetailsBtn');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', saveProductDetails);
+    }
+  });
+  // Also checking immediately in case DOM is ready or scripts run at end of body
+  const saveBtnCheck = document.getElementById('saveProductDetailsBtn');
+  if (saveBtnCheck && !saveBtnCheck.dataset.bound) {
+    saveBtnCheck.dataset.bound = true;
+    saveBtnCheck.addEventListener('click', saveProductDetails);
+  }
+
+  function saveProductDetails() {
+    const barcode = document.getElementById('editProductBarcode').value;
+    const title = document.getElementById('editProductTitle').value;
+    const salePrice = parseFloat(document.getElementById('editProductSalePrice').value);
+    const listPrice = parseFloat(document.getElementById('editProductListPrice').value);
+    const quantity = parseInt(document.getElementById('editProductQuantity').value);
+    const vatRate = parseInt(document.getElementById('editProductVatRate').value);
+    const description = document.getElementById('editProductDescription').value;
+    const imagesText = document.getElementById('editProductImages').value;
+
+    const images = imagesText.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+
+    if (!title || isNaN(salePrice) || isNaN(quantity)) {
+      const alertBox = document.getElementById('editProductAlert');
+      alertBox.textContent = 'Başlık, Fiyat ve Stok zorunludur.';
+      alertBox.classList.remove('d-none');
+      return;
+    }
+
+    // Prepare Payload
+    const payload = {
+      barcode: barcode,
+      title: title,
+      salePrice: salePrice,
+      listPrice: listPrice,
+      quantity: quantity,
+      vatRate: vatRate,
+      description: description,
+      images: images,
+      currencyType: 'TRY'
+    };
+
+    // Loading state
+    const btn = document.getElementById('saveProductDetailsBtn');
+    const spinner = btn.querySelector('.spinner-border');
+    btn.disabled = true;
+    spinner.classList.remove('d-none');
+    document.getElementById('editProductAlert').classList.add('d-none');
+
+    fetch(`/api/product/update_details/${CURRENT_MARKETPLACE}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(r => r.json())
+      .then(data => {
+        btn.disabled = false;
+        spinner.classList.add('d-none');
+
+        if (data.success) {
+          // Close modal and refresh
+          const modalEl = document.getElementById('productEditModal');
+          const modal = bootstrap.Modal.getInstance(modalEl);
+          modal.hide();
+
+          Swal.fire({
+            title: 'Başarılı',
+            text: data.message || 'Ürün başarıyla güncellendi.',
+            icon: 'success',
+            timer: 2000,
+            showConfirmButton: false
+          });
+
+          // Refresh list
+          fetchProducts();
+        } else {
+          const alertBox = document.getElementById('editProductAlert');
+          alertBox.textContent = data.message || 'Güncelleme hatası';
+          alertBox.classList.remove('d-none');
+        }
+      })
+      .catch(err => {
+        btn.disabled = false;
+        spinner.classList.add('d-none');
+        const alertBox = document.getElementById('editProductAlert');
+        alertBox.textContent = 'Sunucu/Ağ hatası: ' + err;
+        alertBox.classList.remove('d-none');
+      });
+  }
+
+
+  btnBulkUpdate && btnBulkUpdate.addEventListener('click', () => {
+    if (selectedMpBarcodes.size === 0) { Swal.fire('Uyarı', 'Önce ürün seçiniz.', 'warning'); return; }
+    Swal.fire({
+      title: 'Toplu Güncelle',
+      html: `<div class="text-start">
+      <div class="small text-muted mb-2">Boş bıraktığınız alanlar değiştirilmeyecek.</div>
+      <label class="form-label">Fiyat (TL)</label>
+      <input id="bulkPrice" type="number" step="0.01" class="form-control" placeholder="Örn: 199.90">
+      <label class="form-label mt-2">Stok (Adet)</label>
+      <input id="bulkQty" type="number" step="1" class="form-control" placeholder="Örn: 10">
+    </div>`,
+      showCancelButton: true, confirmButtonText: 'Gönder', cancelButtonText: 'Vazgeç', preConfirm: () => {
+        const p = parseFloat(document.getElementById('bulkPrice').value);
+        const q = parseInt(document.getElementById('bulkQty').value);
+        if ((isNaN(p) || p <= 0) && (isNaN(q) || q < 0)) {
+          Swal.showValidationMessage('Geçerli bir fiyat veya stok giriniz'); return false;
+        }
+        return { p, q };
+      }
+    }).then(res => {
+      if (!res.isConfirmed) return;
+      const { p, q } = res.value || {};
+      const items = Array.from(selectedMpBarcodes).map(bc => ({ barcode: bc, salePrice: isNaN(p) ? undefined : p, listPrice: isNaN(p) ? undefined : p, quantity: isNaN(q) ? undefined : q, currencyType: 'TRY' }));
+      Swal.fire({ title: 'Gönderiliyor', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+      fetch('/api/trendyol/bulk/price-inventory', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items }) })
+        .then(r => r.json()).then(j => {
+          if (j.success) { Swal.fire('Başarılı', `Toplam ${j.updated} kayıt güncellendi.`, 'success'); selectedMpBarcodes.clear(); refreshBulkButtons(); fetchProducts(); }
+          else { Swal.fire('Hata', j.message || 'Güncelleme başarısız', 'error'); }
+        }).catch(() => Swal.fire('Hata', 'API çağrısı sırasında sorun oluştu.', 'error'));
+    });
+  });
+
+  btnBulkDelete && btnBulkDelete.addEventListener('click', () => {
+    if (selectedMpBarcodes.size === 0) { Swal.fire('Uyarı', 'Önce ürün seçiniz.', 'warning'); return; }
+    Swal.fire({ title: 'Emin misiniz?', text: `Seçilen ${selectedMpBarcodes.size} ürün silinecek.`, icon: 'warning', showCancelButton: true, confirmButtonText: 'Evet, Sil', cancelButtonText: 'Vazgeç' })
+      .then(res => {
+        if (!res.isConfirmed) return; const list = Array.from(selectedMpBarcodes); const tasks = list.map(bc => fetch(`/api/product/delete/{{ marketplace }}/${bc}`, { method: 'POST' }).then(r => r.json()).catch(() => ({ success: false })));
+        Promise.all(tasks).then(() => { Swal.fire('Tamam', 'İşlem gönderildi.', 'success'); selectedMpBarcodes.clear(); refreshBulkButtons(); fetchProducts(); });
+      });
+  });
+
+  function loadXmlSources() {
+    fetch('/api/xml_sources').then(r => r.json()).then(d => {
+      const items = d.items || [];
+      if (mpXmlSourceSelect) {
+        mpXmlSourceSelect.innerHTML = '<option value="">XML Seçiniz</option>' + items.map(it => `<option value="${it.id}">${it.name}</option>`).join('');
+        let rememberedMp = localStorage.getItem(`vidos_${CURRENT_MARKETPLACE}_xml_source_id`);
+        if (rememberedMp && items.some(x => String(x.id) === String(rememberedMp))) {
+          mpXmlSourceId = rememberedMp;
+          mpXmlSourceSelect.value = rememberedMp;
+        } else if (items.length) {
+          mpXmlSourceId = String(items[0].id);
+          mpXmlSourceSelect.value = mpXmlSourceId;
+          localStorage.setItem(`vidos_${CURRENT_MARKETPLACE}_xml_source_id`, mpXmlSourceId);
+        } else {
+          mpXmlSourceId = '';
+        }
+        updateMarketplaceXmlButtons();
+      }
+    });
+  }
+
+
+  function showSummaryAndRedirect(j) {
+    try { Swal.close(); } catch (e) { }
+    const m = j.matched || [];
+    const sk = j.skipped || [];
+    const s = j.summary || { success_count: 0, fail_count: 0, failures: [] };
+    const failures = (s.failures || []).slice(0, 3).map(f => `<div><code>${f.barcode || '-'}</code> — ${(Array.isArray(f.reasons) ? f.reasons.join(', ') : f.reasons) || '-'}</div>`).join('') || '<div>—</div>';
+    const skippedList = sk.slice(0, 3).map(x => `<div><code>${x.barcode || '-'}</code> — ${x.reason || '-'}</div>`).join('') || '<div>—</div>';
+    const html = `
+    <div class="text-start">
+      <div><strong>Toplam Gönderim:</strong> ${j.count || (m.length)}</div>
+      <div><strong>Eşleşen Kategori:</strong> ${m.length}</div>
+      <div><strong>Atlanan:</strong> ${sk.length}</div>
+      <div class="mt-2"><strong>Başarılı:</strong> ${s.success_count} — <strong>Hatalı:</strong> ${s.fail_count}</div>
+      <div class="mt-2"><strong>Batch ID:</strong> <code>${j.batch_id || '-'}</code></div>
+      <hr/>
+      <div class="mb-1"><strong>Örnek Hatalar:</strong></div>
+      ${failures}
+      <hr/>
+      <div class="mb-1"><strong>Atlanan Örnekler:</strong></div>
+      ${skippedList}
+    </div>`;
+    Swal.fire({ title: 'Gönderim Özeti', html, icon: 'info', showCancelButton: true, confirmButtonText: 'Detaya Git', cancelButtonText: 'Kapat', didOpen: () => { setTimeout(() => { if (Swal.isVisible()) { window.location.href = j.batch_id ? `/batch/${j.batch_id}` : '/batch_logs'; } }, 3000); } }).then(res => { if (res.isConfirmed) { window.location.href = j.batch_id ? `/batch/${j.batch_id}` : '/batch_logs'; } });
+  }
+
+
+  let currentPage = 1;
+  let MP_ITEMS_PER_PAGE = 50;
+  const XML_ITEMS_PER_PAGE = 25;
+  let currentSearchQuery = '';
+  let currentTotal = 0;
+  let currentStatus = localStorage.getItem(STATUS_STORAGE_KEY) || 'all';
+  if (!allowedStatusValues.includes(currentStatus)) {
+    currentStatus = 'all';
+    localStorage.removeItem(STATUS_STORAGE_KEY);
+  }
+  let currentStock = localStorage.getItem(STOCK_STORAGE_KEY) || 'all';
+  if (!allowedStockValues.includes(currentStock)) {
+    currentStock = 'all';
+    localStorage.removeItem(STOCK_STORAGE_KEY);
+  }
+  let currentView = localStorage.getItem(VIEW_STORAGE_KEY) || 'table';
+  if (!['table', 'grid', 'compact'].includes(currentView)) {
+    currentView = 'table';
+    localStorage.removeItem(VIEW_STORAGE_KEY);
+  }
+
+
+
+  function renderEmptyStates() {
+    const hasActiveFilters = currentSearchQuery || currentStatus !== 'all' || currentStock !== 'all';
+    const emptyText = hasActiveFilters
+      ? `<div class="mb-3">Filtreleriniz ile eşleşen ürün bulunamadı.</div><button class="btn btn-sm btn-outline-primary" onclick="resetMpFilters()"><i class="bi bi-arrow-counterclockwise me-1"></i>Filtreleri sıfırla</button>`
+      : 'Hiç ürün bulunamadı.';
+    const emptyRow = `<tr><td colspan="7" class="text-center p-5 text-muted">${emptyText}</td></tr>`;
+    productListBody.innerHTML = emptyRow;
+    productGridBody.innerHTML = `<div class="col"><div class="border rounded p-4 text-center text-muted">${emptyText}</div></div>`;
+    productCompactBody.innerHTML = `<div class="list-group-item text-center text-muted py-4">${emptyText}</div>`;
+    if (hasActiveFilters) {
+      viewTableWrapper.classList.remove('d-none');
+      viewGridWrapper.classList.add('d-none');
+      viewCompactWrapper.classList.add('d-none');
+      updateFilterButtonStates();
+    }
+  }
+
+  function buildTableRows(products) {
+    if (!Array.isArray(products) || products.length === 0) {
+      renderEmptyStates();
+      return;
+    }
+    productListBody.innerHTML = '';
+    const BATCH_SIZE = 30;
+    let rendered = 0;
+    const scheduler = window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : (cb) => setTimeout(cb, 16);
+    const rows = products.map(p => {
+      // Robust Image Logic
+      let imageUrl = 'https://via.placeholder.com/120x120?text=IMG';
+      if (p.primary_image) {
+        imageUrl = p.primary_image;
+      } else if (Array.isArray(p.images) && p.images.length > 0) {
+        // If array of strings
+        if (typeof p.images[0] === 'string') imageUrl = p.images[0];
+        // If array of objects (e.g. {url: '...'})
+        else if (typeof p.images[0] === 'object' && p.images[0].url) imageUrl = p.images[0].url;
+      } else if (typeof p.images === 'string' && p.images.startsWith('http')) {
+        imageUrl = p.images;
+      } else if (p.imageUrl) {
+        imageUrl = p.imageUrl;
+      }
+
+      const priceNum = Number(p.salePrice ?? p.price ?? 0) || 0;
+      const priceText = priceNum.toFixed(2);
+      const qtyVal = Number(p.quantity ?? p.stock ?? p.stockCount ?? 0) || 0;
+      const barcode = escapeHtml(p.barcode || '—');
+      const stockCode = escapeHtml(p.stockCode || '—');
+      return `
+      <tr>
+        <td data-label="Seç"><input type="checkbox" class="mpSel" data-bc="${p.barcode}"></td>
+        <td data-label="Görsel"><img src="${imageUrl}" alt="${escapeHtml(p.title)}" class="img-thumbnail" style="width:60px;height:60px;object-fit:cover;"></td>
+        <td data-label="Ürün Adı" class="text-truncate" style="max-width: 250px;">${escapeHtml(p.title)}</td>
+        <td data-label="Kodlar">
+          <div><span class="badge bg-secondary">${barcode}</span></div>
+          <div class="small text-muted">Stok: <code>${stockCode}</code></div>
+        </td>
+        <td data-label="Fiyat/Stok">${priceText} TL / <span class="fw-bold text-success">${qtyVal}</span></td>
+        <td data-label="Durum"><span class="badge bg-${p.status_color || 'secondary'}">${p.status_label || '—'}</span></td>
+        <td data-label="İşlem">
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-primary btn-animated" onclick="window.openUpdateModal('${p.barcode}')" title="Düzenle"><i class="bi bi-pencil-square"></i></button>
+            ${p.local_id ? `<button class="btn btn-sm btn-outline-warning btn-animated" onclick="archiveProduct(${p.local_id})" title="Arşivle"><i class="bi bi-archive"></i></button>` : ''}
+            <button class="btn btn-sm btn-outline-danger btn-animated" onclick="deleteProduct('${p.barcode}')" title="Sil"><i class="bi bi-trash"></i></button>
+          </div>
+        </td>
+      </tr>`;
+    });
+    const renderBatch = () => {
+      if (rendered >= rows.length) {
+        bindMpSelectionHandlers();
+        return;
+      }
+      const chunk = rows.slice(rendered, rendered + BATCH_SIZE).join('');
+      if (chunk) { productListBody.insertAdjacentHTML('beforeend', chunk); }
+      rendered += BATCH_SIZE;
+      if (rendered < rows.length) {
+        scheduler(renderBatch);
+      } else {
+        bindMpSelectionHandlers();
+      }
+    };
+    scheduler(renderBatch);
+  }
+
+  function buildGridCards(products) {
+    if (!Array.isArray(products) || products.length === 0) {
+      renderEmptyStates();
+      return;
+    }
+    productGridBody.innerHTML = '';
+    const cards = products.map(p => {
+      // Robust Image Logic (Same as Table)
+      let imageUrl = 'https://via.placeholder.com/300x300?text=IMG';
+      if (p.primary_image) {
+        imageUrl = p.primary_image;
+      } else if (Array.isArray(p.images) && p.images.length > 0) {
+        if (typeof p.images[0] === 'string') imageUrl = p.images[0];
+        else if (typeof p.images[0] === 'object' && p.images[0].url) imageUrl = p.images[0].url;
+      } else if (typeof p.images === 'string' && p.images.startsWith('http')) {
+        imageUrl = p.images;
+      } else if (p.imageUrl) {
+        imageUrl = p.imageUrl;
+      }
+
+      const priceNum = Number(p.salePrice ?? p.price ?? 0) || 0;
+      const priceText = priceNum.toFixed(2);
+      const qtyVal = Number(p.quantity ?? p.stock ?? p.stockCount ?? 0) || 0;
+      const barcode = escapeHtml(p.barcode || '—');
+      const stockCode = escapeHtml(p.stockCode || '—');
+      return `
+      <div class="col">
+        <div class="card h-100 shadow-sm">
+          <div class="ratio ratio-4x3 bg-light rounded-top">
+            <img src="${imageUrl}" alt="${escapeHtml(p.title)}" class="img-fluid object-fit-cover rounded-top">
+          </div>
+          <div class="card-body d-flex flex-column">
+            <h6 class="card-title text-truncate">${escapeHtml(p.title)}</h6>
+            <div class="mb-2">
+              <span class="badge bg-secondary">${barcode}</span>
+              <div class="small text-muted mt-1">Stok Kod: <code>${stockCode}</code></div>
+            </div>
+            <div class="mb-2">${priceText} TL · <span class="fw-semibold text-success">${qtyVal}</span></div>
+            <div class="mb-3"><span class="badge bg-${p.status_color || 'secondary'}">${p.status_label || '—'}</span></div>
+            <div class="mt-auto d-flex gap-2">
+              <button class="btn btn-outline-primary btn-sm flex-grow-1" onclick="openUpdateModal('${p.barcode}')"><i class="bi bi-pencil-square me-1"></i>Düzenle</button>
+              ${p.local_id ? `<button class="btn btn-outline-warning btn-sm" onclick="archiveProduct(${p.local_id})" title="Arşivle"><i class="bi bi-archive"></i></button>` : ''}
+              <button class="btn btn-outline-danger btn-sm" onclick="deleteProduct('${p.barcode}')"><i class="bi bi-trash"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    });
+    productGridBody.insertAdjacentHTML('beforeend', cards.join(''));
+  }
+
+  function buildCompactRows(products) {
+    if (!Array.isArray(products) || products.length === 0) {
+      renderEmptyStates();
+      return;
+    }
+    productCompactBody.innerHTML = '';
+    const rows = products.map(p => {
+      const priceNum = Number(p.salePrice ?? p.price ?? 0) || 0;
+      const priceText = priceNum.toFixed(2);
+      const qtyVal = Number(p.quantity ?? p.stock ?? p.stockCount ?? 0) || 0;
+      const barcode = escapeHtml(p.barcode || '—');
+      const stockCode = escapeHtml(p.stockCode || '—');
+      return `
+      <div class="list-group-item d-flex align-items-center gap-3">
+        <input type="checkbox" class="form-check-input mpSel" data-bc="${p.barcode}">
+        <div class="flex-grow-1">
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="fw-semibold text-truncate">${escapeHtml(p.title)}</div>
+            <span class="badge bg-${p.status_color || 'secondary'}">${p.status_label || '—'}</span>
+          </div>
+          <div class="text-muted small">${barcode} · Stok: <code>${stockCode}</code> · ${priceText} TL · <span class="text-success fw-semibold">${qtyVal}</span></div>
+        </div>
+        <div class="btn-group btn-group-sm">
+          <button class="btn btn-outline-primary" title="Düzenle" onclick="openUpdateModal('${p.barcode}')"><i class="bi bi-pencil-square"></i></button>
+          ${p.local_id ? `<button class="btn btn-outline-warning" title="Arşivle" onclick="archiveProduct(${p.local_id})"><i class="bi bi-archive"></i></button>` : ''}
+          <button class="btn btn-outline-danger" title="Sil" onclick="deleteProduct('${p.barcode}')"><i class="bi bi-trash"></i></button>
+        </div>
+      </div>`;
+    });
+    productCompactBody.insertAdjacentHTML('beforeend', rows.join(''));
+  }
+
+  const RENDERERS = {
+    table: buildTableRows,
+    grid: buildGridCards,
+    compact: buildCompactRows,
+  };
+
+  function renderProducts(products) {
+    window._lastProductPayload = Array.isArray(products) ? products : [];
+    Object.assign(window, { _lastProductPayload: window._lastProductPayload });
+    if (!RENDERERS[currentView]) {
+      currentView = 'table';
+    }
+    RENDERERS[currentView](window._lastProductPayload);
+  }
+
+  function ensureViewRendered(view) {
+    if (!RENDERERS[view]) { return; }
+    if (view === 'grid' && productGridBody.children.length === 0) {
+      RENDERERS[view](window._lastProductPayload || []);
+    } else if (view === 'compact' && productCompactBody.children.length === 0) {
+      RENDERERS[view](window._lastProductPayload || []);
+    }
+  }
+
+  function renderPagination(total, current) {
+    const totalPages = Math.max(1, Number(window._lastResponseTotalPages || Math.ceil(total / MP_ITEMS_PER_PAGE)));
+    buildPagination(pagination, totalPages, current, (p) => { currentPage = p; fetchProducts(); });
+  }
+
+  function fetchProducts(options = {}) {
+    const { forceRefresh = false } = options;
+    const mp = CURRENT_MARKETPLACE;
+    const cacheKey = JSON.stringify({
+      mp,
+      page: currentPage,
+      status: currentStatus,
+      stock: currentStock,
+      search: currentSearchQuery,
+    });
+    if (forceRefresh) {
+      invalidateCacheKey(cacheKey);
+    }
+    const cached = forceRefresh ? null : getCachedResponse(cacheKey);
+    // Bulk Actions
+    btnBulkUpdate.addEventListener('click', () => {
+      const selected = Array.from(selectedMpBarcodes);
+      if (!selected.length) { Swal.fire('Uyarı', 'Lütfen ürün seçiniz.', 'warning'); return; }
+
+      Swal.fire({
+        title: 'Toplu Stok Güncelleme',
+        html: `
+        <div class="text-start">
+          <p class="mb-2"><strong>${selected.length}</strong> adet ürün seçildi.</p>
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="radio" name="bulkAction" id="bulkStockZero" value="stock_zero" checked>
+            <label class="form-check-label" for="bulkStockZero">Stokları Sıfırla (Satışa Kapat)</label>
+          </div>
+          <!-- Future: Add more bulk options here -->
+          <div class="alert alert-warning mt-3 small"><i class="bi bi-exclamation-triangle-fill me-1"></i> Bu işlem geri alınamaz.</div>
+        </div>
+      `,
+        showCancelButton: true,
+        confirmButtonText: 'Uygula',
+        cancelButtonText: 'İptal',
+        confirmButtonColor: '#ffc107',
+        preConfirm: () => {
+          const action = document.querySelector('input[name="bulkAction"]:checked').value;
+          return action;
+        }
+      }).then(result => {
+        if (result.isConfirmed) {
+          const action = result.value;
+          startBulkAction(action, selected);
+        }
+      });
+    });
+
+    btnBulkDelete.addEventListener('click', () => {
+      const selected = Array.from(selectedMpBarcodes);
+      if (!selected.length) { Swal.fire('Uyarı', 'Lütfen ürün seçiniz.', 'warning'); return; }
+
+      Swal.fire({
+        title: 'Toplu Silme',
+        text: `${selected.length} adet ürün silinecek. Emin misiniz?`,
+        icon: 'error',
+        showCancelButton: true,
+        confirmButtonText: 'Evet, Sil',
+        cancelButtonText: 'İptal',
+        confirmButtonColor: '#dc3545'
+      }).then(result => {
+        if (result.isConfirmed) {
+          // Warning: implementation backend side might be limited
+          startBulkAction('delete', selected);
+        }
+      });
+    });
+
+    function startBulkAction(action, barcodes) {
+      Swal.fire({ title: 'İşlem Başlatılıyor', text: 'Lütfen bekleyin...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+      fetch(`/api/marketplace_products/${CURRENT_MARKETPLACE}/bulk_action`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: action, barcodes: barcodes })
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (data.success && data.job_id) {
+            Swal.close();
+            if (typeof window.showJobWidget === 'function') {
+              window.showJobWidget(data.job_id);
+            }
+            // Poll logic or just rely on widget
+            selectedMpBarcodes.clear();
+            updateFilterButtonStates(); // refresh view buttons etc
+            fetchProducts();
+          } else {
+            Swal.fire('Hata', data.message || 'Başlatılamadı', 'error');
+          }
+        })
+        .catch(err => {
+          Swal.fire('Hata', 'İstek sırasında hata oluştu: ' + err, 'error');
+        });
+    }
+
+    const baseUrl = `/api/marketplace_products/${mp}`;
+
+    const applyResponse = (d, usedFallback = false, fromCache = false) => {
+      if (!d || typeof d !== 'object') {
+        return;
+      }
+
+      // Handle filtered_total for Pazarama
+      const totalAll = Number(d.total || 0);
+      const filteredTotal = Number(d.filtered_total || d.total || 0);
+      currentTotal = filteredTotal;  // Use filtered total for pagination
+
+      window._lastResponseTotalPages = Number(d.total_pages || Math.ceil(currentTotal / MP_ITEMS_PER_PAGE));
+      const pages = Math.max(1, Number(d.total_pages || Math.ceil(currentTotal / MP_ITEMS_PER_PAGE)));
+      let suffix = '';
+      if (d.warning) { suffix = ` — Uyarı: ${d.warning}`; }
+      if (d.error) { suffix = ` — Hata: ${d.error}`; }
+
+      // Display message
+      let countMessage = `Toplam ${totalAll} ürün`;
+      if (mp === 'pazarama' && filteredTotal !== totalAll) {
+        countMessage += ` (${filteredTotal} gösteriliyor)`;
+      }
+      countMessage += ` (${currentPage}/${pages} sayfa)${suffix}`;
+      productCountSpan.textContent = countMessage;
+
+      if (d.error && (!d.items || d.items.length === 0)) {
+        const body = d.body ? `<div class="small text-muted mt-1">${d.body}</div>` : '';
+        productListBody.innerHTML = `<tr><td colspan="7" class="text-center p-5 text-danger">Trendyol API hatası.${body}</td></tr>`;
+        return;
+      }
+      if (mp === 'pazarama') {
+        // updatePazaramaSummary(d.summary); // Removed
+      }
+      if ((!d.items || d.items.length === 0) && !usedFallback && mp === 'trendyol' && !fromCache) {
+        fetch(fallbackUrl)
+          .then(r => r.json())
+          .then(df => {
+            df.warning = df.warning || 'Trendyol API erişilemedi; yerel veriden gösteriliyor.';
+            applyResponse(df, true, fromCache);
+          }).catch(() => {
+            productListBody.innerHTML = '<tr><td colspan="7" class="text-center p-5 text-danger">Veri yüklenirken bir hata oluştu.</td></tr>';
+          });
+        return;
+      }
+      if (d.sync_started && d.job_id && typeof window.showJobWidget === 'function') {
+        window.showJobWidget(d.job_id);
+      }
+
+      renderProducts(d.items || []);
+      renderPagination(currentTotal, currentPage);
+    };
+
+    if (cached && cached.data) {
+      applyResponse(cached.data, false, true);
+      return Promise.resolve(cached.data);
+    }
+
+    productListBody.innerHTML = '<tr><td colspan="7" class="text-center p-5 text-primary"><div class="spinner-border spinner-border-sm me-2"></div> Ürünler yükleniyor...</td></tr>';
+
+    let base = `${baseUrl}?page=${currentPage}&per_page=${MP_ITEMS_PER_PAGE}&q=${encodeURIComponent(currentSearchQuery)}`;
+    if (mp === 'trendyol' || mp === 'idefix') {
+      if (currentStatus !== 'all') {
+        base += `&status=${encodeURIComponent(currentStatus)}`;
+      }
+    }
+    if (mp === 'pazarama') {
+      if (currentStatus === 'active') { base += `&status=aktif`; }
+      else if (currentStatus === 'pending') { base += `&status=pending`; }
+      else if (currentStatus === 'passive') { base += `&status=pasif`; }
+    }
+    if (currentStock === 'low') { base += `&stock_filter=low`; }
+    else if (currentStock === 'out') { base += `&stock_filter=out`; }
+    if (forceRefresh) {
+      if (mp === 'pazarama') {
+        base += '&refresh=force';
+      }
+      base += `&_=${Date.now()}`;
+    }
+    const strictUrl = (mp === 'trendyol' || mp === 'idefix') ? `${base}&strict_api=1` : base;
+    const fallbackUrl = base;
+
+    return fetch(strictUrl)
+      .then(r => r.json())
+      .then(d => {
+        applyResponse(d, false, false);
+        setCachedResponse(cacheKey, d);
+        return d;
+      }).catch(() => {
+        invalidateCacheKey(cacheKey);
+        if (mp === 'trendyol') {
+          return fetch(fallbackUrl).then(r => r.json()).then(d => {
+            applyResponse(d, true, false);
+            setCachedResponse(cacheKey, d);
+            return d;
+          }).catch(() => {
+            productListBody.innerHTML = '<tr><td colspan="7" class="text-center p-5 text-danger">Veri yüklenirken bir hata oluştu.</td></tr>';
+            return null;
+          });
+        } else {
+          productListBody.innerHTML = '<tr><td colspan="7" class="text-center p-5 text-danger">Veri yüklenirken bir hata oluştu.</td></tr>';
+          return null;
+        }
+      });
+  }
+
+  function archiveProduct(productId) {
+    if (!productId) return;
+    Swal.fire({
+      title: 'Ürünü Arşivle?',
+      text: 'Bu ürün pazaryeri listelerinden gizlenecek ve arşive taşınacak.',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Arşivle',
+      cancelButtonText: 'Vazgeç',
+      confirmButtonColor: '#f59e0b'
+    }).then(res => {
+      if (res.isConfirmed) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/products/${productId}/archive`;
+        document.body.appendChild(form);
+        form.submit();
+      }
+    });
+  }
+
+  function deleteProduct(barcode) {
+    Swal.fire({ title: 'Emin misiniz?', text: `${barcode} barkodlu ürün silinecek.`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#3085d6', confirmButtonText: 'Evet, Sil!', cancelButtonText: 'Vazgeç' })
+      .then(res => { if (!res.isConfirmed) return; fetch(`/api/product/delete/{{ marketplace }}/${barcode}`, { method: 'POST' }).then(r => r.json()).then(j => { if (j.success) { Swal.fire('Silindi!', 'Ürün kaldırıldı.', 'success'); fetchProducts(); } else { Swal.fire('Hata!', j.message || 'İşlem başarısız', 'error'); } }).catch(() => Swal.fire('Hata!', 'API çağrısı sırasında bir sorun oluştu.', 'error')); });
+  }
+
+  let debounceTimeout;
+  searchInput.addEventListener('input', (e) => { clearTimeout(debounceTimeout); debounceTimeout = setTimeout(() => { currentSearchQuery = e.target.value.trim(); currentPage = 1; fetchProducts(); }, 500); });
+
+  filterButtons.forEach(btn => {
+    const filter = btn.getAttribute('data-filter');
+    const value = btn.getAttribute('data-value');
+    if ((filter === 'status' && value === currentStatus) || (filter === 'stock' && value === currentStock)) {
+      btn.classList.add('active');
+    }
+    btn.addEventListener('click', () => {
+      if (filter === 'status') {
+        if (currentStatus === value) {
+          currentStatus = 'all';
+          localStorage.removeItem(STATUS_STORAGE_KEY);
+        } else {
+          currentStatus = value;
+          if (value === 'all') {
+            localStorage.removeItem(STATUS_STORAGE_KEY);
+          } else {
+            localStorage.setItem(STATUS_STORAGE_KEY, currentStatus);
+          }
+        }
+        updateFilterButtonStates();
+      } else if (filter === 'stock') {
+        if (currentStock === value) {
+          currentStock = 'all';
+          localStorage.removeItem(STOCK_STORAGE_KEY);
+        } else {
+          currentStock = value;
+          if (value === 'all') {
+            localStorage.removeItem(STOCK_STORAGE_KEY);
+          } else {
+            localStorage.setItem(STOCK_STORAGE_KEY, currentStock);
+          }
+        }
+        updateFilterButtonStates();
+      }
+      // Do NOT fetch immediately on button click, wait for "Apply" if panel is open?
+      // Actually, for better UX, let's keep instant update for buttons but close panel?
+      // No, user might want to select multiple filters. Let's NOT fetch immediately if using advanced panel logic.
+      // But the original logic was instant. Let's keep it instant for now but maybe just update UI state.
+      // fetchProducts(); 
+    });
+  });
+
+  // Apply Button - Closes panel and fetches
+  if (applyFiltersBtn) {
+    applyFiltersBtn.addEventListener('click', () => {
+      currentPage = 1;
+      fetchProducts();
+      // Close panel
+      const panel = document.getElementById('advancedFilterPanel');
+      if (panel) {
+        const bsCollapse = bootstrap.Collapse.getInstance(panel);
+        if (bsCollapse) bsCollapse.hide();
+      }
+    });
+  }
+
+  // Clear Button - Resets and closes
+  if (clearFiltersBtn) {
+    clearFiltersBtn.addEventListener('click', () => {
+      resetFilters();
+      // Close panel
+      const panel = document.getElementById('advancedFilterPanel');
+      if (panel) {
+        const bsCollapse = bootstrap.Collapse.getInstance(panel);
+        if (bsCollapse) bsCollapse.hide();
+      }
+    });
+  }
+
+  function resetFilters() {
+    currentStatus = 'all';
+    currentStock = 'all';
+    currentSearchQuery = '';
+    if (searchInput) searchInput.value = '';
+    localStorage.removeItem(STATUS_STORAGE_KEY);
+    localStorage.removeItem(STOCK_STORAGE_KEY);
+
+    if (filterStockMin) filterStockMin.value = '';
+    if (filterStockMax) filterStockMax.value = '';
+    if (filterPriceMin) filterPriceMin.value = '';
+    if (filterPriceMax) filterPriceMax.value = '';
+
+    updateFilterButtonStates();
+    currentPage = 1;
+    fetchProducts();
+  }
+
+
+  function applyView(view) {
+    currentView = view;
+    localStorage.setItem(VIEW_STORAGE_KEY, view);
+    viewToggleButtons.forEach(btn => btn.classList.toggle('active', btn.getAttribute('data-view') === view));
+    viewTableWrapper.classList.toggle('d-none', view !== 'table');
+    viewGridWrapper.classList.toggle('d-none', view !== 'grid');
+    viewCompactWrapper.classList.toggle('d-none', view !== 'compact');
+    ensureViewRendered(view);
+  }
+
+  viewToggleButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const view = btn.getAttribute('data-view');
+      applyView(view);
+    });
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // Dropdown Fix: Manual Toggle
+    const ddBtn = document.getElementById('mainActionsDropdown');
+    if (ddBtn) {
+      ddBtn.addEventListener('click', (e) => {
+        // Only if bootstrap instance fails to toggle class, we force it
+        // Or we can just trust bootstrap if initialized correctly.
+        // Let's rely on manual re-initialization primarily.
+        const d = new bootstrap.Dropdown(ddBtn);
+        d.toggle();
+      });
+    }
+
+    applyView(currentView);
+    fetchProducts();
+    loadXmlSources();
+    updateFilterButtonStates();
+    ensureViewRendered(currentView);
+
+    // Restore Tab State
+    const savedTab = localStorage.getItem(TAB_STORAGE_KEY);
+    if (savedTab) {
+      const tabLink = innerTabs.querySelector(`a[data-tab="${savedTab}"]`);
+      if (tabLink) tabLink.click();
+    }
+
+    // Restore Filter Panel State
+    const savedPanelState = localStorage.getItem(FILTER_PANEL_STORAGE_KEY);
+    const panel = document.getElementById('advancedFilterPanel');
+    if (savedPanelState === 'open' && panel) {
+      new bootstrap.Collapse(panel, { show: true });
+    }
+  });
+
+  // Track Panel State
+  const advPanel = document.getElementById('advancedFilterPanel');
+  if (advPanel) {
+    advPanel.addEventListener('shown.bs.collapse', () => localStorage.setItem(FILTER_PANEL_STORAGE_KEY, 'open'));
+    advPanel.addEventListener('hidden.bs.collapse', () => localStorage.setItem(FILTER_PANEL_STORAGE_KEY, 'closed'));
+  }
+  // Tabs
+  innerTabs.addEventListener('click', (e) => {
+    const a = e.target.closest('a[data-tab]'); if (!a) { return; }
+    e.preventDefault();
+    innerTabs.querySelectorAll('.nav-link').forEach(x => x.classList.remove('active'));
+    a.classList.add('active');
+    const t = a.dataset.tab;
+    localStorage.setItem(TAB_STORAGE_KEY, t); // Save State
+
+    if (t === 'mp') {
+      tabMarketplace.classList.remove('d-none');
+      tabXML.classList.add('d-none');
+    } else {
+      tabMarketplace.classList.add('d-none');
+      tabXML.classList.remove('d-none');
+      if (!xmlSourceSelect.dataset.loaded) { loadXmlSources(); xmlSourceSelect.dataset.loaded = '1'; }
+    }
+  });
+
+  xmlSourceSelect && xmlSourceSelect.addEventListener('change', (e) => { xmlSourceId = e.target.value; localStorage.setItem('vidos_xml_source_id', String(xmlSourceId || '')); xmlPage = 1; fetchXmlProducts(); });
+  mpXmlSourceSelect && mpXmlSourceSelect.addEventListener('change', (e) => { mpXmlSourceId = e.target.value; localStorage.setItem(`vidos_${CURRENT_MARKETPLACE}_xml_source_id`, String(mpXmlSourceId || '')); updateMarketplaceXmlButtons(); });
+  xmlSearch && xmlSearch.addEventListener('input', (e) => { clearTimeout(window._xmlDeb); window._xmlDeb = setTimeout(() => { xmlQuery = e.target.value.trim(); xmlPage = 1; fetchXmlProducts(); }, 400); });
+
+  if (btnGenerateRandomCodes) {
+    btnGenerateRandomCodes.addEventListener('click', () => {
+      Swal.fire({
+        title: 'Hazırlanıyor',
+        text: 'Bu özellik (XML için Rastgele Kod Oluşturma) bir sonraki fazda aktif edilecektir.',
+        icon: 'info'
+      });
+    });
+  }
+
+  btnRefreshList && btnRefreshList.addEventListener('click', () => {
+    btnRefreshList.disabled = true;
+    clearMarketplaceCache();
+    fetchProducts({ forceRefresh: true }).finally(() => { btnRefreshList.disabled = false; });
+  });
+
+  function bindXmlSelectionHandlers() {
+    const boxes = xmlListBody.querySelectorAll('.xmlSel');
+    boxes.forEach(b => {
+      b.addEventListener('change', () => {
+        const bc = b.getAttribute('data-bc');
+        if (b.checked) { selectedXmlBarcodes.add(bc); } else { selectedXmlBarcodes.delete(bc); }
+        updateXmlBatchButton();
+      });
+    });
+  }
+
+  function updateXmlBatchButton() {
+    if (btnSendSelectedXml) { btnSendSelectedXml.disabled = (selectedXmlBarcodes.size === 0 || !xmlSourceId); }
+  }
+
+  xmlSelectAll && xmlSelectAll.addEventListener('change', () => {
+    const boxes = xmlListBody.querySelectorAll('.xmlSel');
+    boxes.forEach(b => { b.checked = xmlSelectAll.checked; const bc = b.getAttribute('data-bc'); if (b.checked) { selectedXmlBarcodes.add(bc); } else { selectedXmlBarcodes.delete(bc); } });
+    updateXmlBatchButton();
+  });
+
+  btnSendSelectedXml && btnSendSelectedXml.addEventListener('click', () => {
+    if (selectedXmlBarcodes.size === 0) { Swal.fire('Uyarı', 'Önce ürün seçiniz.', 'warning'); return; }
+    if (!xmlSourceId) { Swal.fire('Uyarı', 'Önce XML kaynağı seçiniz.', 'warning'); return; }
+    const mp = '{{ marketplace }}';
+    const barcodes = Array.from(selectedXmlBarcodes);
+    const payload = { barcodes, xml_source_id: xmlSourceId };
+    Swal.fire({ title: 'Gönderiliyor', text: 'İşlem biraz sürebilir...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    const url = (mp === 'trendyol') ? '/api/trendyol/send_auto' : `/api/send_selected/${mp}`;
+    fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      .then(r => r.json()).then(j => {
+        if (j.success) { showSummaryAndRedirect(j); selectedXmlBarcodes.clear(); updateXmlBatchButton(); }
+        else { Swal.fire('Hata', j.message || 'İşlem başarısız', 'error'); }
+      }).catch(() => Swal.fire('Hata', 'API çağrısı sırasında bir sorun oluştu.', 'error'));
+  });
+
+
+
+  const btnFetchFromMp = document.getElementById('btnFetchFromMp');
+  btnFetchFromMp && btnFetchFromMp.addEventListener('click', () => {
+    const mpName = '{{ marketplace_name or marketplace|capitalize }}';
+    Swal.fire({
+      title: `${mpName} Ürünleri Çekiliyor`,
+      text: 'İşlem arka planda başlatılacak. Bu işlem ürün sayısına göre uzun sürebilir.',
+      icon: 'info',
+      showCancelButton: true,
+      confirmButtonText: 'Evet, Başlat',
+      cancelButtonText: 'Vazgeç'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        let url = '';
+        if (CURRENT_MARKETPLACE === 'n11') url = '/api/n11/fetch_products';
+        else if (CURRENT_MARKETPLACE === 'trendyol') url = '/api/trendyol/refresh_cache';
+        else if (CURRENT_MARKETPLACE === 'idefix') url = '/api/idefix/refresh_cache';
+
+        if (!url) { Swal.fire('Hata', 'Bu pazaryeri için işlem desteklenmiyor.', 'error'); return; }
+
+        fetch(url, { method: 'POST' })
+          .then(r => r.json())
+          .then(data => {
+            if (data.success) {
+              // Use global job polling
+              pollMpJob(data.job_id, `${mpName} Ürün Çekme`, () => {
+                fetchProducts({ forceRefresh: true });
+              });
+            } else {
+              Swal.fire('Hata', data.message || 'Başlatılamadı', 'error');
+            }
+          })
+          .catch(err => Swal.fire('Hata', 'API hatası: ' + err, 'error'));
+      }
+    });
+  });
+
+  // Export to global scope
+  window.openUpdateModal = openUpdateModal;
+  window.deleteProduct = deleteProduct;
+
+  // Restore any active job on page load
+  restoreJobState();
+</script>
+{% endblock %}

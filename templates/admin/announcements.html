@@ -1,0 +1,105 @@
+{% extends "admin/_base.html" %}
+
+{% block title %}Duyuru Yönetimi{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-6">
+        <h2>Duyuru Yönetimi</h2>
+    </div>
+    <div class="col-md-6 text-end">
+        <a href="{{ url_for('admin.new_announcement') }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-2"></i>Yeni Duyuru
+        </a>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">Başlık</th>
+                        <th>Durum</th>
+                        <th>Öncelik</th>
+                        <th>Oluşturulma</th>
+                        <th>Bitiş</th>
+                        <th class="text-end pe-4">İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in announcements.items %}
+                    <tr>
+                        <td class="ps-4 fw-bold">{{ item.title }}</td>
+                        <td>
+                            {% if item.is_active %}
+                            <span class="badge bg-success">Aktif</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Pasif</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.priority == 'critical' %}
+                            <span class="badge bg-danger">Kritik</span>
+                            {% elif item.priority == 'high' %}
+                            <span class="badge bg-warning text-dark">Yüksek</span>
+                            {% else %}
+                            <span class="badge bg-info text-dark">Normal</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ item.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            {% if item.expires_at %}
+                            {{ item.expires_at.strftime('%Y-%m-%d') }}
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-4">
+                            <a href="{{ url_for('admin.edit_announcement', id=item.id) }}"
+                                class="btn btn-sm btn-outline-primary me-1">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <form action="{{ url_for('admin.delete_announcement', id=item.id) }}" method="POST"
+                                class="d-inline"
+                                onsubmit="return confirm('Bu duyuruyu silmek istediğinize emin misiniz?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted">Henüz duyuru bulunmuyor.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% if announcements.pages > 1 %}
+    <div class="card-footer bg-white py-3">
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center mb-0">
+                <li class="page-item {{ 'disabled' if not announcements.has_prev }}">
+                    <a class="page-link"
+                        href="{{ url_for('admin.announcements', page=announcements.prev_num) }}">Önceki</a>
+                </li>
+                {% for p in announcements.iter_pages() %}
+                <li class="page-item {{ 'active' if p == announcements.page else '' }} {{ 'disabled' if not p }}">
+                    <a class="page-link" href="{{ url_for('admin.announcements', page=p) }}">{{ p or '...' }}</a>
+                </li>
+                {% endfor %}
+                <li class="page-item {{ 'disabled' if not announcements.has_next }}">
+                    <a class="page-link"
+                        href="{{ url_for('admin.announcements', page=announcements.next_num) }}">Sonraki</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

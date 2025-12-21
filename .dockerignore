@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+panel.db
+.git/
+*.xlsx
+*.xls
+cache/
+uploads/
+excel_uploads/

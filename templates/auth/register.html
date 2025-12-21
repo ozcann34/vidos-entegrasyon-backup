@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="tr" data-bs-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kayıt Ol - Vidos Entegrasyon</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg-color: #f8fafc;
+        }
+
+        body {
+            min-height: 100vh;
+            background-color: var(--bg-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Inter', sans-serif;
+            color: #1e293b;
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 900px;
+            padding: 2rem;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .auth-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 24px;
+            padding: 2.5rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+        }
+
+        .auth-logo {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .auth-logo img {
+            height: 50px;
+            margin-bottom: 1rem;
+        }
+
+        .auth-logo h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 0.25rem;
+        }
+
+        .form-label {
+            font-weight: 500;
+            color: #475569;
+            font-size: 0.9rem;
+        }
+
+        .form-control {
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+            background-color: #fcfcfd;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+            background-color: #fff;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            border: none;
+            border-radius: 12px;
+            padding: 0.8rem 1.5rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        .auth-links {
+            text-align: center;
+            margin-top: 2rem;
+            color: #64748b;
+        }
+
+        .auth-links a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .auth-links a:hover {
+            text-decoration: underline;
+        }
+
+        .section-header {
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #94a3b8;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .section-header::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #e2e8f0;
+            margin-left: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-logo">
+                <a href="/">
+                    <img src="{{ url_for('static', filename='logo.png') }}" alt="Vidos Logo">
+                </a>
+                <h1>Hesap Oluşturun</h1>
+                <p class="text-muted">E-ticaretinizi büyütmeye bugün başlayın</p>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show border-0 rounded-4 shadow-sm"
+                role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            {% if plan_details %}
+            <div class="alert alert-info mb-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="bi bi-box-seam me-2"></i>
+                        <strong>{{ plan_details.name }}</strong> planı seçildi
+                    </div>
+                    <span class="badge bg-primary">₺{{ plan_details.price }}/ay</span>
+                </div>
+            </div>
+            {% endif %}
+
+            <form method="POST" action="{{ url_for('auth.register') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="plan" value="{{ selected_plan }}">
+
+                <div class="row g-4">
+                    <!-- Sol Kolon: Kişisel ve Giriş Bilgileri -->
+                    <div class="col-md-6 border-end border-secondary border-opacity-25 pe-md-4">
+                        <h5 class="text-white-50 fs-6 mb-3 border-bottom border-secondary pb-2">Hesap Bilgileri</h5>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="first_name" name="first_name"
+                                        placeholder="Ad">
+                                    <label for="first_name"><i class="bi bi-person me-2"></i>Ad</label>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="last_name" name="last_name"
+                                        placeholder="Soyad">
+                                    <label for="last_name"><i class="bi bi-person me-2"></i>Soyad</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="tc_no" name="tc_no" placeholder="TC Kimlik No"
+                                maxlength="11">
+                            <label for="tc_no"><i class="bi bi-person-vcard me-2"></i>TC Kimlik No</label>
+                        </div>
+
+                        <div class="form-floating">
+                            <input type="email" class="form-control" id="email" name="email" placeholder="Email"
+                                required>
+                            <label for="email"><i class="bi bi-envelope me-2"></i>Email Adresi</label>
+                        </div>
+
+                        <div class="form-floating">
+                            <input type="password" class="form-control" id="password" name="password"
+                                placeholder="Şifre" required minlength="6">
+                            <label for="password"><i class="bi bi-lock me-2"></i>Şifre</label>
+                        </div>
+                        <p class="password-requirements"><i class="bi bi-info-circle me-1"></i>En az 6 karakter</p>
+
+                        <div class="form-floating mb-3">
+                            <input type="password" class="form-control" id="password_confirm" name="password_confirm"
+                                placeholder="Şifre Tekrar" required>
+                            <label for="password_confirm"><i class="bi bi-lock-fill me-2"></i>Şifre Tekrar</label>
+                        </div>
+                    </div>
+
+                    <!-- Sağ Kolon: Firma ve Adres Bilgileri -->
+                    <div class="col-md-6 ps-md-4">
+                        <h5 class="text-white-50 fs-6 mb-3 border-bottom border-secondary pb-2">Firma ve İletişim
+                            Detayları</h5>
+
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="company_title" name="company_title"
+                                placeholder="Firma Ünvanı">
+                            <label for="company_title"><i class="bi bi-building me-2"></i>Firma Ünvanı</label>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="tax_office" name="tax_office"
+                                        placeholder="Vergi Dairesi">
+                                    <label for="tax_office" style="font-size: 0.85rem;"><i
+                                            class="bi bi-bank me-1"></i>V. Dairesi</label>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="tax_no" name="tax_no"
+                                        placeholder="Vergi No">
+                                    <label for="tax_no" style="font-size: 0.85rem;"><i
+                                            class="bi bi-receipt me-1"></i>Vergi No</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-floating mb-3">
+                            <input type="tel" class="form-control" id="phone" name="phone" placeholder="Telefon">
+                            <label for="phone"><i class="bi bi-telephone me-2"></i>Telefon</label>
+                        </div>
+
+                        <h5 class="text-white-50 fs-6 mb-3 border-bottom border-secondary pb-2">Adres</h5>
+
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="city" name="city" placeholder="İl">
+                                    <label for="city"><i class="bi bi-geo-alt me-2"></i>İl</label>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="district" name="district"
+                                        placeholder="İlçe">
+                                    <label for="district"><i class="bi bi-geo me-2"></i>İlçe</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-floating">
+                            <textarea class="form-control" placeholder="Açık Adres" id="address" name="address"
+                                style="height: 80px"></textarea>
+                            <label for="address"><i class="bi bi-map me-2"></i>Açık Adres</label>
+                        </div>
+                    </div>
+
+                    <div class="col-12 mt-4 text-center">
+                        <button type="submit" class="btn btn-primary btn-lg w-50">
+                            <i class="bi bi-person-plus me-2"></i>Kayıt Ol
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <div class="auth-links">
+                <span class="text-muted">Zaten hesabınız var mı?</span>
+                <a href="{{ url_for('auth.login') }}" class="ms-1 fw-semibold">Giriş Yapın</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

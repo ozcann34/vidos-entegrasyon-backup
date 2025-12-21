@@ -1,0 +1,1564 @@
+﻿import time
+import json
+import threading
+import math
+import logging
+from datetime import datetime
+from typing import Dict, Any, List, Optional, Tuple, Set, Iterable
+from difflib import get_close_matches
+from collections import Counter
+
+try:
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.metrics.pairwise import cosine_similarity
+    SKLEARN_AVAILABLE = True
+except ImportError:
+    SKLEARN_AVAILABLE = False
+
+from app.models import Setting
+from app.services.pazarama_client import PazaramaClient
+from app.services.xml_service import load_xml_source_index, lookup_xml_record
+from app.services.job_queue import append_mp_job_log
+from app.utils.helpers import to_int, to_float, chunked, get_marketplace_multiplier, clean_forbidden_words
+
+# User-specific caches
+_PAZARAMA_USER_CACHES: Dict[int, Dict[str, Any]] = {}
+
+def get_pazarama_cache(user_id: int) -> Dict[str, Any]:
+    if user_id not in _PAZARAMA_USER_CACHES:
+        _PAZARAMA_USER_CACHES[user_id] = {
+            "categories": {"list": [], "names": [], "ids": []},
+            "tfidf": {"leaf": [], "names": [], "vectorizer": None, "matrix": None},
+            "attributes": {},
+            "brands": {},
+            "details": {}
+        }
+    return _PAZARAMA_USER_CACHES[user_id]
+
+_PAZARAMA_DETAIL_CACHE_LOCK = threading.Lock()
+PAZARAMA_DETAIL_CACHE_TTL_SECONDS = 300
+PAZARAMA_DETAIL_CACHE_MAX = 1000
+PAZARAMA_SNAPSHOT_TTL_SECONDS = 300
+
+
+def clear_all_pazarama_caches(user_id: Optional[int] = None) -> str:
+    """Tüm Pazarama önbelleklerini temizle. user_id verilirse sadece o kullanıcınınkileri temizler."""
+    from flask_login import current_user
+    actual_user_id = user_id
+    if actual_user_id is None:
+        try:
+            if current_user and current_user.is_authenticated:
+                actual_user_id = current_user.id
+        except: pass
+        
+    if actual_user_id is None:
+        return "Hata: Kullanıcı belirlenemedi."
+
+    cleared = []
+    
+    # Clear user specific cache dict
+    if actual_user_id in _PAZARAMA_USER_CACHES:
+        _PAZARAMA_USER_CACHES.pop(actual_user_id)
+        cleared.append("bellek içi önbellekler")
+    
+    # Clear product index snapshot from DB
+    try:
+        from app.models import Setting
+        Setting.set('PAZARAMA_EXPORT_SNAPSHOT', '', user_id=actual_user_id)
+        Setting.set('PAZARAMA_PRODUCT_INDEX', '', user_id=actual_user_id)
+        cleared.append("ürün indeksi (DB)")
+    except Exception:
+        pass
+    
+    return f"Temizlenen (User {actual_user_id}): {', '.join(cleared)}"
+
+
+# ============================================================
+# Pazarama kategori cekme ve TF-IDF eslestirme fonksiyonlari
+# ============================================================
+
+def fetch_pazarama_categories_flat(client: PazaramaClient) -> List[Dict[str, Any]]:
+    """
+    Fetch all Pazarama categories and return flat list of leaf categories.
+    Similar to Trendyol's fetch_trendyol_categories_flat.
+    """
+    try:
+        cats = client.get_category_tree(only_leaf=True)
+        flat = []
+        for c in cats:
+            flat.append({
+                "id": c.get("id"),
+                "name": c.get("name", ""),
+                "path": c.get("path", c.get("name", "")),
+            })
+        return flat
+    except Exception as e:
+        logging.error(f"Pazarama kategori cekme hatasi: {e}")
+        return []
+
+
+def prepare_pazarama_tfidf(leaf_categories: List[Dict[str, Any]], user_id: int):
+    """
+    Prepare TF-IDF vectorizer and matrix for Pazarama categories - USER ISOLATED.
+    """
+    cache = get_pazarama_cache(user_id)
+    if not SKLEARN_AVAILABLE:
+        logging.warning("sklearn yuklu degil, TF-IDF eslestirme calismayacak")
+        cache["tfidf"].update({"leaf": [], "names": [], "vectorizer": None, "matrix": None})
+        return
+    
+    names = [c.get('name', '') for c in leaf_categories]
+    if not names:
+        cache["tfidf"].update({"leaf": [], "names": [], "vectorizer": None, "matrix": None})
+        return
+    
+    # Use char-level n-grams for Turkish/fuzzy matching
+    vec = TfidfVectorizer(analyzer='char_wb', ngram_range=(2, 4))
+    vec.fit(names)
+    mat = vec.transform(names)
+    cache["tfidf"].update({"leaf": leaf_categories, "names": names, "vectorizer": vec, "matrix": mat})
+    logging.info(f"Pazarama TF-IDF matrisi hazir for user {user_id}: {len(names)} kategori")
+
+
+def ensure_pazarama_tfidf_ready(user_id: int):
+    """
+    Load Pazarama categories from settings and prepare TF-IDF if not already done - USER ISOLATED.
+    """
+    cache = get_pazarama_cache(user_id)
+    if cache["tfidf"].get('vectorizer'):
+        return True
+    
+    raw = Setting.get("PAZARAMA_CATEGORY_TREE", "", user_id=user_id)
+    if raw:
+        try:
+            leafs = json.loads(raw)
+            prepare_pazarama_tfidf(leafs, user_id=user_id)
+            return True
+        except Exception as e:
+            logging.error(f"Pazarama kategori agaci yuklenirken hata for user {user_id}: {e}")
+    return False
+
+
+def match_pazarama_category_tfidf(query: str, user_id: int, min_score: float = 0.25) -> Optional[str]:
+    """
+    Find best matching Pazarama category using TF-IDF + cosine similarity - USER ISOLATED.
+    """
+    cache = get_pazarama_cache(user_id)
+    if not query or not cache["tfidf"].get('vectorizer'):
+        return None
+    
+    vec = cache["tfidf"]['vectorizer']
+    mat = cache["tfidf"]['matrix']
+    names = cache["tfidf"]['names']
+    leaf = cache["tfidf"]['leaf']
+    
+    try:
+        q = vec.transform([query.lower()])
+        sims = cosine_similarity(q, mat)[0]
+        idx = int(sims.argmax())
+        score = float(sims[idx])
+        
+        if score >= min_score:
+            return str(leaf[idx].get('id') or '')
+        return None
+    except Exception as e:
+        logging.error(f"TF-IDF eslestirme hatasi: {e}")
+        return None
+
+
+def get_pazarama_client(user_id: int = None) -> PazaramaClient:
+    """Get Pazarama client with user-specific credentials."""
+    # Get user_id from current_user if not provided
+    if user_id is None:
+        try:
+            from flask_login import current_user
+            if current_user and current_user.is_authenticated:
+                user_id = current_user.id
+        except Exception:
+            pass
+    
+    client_id = (Setting.get("PAZARAMA_API_KEY", "", user_id=user_id) or "").strip()
+    client_secret = (Setting.get("PAZARAMA_API_SECRET", "", user_id=user_id) or "").strip()
+    if not client_id or not client_secret:
+        raise ValueError("Pazarama API bilgileri eksik. Ayarlar sayfasindan PAZARAMA_API_KEY ve PAZARAMA_API_SECRET giriniz.")
+    return PazaramaClient(client_id=client_id, client_secret=client_secret)
+
+def get_cached_pazarama_detail(client: PazaramaClient, code: str) -> Dict[str, Any]:
+    if not code:
+        return {}
+    now = time.time()
+    ttl = PAZARAMA_DETAIL_CACHE_TTL_SECONDS
+    with _PAZARAMA_DETAIL_CACHE_LOCK:
+        cached = _PAZARAMA_DETAIL_CACHE.get(code)
+        if cached:
+            ts, data = cached
+            if ttl == 0 or (now - ts) <= ttl:
+                return data
+            else:
+                _PAZARAMA_DETAIL_CACHE.pop(code, None)
+    try:
+        detail = client.get_product_detail(code) or {}
+    except Exception:
+        detail = {}
+    if detail:
+        with _PAZARAMA_DETAIL_CACHE_LOCK:
+            if len(_PAZARAMA_DETAIL_CACHE) >= PAZARAMA_DETAIL_CACHE_MAX:
+                # simple FIFO eviction
+                oldest_key = min(_PAZARAMA_DETAIL_CACHE.items(), key=lambda item: item[1][0])[0]
+                _PAZARAMA_DETAIL_CACHE.pop(oldest_key, None)
+            _PAZARAMA_DETAIL_CACHE[code] = (now, detail)
+    return detail
+
+def clear_pazarama_detail_cache():
+    with _PAZARAMA_DETAIL_CACHE_LOCK:
+        _PAZARAMA_DETAIL_CACHE.clear()
+
+def get_pazarama_category_map(user_id: int) -> Dict[str, str]:
+    try:
+        raw = Setting.get('PAZARAMA_CATEGORY_MAPPING', '{}', user_id=user_id) or '{}'
+        data = json.loads(raw)
+        if isinstance(data, dict):
+            return {
+                (str(k).strip().lower()): str(v).strip()
+                for k, v in data.items() if v not in (None, '', [])
+            }
+    except Exception:
+        pass
+    return {}
+
+def pazarama_get_required_attributes(client: PazaramaClient, category_id: str, user_id: int) -> List[Dict[str, Any]]:
+    if not category_id:
+        return []
+    cache = get_pazarama_cache(user_id)
+    cache_key = str(category_id)
+    if cache_key in cache["attributes"]:
+        return cache["attributes"][cache_key]
+    try:
+        data = client.get_category_with_attributes(category_id)
+    except Exception:
+        cache["attributes"][cache_key] = []
+        return []
+    attrs: List[Dict[str, Any]] = []
+    for attr in data.get('attributes', []):
+        if not attr.get('isRequired'):
+            continue
+        values = attr.get('attributeValues') or []
+        if not values:
+            continue
+        try:
+            attrs.append({
+                'attributeId': attr['id'],
+                'attributeValueId': values[0]['id']
+            })
+        except Exception:
+            continue
+    cache["attributes"][cache_key] = attrs
+    return attrs
+
+def ensure_pazarama_categories(client: PazaramaClient, user_id: int) -> None:
+    cache = get_pazarama_cache(user_id)
+    if cache["categories"]["list"]:
+        return
+    try:
+        cats = client.get_category_tree(only_leaf=True)
+    except Exception:
+        cache["categories"].update({"list": [], "names": [], "ids": []})
+        return
+    names = [str(c.get('name') or '').strip().lower() for c in cats]
+    ids = [str(c.get('id') or '') for c in cats]
+    cache["categories"].update({"list": cats, "names": names, "ids": ids})
+
+def resolve_pazarama_category(client: PazaramaClient, product_title: str, top_category: str, xml_category: str, user_id: int, log_callback=None) -> Optional[str]:
+    """
+    Resolve Pazarama category ID from product info.
+    Uses TF-IDF matching for better accuracy.
+    
+    Args:
+        client: Pazarama client
+        product_title: Product title
+        top_category: Top-level category from XML
+        xml_category: Full category path from XML
+        log_callback: Optional callback function for logging (e.g., append_mp_job_log)
+    """
+    category_map = get_pazarama_category_map(user_id=user_id)
+    
+    # First try exact mapping from user-defined settings
+    for raw in (top_category, xml_category):
+        if not raw:
+            continue
+        key = str(raw).strip().lower()
+        if not key:
+            continue
+        mapped = category_map.get(key)
+        if mapped:
+            if log_callback:
+                log_callback(f"Kategori eslesti (mapping): {key} -> {mapped}")
+            return mapped
+
+    # Try TF-IDF matching if available (like Trendyol)
+    if ensure_pazarama_tfidf_ready(user_id=user_id):
+        # Try with xml_category first, then top_category, then title
+        cache = get_pazarama_cache(user_id)
+        best_match_id = None
+        best_match_score = 0
+        best_match_name = ""
+        best_query = ""
+        
+        for query in (xml_category, top_category, product_title):
+            if not query:
+                continue
+            
+            # Get the best match for this query (lower threshold for finding ANY match)
+            matched_id = match_pazarama_category_tfidf(query, user_id=user_id, min_score=0.15)
+            if matched_id:
+                # Get matched category name for logging
+                matched_name = ""
+                for cat in cache["tfidf"].get('leaf', []):
+                    if str(cat.get('id')) == matched_id:
+                        matched_name = cat.get('name', '')
+                        break
+                if log_callback:
+                    log_callback(f"Kategori eslesti (tfidf): {query[:30]}... -> {matched_name}")
+                return matched_id
+            
+            # Track best match even below threshold for fallback
+            if cache["tfidf"].get('vectorizer'):
+                try:
+                    vec = cache["tfidf"]['vectorizer']
+                    mat = cache["tfidf"]['matrix']
+                    leaf = cache["tfidf"]['leaf']
+                    
+                    q = vec.transform([query.lower()])
+                    sims = cosine_similarity(q, mat)[0]
+                    idx = int(sims.argmax())
+                    score = float(sims[idx])
+                    
+                    if score > best_match_score:
+                        best_match_score = score
+                        best_match_id = str(leaf[idx].get('id') or '')
+                        best_match_name = leaf[idx].get('name', '')
+                        best_query = query
+                except:
+                    pass
+        
+        # Use best match as fallback if score is at least 0.05 (very low but better than nothing)
+        if best_match_id and best_match_score >= 0.05:
+            if log_callback:
+                log_callback(f"Kategori eslesti (benzer, skor:{best_match_score:.2f}): {best_query[:20]}... -> {best_match_name}")
+            return best_match_id
+    
+    # Fallback: Load from API and try basic matching
+    ensure_pazarama_categories(client, user_id=user_id)
+    cache = get_pazarama_cache(user_id)
+    names = cache["categories"]["names"]
+    ids = cache["categories"]["ids"]
+    
+    if not names or not ids:
+        if log_callback:
+            log_callback(f"Pazarama kategori listesi bos! Ayarlardan 'Kategori Cek' yapin.", level='warning')
+        return None
+
+    # Try fuzzy matching with difflib as last resort
+    candidates_tried = []
+    for raw in (top_category, xml_category, product_title):  # Also try product title
+        if not raw:
+            continue
+        key = str(raw).strip().lower()
+        if not key:
+            continue
+        candidates_tried.append(key)
+        
+        # Try exact match
+        if key in names:
+            idx = names.index(key)
+            if log_callback:
+                log_callback(f"Kategori eslesti (exact): {key}")
+            return ids[idx]
+        
+        # Try fuzzy matching with lower cutoff (0.4 instead of 0.6)
+        match = get_close_matches(key, names, n=1, cutoff=0.4)
+        if match:
+            try:
+                idx = names.index(match[0])
+                if log_callback:
+                    log_callback(f"Kategori eslesti (fuzzy): {key} -> {match[0]}")
+                return ids[idx]
+            except ValueError:
+                continue
+    
+    # Log what was tried
+    if log_callback:
+        log_callback(f"Kategori eslesmedi. Denenen: {candidates_tried[:3]}", level='warning')
+    
+    return None
+
+def resolve_pazarama_brand(client: PazaramaClient, brand_name: str, user_id: int, log_callback=None) -> str:
+    """Resolve Pazarama Brand ID by name - USER ISOLATED."""
+    if not brand_name:
+        brand_name = "Diğer"
+    
+    cache = get_pazarama_cache(user_id)
+    key = brand_name.strip().lower()
+    if key in cache["brands"]:
+        return cache["brands"][key]
+    
+    # Try by name
+    try:
+        results = client.get_brands(name=brand_name.strip())
+        for b in results:
+            if b.get('name', '').strip().lower() == key:
+                found = b.get('id')
+                cache["brands"][key] = found
+                if log_callback: log_callback(f"Marka eslesti: {brand_name}")
+                return found
+        # If exact not found, try first result if close? Pazarama search is usually contains.
+        if results:
+            found = results[0].get('id')
+            found_name = results[0].get('name')
+            cache["brands"][key] = found
+            if log_callback: log_callback(f"Marka eslesti (benzer): {brand_name} -> {found_name}")
+            return found
+            
+    except Exception as e:
+        if log_callback: log_callback(f"Marka aranirken hata: {e}", level='warning')
+
+    # Try Diğer
+    if key != "diğer":
+        return resolve_pazarama_brand(client, "Diğer", user_id=user_id, log_callback=log_callback)
+    
+    # Fallback
+    fallback = "3fa85f64-5717-4562-b3fc-2c963f66afa6" 
+    return fallback
+
+def pazarama_fetch_all_products(client: PazaramaClient, page_size: int = 250, force_refresh: bool = False) -> List[Dict[str, Any]]:
+    snapshot_items: Optional[List[Dict[str, Any]]] = None
+    snapshot_meta: Optional[Dict[str, Any]] = None
+    if not force_refresh:
+        snap_raw = Setting.get('PAZARAMA_EXPORT_SNAPSHOT', '') or ''
+        if snap_raw:
+            try:
+                snap = json.loads(snap_raw)
+                snapshot_items = snap.get('items') or []
+                snapshot_meta = snap
+                total = int(snap.get('total') or 0)
+                saved_at_raw = snap.get('saved_at')
+                snapshot_age_ok = False
+                if PAZARAMA_SNAPSHOT_TTL_SECONDS == 0:
+                    snapshot_age_ok = True
+                elif saved_at_raw:
+                    try:
+                        saved_at_dt = datetime.fromisoformat(saved_at_raw)
+                        snapshot_age_ok = (datetime.utcnow() - saved_at_dt).total_seconds() <= PAZARAMA_SNAPSHOT_TTL_SECONDS
+                    except Exception:
+                        snapshot_age_ok = False
+                if snapshot_items and (total == 0 or len(snapshot_items) >= total) and snapshot_age_ok:
+                    return snapshot_items
+            except Exception:
+                snapshot_items = None
+
+    sizes_to_try: List[int] = []
+    if page_size:
+        sizes_to_try.append(int(page_size))
+    for fallback_size in (200, 100, 50):
+        if fallback_size not in sizes_to_try:
+            sizes_to_try.append(fallback_size)
+
+    last_error: Optional[Exception] = None
+
+    aggregated_map: Dict[str, Dict[str, Any]] = {}
+    total_reported = 0
+
+    def _row_key(row: Dict[str, Any], label: str) -> str:
+        priority_fields = (
+            'code', 'stockCode', 'productCode', 'productId', 'id',
+            'barcode', 'sku', 'groupCode', 'listingId', 'listingCode'
+        )
+        for field in priority_fields:
+            val = row.get(field)
+            if val is not None and str(val).strip():
+                return f"{field}:{str(val).strip().lower()}"
+        name = str(row.get('displayName') or row.get('name') or '').strip()
+        if name:
+            return f"{label}:{name.lower()}"
+        created = str(row.get('createdDate') or row.get('createdAt') or '').strip()
+        if created:
+            return f"{label}:{created.lower()}"
+        return f"{label}:anon:{hash(str(sorted(row.items())))}"
+
+    def _fetch_for_status(approved_flag: Optional[bool]) -> bool:
+        nonlocal total_reported, last_error, aggregated_map
+        label = 'all' if approved_flag is None else ('approved' if approved_flag else 'unapproved')
+        for size in sizes_to_try:
+            page = 1
+            max_pages = None
+            stagnant_pages = 0
+            try:
+                while True:
+                    resp = client.list_products(page=page, size=size, approved=approved_flag)
+                    data = resp.get('data') or []
+                    if not data:
+                        break
+                    appended = 0
+                    for row in data:
+                        key = _row_key(row, label)
+                        if key in aggregated_map:
+                            continue
+                        aggregated_map[key] = row
+                        appended += 1
+                    if appended == 0:
+                        stagnant_pages += 1
+                    else:
+                        stagnant_pages = 0
+                    total = int(resp.get('totalCount') or resp.get('total') or 0)
+                    total_reported = max(total_reported, total)
+                    total_pages = resp.get('totalPages') or resp.get('totalPage')
+                    if isinstance(total_pages, (int, float, str)):
+                        try:
+                            max_pages = int(total_pages)
+                        except Exception:
+                            pass
+                    if len(data) < size:
+                        break
+                    if max_pages and max_pages > 0 and page >= max_pages:
+                        break
+                    if stagnant_pages >= 2:
+                        break
+                    if page >= 500:
+                        break
+                    page += 1
+                if stagnant_pages < 2 or aggregated_map:
+                    return True
+            except Exception as exc:
+                last_error = exc
+                continue
+        return False
+
+    fetched_any = False
+    for approved_flag in (None, True, False):
+        success = _fetch_for_status(approved_flag)
+        fetched_any = fetched_any or success
+
+    if fetched_any and aggregated_map:
+        items = list(aggregated_map.values())
+        snapshot_payload = {
+            'total': total_reported or len(items),
+            'page_size': sizes_to_try[0],
+            'saved_at': datetime.utcnow().isoformat(),
+            'items': items,
+        }
+        try:
+            Setting.set('PAZARAMA_EXPORT_SNAPSHOT', json.dumps(snapshot_payload), user_id=user_id)
+        except Exception:
+            pass
+        return items
+
+    if snapshot_items is not None:
+        if snapshot_meta and PAZARAMA_SNAPSHOT_TTL_SECONDS and snapshot_meta.get('items'):
+            # expired snapshot; reuse only if caller expects fallback
+            pass
+        return snapshot_items
+    if last_error:
+        raise last_error
+    return []
+
+def pazarama_build_product_index(client: PazaramaClient, force_refresh: bool = False) -> Dict[str, Any]:
+    items = pazarama_fetch_all_products(client, force_refresh=force_refresh)
+    by_code: Dict[str, Dict[str, Any]] = {}
+    by_stock: Dict[str, Dict[str, Any]] = {}
+    for row in items:
+        code = str(row.get('code') or '').strip()
+        stock_code = str(row.get('stockCode') or '').strip()
+        if code:
+            by_code[code] = row
+        if stock_code:
+            by_stock[stock_code] = row
+    return {'items': items, 'by_code': by_code, 'by_stock': by_stock}
+
+def perform_pazarama_sync_stock(job_id: str, xml_source_id: Any) -> Dict[str, Any]:
+    client = get_pazarama_client()
+    append_mp_job_log(job_id, "Pazarama istemcisi hazir")
+    xml_index = load_xml_source_index(xml_source_id)
+    if not xml_index:
+        raise ValueError('XML kaynagindan urun verisi okunamadi.')
+    append_mp_job_log(job_id, "XML verisi yuklendi")
+
+    product_index = pazarama_build_product_index(client)
+    products = product_index.get('items') or []
+    if not products:
+        raise ValueError('Pazarama urun listesi alinamadi.')
+    append_mp_job_log(job_id, f"{len(products)} urun degerlendiriliyor")
+
+    updates: List[Dict[str, Any]] = []
+    zeroed_codes: List[str] = []
+    changed_samples: List[Dict[str, Any]] = []
+    missing_codes: Set[str] = set()
+
+    for product in products:
+        code = str(product.get('code') or '').strip()
+        stock_code = str(product.get('stockCode') or '').strip()
+        title = product.get('displayName') or product.get('name') or ''
+        xml_info = lookup_xml_record(xml_index, code=code, stock_code=stock_code, title=title)
+        if not xml_info:
+            missing_codes.add(code or stock_code or title)
+            continue
+        qty_raw = xml_info.get('quantity')
+        if qty_raw is None:
+            continue
+        xml_qty = to_int(qty_raw, 0)
+        if xml_qty < 0:
+            xml_qty = 0
+        remote_qty = to_int(product.get('stockCount'), 0)
+        if xml_qty != remote_qty:
+            updates.append({'code': code or stock_code, 'stockCount': xml_qty})
+            if len(changed_samples) < 10:
+                changed_samples.append({'code': code or stock_code, 'from': remote_qty, 'to': xml_qty})
+            if xml_qty == 0:
+                zeroed_codes.append(code or stock_code)
+
+    append_mp_job_log(job_id, f"Guncellenecek stok sayisi: {len(updates)}")
+
+    summary = {
+        'success': True,
+        'updated_count': len(updates),
+        'total_remote': len(products),
+        'missing_count': len(missing_codes),
+        'missing_codes': list(missing_codes)[:20],
+        'data_ids': [],
+        'samples': changed_samples,
+        'job_id': job_id,
+    }
+
+    if not updates:
+        summary['message'] = 'Guncellenecek stok bulunamadi.'
+        return summary
+
+    from app.services.job_queue import update_mp_job, get_mp_job
+
+    data_ids: List[str] = []
+    chunk_size = 25  # Small chunks to avoid rate limiting
+    total_chunks = (len(updates) + chunk_size - 1) // chunk_size
+    total_items = len(updates)
+    processed_items = 0
+    
+    for idx, chunk in enumerate(chunked(updates, chunk_size), start=1):
+        # Check for cancel/pause
+        job_state = get_mp_job(job_id)
+        if job_state:
+            if job_state.get('cancel_requested'):
+                append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
+                summary['message'] = f'İptal edildi. {processed_items}/{total_items} işlendi.'
+                summary['cancelled'] = True
+                return summary
+            
+            while job_state.get('pause_requested'):
+                append_mp_job_log(job_id, "Duraklatıldı. Devam etmesi bekleniyor...", level='info')
+                time.sleep(3)
+                job_state = get_mp_job(job_id)
+                if job_state.get('cancel_requested'):
+                    append_mp_job_log(job_id, "İşlem iptal edildi.", level='warning')
+                    summary['message'] = f'İptal edildi. {processed_items}/{total_items} işlendi.'
+                    summary['cancelled'] = True
+                    return summary
+        
+        # Update progress
+        update_mp_job(job_id, progress={'current': processed_items, 'total': total_items, 'batch': f'{idx}/{total_chunks}'})
+        
+        # Rate limit handling with retry
+        max_retries = 5
+        for attempt in range(max_retries):
+            try:
+                resp = client.update_stock(chunk)
+                data_id = resp.get('data')
+                if isinstance(data_id, str):
+                    data_ids.append(data_id)
+                processed_items += len(chunk)
+                append_mp_job_log(job_id, f"Stok guncellemesi gonderildi (paket {idx}/{total_chunks})")
+                break  # Success, exit retry loop
+            except Exception as e:
+                error_msg = str(e)
+                if '429' in error_msg:
+                    wait_time = (attempt + 1) * 10  # 10, 20, 30, 40, 50 seconds
+                    append_mp_job_log(job_id, f"Rate limit (429). {wait_time}sn bekleniyor... (deneme {attempt+1}/{max_retries})", level='warning')
+                    time.sleep(wait_time)
+                    if attempt == max_retries - 1:
+                        append_mp_job_log(job_id, f"Paket {idx} gonderilemedi: {error_msg}", level='error')
+                else:
+                    append_mp_job_log(job_id, f"Paket {idx} hatasi: {error_msg}", level='error')
+                    break  # Non-429 error, don't retry
+        
+        # Wait between batches to avoid rate limiting (5 seconds)
+        if idx < total_chunks:
+            time.sleep(5)
+
+    summary.update({
+        'message': f'{len(updates)} urun icin stok guncellemesi gonderildi.',
+        'data_ids': data_ids,
+    })
+    return summary
+
+def perform_pazarama_sync_prices(job_id: str, xml_source_id: Any) -> Dict[str, Any]:
+    client = get_pazarama_client()
+    append_mp_job_log(job_id, "Pazarama istemcisi hazir")
+    xml_index = load_xml_source_index(xml_source_id)
+    if not xml_index:
+        raise ValueError('XML kaynagindan urun verisi okunamadi.')
+    append_mp_job_log(job_id, "XML verisi yuklendi")
+
+    product_index = pazarama_build_product_index(client)
+    products = product_index.get('items') or []
+    if not products:
+        raise ValueError('Pazarama urun listesi alinamadi.')
+    append_mp_job_log(job_id, f"{len(products)} urun degerlendiriliyor")
+
+    multiplier = get_marketplace_multiplier('pazarama')
+    updates: List[Dict[str, Any]] = []
+    changed_samples: List[Dict[str, Any]] = []
+    skipped_zero_price: List[str] = []
+    missing_codes: Set[str] = set()
+
+    for product in products:
+        code = str(product.get('code') or '').strip()
+        stock_code = str(product.get('stockCode') or '').strip()
+        title = product.get('displayName') or product.get('name') or ''
+        xml_info = lookup_xml_record(xml_index, code=code, stock_code=stock_code, title=title)
+        if not xml_info:
+            missing_codes.add(code or stock_code or title)
+            continue
+        price_raw = xml_info.get('price')
+        if price_raw is None:
+            continue
+        base_price = to_float(price_raw, 0.0)
+        if base_price <= 0:
+            skipped_zero_price.append(code or stock_code)
+            continue
+        new_price = round(base_price * multiplier, 2)
+        if new_price <= 0:
+            skipped_zero_price.append(code or stock_code)
+            continue
+        current_sale = to_float(product.get('salePrice') or product.get('listPrice'), 0.0)
+        if abs(current_sale - new_price) < 0.01:
+            continue
+        updates.append({
+            'code': code or stock_code,
+            'listPrice': new_price,
+            'salePrice': new_price,
+        })
+        if len(changed_samples) < 10:
+            changed_samples.append({'code': code or stock_code, 'from': current_sale, 'to': new_price})
+
+    append_mp_job_log(job_id, f"Guncellenecek fiyat sayisi: {len(updates)}")
+
+    summary = {
+        'success': True,
+        'updated_count': len(updates),
+        'total_remote': len(products),
+        'missing_count': len(missing_codes),
+        'missing_codes': list(missing_codes)[:20],
+        'skipped_zero_price': skipped_zero_price[:20],
+        'data_ids': [],
+        'samples': changed_samples,
+        'multiplier': multiplier,
+        'job_id': job_id,
+    }
+
+    if not updates:
+        summary['message'] = 'Guncellenecek fiyat bulunamadi.'
+        return summary
+
+    from app.services.job_queue import update_mp_job, get_mp_job
+
+    data_ids: List[str] = []
+    chunk_size = 25  # Small chunks to avoid rate limiting
+    total_chunks = (len(updates) + chunk_size - 1) // chunk_size
+    total_items = len(updates)
+    processed_items = 0
+    
+    for idx, chunk in enumerate(chunked(updates, chunk_size), start=1):
+        # Check for cancel/pause
+        job_state = get_mp_job(job_id)
+        if job_state:
+            if job_state.get('cancel_requested'):
+                append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
+                summary['message'] = f'İptal edildi. {processed_items}/{total_items} işlendi.'
+                summary['cancelled'] = True
+                return summary
+            
+            while job_state.get('pause_requested'):
+                append_mp_job_log(job_id, "Duraklatıldı. Devam etmesi bekleniyor...", level='info')
+                time.sleep(3)
+                job_state = get_mp_job(job_id)
+                if job_state.get('cancel_requested'):
+                    append_mp_job_log(job_id, "İşlem iptal edildi.", level='warning')
+                    summary['message'] = f'İptal edildi. {processed_items}/{total_items} işlendi.'
+                    summary['cancelled'] = True
+                    return summary
+        
+        # Update progress
+        update_mp_job(job_id, progress={'current': processed_items, 'total': total_items, 'batch': f'{idx}/{total_chunks}'})
+        
+        # Rate limit handling with retry
+        max_retries = 5
+        for attempt in range(max_retries):
+            try:
+                resp = client.update_price(chunk)
+                data_id = resp.get('data')
+                if isinstance(data_id, str):
+                    data_ids.append(data_id)
+                processed_items += len(chunk)
+                append_mp_job_log(job_id, f"Fiyat guncellemesi gonderildi (paket {idx}/{total_chunks})")
+                break  # Success, exit retry loop
+            except Exception as e:
+                error_msg = str(e)
+                if '429' in error_msg:
+                    wait_time = (attempt + 1) * 10  # 10, 20, 30, 40, 50 seconds
+                    append_mp_job_log(job_id, f"Rate limit (429). {wait_time}sn bekleniyor... (deneme {attempt+1}/{max_retries})", level='warning')
+                    time.sleep(wait_time)
+                    if attempt == max_retries - 1:
+                        append_mp_job_log(job_id, f"Paket {idx} gonderilemedi: {error_msg}", level='error')
+                else:
+                    append_mp_job_log(job_id, f"Paket {idx} hatasi: {error_msg}", level='error')
+                    break  # Non-429 error, don't retry
+        
+        # Wait between batches to avoid rate limiting (5 seconds)
+        if idx < total_chunks:
+            time.sleep(5)
+
+    summary.update({
+        'message': f'{len(updates)} urun icin fiyat guncellemesi gonderildi.',
+        'data_ids': data_ids,
+    })
+    return summary
+
+
+def perform_pazarama_sync_all(job_id: str, xml_source_id: Any) -> Dict[str, Any]:
+    """
+    Pazarama için hem stok hem fiyat eşitleme (birleşik)
+    """
+    from app.services.job_queue import update_mp_job, get_mp_job
+    
+    append_mp_job_log(job_id, "Stok ve fiyat eşitleme başlatılıyor...")
+    
+    # Check cancel at start
+    job_state = get_mp_job(job_id)
+    if job_state and job_state.get('cancel_requested'):
+        append_mp_job_log(job_id, "İşlem iptal edildi.", level='warning')
+        return {'success': False, 'message': 'İptal edildi.', 'cancelled': True}
+    
+    # First sync stock
+    append_mp_job_log(job_id, ">>> STOK EŞITLEME BAŞLADI <<<")
+    stock_result = {}
+    try:
+        stock_result = perform_pazarama_sync_stock(job_id, xml_source_id)
+        append_mp_job_log(job_id, f"Stok eşitleme tamamlandı: {stock_result.get('updated_count', 0)} güncellendi")
+    except Exception as e:
+        append_mp_job_log(job_id, f"Stok eşitleme hatası: {str(e)}", level='error')
+        stock_result = {'success': False, 'error': str(e), 'updated_count': 0}
+    
+    # Check if cancelled during stock sync
+    if stock_result.get('cancelled'):
+        return stock_result
+    
+    # Check cancel again before price sync
+    job_state = get_mp_job(job_id)
+    if job_state and job_state.get('cancel_requested'):
+        append_mp_job_log(job_id, "İşlem iptal edildi (fiyat öncesi).", level='warning')
+        stock_result['cancelled'] = True
+        stock_result['message'] = 'İptal edildi. Sadece stok güncellendi.'
+        return stock_result
+    
+    # Wait between operations to avoid rate limiting
+    append_mp_job_log(job_id, "Fiyat eşitleme öncesi 5 saniye bekleniyor...")
+    time.sleep(5)
+    
+    # Then sync prices
+    append_mp_job_log(job_id, ">>> FİYAT EŞITLEME BAŞLADI <<<")
+    price_result = {}
+    try:
+        price_result = perform_pazarama_sync_prices(job_id, xml_source_id)
+        append_mp_job_log(job_id, f"Fiyat eşitleme tamamlandı: {price_result.get('updated_count', 0)} güncellendi")
+    except Exception as e:
+        append_mp_job_log(job_id, f"Fiyat eşitleme hatası: {str(e)}", level='error')
+        price_result = {'success': False, 'error': str(e), 'updated_count': 0}
+    
+    # Combine results
+    combined = {
+        'success': True,
+        'message': f"Stok: {stock_result.get('updated_count', 0)} güncellendi, Fiyat: {price_result.get('updated_count', 0)} güncellendi",
+        'stock_updated_count': stock_result.get('updated_count', 0),
+        'price_updated_count': price_result.get('updated_count', 0),
+        'total_remote': stock_result.get('total_remote', 0) or price_result.get('total_remote', 0),
+        'missing_count': max(stock_result.get('missing_count', 0), price_result.get('missing_count', 0)),
+        'updated_count': (stock_result.get('updated_count', 0) + price_result.get('updated_count', 0)),
+        'samples': (stock_result.get('samples', []) + price_result.get('samples', []))[:10],
+        'data_ids': (stock_result.get('data_ids', []) + price_result.get('data_ids', [])),
+        'job_id': job_id,
+    }
+    
+    append_mp_job_log(job_id, "Stok ve fiyat eşitleme tamamlandı.")
+    return combined
+
+
+# Pazarama urun gonderme fonksiyonu
+
+def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_id: Any = None, title_prefix: str = None, is_manual: bool = False) -> Dict[str, Any]:
+    """
+    Send products to Pazarama from XML source or Manual DB
+    """
+    from app.services.job_queue import update_mp_job, get_mp_job
+    from app.services.xml_service import load_xml_source_index
+    
+    # Resolve user_id
+    user_id = None
+    try:
+        job_data = get_mp_job(job_id)
+        user_id = job_data.get('params', {}).get('_user_id')
+    except: pass
+
+    client = get_pazarama_client(user_id=user_id)
+    append_mp_job_log(job_id, "Pazarama istemcisi hazir")
+    
+    mp_map = {}
+    if is_manual:
+        append_mp_job_log(job_id, "Manuel ürün gönderimi aktif, veritabanından okunuyor...")
+        from app.models.product import Product
+        prods = Product.query.filter(Product.barcode.in_(barcodes), Product.user_id == user_id).all()
+        for p in prods:
+            mp_map[p.barcode] = {
+                'barcode': p.barcode,
+                'title': p.title,
+                'description': p.description,
+                'price': p.listPrice,
+                'quantity': p.quantity,
+                'stockCode': p.stockCode,
+                'brand': p.brand,
+                'categoryId': p.marketplace_category_id,
+                'images': p.get_images,
+                'marketplace_attributes_json': p.marketplace_attributes_json,
+                'is_manual': True
+            }
+    else:
+        xml_index = load_xml_source_index(xml_source_id)
+        mp_map = xml_index.get('by_barcode') or {}
+    
+    multiplier = get_marketplace_multiplier('pazarama', user_id=user_id)
+    
+    # Debug: Log xml index info
+    append_mp_job_log(job_id, f"XML index keys: {list(xml_index.keys()) if xml_index else 'Bos'}")
+    append_mp_job_log(job_id, f"mp_map boyutu: {len(mp_map)}")
+    
+    if not mp_map:
+        append_mp_job_log(job_id, "XML kaynak haritasi bos", level='warning')
+        return {
+            'success': False,
+            'message': 'XML kaynaginda urun bulunamadi.',
+            'count': 0
+        }
+    
+    if not barcodes:
+        append_mp_job_log(job_id, "Barkod listesi bos", level='warning')
+        return {
+            'success': False,
+            'message': 'Gonderilecek barkod yok.',
+            'count': 0
+        }
+    
+    # Ensure categories are loaded
+    ensure_pazarama_categories(client)
+    
+    success_count = 0
+    fail_count = 0
+    failures = []
+    skipped = []
+    products_to_send = []
+    brand_cache = {}
+    
+    total = len(barcodes)
+    
+    # Check for saved brand ID from settings
+    saved_brand_id = Setting.get('PAZARAMA_BRAND_ID', '') or ''
+    if saved_brand_id:
+        append_mp_job_log(job_id, f"Kayitli marka ID kullaniliyor: {saved_brand_id[:20]}...")
+    
+    DEFAULT_DESI = 1
+    DEFAULT_VAT_RATE = 10
+    
+    for idx, barcode in enumerate(barcodes, 1):
+        # Check for pause/cancel
+        job_state = get_mp_job(job_id)
+        if job_state:
+            if job_state.get('cancel_requested'):
+                append_mp_job_log(job_id, "Islem iptal edildi", level='warning')
+                break
+            
+            while job_state.get('pause_requested'):
+                append_mp_job_log(job_id, "Islem duraklatildi...", level='info')
+                time.sleep(5)
+                job_state = get_mp_job(job_id)
+                if job_state.get('cancel_requested'):
+                    break
+        
+        product = mp_map.get(barcode)
+        if not product:
+            skipped.append({'barcode': barcode, 'reason': 'XML\'de bulunamadi'})
+            continue
+        
+        try:
+            # Extract product data
+            title = clean_forbidden_words(product.get('title', ''))
+            if title_prefix:
+                title = f"{title_prefix} {title}"
+            description = clean_forbidden_words(product.get('description', '') or title)
+            top_category = product.get('top_category', '')
+            xml_category = product.get('category', '')
+            brand_name = product.get('brand') or product.get('vendor') or product.get('manufacturer') or ''
+            
+            # Create log helper for this product
+            def category_log(msg, level='info'):
+                append_mp_job_log(job_id, f"[{barcode[:20]}] {msg}", level=level)
+            
+            # Log what category values we have (first product only for debug)
+            if idx == 1:
+                append_mp_job_log(job_id, f"Ornek urun kategori: top='{top_category}', xml='{xml_category}'")
+            
+            # Resolve Brand - use saved ID if available, otherwise dynamic resolution
+            if saved_brand_id:
+                brand_id = saved_brand_id
+            else:
+                brand_id = resolve_pazarama_brand(client, brand_name, log_callback=category_log if idx <= 5 else None)
+
+            # Resolve category with logging callback
+            # Resolve Category ID
+            cat_id = None
+            if product.get('is_manual') and product.get('categoryId'):
+                 try:
+                    cat_id = str(product.get('categoryId'))
+                    append_mp_job_log(job_id, f"Manuel kategori seçimi kullanılıyor: {cat_id}")
+                 except: pass
+            
+            if not cat_id:
+                cat_id = resolve_pazarama_category(client, title, top_category, xml_category, log_callback=category_log if idx <= 3 else None)
+            
+            if not cat_id:
+                # Try with Excel category name if available
+                excel_cat = product.get('category', '')
+                if excel_cat:
+                    cat_id = match_pazarama_category_tfidf(excel_cat)
+            
+            if not cat_id:
+                skipped.append({'barcode': barcode, 'reason': 'Kategori esitlenemedi'})
+                continue
+            
+            # Prepare attributes
+            attributes = []
+            
+            # Add manual attributes if present
+            if product.get('is_manual') and product.get('marketplace_attributes_json'):
+                try:
+                    import json
+                    mp_attrs = json.loads(product.get('marketplace_attributes_json'))
+                    for a in mp_attrs:
+                        attributes.append({
+                            "attributeId": a.get('id'),
+                            "attributeValue": a.get('value')
+                        })
+                    append_mp_job_log(job_id, f"Manuel özellikler kullanılıyor ({len(attributes)} adet)")
+                except Exception as e:
+                    append_mp_job_log(job_id, f"Manuel özellik yüklenirken hata: {e}", level='warning')
+            
+            # If not manual attributes, or if manual attributes are incomplete, get required attributes
+            if not attributes: # This condition might need refinement based on whether manual attributes are exhaustive
+                attributes = pazarama_get_required_attributes(client, cat_id)
+            
+            # Price & Stock
+            base_price = to_float(product.get('price', 0))
+            stock = to_int(product.get('quantity', 0))
+            
+            if base_price <= 0:
+                skipped.append({'barcode': barcode, 'reason': 'Fiyat 0'})
+                continue
+            
+            price = round(base_price * multiplier, 2)
+            list_price = round(price * 1.05, 2)  # 5% higher for list price
+            
+            # Images
+            raw_images = product.get('images', [])
+            product_images = []
+            for img in raw_images[:8]:
+                if isinstance(img, dict):
+                    url = img.get('url', '')
+                    if url:
+                        product_images.append({'imageurl': url})
+                elif isinstance(img, str) and img:
+                    product_images.append({'imageurl': img})
+            
+            if not product_images:
+                product_images = [{'imageurl': 'https://via.placeholder.com/500'}]
+            
+            # Build Pazarama product payload
+            product_data = {
+                'name': title[:100],
+                'displayName': title[:250],
+                'description': description,
+                'brandId': brand_id,
+                'desi': DEFAULT_DESI,
+                'code': barcode,
+                'groupCode': product.get('stock_code', barcode)[:10],
+                'stockCode': product.get('stock_code', barcode)[:100],
+                'stockCount': stock,
+                'listPrice': list_price,
+                'salePrice': price,
+                'productSaleLimitQuantity': 0,
+                'currencyType': 'TRY',
+                'vatRate': DEFAULT_VAT_RATE,
+                'images': product_images,
+                'categoryId': cat_id,
+                'attributes': attributes
+            }
+            
+            products_to_send.append(product_data)
+
+            # LOCAL DATABASE SYNC: Create or update local product
+            try:
+                from app.utils.helpers import sync_product_to_local
+                from app import db
+                from flask_login import current_user
+                
+                target_user_id = None
+                if current_user and current_user.is_authenticated:
+                    target_user_id = current_user.id
+                
+                if target_user_id:
+                    sync_product_to_local(
+                        user_id=target_user_id,
+                        barcode=barcode,
+                        product_data=product,
+                        xml_source_id=xml_source_id
+                    )
+                    
+                    if idx % 25 == 0:
+                        db.session.commit()
+            except Exception as db_err:
+                append_mp_job_log(job_id, f"Yerel DB senkronizasyon hatasi: {db_err}", level='warning')
+            
+            if idx % 10 == 0:
+                append_mp_job_log(job_id, f"{idx}/{total} urun hazirlandi...")
+            
+        except Exception as e:
+            fail_count += 1
+            failures.append({'barcode': barcode, 'reason': str(e)})
+            append_mp_job_log(job_id, f"Hata {barcode}: {e}", level='error')
+    
+    # Final commit for local products
+    try:
+        from app import db
+        db.session.commit()
+    except:
+        pass
+
+    # Log summary before checking products_to_send
+    append_mp_job_log(job_id, f"Hazirlanan urun: {len(products_to_send)}, Atlanan: {len(skipped)}")
+    
+    if not products_to_send:
+        # Return success=True but with 0 count if no products were prepared
+        # This is not an error, just no products matched criteria
+        skip_reasons = {}
+        for s in skipped:
+            reason = s.get('reason', 'Bilinmeyen')
+            skip_reasons[reason] = skip_reasons.get(reason, 0) + 1
+        
+        append_mp_job_log(job_id, f"Atlama nedenleri: {skip_reasons}", level='warning')
+        
+        return {
+            'success': True,  # Changed to True - skipping is not a failure
+            'message': 'Gonderilecek gecerli urun olusturulamadi.',
+            'skipped': skipped,
+            'count': 0,
+            'summary': {
+                'success_count': 0,
+                'fail_count': 0,
+                'skip_reasons': skip_reasons
+            }
+        }
+    
+    # Send products in batches
+    batch_ids = []
+    batch_size = 50  # Pazarama might have limits
+    total_batches = (len(products_to_send) + batch_size - 1) // batch_size
+    
+    for i in range(0, len(products_to_send), batch_size):
+        # Check Job Status for Cancel/Pause
+        job_state = get_mp_job(job_id)
+        if job_state:
+            if job_state.get('cancel_requested'):
+                append_mp_job_log(job_id, "Islem kullanici tarafindan iptal edildi.", level='warning')
+                break
+            
+            while job_state.get('pause_requested'):
+                append_mp_job_log(job_id, "Islem duraklatildi. Devam etmesi bekleniyor...", level='info')
+                time.sleep(5)
+                job_state = get_mp_job(job_id)
+                if job_state.get('cancel_requested'):
+                    break
+            
+            if job_state.get('cancel_requested'):
+                append_mp_job_log(job_id, "Islem kullanici tarafindan iptal edildi.", level='warning')
+                break
+        
+        current_batch_num = (i // batch_size) + 1
+        update_mp_job(job_id, progress={'current': success_count + fail_count, 'total': len(products_to_send), 'batch': f"{current_batch_num}/{total_batches}"})
+        
+        batch = products_to_send[i:i+batch_size]
+        try:
+            resp = client.create_products(batch)
+            
+            # Check response
+            if resp.get('success'):
+                batch_req_id = resp.get('data', {}).get('batchRequestId')
+                if batch_req_id:
+                    batch_ids.append(batch_req_id)
+                    append_mp_job_log(job_id, f"Batch {current_batch_num}/{total_batches} gonderildi. ID: {batch_req_id}")
+                    
+                    # Wait a bit for Pazarama to process
+                    time.sleep(3)
+                    
+                    # Check batch status
+                    try:
+                        batch_status = client.check_batch(batch_req_id)
+                        status = batch_status.get('status')
+                        status_code = batch_status.get('status_code')
+                        batch_total = batch_status.get('total', 0)
+                        success_cnt = batch_status.get('success', 0)
+                        failed_cnt = batch_status.get('failed', 0)
+                        
+                        # Handle different status values
+                        if status == 'IN_PROGRESS' or status_code == 1:
+                            # Still processing - count sent products as pending success
+                            append_mp_job_log(job_id, f"Batch {current_batch_num}: Isleniyor ({len(batch)} urun)", level='info')
+                            success_count += len(batch)
+                        elif status == 'DONE' or status_code == 2:
+                            # Completed - use actual counts or batch size
+                            if success_cnt > 0 or failed_cnt > 0:
+                                success_count += success_cnt
+                                fail_count += failed_cnt
+                                if failed_cnt > 0:
+                                    # Extract error details from batchResult
+                                    batch_result = batch_status.get('batch_result', [])
+                                    error_details = []
+                                    for item in batch_result:
+                                        if isinstance(item, dict):
+                                            item_error = item.get('error') or item.get('message') or item.get('errorMessage')
+                                            item_code = item.get('code') or item.get('barcode') or item.get('productCode')
+                                            if item_error:
+                                                error_details.append(f"{item_code}: {item_error}")
+                                    
+                                    # Also check raw response for errors
+                                    raw_data = batch_status.get('raw', {}).get('data', {})
+                                    if not error_details and raw_data.get('batchResult'):
+                                        for item in raw_data['batchResult']:
+                                            if isinstance(item, dict):
+                                                item_error = item.get('error') or item.get('message') or item.get('errorMessage') or item.get('description')
+                                                item_code = item.get('code') or item.get('barcode') or ''
+                                                if item_error:
+                                                    error_details.append(f"{item_code}: {item_error}")
+                                    
+                                    if error_details:
+                                        append_mp_job_log(job_id, f"Batch {current_batch_num}: {success_cnt} basarili, {failed_cnt} basarisiz", level='warning')
+                                        for err in error_details[:10]:  # Show first 10 errors
+                                            append_mp_job_log(job_id, f"  -> Hata: {err}", level='error')
+                                        failures.extend([{'error': e} for e in error_details[:20]])
+                                    else:
+                                        # No detailed errors found with standard keys, log the structure to understand why
+                                        append_mp_job_log(job_id, f"Batch {current_batch_num}: {success_cnt} basarili, {failed_cnt} basarisiz", level='warning')
+                                        
+                                        # Try to extract 'validationErrors' or similar from the items
+                                        if raw_data.get('batchResult'):
+                                            for idx, item in enumerate(raw_data['batchResult']):
+                                                if idx >= 3: break # Only check first few
+                                                # Log the keys to understand structure
+                                                append_mp_job_log(job_id, f"  -> Item {idx} keys: {list(item.keys())}", level='debug')
+                                                if 'validationErrors' in item:
+                                                    append_mp_job_log(job_id, f"  -> Validation Err: {item['validationErrors']}", level='error')
+
+                                        # Log full raw response for deep inspection
+                                        import json
+                                        try:
+                                            raw_dump = json.dumps(batch_status.get('raw', {}), ensure_ascii=False, default=str)
+                                            # Write to a debug file for the user to share if needed, or just log a larger chunk
+                                            append_mp_job_log(job_id, f"  -> Raw Full: {raw_dump[:2000]}", level='warning') 
+                                        except:
+                                            raw_str = str(batch_status.get('raw', {}))[:2000]
+                                            append_mp_job_log(job_id, f"  -> Raw: {raw_str}", level='warning')
+                                else:
+                                    append_mp_job_log(job_id, f"Batch {current_batch_num}: {success_cnt} urun basarili", level='info')
+                            else:
+                                # DONE but no counts - use batch_total or sent count
+                                actual_count = batch_total if batch_total > 0 else len(batch)
+                                success_count += actual_count
+                                append_mp_job_log(job_id, f"Batch {current_batch_num}: {actual_count} urun islendi", level='info')
+                        elif status == 'ERROR' or status_code == 3:
+                            fail_count += len(batch)
+                            error_msg = batch_status.get('error') or 'Islem hatasi'
+                            append_mp_job_log(job_id, f"Batch {current_batch_num}: Hata - {error_msg}", level='error')
+                            failures.append({'batch': current_batch_num, 'reason': error_msg})
+                        else:
+                            # Unknown status - assume success
+                            success_count += len(batch)
+                            append_mp_job_log(job_id, f"Batch {current_batch_num}: {len(batch)} urun gonderildi", level='info')
+                        
+                    except Exception as e:
+                        append_mp_job_log(job_id, f"Batch durum sorgulanamadi: {e}", level='warning')
+                        success_count += len(batch)  # Assume success if check fails
+                else:
+                    success_count += len(batch)
+                    append_mp_job_log(job_id, f"Batch {current_batch_num}: Gonderildi", level='info')
+            else:
+                fail_count += len(batch)
+                error_msg = resp.get('message') or resp.get('userMessage') or 'Bilinmeyen hata'
+                failures.append({'batch': current_batch_num, 'reason': error_msg})
+                append_mp_job_log(job_id, f"Batch {current_batch_num} gonderim hatasi: {error_msg}", level='error')
+                
+        except Exception as e:
+            fail_count += len(batch)
+            failures.append({'reason': str(e)})
+            append_mp_job_log(job_id, f"Batch gonderim hatasi: {e}", level='error')
+        
+        # Update progress
+        update_mp_job(job_id, progress={
+            'current': success_count + fail_count,
+            'total': len(products_to_send),
+            'batch': f"{current_batch_num}/{total_batches}"
+        })
+    
+    return {
+        'success': True,
+        'count': len(products_to_send),
+        'skipped': skipped,
+        'summary': {
+            'success_count': success_count,
+            'fail_count': fail_count,
+            'failures': failures[:10],  # Limit to first 10 failures
+            'batch_ids': batch_ids
+        }
+    }
+
+def perform_pazarama_batch_update(job_id: str, items: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Batch update Pazarama stock/price.
+    items: [{'barcode': '...', 'stock': 10, 'price': 100.0}, ...]
+    """
+    client = get_pazarama_client()
+    append_mp_job_log(job_id, f"Pazarama toplu güncelleme ba�xlatıldı. {len(items)} ürün.")
+    
+    stock_updates = []
+    price_updates = []
+    
+    for item in items:
+        code = item['barcode']
+        # Stock
+        if 'stock' in item:
+            try:
+                stock_updates.append({'code': code, 'stockCount': int(item['stock'])})
+            except: pass
+            
+        # Price
+        if 'price' in item:
+            try:
+                p = float(item['price'])
+                # Pazarama expects both list and sale price usually
+                price_updates.append({'code': code, 'listPrice': p, 'salePrice': p})
+            except: pass
+            
+    total_stock_sent = 0
+    total_price_sent = 0
+    
+    # 1. Update Stock
+    if stock_updates:
+        append_mp_job_log(job_id, f"Stok güncellemeleri gönderiliyor ({len(stock_updates)} adet)...")
+        for idx, chunk in enumerate(chunked(stock_updates, 25), start=1):
+            try:
+                client.update_stock(chunk)
+                total_stock_sent += len(chunk)
+                append_mp_job_log(job_id, f"Stok Paket {idx}: {len(chunk)} ürün gönderildi.")
+                time.sleep(1) # Pazarama rate limit safe
+            except Exception as e:
+                append_mp_job_log(job_id, f"Stok Paket {idx} hata: {e}", level='error')
+                
+    # 2. Update Price
+    if price_updates:
+        append_mp_job_log(job_id, f"Fiyat güncellemeleri gönderiliyor ({len(price_updates)} adet)...")
+        for idx, chunk in enumerate(chunked(price_updates, 20), start=1): # Slightly smaller chunk for prices
+            try:
+                client.update_price(chunk)
+                total_price_sent += len(chunk)
+                append_mp_job_log(job_id, f"Fiyat Paket {idx}: {len(chunk)} ürün gönderildi.")
+                time.sleep(1)
+            except Exception as e:
+                append_mp_job_log(job_id, f"Fiyat Paket {idx} hata: {e}", level='error')
+
+    result = {
+        'success': True,
+        'stock_updated': total_stock_sent,
+        'price_updated': total_price_sent,
+        'message': f'İ�xlem tamamlandı. Stok: {total_stock_sent}, Fiyat: {total_price_sent}'
+    }
+    
+    append_mp_job_log(job_id, "Pazarama güncelleme i�xlemi bitti.")
+    return result
+
+
+def perform_pazarama_product_update(barcode: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Detailed update for Pazarama product.
+    """
+    client = get_pazarama_client()
+    messages = []
+    success = True
+    
+    # Identifier
+    code = data.get('stockCode') or barcode
+    
+    # 1. Price/Stock (Immediate)
+    if 'quantity' in data:
+        try:
+            qty = int(data['quantity'])
+            client.update_stock([{'code': code, 'stockCount': qty}])
+            messages.append("Stok güncellendi.")
+        except Exception as e:
+            messages.append(f"Stok hatası: {e}")
+            success = False
+            
+    if 'salePrice' in data or 'listPrice' in data:
+        try:
+            p = float(data.get('salePrice') or data.get('listPrice'))
+            # Pazarama expects both
+            client.update_price([{'code': code, 'listPrice': p, 'salePrice': p}])
+            messages.append("Fiyat güncellendi.")
+        except Exception as e:
+            messages.append(f"Fiyat hatası: {e}")
+            success = False
+
+    # 2. Content Update (Title, Description, Images)
+    content_fields = ['title', 'description', 'images', 'vatRate', 'brandId', 'categoryId'] 
+    
+    if any(k in data for k in content_fields):
+        try:
+            update_item = {'code': code}
+            if 'title' in data:
+                update_item['name'] = data['title']
+            if 'description' in data:
+                update_item['description'] = data['description']
+            if 'vatRate' in data:
+                update_item['vatRate'] = int(data['vatRate'])
+            
+            if 'images' in data and isinstance(data['images'], list):
+                 update_item['images'] = data['images']
+            
+            if 'brandId' in data:
+                update_item['brandId'] = str(data['brandId'])
+            if 'categoryId' in data:
+                update_item['categoryId'] = str(data['categoryId'])
+            
+            client.update_product([update_item])
+            messages.append("İçerik güncellendi.")
+                
+        except Exception as e:
+            messages.append(f"İçerik güncelleme hatası: {e}")
+            success = False
+
+    return {'success': success, 'message': ' | '.join(messages)}
+
+def sync_pazarama_products(user_id: int, job_id: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Fetch all products from Pazarama and sync them to the local MarketplaceProduct table.
+    """
+    from app import db
+    from app.models import MarketplaceProduct, Setting
+    from app.services.job_queue import append_mp_job_log
+    
+    logging.info(f"[PAZARAMA] Syncing products for user {user_id}...")
+    if job_id:
+        append_mp_job_log(job_id, f"Pazarama ürün senkronizasyonu başlatıldı (User ID: {user_id})")
+
+    try:
+        # Get client
+        api_key = Setting.get('PAZARAMA_API_KEY', user_id=user_id)
+        api_secret = Setting.get('PAZARAMA_API_SECRET', user_id=user_id)
+        if not api_key or not api_secret:
+            msg = "Pazarama API bilgileri eksik."
+            if job_id: append_mp_job_log(job_id, msg, level='error')
+            return {'success': False, 'message': msg}
+            
+        from app.services.pazarama_client import PazaramaClient
+        client = PazaramaClient(api_key, api_secret)
+        
+        products = pazarama_fetch_all_products(client)
+        if not products:
+            msg = "Pazarama'dan hiç ürün dönmedi."
+            logging.warning(f"[PAZARAMA] {msg}")
+            if job_id: append_mp_job_log(job_id, msg, level='warning')
+            return {'success': False, 'message': msg}
+
+        if job_id:
+            append_mp_job_log(job_id, f"Pazarama API'den {len(products)} ürün çekildi. Veritabanına işleniyor...")
+
+        remote_barcodes = []
+        for p in products:
+            # Pazarama fields: 'code' is usually barcode/SellerCode
+            barcode = p.get('code') or p.get('barcode', 'N/A')
+            remote_barcodes.append(barcode)
+            
+            existing = db.session.query(MarketplaceProduct).filter_by(
+                user_id=user_id, 
+                marketplace='pazarama', 
+                barcode=barcode
+            ).first()
+            
+            if not existing:
+                existing = MarketplaceProduct(
+                    user_id=user_id,
+                    marketplace='pazarama',
+                    barcode=barcode
+                )
+                db.session.add(existing)
+
+            existing.title = p.get('name', 'İsimsiz Ürün')
+            existing.quantity = int(p.get('stockCount', 0))
+            existing.price = float(p.get('salePrice') or p.get('listPrice', 0.0))
+            existing.stock_code = p.get('code')
+            
+            # Map state to status
+            state = p.get('state')
+            if state == 1: existing.status = 'Yayında'
+            elif state == 2: existing.status = 'Yayında Değil'
+            else: existing.status = f'Durum {state}'
+            
+            # Images
+            imgs = p.get('images', [])
+            if imgs and isinstance(imgs, list):
+                 existing.image_url = imgs[0].get('url') if isinstance(imgs[0], dict) else imgs[0]
+
+        db.session.commit()
+        
+        # Cleanup
+        deleted_count = db.session.query(MarketplaceProduct).filter(
+            MarketplaceProduct.user_id == user_id,
+            MarketplaceProduct.marketplace == 'pazarama',
+            ~MarketplaceProduct.barcode.in_(remote_barcodes)
+        ).delete(synchronize_session=False)
+        db.session.commit()
+
+        final_msg = f"Pazarama senkronizasyonu tamamlandı: {len(products)} güncellendi, {deleted_count} silindi."
+        logging.info(f"[PAZARAMA] {final_msg}")
+        if job_id:
+            append_mp_job_log(job_id, final_msg)
+
+        return {'success': True, 'count': len(products), 'deleted': deleted_count}
+
+    except Exception as e:
+        err_msg = f"Pazarama senkronizasyon hatası: {str(e)}"
+        logging.error(f"[PAZARAMA] {err_msg}")
+        if job_id:
+            append_mp_job_log(job_id, err_msg, level='error')
+        db.session.rollback()
+        return {'success': False, 'message': err_msg}
+

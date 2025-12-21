@@ -1,0 +1,508 @@
+{% extends "_base.html" %}
+
+{% block title %}Gelişmiş Ürün Oluştur - VIDOS{% endblock %}
+{% block page_title %}Manuel Ürün Yönetimi{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-11">
+            <form method="POST" enctype="multipart/form-data" id="advancedProductForm">
+                <div class="row g-4">
+                    <!-- Sol Kolon: Temel Bilgiler -->
+                    <div class="col-md-8">
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-header bg-transparent border-0 py-3">
+                                <h5 class="mb-0 fw-bold text-primary"><i class="bi bi-info-circle me-2"></i>Temel Ürün
+                                    Bilgileri</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-12">
+                                        <label class="form-label fw-bold"><i class="bi bi-shop me-1"></i>Hedef
+                                            Pazaryeri</label>
+                                        <select name="marketplace" id="marketplaceSelect"
+                                            class="form-select form-select-lg border-primary">
+                                            <option value="">Sadece Vidos DB (Pazaryeri Yok)</option>
+                                            {% if current_user.has_permission('trendyol') %}
+                                            <option value="trendyol">Trendyol</option>
+                                            {% endif %}
+                                            {% if current_user.has_permission('hepsiburada') %}
+                                            <option value="hepsiburada">Hepsiburada</option>
+                                            {% endif %}
+                                            {% if current_user.has_permission('n11') %}
+                                            <option value="n11">N11</option>
+                                            {% endif %}
+                                            {% if current_user.has_permission('pazarama') %}
+                                            <option value="pazarama">Pazarama</option>
+                                            {% endif %}
+                                            {% if current_user.has_permission('idefix') %}
+                                            <option value="idefix">İdefix</option>
+                                            {% endif %}
+                                        </select>
+                                        <div class="form-text">Seçilen pazaryerine göre kategori ve zorunlu alanlar
+                                            yüklenecektir.</div>
+                                    </div>
+                                </div>
+                                <div class="row g-3">
+                                    <div class="col-md-12">
+                                        <label class="form-label fw-bold">Ürün Başlığı <span
+                                                class="text-danger">*</span></label>
+                                        <input type="text" name="title" class="form-control form-control-lg" required
+                                            placeholder="Örn: Kablosuz Bluetooth Kulaklık Siyah" autofocus>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold">Barkod <span
+                                                class="text-danger">*</span></label>
+                                        <input type="text" name="barcode" class="form-control" required
+                                            placeholder="868...">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold">Model Kodu (Stok Kodu)</label>
+                                        <input type="text" name="stock_code" class="form-control" placeholder="ABC-123">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold">Marka</label>
+                                        <input type="text" name="brand" class="form-control" placeholder="Marka girin">
+                                    </div>
+                                    <div class="col-md-6 position-relative">
+                                        <label class="form-label fw-bold">Pazaryeri Kategorisi</label>
+                                        <div class="input-group">
+                                            <input type="text" id="categorySearch" class="form-control"
+                                                placeholder="Kategori arayın...">
+                                            <button class="btn btn-outline-secondary" type="button" id="searchCatBtn">
+                                                <i class="bi bi-search"></i>
+                                            </button>
+                                        </div>
+                                        <input type="hidden" name="marketplace_category_id"
+                                            id="marketplace_category_id">
+                                        <div id="category_results" class="list-group position-absolute w-100 shadow-lg"
+                                            style="z-index: 1050; display: none; max-height: 250px; overflow-y: auto; top: 100%; left: 0;">
+                                        </div>
+                                        <div id="selected_cat_display" class="mt-2 small text-success fw-bold"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-header bg-transparent border-0 py-3">
+                                <h5 class="mb-0 fw-bold text-success"><i class="bi bi-card-text me-2"></i>Ürün
+                                    Açıklaması</h5>
+                            </div>
+                            <div class="card-body">
+                                <textarea name="description" id="editor" class="form-control" rows="8"
+                                    placeholder="Ürün özelliklerini ve detaylarını buraya yazın..."></textarea>
+                            </div>
+                        </div>
+
+                        <div class="card border-0 shadow-sm mb-4 d-none" id="mp-attributes-card">
+                            <div
+                                class="card-header bg-transparent border-0 py-3 d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0 fw-bold text-warning">
+                                    <i class="bi bi-list-stars me-2"></i>Pazaryeri Özellikleri
+                                </h5>
+                                <span class="badge bg-warning text-dark" id="attr-marketplace-name">Trendyol</span>
+                            </div>
+                            <div class="card-body">
+                                <div id="mp-attributes-list" class="row g-3">
+                                    <!-- API'den gelen dinamik alanlar buraya gelecek -->
+                                    <div class="col-12 text-center py-4 text-muted">
+                                        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                        Özellikler yükleniyor...
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div
+                                class="card-header bg-transparent border-0 py-3 d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0 fw-bold text-secondary"><i class="bi bi-tags me-2"></i>Ek Özellikler &
+                                    Varyant Bilgisi</h5>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addAttribute()">
+                                    <i class="bi bi-plus-lg me-1"></i>Alan Ekle
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div id="attributes-list" class="row g-3">
+                                    <!-- Dinamik alanlar buraya gelecek -->
+                                </div>
+                                <div class="form-text mt-2">Bu bilgiler Vidos veritabanına kaydedilir.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sağ Kolon: Görsel & Fiyat -->
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-header bg-transparent border-0 py-3">
+                                <h5 class="mb-0 fw-bold text-info"><i class="bi bi-images me-2"></i>Ürün Görselleri</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="dropzone p-3 border-2 border-dashed rounded text-center mb-3 bg-light"
+                                    id="dropzone" style="cursor: pointer; transition: all 0.3s;">
+                                    <i class="bi bi-cloud-upload fs-1 text-muted"></i>
+                                    <p class="small mt-2 mb-0">Tıklayın veya Görselleri Sürükleyin</p>
+                                    <div class="badge bg-secondary">Maksimum 7 Görsel</div>
+                                    <input type="file" name="images" id="fileInput" multiple accept="image/*"
+                                        class="d-none">
+                                </div>
+                                <div id="preview-container" class="row g-2">
+                                    <!-- Önizlemeler -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-header bg-transparent border-0 py-3">
+                                <h5 class="mb-0 fw-bold text-danger"><i class="bi bi-cash-stack me-2"></i>Satış Ayarları
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Satış Fiyatı (KDV Dahil)</label>
+                                    <div class="input-group input-group-lg">
+                                        <input type="number" name="price" class="form-control border-end-0" step="0.01"
+                                            value="0.00" required>
+                                        <span class="input-group-text bg-white border-start-0 text-muted">₺</span>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Maliyet Fiyatı</label>
+                                    <div class="input-group">
+                                        <input type="number" name="cost_price" class="form-control" step="0.01"
+                                            value="0.00">
+                                        <span class="input-group-text text-muted">₺</span>
+                                    </div>
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <label class="form-label fw-bold">Stok Adedi</label>
+                                        <input type="number" name="quantity" class="form-control" value="10" min="0"
+                                            required>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label fw-bold">Desi</label>
+                                        <input type="number" name="desi" class="form-control" value="1.0" step="0.1"
+                                            min="0.1">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" name="action" value="save"
+                                class="btn btn-outline-primary btn-lg shadow-sm py-3 fw-bold">
+                                <i class="bi bi-hdd me-2"></i>Sadece Vidos'a Kaydet
+                            </button>
+                            <button type="submit" name="action" value="save_and_send"
+                                class="btn btn-primary btn-lg shadow-sm py-3 fw-bold">
+                                <i class="bi bi-cloud-check me-2"></i>Kaydet ve Pazaryerine Gönder
+                            </button>
+                            <a href="{{ url_for('main.excel_products_page') }}" class="btn btn-light">İptal Et</a>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .dropzone:hover {
+        border-color: var(--primary) !important;
+        background-color: rgba(99, 102, 241, 0.05) !important;
+    }
+
+    .preview-box {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 1;
+    }
+
+    .preview-box img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+    }
+
+    .remove-btn {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        padding: 0;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #dc3545;
+        color: white;
+        border: none;
+        cursor: pointer;
+        font-size: 12px;
+    }
+</style>
+
+<script>
+    const fileInput = document.getElementById('fileInput');
+    const dropzone = document.getElementById('dropzone');
+    const previewContainer = document.getElementById('preview-container');
+    let filesArray = [];
+
+    dropzone.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('border-primary'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('border-primary'));
+    dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('border-primary');
+        handleFiles(e.dataTransfer.files);
+    });
+
+    function handleFiles(files) {
+        const newFiles = Array.from(files);
+        if (filesArray.length + newFiles.length > 7) {
+            Swal.fire('Hata', 'Maksimum 7 görsel ekleyebilirsiniz.', 'error');
+            return;
+        }
+
+        newFiles.forEach(file => {
+            if (!file.type.startsWith('image/')) return;
+            filesArray.push(file);
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const col = document.createElement('div');
+                col.className = 'col-4 col-sm-3';
+                col.innerHTML = `
+                    <div class="preview-box">
+                        <img src="${e.target.result}">
+                        <button type="button" class="remove-btn" onclick="removeFile('${file.name}')">&times;</button>
+                    </div>
+                `;
+                previewContainer.appendChild(col);
+            };
+            reader.readAsDataURL(file);
+        });
+        updateFileInput();
+    }
+
+    function removeFile(name) {
+        filesArray = filesArray.filter(f => f.name !== name);
+        renderPreviews();
+        updateFileInput();
+    }
+
+    function renderPreviews() {
+        previewContainer.innerHTML = '';
+        filesArray.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const col = document.createElement('div');
+                col.className = 'col-4 col-sm-3';
+                col.innerHTML = `
+                    <div class="preview-box">
+                        <img src="${e.target.result}">
+                        <button type="button" class="remove-btn" onclick="removeFile('${file.name}')">&times;</button>
+                    </div>
+                `;
+                previewContainer.appendChild(col);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function updateFileInput() {
+        const dt = new DataTransfer();
+        filesArray.forEach(f => dt.items.add(f));
+        fileInput.files = dt.files;
+    }
+
+    // --- Marketplace & Dynamic Form Logic ---
+    const marketplaceSelect = document.getElementById('marketplaceSelect');
+    const categorySearch = document.getElementById('categorySearch');
+    const marketplaceCategoryId = document.getElementById('marketplace_category_id');
+    const categoryResults = document.getElementById('category_results');
+    const selectedCatDisplay = document.getElementById('selected_cat_display');
+    const mpAttributesCard = document.getElementById('mp-attributes-card');
+    const mpAttributesList = document.getElementById('mp-attributes-list');
+    const attrMarketplaceName = document.getElementById('attr-marketplace-name');
+
+    marketplaceSelect.addEventListener('change', () => {
+        const mp = marketplaceSelect.value;
+        categorySearch.value = '';
+        marketplaceCategoryId.value = '';
+        selectedCatDisplay.innerText = '';
+        mpAttributesCard.classList.add('d-none');
+        if (mp) {
+            attrMarketplaceName.innerText = marketplaceSelect.options[marketplaceSelect.selectedIndex].text;
+        }
+    });
+
+    let searchTimeout;
+    categorySearch.addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        const mp = marketplaceSelect.value;
+        const q = categorySearch.value.trim();
+        if (!mp || q.length < 2) {
+            categoryResults.style.display = 'none';
+            return;
+        }
+        searchTimeout = setTimeout(() => searchCategories(mp, q), 400);
+    });
+
+    async function searchCategories(mp, q) {
+        try {
+            const resp = await fetch(`/api/marketplace/categories/search/${mp}?q=${encodeURIComponent(q)}`);
+            const data = await resp.json();
+            categoryResults.innerHTML = '';
+            if (data.length > 0) {
+                data.forEach(cat => {
+                    const item = document.createElement('a');
+                    item.className = 'list-group-item list-group-item-action py-2 small';
+                    item.href = 'javascript:void(0)';
+                    const name = cat.path || cat.name || cat.title || 'Adsız Kategori';
+                    item.innerText = name;
+                    item.onclick = () => selectCategory(cat);
+                    categoryResults.appendChild(item);
+                });
+                categoryResults.style.display = 'block';
+            } else {
+                categoryResults.style.display = 'none';
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function selectCategory(cat) {
+        const mp = marketplaceSelect.value;
+        const id = cat.id || cat.categoryId || cat.category_id;
+        const name = cat.path || cat.name || cat.title;
+
+        marketplaceCategoryId.value = id;
+        categorySearch.value = name;
+        selectedCatDisplay.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i> Seçildi: ${name}`;
+        categoryResults.style.display = 'none';
+
+        loadAttributes(mp, id);
+    }
+
+    async function loadAttributes(mp, catId) {
+        mpAttributesCard.classList.remove('d-none');
+        mpAttributesList.innerHTML = `
+            <div class="col-12 text-center py-4 text-muted">
+                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                Özellikler yükleniyor...
+            </div>
+        `;
+
+        try {
+            const resp = await fetch(`/api/marketplace/attributes/${mp}/${catId}`);
+            const data = await resp.json();
+            mpAttributesList.innerHTML = '';
+
+            let attributes = [];
+            // Normalize attributes based on marketplace
+            if (mp === 'trendyol') {
+                attributes = (data.categoryAttributes || []).map(a => ({
+                    id: a.attribute.id,
+                    name: a.attribute.name,
+                    required: a.required,
+                    values: a.attributeValues || []
+                }));
+            } else if (mp === 'pazarama') {
+                attributes = data.attributes || [];
+            } else if (mp === 'idefix') {
+                attributes = data || []; // Idefix returns list directly
+            } else if (mp === 'n11') {
+                // If data is object with categoryAttributes, take it
+                const list = data.categoryAttributes || data.attributes || (Array.isArray(data) ? data : []);
+                attributes = list.map(a => ({
+                    id: a.id,
+                    name: a.name,
+                    required: a.mandatory || a.required,
+                    values: a.attributeValues || a.values || []
+                }));
+            } else if (mp === 'hepsiburada') {
+                attributes = (data.data || []).map(a => ({
+                    id: a.id,
+                    name: a.name,
+                    required: a.mandatory || a.required,
+                    values: a.attributeValues || a.values || []
+                }));
+            }
+
+            if (attributes.length === 0) {
+                mpAttributesList.innerHTML = '<div class="col-12 text-center text-muted py-3">Bu kategori için özel alan bulunamadı.</div>';
+                return;
+            }
+
+            attributes.forEach(attr => {
+                const name = attr.attributeName || attr.title || attr.attributeTitle || attr.name;
+                const id = attr.attributeId || attr.id;
+                const required = attr.required;
+                const values = attr.attributeValues || attr.values || [];
+
+                const col = document.createElement('div');
+                col.className = 'col-md-6 mb-2';
+
+                let inputHtml = '';
+                if (values.length > 0) {
+                    inputHtml = `<select name="mp_attr_value[]" class="form-select" ${required ? 'required' : ''}>
+                        <option value="">Seçiniz...</option>
+                        ${values.map(v => `<option value="${v.name || v.value || v.id || v}">${v.name || v.value || v.id || v}</option>`).join('')}
+                    </select>`;
+                } else {
+                    inputHtml = `<input type="text" name="mp_attr_value[]" class="form-control" placeholder="Değer girin" ${required ? 'required' : ''}>`;
+                }
+
+                col.innerHTML = `
+                    <label class="form-label small fw-bold mb-1">${name} ${required ? '<span class="text-danger">*</span>' : ''}</label>
+                    <input type="hidden" name="mp_attr_id[]" value="${id}">
+                    <input type="hidden" name="mp_attr_name[]" value="${name}">
+                    ${inputHtml}
+                `;
+                mpAttributesList.appendChild(col);
+            });
+        } catch (e) {
+            console.error(e);
+            mpAttributesList.innerHTML = '<div class="col-12 text-center text-danger py-3">Özellikler yüklenirken hata oluştu.</div>';
+        }
+    }
+
+    function addAttribute() {
+        const list = document.getElementById('attributes-list');
+        Swal.fire({
+            title: 'Yeni Özellik Alanı',
+            input: 'text',
+            inputPlaceholder: 'Örn: Ram Bellek, Ekran Boyutu...',
+            showCancelButton: true,
+            confirmButtonText: 'Ekle'
+        }).then((result) => {
+            if (result.isConfirmed && result.value) {
+                const col = document.createElement('div');
+                col.className = 'col-md-6 mb-2';
+                col.innerHTML = `
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0">${result.value}</span>
+                        <input type="hidden" name="attr_name[]" value="${result.value}">
+                        <input type="text" name="attr_value[]" class="form-control" placeholder="Değer girin">
+                        <button type="button" class="btn btn-outline-danger" onclick="this.parentElement.parentElement.remove()">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                `;
+                list.appendChild(col);
+            }
+        });
+    }
+</script>
+{% endblock %}

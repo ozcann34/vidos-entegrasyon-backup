@@ -1,0 +1,125 @@
+{% extends "admin/_base.html" %}
+
+{% block title %}Yeni Kullanıcı{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Yeni Kullanıcı</h2>
+            <a href="{{ url_for('admin.users') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-2"></i>Geri Dön
+            </a>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <form method="POST">
+                    <div class="row g-4">
+                        <!-- Sol Kolon: Hesap Bilgileri -->
+                        <div class="col-md-6 border-end">
+                            <h5 class="mb-4 text-muted"><i class="bi bi-person-circle me-2"></i>Hesap Bilgileri</h5>
+
+                            <div class="row g-3">
+                                <div class="col-6 mb-3">
+                                    <label for="first_name" class="form-label fw-bold">Ad</label>
+                                    <input type="text" class="form-control" id="first_name" name="first_name" required>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <label for="last_name" class="form-label fw-bold">Soyad</label>
+                                    <input type="text" class="form-control" id="last_name" name="last_name" required>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="email" class="form-label fw-bold">E-Posta Adresi</label>
+                                <input type="email" class="form-control" id="email" name="email" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="password" class="form-label fw-bold">Şifre</label>
+                                <input type="text" class="form-control" id="password" name="password" required
+                                    value="{{ 'Temp' ~ range(1000, 9999) | random }}" aria-describedby="passwordHelp">
+                                <div id="passwordHelp" class="form-text">Kullanıcıya iletilecek geçici şifre.</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="tc_no" class="form-label fw-bold">TC Kimlik No</label>
+                                <input type="text" class="form-control" id="tc_no" name="tc_no" maxlength="11">
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="role" class="form-label fw-bold">Kullanıcı Rolü</label>
+                                    <select class="form-select" id="role" name="role">
+                                        <option value="user" selected>Normal Kullanıcı</option>
+                                        <option value="admin">Yönetici (Admin)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="subscription_plan" class="form-label fw-bold">Abonelik Planı</label>
+                                    <select class="form-select" id="subscription_plan" name="subscription_plan">
+                                        <option value="free" selected>Giriş Paketi</option>
+                                        <option value="pro">Ticaret Paketi</option>
+                                        <option value="enterprise">Kurumsal Paket</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sağ Kolon: Firma ve Adres -->
+                        <div class="col-md-6">
+                            <h5 class="mb-4 text-muted"><i class="bi bi-building me-2"></i>Firma ve Adres Bilgileri</h5>
+
+                            <div class="mb-3">
+                                <label for="company_title" class="form-label fw-bold">Firma Ünvanı</label>
+                                <input type="text" class="form-control" id="company_title" name="company_title"
+                                    placeholder="Firma tam ünvanı">
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-6 mb-3">
+                                    <label for="tax_office" class="form-label fw-bold">Vergi Dairesi</label>
+                                    <input type="text" class="form-control" id="tax_office" name="tax_office">
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <label for="tax_no" class="form-label fw-bold">Vergi No</label>
+                                    <input type="text" class="form-control" id="tax_no" name="tax_no">
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="phone" class="form-label fw-bold">Telefon</label>
+                                <input type="tel" class="form-control" id="phone" name="phone"
+                                    placeholder="05XX XXX XX XX">
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-6 mb-3">
+                                    <label for="city" class="form-label fw-bold">İl</label>
+                                    <input type="text" class="form-control" id="city" name="city">
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <label for="district" class="form-label fw-bold">İlçe</label>
+                                    <input type="text" class="form-control" id="district" name="district">
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="address" class="form-label fw-bold">Açık Adres</label>
+                                <textarea class="form-control" id="address" name="address" rows="3"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4 pt-3 border-top">
+                        <button type="submit" class="btn btn-primary px-5 py-2">
+                            <i class="bi bi-person-plus me-2"></i>Kullanıcı Oluştur
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
