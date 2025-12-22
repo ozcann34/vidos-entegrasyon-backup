@@ -8,6 +8,7 @@
     <div class="row justify-content-center">
         <div class="col-lg-11">
             <form method="POST" enctype="multipart/form-data" id="advancedProductForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="row g-4">
                     <!-- Sol Kolon: Temel Bilgiler -->
                     <div class="col-md-8">

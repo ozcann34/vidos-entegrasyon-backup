@@ -376,14 +376,15 @@ class N11Client:
             raise
 
 
-def get_n11_client():
+def get_n11_client(user_id: Optional[int] = None):
     from app.models import Setting
     from flask_login import current_user
     
-    try:
-        user_id = current_user.id if current_user and current_user.is_authenticated else None
-    except:
-        user_id = None
+    if user_id is None:
+        try:
+            user_id = current_user.id if current_user and current_user.is_authenticated else None
+        except:
+            user_id = None
     
     api_key = Setting.get("N11_API_KEY", user_id=user_id)
     api_secret = Setting.get("N11_API_SECRET", user_id=user_id)

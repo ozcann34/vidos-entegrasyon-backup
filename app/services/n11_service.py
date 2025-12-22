@@ -216,44 +216,51 @@ def get_n11_category_attributes(category_id: int, user_id: int):
         return []
 
 
-def search_n11_brand(name: str, user_id: int) -> Optional[Dict[str, Any]]:
+def search_n11_brand(name: str, user_id: int) -> List[Dict[str, Any]]:
     """
     Search for a brand in N11 via Category Attributes (Attribute ID 1).
-    Since N11 doesn't have a global brand search, we look into a common category
-    or iterate cached attributes if possible.
+    Returns a list of matching brands.
     """
-    if not name: return None
+    if not name: return []
     
     name = name.lower().strip()
+    found_brands = []
     
-    # 1. Try to find in already cached attributes (if any)
-    # We look for Attribute ID 1 (Marka)
-    found_brand = None
-    
-    # Debug: Use a specific category that usually has brands (e.g. Phones or Accessories)
     # 1000482 = Screen Protector, 1000476 = Mobile Phone, 1000273 = General Electronics
-    target_cats = [1000476, 1000482, 1000273, 1002571] # Added Mobile Phone (1000476) and Makeup (1002571) for broader range
+    target_cats = [1000476, 1000482, 1000273, 1002571]
     
     from app.services.n11_client import get_n11_client
     client = get_n11_client(user_id=user_id)
-    if not client: return None
+    if not client: return []
     
     for cat_id in target_cats:
         attrs = get_n11_category_attributes(cat_id, user_id=user_id)
         for attr in attrs:
-             if str(attr.get('id')) == '1': # Brand Attribute
-                  # Check values
-                  values = attr.get('values') or attr.get('valueList') or []
+             # N11 Attributes can have different ID fields depending on the wrapper/API version
+             attr_id = str(attr.get('id') or attr.get('attributeId') or '')
+             if attr_id == '1': # Brand Attribute
+                  values = attr.get('values') or attr.get('valueList') or attr.get('attributeValues') or []
                   for v in values:
                        v_name = v.get('name') or v.get('value') or ''
-                       if v_name.lower().strip() == name:
-                            return {'id': v.get('id'), 'name': v_name}
+                       v_id = v.get('id')
                        
-                       # Partial/Loose match check
-                       if name in v_name.lower():
-                            if not found_brand: found_brand = {'id': v.get('id'), 'name': v_name}
+                       if not v_name or not v_id: continue
+
+                       if v_name.lower().strip() == name:
+                            # Exact match at the beginning
+                            found_brands.insert(0, {'id': v_id, 'name': v_name})
+                       elif name in v_name.lower():
+                            found_brands.append({'id': v_id, 'name': v_name})
     
-    return found_brand
+    # Remove duplicates by ID
+    seen = set()
+    unique_brands = []
+    for b in found_brands:
+        if b['id'] not in seen:
+            unique_brands.append(b)
+            seen.add(b['id'])
+            
+    return unique_brands
 
 # ---------------------------------------------------
 # Product Operations
@@ -288,7 +295,7 @@ def fetch_all_n11_products(user_id: int, job_id: Optional[str] = None) -> List[D
 def refresh_n11_cache(user_id: int, job_id: Optional[str] = None) -> Dict[str, Any]:
     try:
         if job_id: append_mp_job_log(job_id, "N11 ürünleri çekiliyor (Snapshot)...")
-        items = fetch_all_n11_products(job_id)
+        items = fetch_all_n11_products(user_id, job_id)
         
         payload = {
             'items': items,
@@ -314,7 +321,7 @@ def load_n11_snapshot() -> Dict[str, Any]:
 # Sending Logic
 # ---------------------------------------------------
 
-def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: Any = None, auto_match: bool = False, send_options: Dict[str, Any] = None, match_by: str = 'barcode', title_prefix: str = None, is_manual: bool = False) -> Dict[str, Any]:
+def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: Any = None, auto_match: bool = False, send_options: Dict[str, Any] = None, match_by: str = 'barcode', title_prefix: str = None, is_manual: bool = False, user_id: int = None) -> Dict[str, Any]:
     from app.services.xml_service import load_xml_source_index
     from app.utils.helpers import get_marketplace_multiplier
     
@@ -713,7 +720,7 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
         'message': f"{total_sent} ürün N11'e iletildi."
     }
 
-def perform_n11_send_all(job_id: str, xml_source_id: Any, auto_match: bool = False, match_by: str = 'barcode') -> Dict[str, Any]:
+def perform_n11_send_all(job_id: str, xml_source_id: Any, auto_match: bool = False, match_by: str = 'barcode', user_id: int = None) -> Dict[str, Any]:
     from app.services.xml_service import load_xml_source_index
     
     append_mp_job_log(job_id, "Tüm ürünler hazırlanıyor...")
@@ -723,11 +730,11 @@ def perform_n11_send_all(job_id: str, xml_source_id: Any, auto_match: bool = Fal
     if not all_barcodes:
         return {'success': False, 'message': 'XML kaynağında ürün bulunamadı.'}
         
-    return perform_n11_send_products(job_id, all_barcodes, xml_source_id, auto_match, match_by=match_by)
+    return perform_n11_send_products(job_id, all_barcodes, xml_source_id, auto_match, match_by=match_by, user_id=user_id)
 
-def delete_n11_product(barcode: str) -> Dict[str, Any]:
+def delete_n11_product(barcode: str, user_id: int = None) -> Dict[str, Any]:
     try:
-        client = get_n11_client()
+        client = get_n11_client(user_id=user_id)
         if not client: return {'success': False, 'message': 'API Key eksik.'}
         result = client.delete_product_by_seller_code(barcode)
         
@@ -747,8 +754,8 @@ def delete_n11_product(barcode: str) -> Dict[str, Any]:
     except Exception as e:
         return {'success': False, 'message': str(e)}
 
-def update_n11_stock_price(barcode: str, stock: int = None, price: float = None) -> Dict[str, Any]:
-    client = get_n11_client()
+def update_n11_stock_price(barcode: str, stock: int = None, price: float = None, user_id: int = None) -> Dict[str, Any]:
+    client = get_n11_client(user_id=user_id)
     if not client: return {'success': False, 'message': 'API Key eksik.'}
     try:
         item = {"stockCode": barcode, "currencyType": "TL"}
@@ -767,13 +774,13 @@ def update_n11_stock_price(barcode: str, stock: int = None, price: float = None)
     except Exception as e:
         return {'success': False, 'message': str(e)}
 
-def bulk_update_n11_stock_price(items: List[Dict[str, Any]]) -> Dict[str, Any]:
+def bulk_update_n11_stock_price(items: List[Dict[str, Any]], user_id: int = None) -> Dict[str, Any]:
     """
     items: list of dicts with keys: barcode, quantity, salePrice (optional)
     """
     if not items: return {'success': True, 'updated': 0}
     
-    client = get_n11_client()
+    client = get_n11_client(user_id=user_id)
     if not client: return {'success': False, 'message': 'API Key eksik.'}
     
     try:
@@ -802,7 +809,7 @@ def bulk_update_n11_stock_price(items: List[Dict[str, Any]]) -> Dict[str, Any]:
     except Exception as e:
         return {'success': False, 'message': str(e)}
 
-def perform_n11_batch_update(job_id: str, items: List[Dict[str, Any]]) -> Dict[str, Any]:
+def perform_n11_batch_update(job_id: str, items: List[Dict[str, Any]], user_id: int = None) -> Dict[str, Any]:
     """
     Batch update N11 stock/price.
     items: [{'barcode': '...', 'stock': 10, 'price': 100.0}, ...]
@@ -813,7 +820,7 @@ def perform_n11_batch_update(job_id: str, items: List[Dict[str, Any]]) -> Dict[s
         for i in range(0, len(lst), n):
             yield lst[i:i + n]
 
-    client = get_n11_client()
+    client = get_n11_client(user_id=user_id)
     append_mp_job_log(job_id, f"N11 toplu güncelleme başlatıldı. {len(items)} ürün.")
     
     # Map to N11 format

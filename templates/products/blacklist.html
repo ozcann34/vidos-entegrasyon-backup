@@ -21,6 +21,7 @@
                 </div>
 
                 <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
                         <label class="form-label">Yasak Türü</label>
                         <select name="type" class="form-select" required>
@@ -85,6 +86,7 @@
                             <td class="text-end">
                                 <form action="{{ url_for('products.delete_blacklist', id=item.id) }}" method="POST"
                                     class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn btn-sm btn-outline-danger"
                                         onclick="return confirm('Bu yasağı kaldırmak istediğinize emin misiniz?')">
                                         <i class="bi bi-trash"></i>

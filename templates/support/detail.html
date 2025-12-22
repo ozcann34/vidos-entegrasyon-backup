@@ -34,8 +34,8 @@
             {% for msg in ticket.messages %}
             <div
                 class="d-flex {% if msg.sender_id == current_user.id %}justify-content-end{% else %}justify-content-start{% endif %}">
-                <div class="card shadow-sm border-0"
-                    style="max-width: 80%; {% if msg.sender_id == current_user.id %}background-color: #e3f2fd;{% endif %}">
+                <div class="card shadow-sm border-0 {% if msg.sender_id == current_user.id %}user-message{% endif %}"
+                    style="max-width: 80%;">
                     <div
                         class="card-header bg-transparent border-0 pb-0 d-flex justify-content-between align-items-center">
                         <small class="fw-bold">
@@ -71,12 +71,25 @@
             </div>
             {% endfor %}
         </div>
+        {% block extra_css %}
+        <style>
+            .user-message {
+                background-color: #e3f2fd !important;
+            }
+
+            [data-bs-theme="dark"] .user-message {
+                background-color: #1a2a3a !important;
+                color: #fff !important;
+            }
+        </style>
+        {% endblock %}
 
         {% if ticket.status != 'closed' %}
         <div class="card shadow-sm border-0">
             <div class="card-body">
                 <h6 class="card-title fw-bold mb-3">Yanıt Yaz</h6>
                 <form method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
                         <textarea class="form-control" name="message" rows="4" required
                             placeholder="Mesajınız..."></textarea>

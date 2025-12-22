@@ -125,18 +125,21 @@
               <div class="info-label">TC Kimlik No:</div>
               <div class="info-value">{{ current_user.tc_no or '-' }}</div>
             </div>
+            {% if current_user.is_authenticated %}
             <div class="info-row">
-              <div class="info-label">E-Posta:</div>
+              <div class="info-label">E-posta:</div>
               <div class="info-value">{{ current_user.email }}</div>
             </div>
             <div class="info-row">
               <div class="info-label">Cep Telefonu:</div>
               <div class="info-value">{{ current_user.phone or '-' }}</div>
             </div>
+            {% endif %}
           </div>
 
           <div class="info-card">
             <h6 class="mb-3 text-muted">Adres Bilgileri</h6>
+            {% if current_user.is_authenticated %}
             <div class="info-row">
               <div class="info-label">Ülke:</div>
               <div class="info-value">{{ current_user.country or 'Türkiye' }}</div>
@@ -153,6 +156,7 @@
               <div class="info-label">Adres:</div>
               <div class="info-value">{{ current_user.address or '-' }}</div>
             </div>
+            {% endif %}
           </div>
 
           <div class="alert alert-info">
@@ -958,16 +962,31 @@
         .then(r => r.json())
         .then(data => {
           Swal.close();
-          if (data.success && data.brand_id) {
-            document.getElementById('TRENDYOL_BRAND_ID').value = data.brand_id;
-            Swal.fire({
-              icon: 'success',
-              title: 'Bulundu!',
-              html: `<strong>${data.brand_name}</strong><br>ID: ${data.brand_id}`,
-              timer: 2000
-            });
+          if (data.success && data.brands && data.brands.length > 0) {
+            const items = data.brands;
+            if (items.length === 1) {
+              document.getElementById('TRENDYOL_BRAND_ID').value = items[0].id;
+              if (document.getElementById('TRENDYOL_BRAND_NAME')) document.getElementById('TRENDYOL_BRAND_NAME').value = items[0].name;
+              Swal.fire({ icon: 'success', title: 'Bulundu!', html: `<strong>${items[0].name}</strong><br>ID: ${items[0].id}`, timer: 2000 });
+            } else {
+              const opts = {};
+              items.forEach(b => opts[b.id] = b.name);
+              Swal.fire({
+                title: 'Marka Seçin',
+                input: 'select',
+                inputOptions: opts,
+                showCancelButton: true,
+                confirmButtonText: 'Seç'
+              }).then(res => {
+                if (res.isConfirmed) {
+                  const sel = items.find(x => x.id == res.value);
+                  document.getElementById('TRENDYOL_BRAND_ID').value = sel.id;
+                  if (document.getElementById('TRENDYOL_BRAND_NAME')) document.getElementById('TRENDYOL_BRAND_NAME').value = sel.name;
+                }
+              });
+            }
           } else {
-            Swal.fire('Bulunamadı', data.message || 'Marka bulunamadı. Lütfen farklı bir isim deneyin.', 'error');
+            Swal.fire('Bulunamadı', data.message || 'Trendyol\'da bu marka bulunamadı.', 'error');
           }
         })
         .catch(err => {
@@ -1031,12 +1050,91 @@
         });
     });
 
-    // Brand Search Mock
+    // Pazarama Brand Search
+    document.getElementById('searchPazaramaBrand')?.addEventListener('click', function () {
+      const name = document.getElementById('PAZARAMA_BRAND_NAME').value.trim();
+      if (!name) { Swal.fire('Uyarı', 'Marka adı girin', 'warning'); return; }
+      Swal.fire({ title: 'Aranıyor...', didOpen: () => Swal.showLoading() });
+      fetch('/api/pazarama/search_brand', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brand_name: name })
+      })
+        .then(r => r.json()).then(j => {
+          Swal.close();
+          if (j.success && j.brands && j.brands.length > 0) {
+            const items = j.brands;
+            if (items.length === 1) {
+              document.getElementById('PAZARAMA_BRAND_ID').value = items[0].id;
+              if (document.getElementById('PAZARAMA_BRAND_NAME')) document.getElementById('PAZARAMA_BRAND_NAME').value = items[0].name;
+              Swal.fire('Bulundu', `Marka: ${items[0].name}\nID: ${items[0].id}`, 'success');
+            } else {
+              const opts = {};
+              items.forEach(b => opts[b.id] = b.name);
+              Swal.fire({
+                title: 'Pazarama Marka Seçin',
+                input: 'select',
+                inputOptions: opts,
+                showCancelButton: true
+              }).then(res => {
+                if (res.isConfirmed) {
+                  const sel = items.find(x => x.id == res.value);
+                  document.getElementById('PAZARAMA_BRAND_ID').value = sel.id;
+                  if (document.getElementById('PAZARAMA_BRAND_NAME')) document.getElementById('PAZARAMA_BRAND_NAME').value = sel.name;
+                }
+              });
+            }
+          } else {
+            Swal.fire('Bulunamadı', j.message || 'Pazarama\'da marka bulunamadı', 'error');
+          }
+        }).catch(err => { Swal.close(); Swal.fire('Hata', 'Pazarama arama hatası: ' + err, 'error'); });
+    });
+
+    // N11 Brand Search
+    document.getElementById('searchN11Brand')?.addEventListener('click', function () {
+      const name = document.getElementById('N11_DEFAULT_BRAND').value.trim();
+      if (!name) { Swal.fire('Uyarı', 'Marka adı girin', 'warning'); return; }
+      Swal.fire({ title: 'Aranıyor...', didOpen: () => Swal.showLoading() });
+      fetch('/api/n11/search_brand', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brand_name: name })
+      })
+        .then(r => r.json()).then(j => {
+          Swal.close();
+          if (j.success && j.brands && j.brands.length > 0) {
+            const items = j.brands;
+            if (items.length === 1) {
+              document.getElementById('N11_DEFAULT_BRAND').value = items[0].name;
+              document.getElementById('N11_DEFAULT_BRAND_ID').value = items[0].id;
+              Swal.fire('Bulundu', `Marka: ${items[0].name}`, 'success');
+            } else {
+              const opts = {};
+              items.forEach(b => opts[b.id] = b.name);
+              Swal.fire({
+                title: 'Marka Seçin',
+                input: 'select',
+                inputOptions: opts,
+                showCancelButton: true
+              }).then(res => {
+                if (res.isConfirmed) {
+                  const sel = items.find(x => x.id == res.value);
+                  document.getElementById('N11_DEFAULT_BRAND').value = sel.name;
+                  document.getElementById('N11_DEFAULT_BRAND_ID').value = sel.id;
+                }
+              });
+            }
+          } else {
+            Swal.fire('Bulunamadı', j.message || 'N11\'de marka bulunamadı', 'error');
+          }
+        }).catch(err => Swal.fire('Hata', 'N11 arama hatası: ' + err, 'error'));
+    });
+
+    // Handle other search buttons
     document.querySelectorAll('[id^="search"]').forEach(btn => {
       btn.addEventListener('click', function () {
-        if (this.id === 'searchIdefixBrand' || this.id === 'searchTrendyolBrand' || this.id === 'searchHBBrand' || this.id === 'searchN11Brand' || this.id === 'searchPazaramaBrand') {
-          // Handled elsewhere
-        } else {
+        const handled = ['searchIdefixBrand', 'searchTrendyolBrand', 'searchHBBrand', 'searchN11Brand', 'searchPazaramaBrand'];
+        if (!handled.includes(this.id)) {
           Swal.fire('Bilgi', 'Marka arama özelliği bu pazaryeri için henüz aktif değil.', 'info');
         }
       });

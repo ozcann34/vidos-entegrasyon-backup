@@ -1,7 +1,7 @@
 import os
 from werkzeug.utils import secure_filename
 from datetime import datetime
-from app import db, create_app # create_app needed for config? Better usage below.
+from app import db # create_app removed to avoid circular imports
 from flask import current_app
 from app.models.support import SupportTicket, SupportMessage
 from app.models.user import User

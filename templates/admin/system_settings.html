@@ -4,7 +4,9 @@
 
 {% block content %}
 <div class="admin-header animate__animated animate__fadeIn">
-    <h1><i class="bi bi-gear-wide-connected me-2"></i> Sistem Ayarları</h1>
+    <h1><i class="bi bi-gear me-2"></i>Sistem Ayarları</h1>
+    <span class="text-muted">Hoş geldiniz, {% if current_user.is_authenticated %}{{ current_user.full_name }}{% else
+        %}Misafir{% endif %}</span>
     <p class="text-muted">Tüm kullanıcılar için özellikleri ve sayfaları global olarak açın veya kapatın.</p>
 </div>
 

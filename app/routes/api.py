@@ -1132,7 +1132,7 @@ def api_marketplace_products(marketplace: str):
 
         elif marketplace.lower() == 'n11':
             try:
-                client = get_n11_client()
+                client = get_n11_client(user_id=current_user.id)
                 if not client:
                      return jsonify({'total': 0, 'items': [], 'error': 'N11 API anahtarları eksik'}), 400
                 
@@ -1180,7 +1180,7 @@ def api_update_stock(marketplace, barcode):
     
     if marketplace == 'n11':
         from app.services.n11_service import update_n11_stock_price
-        res = update_n11_stock_price(barcode, stock=new_quantity)
+        res = update_n11_stock_price(barcode, stock=new_quantity, user_id=current_user.id)
         if res.get('success'):
             flash(f"✅ N11 - {barcode} stok güncelleme kuyruğa alındı.", "success")
         else:
@@ -1201,7 +1201,7 @@ def api_update_price(marketplace, barcode):
     
     if marketplace == 'n11':
         from app.services.n11_service import update_n11_stock_price
-        res = update_n11_stock_price(barcode, price=new_price)
+        res = update_n11_stock_price(barcode, price=new_price, user_id=current_user.id)
         if res.get('success'):
             flash(f"✅ N11 - {barcode} fiyat güncelleme kuyruğa alındı.", "success")
         else:
@@ -1218,7 +1218,7 @@ def api_update_price(marketplace, barcode):
 def api_delete_product(marketplace, barcode):
     if marketplace == 'n11':
         from app.services.n11_service import delete_n11_product
-        res = delete_n11_product(barcode)
+        res = delete_n11_product(barcode, user_id=current_user.id)
         if res.get('success'):
             flash(f"✅ N11 - {barcode} başarıyla silindi.", "success")
         else:
@@ -1285,7 +1285,7 @@ def api_product_bulk_update(marketplace):
         
     if marketplace == 'n11':
         from app.services.n11_service import bulk_update_n11_stock_price
-        res = bulk_update_n11_stock_price(items)
+        res = bulk_update_n11_stock_price(items, user_id=current_user.id)
         return jsonify(res)
     elif marketplace == 'hepsiburada':
         from app.services.hepsiburada_service import bulk_update_hepsiburada_stock_price
@@ -1496,6 +1496,7 @@ def api_n11_send_all():
 
 
 @api_bp.route('/api/n11/search_brand', methods=['POST'])
+@login_required
 def api_n11_search_brand():
     try:
         data = request.json or {}
@@ -1504,10 +1505,10 @@ def api_n11_search_brand():
             return jsonify({'success': False, 'message': 'Marka adı gerekli'}), 400
             
         from app.services.n11_service import search_n11_brand
-        result = search_n11_brand(brand_name)
+        results = search_n11_brand(brand_name, user_id=current_user.id)
         
-        if result:
-            return jsonify({'success': True, 'brand': result})
+        if results:
+            return jsonify({'success': True, 'brands': results})
         else:
             return jsonify({'success': False, 'message': 'Marka bulunamadı'}), 404
             
@@ -1706,7 +1707,7 @@ def search_marketplace_categories(marketplace):
             results = [c for c in cats if q in c.get('name', '').lower() or q in c.get('path', '').lower()]
             return jsonify(results[:50])
         elif marketplace == 'n11':
-            client = get_n11_client()
+            client = get_n11_client(user_id=user_id)
             cats = client.get_categories()
             results = [c for c in cats if q in c.get('name', '').lower()]
             return jsonify(results[:50])
@@ -1734,7 +1735,7 @@ def get_marketplace_attributes(marketplace, category_id):
             client = get_hepsiburada_client(user_id=user_id)
             return jsonify(client.get_category_attributes(int(category_id)))
         elif marketplace == 'n11':
-            client = get_n11_client()
+            client = get_n11_client(user_id=user_id)
             if not client: return jsonify({"error": "N11 API bilgileri eksik"}), 400
             return jsonify(client.get_category_attributes(int(category_id)))
         elif marketplace == 'pazarama':
@@ -1863,23 +1864,18 @@ def api_trendyol_search_brand():
                 'message': f'"{brand_name}" adında marka bulunamadı'
             })
         
-        # Find exact match or closest match
-        exact_match = None
-        for brand in brands:
-            if brand.get('name', '').lower() == brand_name.lower():
-                exact_match = brand
-                break
-        
-        # Use exact match if found, otherwise use first result
-        result_brand = exact_match or brands[0]
-        
-        logging.info(f"[TRENDYOL] Brand found: {result_brand.get('name')} (ID: {result_brand.get('id')})")
-        
+        # Format as list of {id, name}
+        brand_list = []
+        for b in brands:
+            brand_list.append({
+                'id': b.get('id'),
+                'name': b.get('name')
+            })
+            
         return jsonify({
             'success': True,
-            'brand_id': result_brand.get('id'),
-            'brand_name': result_brand.get('name'),
-            'message': f'Marka bulundu: {result_brand.get("name")}'
+            'brands': brand_list,
+            'message': f'{len(brand_list)} marka bulundu'
         })
         
     except Exception as e:
@@ -1963,6 +1959,7 @@ def api_idefix_search_brand():
 
 
 @api_bp.route('/api/pazarama/search_brand', methods=['POST'])
+@login_required
 def api_pazarama_search_brand():
     """Search for a Pazarama brand by name."""
     try:
@@ -1979,25 +1976,17 @@ def api_pazarama_search_brand():
         results = client.get_brands(name=brand_name, size=10)
         
         if results:
-            # Try to find exact match first
+            brand_list = []
             for brand in results:
-                if brand.get('name', '').strip().lower() == brand_name.lower():
-                    return jsonify({
-                        'success': True,
-                        'brand': {
-                            'id': brand['id'],
-                            'name': brand['name']
-                        }
-                    })
+                brand_list.append({
+                    'id': brand['id'],
+                    'name': brand['name']
+                })
             
-            # If no exact match, return first result
-            first_brand = results[0]
             return jsonify({
                 'success': True,
-                'brand': {
-                    'id': first_brand['id'],
-                    'name': first_brand['name']
-                }
+                'brands': brand_list,
+                'message': f'{len(brand_list)} marka bulundu'
             })
         else:
             return jsonify({

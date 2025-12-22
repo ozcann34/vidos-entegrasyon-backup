@@ -89,8 +89,9 @@
                                         </td>
                                         <td>{{ p.quantity }}</td>
                                         <td class="text-end">
-                                            <button class="btn btn-sm btn-outline-primary"
-                                                onclick="selectProduct('{{ p.title|replace('\'', '\\\'') }}', '{{ p.listPrice }}', '{{ img_url }}')">
+                                            <button class="btn btn-sm btn-outline-primary select-product-btn"
+                                                data-title="{{ p.title }}" data-price="{{ p.listPrice }}"
+                                                data-img="{{ img_url }}">
                                                 <i class="bi bi-share me-1"></i>Paylaş
                                             </button>
                                         </td>
@@ -115,6 +116,7 @@
                         <div class="card shadow-sm mb-4">
                             <div class="card-body">
                                 <form id="creatorForm" method="POST">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="action" id="formAction" value="schedule">
 
                                     <!-- Media Type Selection -->
@@ -367,7 +369,16 @@
 
     // Auto-list filter init
     document.addEventListener('DOMContentLoaded', function () {
-        // If query params exist, maybe pre-select tab?
+        // Handle select product buttons
+        document.addEventListener('click', function (e) {
+            const btn = e.target.closest('.select-product-btn');
+            if (btn) {
+                const title = btn.getAttribute('data-title');
+                const price = btn.getAttribute('data-price');
+                const img = btn.getAttribute('data-img');
+                selectProduct(title, price, img);
+            }
+        });
     });
 </script>
 
