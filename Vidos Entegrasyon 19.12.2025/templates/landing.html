@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Modern e-ticaret entegrasyon platformu - Pazaryeri yönetiminizi kolaylaştırın">
+    <title>Vidos Entegrasyon - E-Ticaret Çözümleri</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='landing.css') }}">
+</head>
+
+<body>
+    <div class="landing-page">
+        <!-- Navigation -->
+        <nav class="navbar" id="navbar">
+            <div class="nav-container">
+                <a href="#" class="logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="Vidos"
+                        style="height: 32px;"></a>
+                <div class="nav-links">
+                    <a href="#features">Özellikler</a>
+                    <a href="#pricing">Fiyatlandırma</a>
+                    <a href="{{ url_for('main.about_us') }}">Hakkımızda</a>
+                    <a href="#contact">İletişim</a>
+                </div>
+                <a href="{{ url_for('auth.login') }}" class="btn-login">Giriş Yap</a>
+            </div>
+        </nav>
+
+        <!-- Hero Section -->
+        <section class="hero" id="home">
+            <div class="hero-container">
+                <div class="hero-content">
+                    <h1>E-Ticaret Entegrasyonlarınızı <span class="text-gradient">Tek Platformda</span> Yönetin</h1>
+                    <p class="subtitle">
+                        Trendyol, n11, Pazarama, Hepsiburada ve İdefix... Tüm pazaryeri entegrasyonlarınızı
+                        kolayca yönetin, ürünlerinizi senkronize edin ve satışlarınızı artırın.
+                    </p>
+                    <div class="cta-buttons">
+                        <a href="{{ url_for('auth.register') }}" class="btn-primary">Ücretsiz Başlayın</a>
+                        <a href="#features" class="btn-secondary">Özellikleri Keşfet</a>
+                    </div>
+                </div>
+                <div class="hero-image scroll-animate">
+                    <img src="{{ url_for('static', filename='hero.png') }}" alt="Vidos Dashboard">
+                    <div class="floating-card card-1">🚀 +127% Satış Artışı</div>
+                    <div class="floating-card card-2">📦 15.000+ Ürün Aktif</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Marketplaces Slider -->
+        <section class="marketplaces">
+            <div class="slider-container">
+                <div class="slider-track">
+                    <div class="slide">TRENDYOL</div>
+                    <div class="slide">N11</div>
+                    <div class="slide">PAZARAMA</div>
+                    <div class="slide">HEPSİBURADA</div>
+                    <div class="slide">İDEFİX</div>
+                    <!-- Duplicate for infinite scroll -->
+                    <div class="slide">TRENDYOL</div>
+                    <div class="slide">N11</div>
+                    <div class="slide">PAZARAMA</div>
+                    <div class="slide">HEPSİBURADA</div>
+                    <div class="slide">İDEFİX</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- How It Works Section -->
+        <section class="how-it-works" id="how-it-works">
+            <div class="container">
+                <h2 class="section-title">Nasıl Çalışır?</h2>
+                <p class="section-subtitle">Sadece 3 adımda satışlarınızı katlamaya başlayın</p>
+
+                <div class="steps-grid">
+                    <div class="step-card scroll-animate">
+                        <div class="step-number">01</div>
+                        <h3>Mağazalarını Bağla</h3>
+                        <p>API anahtarlarınla Trendyol, N11 ve diğer mağazalarını saniyeler içinde bağla.</p>
+                    </div>
+                    <div class="step-card scroll-animate">
+                        <div class="step-number">02</div>
+                        <h3>Ürünlerini Yükle</h3>
+                        <p>XML veya Excel ile binlerce ürününü tek tıkla sisteme aktar.</p>
+                    </div>
+                    <div class="step-card scroll-animate">
+                        <div class="step-number">03</div>
+                        <h3>Otomatik Yönet</h3>
+                        <p>Fiyat ve stok güncellemelerini Vidos'a bırak, sen sadece satışlarına odaklan.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section class="features" id="features">
+            <h2 class="section-title">Neden Vidos?</h2>
+            <p class="section-subtitle">E-ticaret işletmenizi bir üst seviyeye taşıyacak özellikler</p>
+
+            <div class="features-grid">
+                <div class="feature-card scroll-animate">
+                    <div class="feature-icon">🚀</div>
+                    <h3>Hızlı Entegrasyon</h3>
+                    <p>Dakikalar içinde tüm pazaryerlerinizi entegre edin. Karmaşık API konfigürasyonlarıyla uğraşmayın.
+                    </p>
+                </div>
+
+                <div class="feature-card scroll-animate">
+                    <div class="feature-icon">🔄</div>
+                    <h3>Otomatik Senkronizasyon</h3>
+                    <p>Ürünleriniz, fiyatlarınız ve stoklarınız tüm platformlarda otomatik olarak güncel kalsın.</p>
+                </div>
+
+                <div class="feature-card scroll-animate">
+                    <div class="feature-icon">📊</div>
+                    <h3>Detaylı Raporlama</h3>
+                    <p>Satışlarınızı, siparişlerinizi ve performansınızı detaylı raporlarla takip edin.</p>
+                </div>
+
+                <div class="feature-card scroll-animate">
+                    <div class="feature-icon">🛡️</div>
+                    <h3>Güvenli & Hızlı</h3>
+                    <p>Verileriniz en yüksek güvenlik standartlarıyla korunur. Hızlı ve kesintisiz hizmet.</p>
+                </div>
+
+                <div class="feature-card scroll-animate">
+                    <div class="feature-icon">📱</div>
+                    <h3>Çoklu Platform</h3>
+                    <p>Trendyol, n11, Pazarama, Ciceksepeti ve daha fazla platformu tek yerden yönetin.</p>
+                </div>
+
+                <div class="feature-card scroll-animate">
+                    <div class="feature-icon">💡</div>
+                    <h3>Kolay Kullanım</h3>
+                    <p>Kullanıcı dostu arayüz sayesinde teknik bilgiye ihtiyaç duymadan yönetin.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Pricing Section -->
+        <section class="pricing" id="pricing">
+            <h2 class="section-title">Fiyatlandırma</h2>
+            <p class="section-subtitle">İşletmenize uygun paketi seçin</p>
+
+            <div class="pricing-grid">
+                <!-- Basic Plan -->
+                <div class="pricing-card scroll-animate">
+                    <h3>Giriş Paketi</h3>
+                    <div class="pricing-price">
+                        ₺790
+                        <span>/ay</span>
+                    </div>
+                    <div class="text-success small fw-bold mb-3">
+                        (Yıllık 7.590₺ - %20 İndirimli)
+                    </div>
+                    <ul class="pricing-features">
+                        <li>1 Pazaryeri Entegrasyonu</li>
+                        <li>3.000 Ürün Limiti</li>
+                        <li>1 XML Tedarikçi</li>
+                        <li>Günde 2 Kez Güncelleme</li>
+                        <li>Temel Sipariş Listeleme</li>
+                        <li>E-posta Destek</li>
+                    </ul>
+                    <button class="btn-pricing">Paketi Seç</button>
+                </div>
+
+                <!-- Pro Plan (Featured) -->
+                <div class="pricing-card featured scroll-animate">
+                    <span class="pricing-badge">Popüler</span>
+                    <h3>Ticaret Paketi</h3>
+                    <div class="pricing-price">
+                        ₺1.490
+                        <span>/ay</span>
+                    </div>
+                    <div class="text-warning small fw-bold mb-3">
+                        (Yıllık 14.300₺ - %20 İndirimli)
+                    </div>
+                    <ul class="pricing-features">
+                        <li>3 Pazaryeri Entegrasyonu</li>
+                        <li>15.000 Ürün Limiti</li>
+                        <li>5 XML Tedarikçi</li>
+                        <li>2 Saatte Bir Güncelleme</li>
+                        <li>Gelişmiş Sipariş Yönetimi</li>
+                        <li>Excel İle Yönetim</li>
+                        <li>Öncelikli Destek</li>
+                    </ul>
+                    <button class="btn-pricing">Paketi Seç</button>
+                </div>
+
+                <!-- Enterprise Plan -->
+                <div class="pricing-card scroll-animate">
+                    <h3>Kurumsal Paket</h3>
+                    <div class="pricing-price">
+                        ₺2.990
+                        <span>/ay</span>
+                    </div>
+                    <div class="text-success small fw-bold mb-3">
+                        (Yıllık 28.700₺ - %20 İndirimli)
+                    </div>
+                    <ul class="pricing-features">
+                        <li>10 Pazaryeri Entegrasyonu</li>
+                        <li>50.000 Ürün Limiti</li>
+                        <li>Sınırsız XML Kaynağı</li>
+                        <li>30 Dk. Hızlı Senkronizasyon</li>
+                        <li>Özel Fiyat Motoru</li>
+                        <li>7/24 WhatsApp Desteği</li>
+                        <li>Kişisel Hesap Yöneticisi</li>
+                    </ul>
+                    <button class="btn-pricing">Paketi Seç</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- FAQ Section -->
+        <section class="faq" id="faq">
+            <div class="container">
+                <h2 class="section-title">Sıkça Sorulan Sorular</h2>
+                <div class="faq-grid">
+                    <div class="faq-item scroll-animate">
+                        <h3>iyzico ile ödeme güvenli mi?</h3>
+                        <p>Evet, tüm ödemeler iyzico altyapısı ile 256-bit SSL sertifikalı güvenli ödeme sayfasında
+                            gerçekleşir. Kredi kartı bilgileriniz hiçbir şekilde sistemimizde saklanmaz.</p>
+                    </div>
+                    <div class="faq-item scroll-animate">
+                        <h3>Kaç pazaryeri bağlayabilirim?</h3>
+                        <p>Seçtiğiniz pakete göre 1'den sınırsıza kadar pazaryeri entegrasyonu sağlayabilirsiniz.</p>
+                    </div>
+                    <div class="faq-item scroll-animate">
+                        <h3>Teknik destek veriyor musunuz?</h3>
+                        <p>Evet, tüm paketlerimizde e-posta desteği, üst paketlerimizde ise öncelikli WhatsApp desteği
+                            mevcuttur.</p>
+                    </div>
+                    <div class="faq-item scroll-animate">
+                        <h3>Ürün limitim dolduğunda ne olur?</h3>
+                        <p>Ürün limitinize yaklaştığınızda sistem sizi uyarır. Dilerseniz paketinizi istediğiniz zaman
+                            yükseltebilirsiniz.</p>
+                    </div>
+                    <div class="faq-item scroll-animate">
+                        <h3>XML ile ürün yüklemek nasıl çalışır?</h3>
+                        <p>Tedarikçinizden aldığınız XML linkini sisteme eklersiniz. Vidos otomatik olarak ürünleri
+                            çeker,
+                            kategori eşleştirmesi yapar ve seçtiğiniz pazaryerlerine gönderir.</p>
+                    </div>
+                    <div class="faq-item scroll-animate">
+                        <h3>Stok ve fiyat güncellemeleri otomatik mi?</h3>
+                        <p>Evet! Paketinize göre belirlenen aralıklarla (30dk - 24 saat) stok ve fiyatlarınız
+                            tüm pazaryerlerinde otomatik güncellenir.</p>
+                    </div>
+                    <div class="faq-item scroll-animate">
+                        <h3>Ücretsiz deneme süresi var mı?</h3>
+                        <p>Evet, tüm yeni kullanıcılarımıza 7 günlük ücretsiz deneme süresi sunuyoruz.
+                            Kredi kartı bilgisi gerekmez.</p>
+                    </div>
+                    <div class="faq-item scroll-animate">
+                        <h3>İptal ve iade politikanız nedir?</h3>
+                        <p>Aylık aboneliklerde istediğiniz zaman iptal edebilirsiniz. Yıllık planlarda
+                            ilk 30 gün içinde tam iade garantisi sunuyoruz.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-container">
+                <!-- Column 1: Logo & Info -->
+                <div class="footer-col footer-info">
+                    <a href="#" class="footer-logo">Vidos</a>
+                    <div class="footer-hours">
+                        <p><strong>Haftaiçi:</strong> 09:00 - 18:00</p>
+                        <p><strong>Cumartesi:</strong> 10:00 - 15:00</p>
+                        <p class="text-muted small">Saatleri arasında ulaşabilirsiniz.</p>
+                    </div>
+                    <div class="footer-contact-simple">
+                        <p>0850 532 3870</p>
+                        <p>destek@vidos.com.tr</p>
+                    </div>
+                    <div class="app-buttons">
+                        <a href="#" class="app-btn"><img
+                                src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg"
+                                alt="App Store"></a>
+                        <a href="#" class="app-btn"><img
+                                src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg"
+                                alt="Play Store"></a>
+                    </div>
+                </div>
+
+                <!-- Column 2: Kurumsal -->
+                <div class="footer-col">
+                    <h4>Kurumsal</h4>
+                    <ul>
+                        <li><a href="/hakkimizda" target="_blank">Hakkımızda</a></li>
+                        <li><a href="#contact">İletişim</a></li>
+                        <li><a href="/gizlilik-politikasi" target="_blank">Gizlilik Sözleşmesi</a></li>
+                        <li><a href="/kullanim-kosullari" target="_blank">Kullanım Koşulları</a></li>
+                        <li><a href="/kvkk" target="_blank">KVKK Aydınlatma Metni</a></li>
+                        <li><a href="/mesafeli-satis" target="_blank">Mesafeli Satış Sözleşmesi</a></li>
+                        <li><a href="/iptal-iade" target="_blank">İptal ve İade Koşulları</a></li>
+                    </ul>
+                </div>
+
+                <!-- Column 3: Özellikler -->
+                <div class="footer-col">
+                    <h4>Hizmetler</h4>
+                    <ul>
+                        <li><a href="#">Trendyol Entegrasyonu</a></li>
+                        <li><a href="#">N11 Entegrasyonu</a></li>
+                        <li><a href="#">Pazarama Entegrasyonu</a></li>
+                        <li><a href="#">Hepsiburada Entegrasyonu</a></li>
+                        <li><a href="#">İdefix Entegrasyonu</a></li>
+                        <li><a href="#">Temu & ÇiçekSepeti (Yakında)</a></li>
+                        <li><a href="#">Instagram Gönderi Yönetimi</a></li>
+                        <li><a href="#">XML Ürün Yükleme</a></li>
+                    </ul>
+                </div>
+
+                <!-- Column 4: İletişim Detay -->
+                <div class="footer-col">
+                    <h4>İletişim</h4>
+                    <div class="contact-item">
+                        <span class="icon">📞</span>
+                        <p>0850 532 3870</p>
+                    </div>
+                    <div class="contact-item">
+                        <span class="icon">✉️</span>
+                        <p>info@vidos.com.tr</p>
+                    </div>
+                    <div class="contact-item">
+                        <span class="icon">📍</span>
+                        <p>SANAYİ MAH. KANARYA CAD. NO: 1 <br>İÇ KAPI NO: 2 GÜNGÖREN / İSTANBUL</p>
+                    </div>
+                    <div class="social-links-footer">
+                        <a href="https://instagram.com/vidosentegrasyon" target="_blank" title="Instagram">📷</a>
+                        <a href="https://twitter.com/vidosentegrasyon" target="_blank" title="Twitter (X)">🐦</a>
+                        <a href="https://youtube.com/@vidosentegrasyon" target="_blank" title="YouTube">🎬</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Vidos Entegrasyon. Tüm hakları saklıdır.</p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // Navbar scroll effect
+        const navbar = document.getElementById('navbar');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 50) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
+            }
+        });
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                const href = this.getAttribute('href');
+                if (href !== '#') {
+                    e.preventDefault();
+                    const target = document.querySelector(href);
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                }
+            });
+        });
+
+        // Scroll animation observer
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.scroll-animate').forEach(element => {
+            observer.observe(element);
+        });
+
+        // Pricing button interactions
+        document.querySelectorAll('.btn-pricing').forEach(button => {
+            button.addEventListener('click', function () {
+                const card = this.closest('.pricing-card');
+                const planName = card.querySelector('h3').textContent;
+
+                // Determine plan ID  from plan name
+                let planId = 'basic';
+                if (planName.includes('Ticaret')) {
+                    planId = 'pro';
+                } else if (planName.includes('Kurumsal')) {
+                    planId = 'enterprise';
+                }
+
+                // Redirect to registration with plan parameter
+                window.location.href = "{{ url_for('auth.register') }}?plan=" + planId;
+            });
+        });
+    </script>
+</body>
+
+</html>

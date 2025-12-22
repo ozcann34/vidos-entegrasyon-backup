@@ -1,0 +1,987 @@
+{% extends "_base.html" %}
+
+{% block title %}Kullanım Kılavuzu - VIDOS{% endblock %}
+{% block page_title %}Kullanım Kılavuzu ve Dokümantasyon{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- Sidebar Navigation (Sticky) -->
+    <div class="col-lg-3 d-none d-lg-block">
+        <div class="card border-0 shadow-sm sticky-top" style="top: 20px; z-index: 1;">
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush rounded-3">
+                    <a href="#section-1" class="list-group-item list-group-item-action fw-bold py-3">
+                        <i class="bi bi-grid-fill me-2 text-primary"></i> 1. Genel Bakış
+                    </a>
+                    <a href="#section-2" class="list-group-item list-group-item-action fw-bold py-3">
+                        <i class="bi bi-speedometer2 me-2 text-primary"></i> 2. Kontrol Paneli
+                    </a>
+                    <a href="#section-3" class="list-group-item list-group-item-action fw-bold py-3">
+                        <i class="bi bi-file-earmark-code me-2 text-primary"></i> 3. XML Ürünleri
+                    </a>
+                    <a href="#section-4" class="list-group-item list-group-item-action fw-bold py-3">
+                        <i class="bi bi-shop me-2 text-primary"></i> 4. Pazar Yerleri
+                    </a>
+                    <a href="#section-5" class="list-group-item list-group-item-action fw-bold py-3">
+                        <i class="bi bi-box-seam me-2 text-primary"></i> 5. Siparişler
+                    </a>
+                    <a href="#section-6" class="list-group-item list-group-item-action fw-bold py-3">
+                        <i class="bi bi-gear me-2 text-primary"></i> 6. Ayarlar
+                    </a>
+                    <a href="#section-7" class="list-group-item list-group-item-action fw-bold py-3">
+                        <i class="bi bi-arrow-repeat me-2 text-primary"></i> 7. Otomatik Senk.
+                    </a>
+                    <a href="#section-8" class="list-group-item list-group-item-action fw-bold py-3">
+                        <i class="bi bi-file-earmark-excel me-2 text-primary"></i> 8. Excel Ürünleri
+                    </a>
+                    <a href="#section-9" class="list-group-item list-group-item-action fw-bold py-3">
+                        <i class="bi bi-instagram me-2" style="color: #E1306C;"></i> 9. Instagram
+                    </a>
+                    <a href="#section-10" class="list-group-item list-group-item-action fw-bold py-3 text-success">
+                        <i class="bi bi-question-circle-fill me-2"></i> SSS
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="col-lg-9">
+        <div class="d-flex justify-content-end mb-3">
+            <button onclick="window.print()" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-printer me-2"></i>Bu Sayfayı Yazdır
+            </button>
+        </div>
+
+        <!-- 1. Genel Bakış -->
+        <section id="section-1" class="card border-0 shadow-sm mb-4 scroll-mt" style="scroll-margin-top: 100px;">
+            <div class="card-body p-4">
+                <h2 class="h4 card-title fw-bold text-primary mb-3">1. Genel Bakış ve Arayüz</h2>
+                <p>Sisteme giriş yaptığınızda sizi karşılayan arayüz iki ana bölümden oluşur:</p>
+                <div class="p-3 mb-3 rounded border d-flex align-items-center">
+                    <i class="bi bi-layout-sidebar-inset fs-3 me-3 text-primary"></i>
+                    <div>
+                        <strong>Sol Menü (Sidebar):</strong> Tüm modüllere erişim sağlayan ana gezinti menüsüdür. Koyu
+                        renkli ve sabittir.
+                    </div>
+                </div>
+                <div class="p-3 rounded border d-flex align-items-center">
+                    <i class="bi bi-window-desktop fs-3 me-3 text-primary"></i>
+                    <div>
+                        <strong>Çalışma Alanı (Main Content):</strong> Seçtiğiniz menünün içeriğinin görüntülendiği sağ
+                        taraftaki geniş alandır.
+                    </div>
+                </div>
+
+                <h5 class="fw-bold mt-4">Desteklenen Pazaryerleri</h5>
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <span class="badge bg-warning text-dark py-2 px-3"><i class="bi bi-shop me-1"></i>Trendyol</span>
+                    <span class="badge py-2 px-3" style="background-color: #5c21df;"><i
+                            class="bi bi-shop-window me-1"></i>N11</span>
+                    <span class="badge bg-primary py-2 px-3"><i class="bi bi-credit-card-fill me-1"></i>Pazarama</span>
+                    <span class="badge bg-danger py-2 px-3"><i class="bi bi-bag me-1"></i>Hepsiburada</span>
+                    <span class="badge bg-info py-2 px-3"><i class="bi bi-book me-1"></i>İdefix</span>
+                </div>
+
+                <div class="mt-4 p-3 bg-primary bg-opacity-10 rounded border border-primary border-opacity-25">
+                    <h6 class="fw-bold text-primary"><i class="bi bi-chat-text-fill me-2"></i>Vidos Asistan</h6>
+                    <p class="mb-0 small">"Trendyol'a nasıl ürün yüklerim?", "API hatası nedir?" gibi sorularınız için
+                        ekranın sağ altındaki mavi sohbet ikonunu kullanabilirsiniz.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. Kontrol Paneli -->
+        <section id="section-2" class="card border-0 shadow-sm mb-4 scroll-mt" style="scroll-margin-top: 100px;">
+            <div class="card-body p-4">
+                <h2 class="h4 card-title fw-bold text-primary mb-3">2. Kontrol Paneli (Dashboard)</h2>
+                <p>Sistemin özet durumunu gösteren ana ekrandır.</p>
+
+                <h5 class="fw-bold mt-3">Üst Toolbar Butonları</h5>
+                <table class="table table-bordered table-sm">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 200px;">Buton</th>
+                            <th>İşlev</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="badge bg-primary"><i class="bi bi-arrow-repeat me-1"></i>Tümünü Senkronize
+                                    Et</span></td>
+                            <td>Tüm pazaryerlerinin stok ve fiyat senkronizasyonunu başlatır</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge bg-success"><i class="bi bi-box-seam me-1"></i>Siparişleri
+                                    Güncelle</span></td>
+                            <td>Tüm pazaryerlerinden yeni siparişleri çeker</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h5 class="fw-bold mt-4">Metrik Kartları</h5>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <div class="p-3 border rounded h-100">
+                            <h6 class="fw-bold text-success"><i class="bi bi-cash-coin me-2"></i>Toplam Ciro</h6>
+                            <p class="small text-muted mb-0">Bu ay içinde tüm pazaryerlerinden elde edilen toplam satış
+                                tutarını gösterir.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 border rounded h-100">
+                            <h6 class="fw-bold text-primary"><i class="bi bi-cart-check me-2"></i>Aylık Siparişler</h6>
+                            <p class="small text-muted mb-0">Bu ay alınan toplam sipariş adedini gösterir.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 border rounded h-100">
+                            <h6 class="fw-bold text-danger"><i class="bi bi-arrow-return-left me-2"></i>İade Sayısı</h6>
+                            <p class="small text-muted mb-0">Bu ay içinde iade edilen sipariş sayısını gösterir.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 border rounded h-100">
+                            <h6 class="fw-bold text-secondary"><i class="bi bi-x-circle me-2"></i>İptal Sayısı</h6>
+                            <p class="small text-muted mb-0">Bu ay içinde iptal edilen sipariş sayısını gösterir.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <h5 class="fw-bold mt-4">Pazaryeri Kartları</h5>
+                <p>Ekranın ortasında her pazaryeri için (Trendyol, N11, vb.) özel kartlar bulunur:</p>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Ürün
+                            Sayısı:</strong> Satışa açık aktif ürün adedi.</li>
+                    <li class="list-group-item"><i class="bi bi-arrow-repeat text-primary me-2"></i><strong>Son
+                            Senkron:</strong> En son veri gönderim saati.</li>
+                    <li class="list-group-item"><i class="bi bi-box-arrow-up-right text-muted me-2"></i><strong>Toplu
+                            İşlem:</strong> Pazaryeri ürün listesine yönlendirir.</li>
+                </ul>
+
+                <h5 class="fw-bold mt-4">Son Siparişler Tablosu</h5>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item"><i class="bi bi-arrow-clockwise text-primary me-2"></i><strong>Yenile
+                            Butonu:</strong> Sipariş listesini günceller.</li>
+                    <li class="list-group-item"><i class="bi bi-list text-primary me-2"></i><strong>Tümü
+                            Butonu:</strong> Siparişler sayfasına yönlendirir.</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- 3. XML Ürünleri -->
+        <section id="section-3" class="card border-0 shadow-sm mb-4 scroll-mt" style="scroll-margin-top: 100px;">
+            <div class="card-body p-4">
+                <h2 class="h4 card-title fw-bold text-primary mb-3">3. XML Ürünleri ve Entegrasyon</h2>
+                <p>Tedarikçiden gelen ürünlerin ilk giriş kapısıdır. Henüz pazaryerine gitmemiş "Ham Ürünler" burada
+                    listelenir.</p>
+
+                <h5 class="fw-bold mt-3">Toolbar Butonları</h5>
+                <table class="table table-bordered table-sm">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 150px;">Buton</th>
+                            <th style="width: 100px;">Renk</th>
+                            <th>İşlev</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><i class="bi bi-shop me-1"></i>Trendyol</td>
+                            <td><span class="badge bg-warning text-dark">Sarı</span></td>
+                            <td>Seçili ürünleri Trendyol'a gönderir</td>
+                        </tr>
+                        <tr>
+                            <td><i class="bi bi-shop-window me-1"></i>N11</td>
+                            <td><span class="badge" style="background-color: #5c21df;">Mor</span></td>
+                            <td>Seçili ürünleri N11'e gönderir</td>
+                        </tr>
+                        <tr>
+                            <td><i class="bi bi-credit-card me-1"></i>Pazarama</td>
+                            <td><span class="badge bg-primary">Mavi</span></td>
+                            <td>Seçili ürünleri Pazarama'ya gönderir</td>
+                        </tr>
+                        <tr>
+                            <td><i class="bi bi-box-seam me-1"></i>İdefix</td>
+                            <td><span class="badge bg-success">Yeşil</span></td>
+                            <td>Seçili ürünleri İdefix'e gönderir</td>
+                        </tr>
+                        <tr>
+                            <td><i class="bi bi-send-fill me-1"></i>Tümünü Gönder</td>
+                            <td><span class="badge bg-success">Yeşil</span></td>
+                            <td>Tüm görüntülenen ürünleri seçili pazaryerine gönderir</td>
+                        </tr>
+                        <tr>
+                            <td><i class="bi bi-x-circle me-1"></i>Kara Liste</td>
+                            <td><span class="badge bg-danger">Kırmızı</span></td>
+                            <td>Seçili ürünleri kara listeye ekler (gönderilmez)</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h5 class="fw-bold mt-4">Gönderim Ayarları Paneli</h5>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="p-3 border rounded h-100">
+                            <h6 class="fw-bold"><i class="bi bi-tag me-2"></i>Ürün İsmi Öneki</h6>
+                            <p class="small text-muted mb-0">Başlığa eklenecek prefix (örn: "[KAMPANYA]"). Ürün
+                                isimlerinin başına otomatik eklenir.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3 border rounded h-100">
+                            <h6 class="fw-bold"><i class="bi bi-percent me-2"></i>Fiyat Çarpanı</h6>
+                            <p class="small text-muted mb-0">Ayarlardaki kâr oranını otomatik uygular (örn: 1.2 = %20
+                                kar).</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3 border rounded h-100">
+                            <h6 class="fw-bold"><i class="bi bi-box me-2"></i>Stok Ayarı</h6>
+                            <p class="small text-muted mb-0">"Stok 0 ise 1 gönder" seçeneği sıfır stoklu ürünleri 1
+                                stokla gönderir.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-secondary mt-4">
+                    <h6 class="alert-heading fw-bold"><i class="bi bi-diagram-3 me-2"></i>Kategori Eşleştirme</h6>
+                    <p class="mb-0">XML'deki kategori isimleri ile pazaryeri kategorilerini eşleştirmek için kullanılır.
+                        Bu işlem bir kez yapılır, sistem hatırlar. TF-IDF algoritması ile otomatik eşleştirme de
+                        yapılabilir.</p>
+                </div>
+
+                <h5 class="fw-bold mt-4">Görünüm Seçenekleri</h5>
+                <div class="d-flex gap-3">
+                    <div class="p-2 border rounded">
+                        <i class="bi bi-list me-1"></i><strong>Liste:</strong> Tablo formatı
+                    </div>
+                    <div class="p-2 border rounded">
+                        <i class="bi bi-grid-3x3-gap me-1"></i><strong>Grid:</strong> Kart formatı
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. Pazaryerleri -->
+        <section id="section-4" class="card border-0 shadow-sm mb-4 scroll-mt" style="scroll-margin-top: 100px;">
+            <div class="card-body p-4">
+                <h2 class="h4 card-title fw-bold text-primary mb-3">4. Pazar Yerleri (Canlı Ürün Yönetimi)</h2>
+                <p>En sık kullanacağınız modüldür. Pazar yerlerinde "satışta olan" ürünlerinizi yönetirsiniz.</p>
+
+                <h5 class="fw-bold mt-3">Sekme Yapısı</h5>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <div class="p-3 border rounded h-100 border-primary"
+                            style="border-left: 4px solid var(--bs-primary) !important;">
+                            <h6 class="fw-bold text-primary"><i class="bi bi-box me-2"></i>Ürünler Sekmesi</h6>
+                            <p class="small text-muted mb-0">Pazaryerinde satışta olan ürünlerin listesi. Stok, fiyat ve
+                                durum bilgilerini görüntüler.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 border rounded h-100 border-warning"
+                            style="border-left: 4px solid var(--bs-warning) !important;">
+                            <h6 class="fw-bold text-warning"><i class="bi bi-shuffle me-2"></i>XML Listesi & Eşleştirme
+                            </h6>
+                            <p class="small text-muted mb-0">Henüz gönderilmemiş XML ürünleri ve kategori eşleştirme
+                                işlemleri.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <h5 class="fw-bold mt-4">Araç Çubuğu</h5>
+                <table class="table table-bordered table-sm">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 180px;">Öğe</th>
+                            <th>İşlev</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><i class="bi bi-search me-1"></i>Arama Kutusu</td>
+                            <td>Ürün adı veya barkod ile arama yapar</td>
+                        </tr>
+                        <tr>
+                            <td><i class="bi bi-funnel me-1"></i>Gelişmiş Filtreler</td>
+                            <td>Durum, stok durumu, fiyat aralığı filtrelerini açar</td>
+                        </tr>
+                        <tr>
+                            <td><i class="bi bi-grid me-1"></i>Görünüm Toggle</td>
+                            <td>Tablo/Kompakt görünüm değiştirir</td>
+                        </tr>
+                        <tr>
+                            <td><i class="bi bi-three-dots-vertical me-1"></i>İşlemler Menüsü</td>
+                            <td>Toplu güncelleme, listeleme yenileme seçenekleri</td>
+                        </tr>
+                        <tr>
+                            <td><i class="bi bi-cloud-download me-1"></i>Önbellek Yenile</td>
+                            <td>Pazaryeri verilerini API'den tekrar çeker</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h5 class="fw-bold mt-4">Gelişmiş Filtreler</h5>
+                <div class="row g-2 mb-3">
+                    <div class="col-md-3">
+                        <div class="p-2 border rounded text-center">
+                            <strong>Durum:</strong><br>
+                            <span class="badge bg-secondary me-1">Tümü</span>
+                            <span class="badge bg-success me-1">Aktif</span>
+                            <span class="badge bg-warning text-dark">Pasif</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-2 border rounded text-center">
+                            <strong>Stok:</strong><br>
+                            <span class="badge bg-secondary me-1">Tümü</span>
+                            <span class="badge bg-success me-1">Stokta</span>
+                            <span class="badge bg-danger">Yok</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-2 border rounded text-center">
+                            <strong>Fiyat Aralığı:</strong><br>
+                            Min - Max ₺
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-2 border rounded text-center">
+                            <strong>Stok Aralığı:</strong><br>
+                            Min - Max adet
+                        </div>
+                    </div>
+                </div>
+
+                <h5 class="fw-bold mt-4">Ürün Düzenleme Modalı</h5>
+                <p>Bir ürüne tıkladığınızda açılan düzenleme paneli:</p>
+                <table class="table table-bordered table-sm">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Alan</th>
+                            <th>Açıklama</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="fw-bold">Başlık</td>
+                            <td>Pazaryerinde görünen ürün adı (değiştirilebilir)</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Açıklama</td>
+                            <td>Ürün detay açıklaması (HTML destekli)</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Piyasa Fiyatı</td>
+                            <td>Üstü çizili gösterilen liste fiyatı</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Satış Fiyatı</td>
+                            <td>Gerçek satış fiyatı</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Stok</td>
+                            <td>Mevcut stok adedi</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="alert alert-warning small">
+                    <i class="bi bi-info-circle-fill me-1"></i> "Kaydet" butonuna bastığınızda işlem <strong>kuyruğa
+                        alınır</strong> ve 1-2 dakika içinde pazaryerinde güncellenir.
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. Siparişler -->
+        <section id="section-5" class="card border-0 shadow-sm mb-4 scroll-mt" style="scroll-margin-top: 100px;">
+            <div class="card-body p-4">
+                <h2 class="h4 card-title fw-bold text-primary mb-3">5. Siparişler ve Faturalama</h2>
+
+                <h5 class="fw-bold mt-3">Filtre Seçenekleri</h5>
+                <table class="table table-bordered table-sm">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 150px;">Filtre</th>
+                            <th>Seçenekler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="fw-bold">Pazaryeri</td>
+                            <td>Tümü / Trendyol / N11 / Pazarama / Hepsiburada / İdefix</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Durum</td>
+                            <td>Oluşturuldu / Hazırlanıyor / Kargoya Verildi / Teslim Edildi / İptal / İade</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Arama</td>
+                            <td>Sipariş numarası veya müşteri adı ile arama</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h5 class="fw-bold mt-4">İşlem Butonları (Her Satırda)</h5>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="p-3 border rounded h-100">
+                            <h6 class="fw-bold text-primary"><i class="bi bi-eye me-2"></i>Detay</h6>
+                            <p class="small text-muted mb-0">Sipariş detay sayfasını açar. Müşteri bilgileri ve ürün
+                                listesini gösterir.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3 border rounded h-100">
+                            <h6 class="fw-bold text-success"><i class="bi bi-truck me-2"></i>Kargoya Ver</h6>
+                            <p class="small text-muted mb-0">Kargo takip numarasını girerek siparişi kargoya verir.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3 border rounded h-100">
+                            <h6 class="fw-bold text-info"><i class="bi bi-printer me-2"></i>Etiket Yazdır</h6>
+                            <p class="small text-muted mb-0">Kargo barkodlu etiketini yazdırır.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <h5 class="fw-bold mt-4">Durum Güncelleme İşlemleri</h5>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item"><i
+                            class="bi bi-check-circle text-success me-2"></i><strong>Hazırlanıyor:</strong> Sipariş
+                        hazırlanmaya başladı</li>
+                    <li class="list-group-item"><i class="bi bi-receipt text-primary me-2"></i><strong>Fatura
+                            Kes:</strong> Sipariş faturası oluşturur</li>
+                    <li class="list-group-item"><i class="bi bi-x-circle text-danger me-2"></i><strong>Tedarik
+                            Edilemedi:</strong> Ürün tedarik edilemez olarak işaretler</li>
+                </ul>
+
+                <div class="row g-4 mt-3">
+                    <div class="col-md-6">
+                        <div class="card h-100 border p-3">
+                            <div class="card-body text-center p-0">
+                                <i class="bi bi-receipt fs-1 text-primary mb-2"></i>
+                                <h6 class="fw-bold">Fatura Kes</h6>
+                                <p class="small text-muted">Seçili siparişin bilgilerini alıp PDF fatura şablonu
+                                    oluşturur.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100 border p-3">
+                            <div class="card-body text-center p-0">
+                                <i class="bi bi-printer fs-1 text-success mb-2"></i>
+                                <h6 class="fw-bold">Kargo Etiketi</h6>
+                                <p class="small text-muted">Kargo firmasına verilecek barkodlu etiketi yazdırır.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 6. Ayarlar -->
+        <section id="section-6" class="card border-0 shadow-sm mb-4 scroll-mt" style="scroll-margin-top: 100px;">
+            <div class="card-body p-4">
+                <h2 class="h4 card-title fw-bold text-primary mb-3">6. Ayarlar ve Entegrasyon Yapılandırması</h2>
+                <p>Entegrasyon şifrelerinin ve genel ayarların yönetildiği yerdir. Akordeon menü yapısında organize
+                    edilmiştir.</p>
+
+                <h5 class="fw-bold mt-3">Profil Bilgileri Sekmesi</h5>
+                <ul class="list-group list-group-flush mb-4">
+                    <li class="list-group-item"><i class="bi bi-building me-2 text-primary"></i><strong>Şirket
+                            Bilgileri:</strong> Ünvan, Vergi No, Vergi Dairesi</li>
+                    <li class="list-group-item"><i class="bi bi-person me-2 text-primary"></i><strong>Kişi
+                            Bilgileri:</strong> Ad, Soyad, E-posta, Telefon</li>
+                    <li class="list-group-item"><i class="bi bi-geo-alt me-2 text-primary"></i><strong>Adres
+                            Bilgileri:</strong> Ülke, Şehir, İlçe, Açık Adres</li>
+                </ul>
+
+                <h5 class="fw-bold mt-4">Stok ve Genel Ayarlar Sekmesi</h5>
+                <div class="p-3 border rounded mb-4">
+                    <h6 class="fw-bold"><i class="bi bi-calculator me-2"></i>Fiyat Çarpanı</h6>
+                    <p class="small text-muted mb-0">XML fiyatına uygulanacak kar oranı. Örneğin: <strong>1.2</strong> =
+                        %20 kar, <strong>1.5</strong> = %50 kar</p>
+                </div>
+
+                <h5 class="fw-bold mt-4">Pazaryeri Ayarları (Her biri için ayrı sekme)</h5>
+
+                <div class="accordion mb-4" id="marketplaceAccordion">
+                    <!-- Trendyol -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#trendyolSettings">
+                                <span class="badge bg-warning text-dark me-2">Trendyol</span> API Ayarları
+                            </button>
+                        </h2>
+                        <div id="trendyolSettings" class="accordion-collapse collapse show"
+                            data-bs-parent="#marketplaceAccordion">
+                            <div class="accordion-body">
+                                <table class="table table-sm table-bordered">
+                                    <tr>
+                                        <td class="fw-bold" style="width: 150px;">API Key</td>
+                                        <td>Trendyol Seller Center'dan alınan API anahtarı</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold">API Secret</td>
+                                        <td>Trendyol API gizli anahtarı</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold">Seller ID</td>
+                                        <td>Mağaza satıcı kimliği</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold">Supplier ID</td>
+                                        <td>Tedarikçi kimliği</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- N11 -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#n11Settings">
+                                <span class="badge me-2" style="background-color: #5c21df;">N11</span> API Ayarları
+                            </button>
+                        </h2>
+                        <div id="n11Settings" class="accordion-collapse collapse"
+                            data-bs-parent="#marketplaceAccordion">
+                            <div class="accordion-body">
+                                <table class="table table-sm table-bordered">
+                                    <tr>
+                                        <td class="fw-bold" style="width: 150px;">API Key</td>
+                                        <td>N11 API anahtarı</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold">API Secret</td>
+                                        <td>N11 API gizli anahtarı</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold">Store ID</td>
+                                        <td>Mağaza kimliği</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold">Shipment Template</td>
+                                        <td>Varsayılan kargo şablonu ID</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Pazarama -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#pazaramaSettings">
+                                <span class="badge bg-primary me-2">Pazarama</span> API Ayarları
+                            </button>
+                        </h2>
+                        <div id="pazaramaSettings" class="accordion-collapse collapse"
+                            data-bs-parent="#marketplaceAccordion">
+                            <div class="accordion-body">
+                                <table class="table table-sm table-bordered">
+                                    <tr>
+                                        <td class="fw-bold" style="width: 150px;">API Key</td>
+                                        <td>Pazarama API anahtarı</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold">API Secret</td>
+                                        <td>Pazarama API gizli anahtarı</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold">Seller Code</td>
+                                        <td>Satıcı kodu</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold">Supplier Code</td>
+                                        <td>Tedarikçi kodu</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <h5 class="fw-bold mt-4">Önemli Butonlar</h5>
+                <div class="d-flex flex-column gap-2">
+                    <div class="d-flex align-items-center">
+                        <button class="btn btn-outline-success btn-sm me-3" style="width:160px;">
+                            <i class="bi bi-check-circle me-1"></i>Test Et
+                        </button>
+                        <span class="small text-muted">Girdiğiniz API şifrelerinin doğruluğunu sunucuya sorar.</span>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <button class="btn btn-outline-info btn-sm me-3" style="width:160px;">
+                            <i class="bi bi-folder me-1"></i>Kategorileri Çek
+                        </button>
+                        <span class="small text-muted">Pazaryerinin kategori ağacını veritabanına indirir (TF-IDF
+                            eşleştirme için).</span>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <button class="btn btn-outline-primary btn-sm me-3" style="width:160px;">
+                            <i class="bi bi-tag me-1"></i>Markaları Çek
+                        </button>
+                        <span class="small text-muted">Pazaryerinin marka listesini indirir (Trendyol için).</span>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <button class="btn btn-outline-secondary btn-sm me-3" style="width:160px;">
+                            <i class="bi bi-trash me-1"></i>Önbelleği Temizle
+                        </button>
+                        <span class="small text-muted">Sistemde takılma olursa geçici hafızayı siler.</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 7. Otomatik Senkronizasyon -->
+        <section id="section-7" class="card border-0 shadow-sm mb-4 scroll-mt" style="scroll-margin-top: 100px;">
+            <div class="card-body p-4">
+                <h2 class="h4 card-title fw-bold text-primary mb-3">7. Otomatik Senkronizasyon</h2>
+                <p>XML tedarikçi verileri ile pazaryeri stoklarını otomatik olarak eşitleyen modüldür.</p>
+
+                <h5 class="fw-bold mt-3">Pazaryeri Kartları</h5>
+                <p>Her pazaryeri için ayrı senkronizasyon kartı bulunur:</p>
+                <table class="table table-bordered table-sm">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 180px;">Öğe</th>
+                            <th>İşlev</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><i class="bi bi-toggle-on me-1 text-success"></i><strong>Açma/Kapama</strong></td>
+                            <td>Otomatik senkronizasyonu etkinleştirir veya devre dışı bırakır</td>
+                        </tr>
+                        <tr>
+                            <td><i class="bi bi-file-earmark-code me-1"></i><strong>XML Kaynağı</strong></td>
+                            <td>Hangi tedarikçi XML'inin kullanılacağını seçer</td>
+                        </tr>
+                        <tr>
+                            <td><i class="bi bi-upc-scan me-1"></i><strong>Eşleşme Tipi</strong></td>
+                            <td>Barkod veya Stok Kodu ile eşleştirme seçeneği</td>
+                        </tr>
+                        <tr>
+                            <td><i class="bi bi-clock me-1"></i><strong>Son Senkron</strong></td>
+                            <td>En son başarılı senkronizasyon zamanı</td>
+                        </tr>
+                        <tr>
+                            <td><i class="bi bi-bar-chart me-1"></i><strong>İlerleme Çubuğu</strong></td>
+                            <td>Aktif senkronizasyon durumunu gösterir</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="d-flex align-items-center mt-3">
+                    <button class="btn btn-outline-primary btn-sm me-3" style="width:200px;">
+                        <i class="bi bi-play-fill me-1"></i>Şimdi Senkronize Et
+                    </button>
+                    <span class="small text-muted">Manuel senkronizasyonu hemen başlatır.</span>
+                </div>
+
+                <h5 class="fw-bold mt-4">Senkronizasyon Logları</h5>
+                <p>Her senkronizasyon işlemi için detaylı log tutulur:</p>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item"><i class="bi bi-calendar me-2 text-muted"></i>Tarih ve saat</li>
+                    <li class="list-group-item"><i class="bi bi-shop me-2 text-muted"></i>Pazaryeri adı</li>
+                    <li class="list-group-item"><i class="bi bi-check-circle me-2 text-success"></i>Başarılı işlem
+                        sayısı</li>
+                    <li class="list-group-item"><i class="bi bi-x-circle me-2 text-danger"></i>Hatalı işlem sayısı</li>
+                    <li class="list-group-item"><i class="bi bi-info-circle me-2 text-info"></i>Detay görüntüleme</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- 8. Excel Ürünleri -->
+        <section id="section-8" class="card border-0 shadow-sm mb-4 scroll-mt" style="scroll-margin-top: 100px;">
+            <div class="card-body p-4">
+                <h2 class="h4 card-title fw-bold text-primary mb-3">8. Excel Ürünleri</h2>
+                <p>Excel dosyalarından toplu ürün yükleme ve güncelleme yapabileceğiniz modüldür.</p>
+
+                <h5 class="fw-bold mt-3">Kayıtlı Dosyalar</h5>
+                <p>Daha önce yüklenen Excel dosyalarının listesi görüntülenir. Seç ve Sil butonları ile yönetilir.</p>
+
+                <h5 class="fw-bold mt-4">Dosya Yükleme</h5>
+                <div class="p-3 border rounded border-dashed mb-3" style="border-style: dashed !important;">
+                    <div class="text-center">
+                        <i class="bi bi-cloud-upload fs-1 text-muted"></i>
+                        <p class="mb-0">Sürükle-bırak veya tıklayarak dosya seçin</p>
+                        <small class="text-muted">Desteklenen formatlar: .xlsx, .xls</small>
+                    </div>
+                </div>
+
+                <h5 class="fw-bold mt-4">Gönderim Butonları</h5>
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <button class="btn btn-warning btn-sm"><i class="bi bi-shop me-1"></i>Trendyol'a Gönder</button>
+                    <button class="btn btn-sm" style="background-color: #5c21df; color: white;"><i
+                            class="bi bi-shop-window me-1"></i>N11'e Gönder</button>
+                    <button class="btn btn-primary btn-sm"><i class="bi bi-credit-card me-1"></i>Pazarama'ya
+                        Gönder</button>
+                    <button class="btn btn-success btn-sm"><i class="bi bi-send-fill me-1"></i>Hepsini Trendyol'a
+                        Gönder</button>
+                </div>
+
+                <h5 class="fw-bold mt-4">Gönderim Seçenekleri</h5>
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item"><i class="bi bi-square me-2"></i>Stok 0 ürünleri 1 stokla gönder
+                            </li>
+                            <li class="list-group-item"><i class="bi bi-square me-2"></i>Fiyat çarpanı uygula</li>
+                            <li class="list-group-item"><i class="bi bi-check-square me-2"></i>Barkodsuz ürünleri atla
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item"><i class="bi bi-square me-2"></i>Stok kodu ile eşleştir</li>
+                            <li class="list-group-item"><i class="bi bi-input-cursor me-2"></i>Fiyat 0 ise: [değer gir]
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h5 class="fw-bold mt-4">Excel Formatı</h5>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Gerekli Sütunlar:</strong> Barkod (zorunlu), Fiyat, Stok<br>
+                    <small>Sütun başlıkları büyük/küçük harf duyarsızdır.</small>
+                </div>
+            </div>
+        </section>
+
+        <!-- 9. Instagram -->
+        <section id="section-9" class="card border-0 shadow-sm mb-4 scroll-mt" style="scroll-margin-top: 100px;">
+            <div class="card-body p-4">
+                <h2 class="h4 card-title fw-bold mb-3" style="color: #E1306C;">
+                    <i class="bi bi-instagram me-2"></i>9. Instagram Araçları
+                </h2>
+                <p>Ürünleriniz için Instagram story ve post görselleri oluşturma araçları.</p>
+
+                <h5 class="fw-bold mt-3">Story Oluşturucu</h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="p-3 border rounded h-100">
+                            <h6 class="fw-bold"><i class="bi bi-box me-2"></i>1. Ürün Seçimi</h6>
+                            <p class="small text-muted mb-0">Story'de gösterilecek ürünü seçin veya manuel bilgi girin.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 border rounded h-100">
+                            <h6 class="fw-bold"><i class="bi bi-palette me-2"></i>2. Şablon Seçimi</h6>
+                            <p class="small text-muted mb-0">Hazır şablonlar arasından seçim yapın.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 border rounded h-100">
+                            <h6 class="fw-bold"><i class="bi bi-fonts me-2"></i>3. Metin Düzenleme</h6>
+                            <p class="small text-muted mb-0">Başlık, fiyat ve açıklama metinlerini düzenleyin.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 border rounded h-100">
+                            <h6 class="fw-bold"><i class="bi bi-download me-2"></i>4. Oluştur ve İndir</h6>
+                            <p class="small text-muted mb-0">Görseli oluşturup cihazınıza indirin.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <h5 class="fw-bold mt-4">Paylaşım Paneli</h5>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item"><i class="bi bi-image me-2 text-primary"></i>Oluşturulan görsellerin
+                        listesi</li>
+                    <li class="list-group-item"><i class="bi bi-send me-2 text-success"></i>Instagram'da doğrudan
+                        paylaşım</li>
+                    <li class="list-group-item"><i class="bi bi-clock me-2 text-warning"></i>Zamanlama seçenekleri
+                        (yakında)</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- SSS -->
+        <section id="section-10" class="card border-0 shadow-sm mb-4 scroll-mt" style="scroll-margin-top: 100px;">
+            <div class="card-body p-4 border border-success border-opacity-25 rounded"
+                style="background-color: rgba(22, 163, 74, 0.05);">
+                <h2 class="h4 card-title fw-bold text-success mb-3">Sık Sorulan Sorular (SSS)</h2>
+
+                <div class="accordion accordion-flush" id="faqAccordion">
+                    <div class="accordion-item bg-transparent">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#faq1">
+                                Mobilde tabloyu nasıl görürüm?
+                            </button>
+                        </h2>
+                        <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Mobil telefonunuzda tabloları parmağınızla sağa-sola kaydırabilirsiniz. Ekran bozulmaz,
+                                "Responsive" yapıdadır.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item bg-transparent">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#faq2">
+                                Stoklarım neden güncellenmedi?
+                            </button>
+                        </h2>
+                        <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Otomatik senkronizasyon her 1 saatte bir çalışır. Acil durumlarda "İşlemler > Otomatik
+                                Senk." menüsünden "Şimdi Çalıştır" diyebilirsiniz.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item bg-transparent">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#faq3">
+                                Bir ürünü silersem ne olur?
+                            </button>
+                        </h2>
+                        <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Paneldan sildiğinizde, pazaryerinden de silinmesi için API isteği gönderilir. Bu işlem
+                                geri alınamaz!
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item bg-transparent">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#faq4">
+                                Kategori eşleştirme hatası alıyorum, ne yapmalıyım?
+                            </button>
+                        </h2>
+                        <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Önce Ayarlar sayfasından ilgili pazaryerinin kategorilerini çekin. Ardından XML Ürünleri
+                                sayfasından
+                                kategori eşleştirme işlemini yapın. Sistem TF-IDF algoritması ile otomatik eşleştirme
+                                önerileri sunar.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item bg-transparent">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#faq5">
+                                API bağlantı hatası nasıl çözülür?
+                            </button>
+                        </h2>
+                        <div id="faq5" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                1. Ayarlar sayfasından API bilgilerinizi kontrol edin<br>
+                                2. "Test Et" butonu ile bağlantıyı doğrulayın<br>
+                                3. Hata devam ederse "Önbelleği Temizle" butonuna tıklayın<br>
+                                4. Pazaryeri panelinden API anahtarlarınızın aktif olduğunu doğrulayın
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item bg-transparent">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#faq6">
+                                Toplu fiyat güncellemesi nasıl yapılır?
+                            </button>
+                        </h2>
+                        <div id="faq6" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                İki yöntem mevcuttur:<br>
+                                <strong>1. Excel ile:</strong> Excel Ürünleri sayfasından Barkod, Fiyat, Stok sütunları
+                                içeren dosya yükleyin<br>
+                                <strong>2. Otomatik Senk. ile:</strong> XML kaynağınızdaki fiyatlar otomatik olarak
+                                pazaryerlerine yansır
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item bg-transparent">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#faq7">
+                                Otomatik senkronizasyon hangi aralıklarla çalışır?
+                            </button>
+                        </h2>
+                        <div id="faq7" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Varsayılan olarak her 1 saatte bir çalışır. Otomatik Senkronizasyon sayfasından her
+                                pazaryeri
+                                için ayrı ayrı açıp kapatabilirsiniz. "Şimdi Senkronize Et" butonu ile anında
+                                çalıştırabilirsiniz.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+</div>
+
+<style>
+    /* Smooth scroll behavior */
+    html {
+        scroll-behavior: smooth;
+    }
+
+    /* Active link style in sidebar */
+    .list-group-item.active {
+        background-color: var(--primary);
+        border-color: var(--primary);
+        color: white;
+    }
+
+    /* Card hover effect */
+    section.card {
+        transition: transform 0.2s;
+    }
+
+    section.card:hover {
+        transform: translateY(-2px);
+    }
+
+    /* Table styling */
+    .table th {
+        background-color: var(--bs-light);
+    }
+</style>
+
+<script>
+    // Simple script to highlight active section in sidebar on scroll
+    window.addEventListener('scroll', () => {
+        const sections = document.querySelectorAll('section');
+        const navLinks = document.querySelectorAll('.list-group-item');
+
+        let current = '';
+        sections.forEach(section => {
+            const sectionTop = section.offsetTop;
+            if (scrollY >= sectionTop - 150) {
+                current = section.getAttribute('id');
+            }
+        });
+
+        navLinks.forEach(link => {
+            link.classList.remove('active', 'text-white', 'bg-primary');
+            if (link.getAttribute('href').includes(current)) {
+                link.classList.add('active', 'text-white', 'bg-primary');
+                // Remove specific text colors if active to ensure readability
+                const icon = link.querySelector('i');
+                if (icon) icon.className = icon.className.replace('text-primary', 'text-white').replace('text-success', 'text-white');
+            } else {
+                // Restore icon colors if inactive (basic logic)
+                const icon = link.querySelector('i');
+                if (icon && icon.className.includes('text-white')) {
+                    icon.classList.remove('text-white');
+                    if (link.textContent.includes('SSS')) icon.classList.add('text-success');
+                    else icon.classList.add('text-primary');
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

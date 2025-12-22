@@ -1,0 +1,23 @@
+{% extends "_base.html" %}
+
+{% block title %}Erişim Reddedildi{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6 text-center">
+        <h1 class="display-1 fw-bold text-warning">403</h1>
+        <h2 class="mb-4">Erişim İzniniz Yok</h2>
+        <p class="lead mb-5 text-muted">Bu sayfayı görüntülemek için yeterli yetkiye sahip değilsiniz. Bir hata olduğunu
+            düşünüyorsanız yönetici ile iletişime geçin.</p>
+
+        <div class="d-flex justify-content-center gap-3">
+            <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary rounded-pill px-4">
+                <i class="bi bi-arrow-left me-2"></i>Geri Dön
+            </a>
+            <a href="{{ url_for('auth.login') }}" class="btn btn-outline-primary rounded-pill px-4">
+                <i class="bi bi-person-circle me-2"></i>Farklı Hesapla Giriş Yap
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

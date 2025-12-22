@@ -1,0 +1,173 @@
+{% extends "_base.html" %}
+
+{% block title %}Kâr / Zarar Raporu{% endblock %}
+{% block page_title %}Kâr / Zarar Analizi{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">Finansal Rapor</h4>
+        <p class="text-muted mb-0">Seçili tarih aralığındaki tahmini kârlılık analizi.</p>
+    </div>
+
+    <!-- Date Filter Form -->
+    <form class="d-flex gap-2 align-items-end" method="GET">
+        <div>
+            <label class="form-label small text-muted mb-1">Başlangıç</label>
+            <input type="date" name="start_date" class="form-control form-control-sm"
+                value="{{ start_date.strftime('%Y-%m-%d') }}">
+        </div>
+        <div>
+            <label class="form-label small text-muted mb-1">Bitiş</label>
+            <input type="date" name="end_date" class="form-control form-control-sm"
+                value="{{ end_date.strftime('%Y-%m-%d') }}">
+        </div>
+        <button type="submit" class="btn btn-sm btn-primary">
+            <i class="bi bi-filter me-1"></i>Filtrele
+        </button>
+    </form>
+</div>
+
+<!-- Summary Cards -->
+<div class="row g-4 mb-4">
+    <!-- Revenue -->
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-2">
+                    <div class="bg-primary bg-opacity-10 p-2 rounded me-3">
+                        <i class="bi bi-wallet2 text-primary fs-4"></i>
+                    </div>
+                    <span class="text-muted fw-bold small">TOPLAM CİRO</span>
+                </div>
+                <h3 class="fw-bold mb-0">{{ '%.2f' % total_revenue }} TL</h3>
+                <small class="text-success" style="font-size: 0.75rem;">
+                    <i class="bi bi-arrow-up"></i> Satış Geliri
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cost -->
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-2">
+                    <div class="bg-danger bg-opacity-10 p-2 rounded me-3">
+                        <i class="bi bi-cart-x text-danger fs-4"></i>
+                    </div>
+                    <span class="text-muted fw-bold small">TAHMİNİ MALİYET</span>
+                </div>
+                <h3 class="fw-bold mb-0">{{ '%.2f' % total_cost }} TL</h3>
+                <small class="text-muted" style="font-size: 0.75rem;">
+                    (Ürün Maliyeti)
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profit -->
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100 border-start border-4 border-success">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-2">
+                    <div class="bg-success bg-opacity-10 p-2 rounded me-3">
+                        <i class="bi bi-cash-stack text-success fs-4"></i>
+                    </div>
+                    <span class="text-muted fw-bold small">NET KÂR</span>
+                </div>
+                <h3 class="fw-bold mb-0 text-success">{{ '%.2f' % profit }} TL</h3>
+                <small class="text-success" style="font-size: 0.75rem;">
+                    Ciro - Maliyet
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Margin -->
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-2">
+                    <div class="bg-info bg-opacity-10 p-2 rounded me-3">
+                        <i class="bi bi-percent text-info fs-4"></i>
+                    </div>
+                    <span class="text-muted fw-bold small">KÂR MARJI</span>
+                </div>
+                <h3 class="fw-bold mb-0">{{ '%.1f' % margin }}%</h3>
+                <small class="text-muted" style="font-size: 0.75rem;">
+                    Ortalama Kârlılık
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Marketplace Breakdown -->
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-transparent border-0 py-3">
+        <h5 class="fw-bold mb-0"><i class="bi bi-shop me-2"></i>Pazar Yeri Dağılımı</h5>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-4">Pazar Yeri</th>
+                    <th>Sipariş Adedi</th>
+                    <th>Toplam Ciro</th>
+                    <th>Ortalama Sepet</th>
+                    <th class="text-end pe-4">Pay (%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for mp, revenue, count in mp_breakdown %}
+                <tr>
+                    <td class="ps-4 fw-bold text-capitalize">
+                        {% if mp == 'trendyol' %}
+                        <span class="text-warning">Trendyol</span>
+                        {% elif mp == 'hepsiburada' %}
+                        <span class="text-orange" style="color:#ff6000">Hepsiburada</span>
+                        {% else %}
+                        {{ mp }}
+                        {% endif %}
+                    </td>
+                    <td>{{ count }}</td>
+                    <td>{{ '%.2f' % revenue }} TL</td>
+                    <td>
+                        {% if count > 0 %}
+                        {{ '%.2f' % (revenue / count) }} TL
+                        {% else %}
+                        0.00 TL
+                        {% endif %}
+                    </td>
+                    <td class="text-end pe-4">
+                        {% if total_revenue > 0 %}
+                        {{ '%.1f' % (revenue / total_revenue * 100) }}%
+                        {% else %}
+                        0%
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="text-center py-4 text-muted">
+                        Bu tarih aralığında satış bulunamadı.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="alert alert-info mt-4 d-flex align-items-center">
+    <i class="bi bi-info-circle-fill fs-4 me-3"></i>
+    <div>
+        <strong>Bilgi:</strong> Maliyet hesaplaması, ürünlerin sisteme girilen "Maliyet Fiyatı" (Cost Price) üzerinden
+        yapılır.
+        Eğer ürün maliyetleri girilmemişse, sistem varsayılan olarak %25 kâr marjı tahmini yürütür.
+        Kesin sonuçlar için ürün maliyetlerini güncel tutunuz.
+    </div>
+</div>
+
+{% endblock %}

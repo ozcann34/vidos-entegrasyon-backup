@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kargo Etiketi - {{ order.order_number }}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        .label-container {
+            width: 100%;
+            max-width: 400px;
+            border: 2px solid #000;
+            padding: 20px;
+            margin: 0 auto;
+            page-break-inside: avoid;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        .header h2 {
+            margin: 0;
+            font-size: 24px;
+            text-transform: uppercase;
+        }
+
+        .header p {
+            margin: 5px 0 0;
+            font-size: 14px;
+        }
+
+        .content {
+            margin-bottom: 15px;
+        }
+
+        .row {
+            margin-bottom: 10px;
+        }
+
+        .label {
+            font-weight: bold;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #666;
+        }
+
+        .value {
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .large-value {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .address {
+            background: #f9f9f9;
+            padding: 10px;
+            border: 1px dashed #ccc;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .footer {
+            border-top: 2px solid #000;
+            padding-top: 10px;
+            text-align: center;
+            font-size: 12px;
+        }
+
+        .barcode {
+            text-align: center;
+            margin: 15px 0;
+        }
+
+        @media print {
+            body {
+                padding: 0;
+            }
+
+            .label-container {
+                border: none;
+            }
+
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="no-print" style="text-align: center; margin-bottom: 20px;">
+        <button onclick="window.print()"
+            style="padding: 10px 20px; font-size: 16px; cursor: pointer; background: #000; color: #fff; border: none; border-radius: 4px;">🖨️
+            Yazdır</button>
+    </div>
+
+    <div class="label-container">
+        <div class="header">
+            <h2>Kargo Etiketi</h2>
+            <p>{{ order.marketplace|capitalize }} Siparişi</p>
+        </div>
+
+        <div class="content">
+            <div class="row">
+                <div class="label">Alıcı Adı Soyadı</div>
+                <div class="large-value">{{ order.customer.first_name }} {{ order.customer.last_name }}</div>
+            </div>
+
+            <div class="row">
+                <div class="label">Sipariş Numarası</div>
+                <div class="value">{{ order.order_number }}</div>
+            </div>
+
+            <div class="row">
+                <div class="label">Kargo Firması</div>
+                <div class="value">{{ order.cargo_provider or 'Belirtilmemiş' }}</div>
+            </div>
+
+            <div class="row">
+                <div class="label">Kargo/Kampanya Kodu</div>
+                <div class="large-value" style="font-size: 24px;">{{ order.cargo_code or '---' }}</div>
+            </div>
+
+            <div class="row">
+                <div class="label">Teslimat Adresi</div>
+                <div class="address">
+                    {% if order.customer %}
+                    {{ order.customer.address or '' }}<br>
+                    {{ order.customer.district or '' }} / {{ order.customer.city or '' }}<br>
+                    Türkiye
+                    {% else %}
+                    Adres bilgisi bulunamadı.
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="barcode">
+            <!-- Basit bir barkod temsili (gerçek barkod fontu veya resmi gerekebilir) -->
+            <svg id="barcode"></svg>
+        </div>
+
+        <div class="footer">
+            <p>Vidos Entegrasyon Sisteminden Oluşturulmuştur.</p>
+            <p>{{ now.strftime('%d.%m.%Y %H:%M') }}</p>
+        </div>
+    </div>
+
+    <!-- JsBarcode kütüphanesi CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script>
+        // Barkod oluştur
+        JsBarcode("#barcode", "{{ order.order_number }}", {
+            format: "CODE128",
+            width: 2,
+            height: 50,
+            displayValue: true
+        });
+
+        // Sayfa yüklendiğinde otomatik yazdır (isteğe bağlı)
+        // window.onload = function() { window.print(); }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,326 @@
+{% extends "admin/_base.html" %}
+
+{% block title %}{{ user.full_name or user.email }}{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>
+        <a href="{{ url_for('admin.users') }}" class="text-muted text-decoration-none me-2">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        Kullanıcı Detayı
+    </h1>
+</div>
+
+<div class="row g-4">
+    <!-- User Info Card -->
+    <div class="col-lg-4">
+        <div class="admin-card">
+            <div class="text-center mb-4">
+                <div class="rounded-circle bg-secondary d-inline-flex align-items-center justify-content-center"
+                    style="width: 80px; height: 80px;">
+                    <i class="bi bi-person-fill display-5"></i>
+                </div>
+                <h4 class="mt-3 mb-1">{{ user.full_name or 'İsimsiz' }}</h4>
+                <p class="text-muted mb-2">{{ user.email }}</p>
+
+                {% if user.is_banned %}
+                <span class="badge bg-danger">Banlı</span>
+                {% elif user.is_admin %}
+                <span class="badge badge-admin">Admin</span>
+                {% else %}
+                <span class="badge bg-success">Aktif</span>
+                {% endif %}
+            </div>
+
+            <hr>
+
+            <div class="mb-3">
+                <small class="text-muted">Kayıt Tarihi</small>
+                <p class="mb-0">{{ user.created_at.strftime('%d.%m.%Y %H:%M') if user.created_at else '-' }}</p>
+            </div>
+
+            <div class="mb-3">
+                <small class="text-muted">Son Giriş</small>
+                <p class="mb-0">{{ user.last_login.strftime('%d.%m.%Y %H:%M') if user.last_login else 'Hiç giriş
+                    yapmadı' }}</p>
+            </div>
+
+            {% if user.is_banned and user.ban_reason %}
+            <div class="mb-3">
+                <small class="text-muted">Ban Sebebi</small>
+                <p class="mb-0 text-danger">{{ user.ban_reason }}</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Actions -->
+        <div class="admin-card mt-4">
+            <h6 class="mb-3"><i class="bi bi-gear me-2"></i>İşlemler</h6>
+
+            <a href="{{ url_for('admin.user_activity_logs', user_id=user.id) }}"
+                class="btn btn-outline-primary w-100 mb-2">
+                <i class="bi bi-journal-text me-2"></i>İşlem Loglarını Gör
+            </a>
+
+            {% if not user.is_admin %}
+            <form action="{{ url_for('admin.impersonate_user', user_id=user.id) }}" method="POST" class="mb-2">
+                <button type="submit" class="btn btn-info w-100 text-white">
+                    <i class="bi bi-eyeglasses me-2"></i>Kullanıcı Olarak Gör
+                </button>
+            </form>
+
+            <a href="{{ url_for('admin.user_permissions', user_id=user.id) }}" class="btn btn-warning w-100 mb-2">
+                <i class="bi bi-key me-2"></i>İzinleri Düzenle
+            </a>
+
+            {% if user.is_banned %}
+            <form action="{{ url_for('admin.unban_user_route', user_id=user.id) }}" method="POST">
+                <button type="submit" class="btn btn-success w-100 mb-2">
+                    <i class="bi bi-person-check me-2"></i>Banı Kaldır
+                </button>
+            </form>
+            {% else %}
+            <button type="button" class="btn btn-danger w-100 mb-2" data-bs-toggle="modal" data-bs-target="#banModal">
+                <i class="bi bi-person-x me-2"></i>Kullanıcıyı Banla
+            </button>
+            {% endif %}
+
+            <button type="button" class="btn btn-outline-danger w-100" data-bs-toggle="modal"
+                data-bs-target="#deleteModal">
+                <i class="bi bi-trash me-2"></i>Hesabı Sil
+            </button>
+            {% else %}
+            <p class="text-muted text-center mb-0">
+                <i class="bi bi-shield-lock me-2"></i>Admin hesabı
+            </p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Stats & Subscription -->
+    <div class="col-lg-8">
+        <!-- Stats -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="admin-card text-center">
+                    <h3 class="mb-0">{{ stats.products }}</h3>
+                    <small class="text-muted">Ürün</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="admin-card text-center">
+                    <h3 class="mb-0">{{ stats.orders }}</h3>
+                    <small class="text-muted">Sipariş</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="admin-card text-center">
+                    <h3 class="mb-0">{{ stats.xml_sources }}</h3>
+                    <small class="text-muted">XML</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="admin-card text-center">
+                    <h3 class="mb-0">{{ stats.batch_logs }}</h3>
+                    <small class="text-muted">İşlem</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Subscription -->
+        <div class="admin-card mb-4">
+            <h5 class="card-title"><i class="bi bi-credit-card text-danger"></i>Abonelik</h5>
+
+            {% if user.subscription %}
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <small class="text-muted">Mevcut Plan</small>
+                        <p class="mb-0">
+                            <span
+                                class="badge bg-{{ 'success' if user.subscription.plan == 'enterprise' else 'primary' if user.subscription.plan == 'pro' else 'secondary' }} fs-6">
+                                {{ user.subscription.plan_display_name }}
+                            </span>
+                        </p>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted">Durum</small>
+                        <p class="mb-0">{{ user.subscription.status }}</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <small class="text-muted">Başlangıç</small>
+                        <p class="mb-0">{{ user.subscription.start_date.strftime('%d.%m.%Y') if
+                            user.subscription.start_date else '-' }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted">Bitiş</small>
+                        <p class="mb-0">{{ user.subscription.end_date.strftime('%d.%m.%Y') if user.subscription.end_date
+                            else 'Sınırsız' }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <hr>
+
+            <form action="{{ url_for('admin.update_subscription_route', user_id=user.id) }}" method="POST"
+                class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Plan</label>
+                    <select name="plan" class="form-select">
+                        <option value="free" {{ 'selected' if user.subscription.plan=='free' else '' }}>Ücretsiz
+                        </option>
+                        <option value="pro" {{ 'selected' if user.subscription.plan=='pro' else '' }}>Pro</option>
+                        <option value="enterprise" {{ 'selected' if user.subscription.plan=='enterprise' else '' }}>
+                            Enterprise</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Bitiş Tarihi</label>
+                    <input type="date" name="end_date" class="form-control"
+                        value="{{ user.subscription.end_date.strftime('%Y-%m-%d') if user.subscription.end_date else '' }}">
+                </div>
+
+                <div class="col-12 border-top pt-3 mt-3">
+                    <h6 class="text-muted mb-3"><i class="bi bi-sliders me-2"></i>Özel Limitler (Opsiyonel)</h6>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Ürün Limiti</label>
+                    <div class="input-group">
+                        <input type="number" name="max_products" class="form-control"
+                            value="{{ user.subscription.max_products }}" placeholder="Varsayılan için boş bırakın">
+                        <span class="input-group-text">Adet</span>
+                    </div>
+                    <div class="form-text">Boş bırakılırsa paket limiti geçerli olur. Sınırsız için -1.</div>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">XML Kaynak Limiti</label>
+                    <div class="input-group">
+                        <input type="number" name="max_xml_sources" class="form-control"
+                            value="{{ user.subscription.max_xml_sources }}" placeholder="Varsayılan için boş bırakın">
+                        <span class="input-group-text">Adet</span>
+                    </div>
+                </div>
+
+                <div class="col-12 mt-4">
+                    <button type="submit" class="btn btn-admin w-100 py-2">
+                        <i class="bi bi-save me-2"></i>Aboneliği ve Limitleri Güncelle
+                    </button>
+                </div>
+            </form>
+            {% else %}
+            <p class="text-muted">Abonelik bilgisi bulunamadı.</p>
+            {% endif %}
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="admin-card">
+            <h5 class="card-title"><i class="bi bi-clock-history text-danger"></i>Son İşlemler</h5>
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Batch ID</th>
+                        <th>Pazar Yeri</th>
+                        <th>Ürün</th>
+                        <th>Durum</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in recent_logs %}
+                    <tr>
+                        <td><code>{{ log.batch_id[:8] }}...</code></td>
+                        <td>{{ log.marketplace }}</td>
+                        <td>{{ log.product_count }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if log.success else 'danger' }}">
+                                {{ 'Başarılı' if log.success else 'Başarısız' }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-muted text-center">Henüz işlem yok</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Ban Modal -->
+<div class="modal fade" id="banModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title">Kullanıcıyı Banla</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('admin.ban_user_route', user_id=user.id) }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Ban Sebebi</label>
+                        <textarea name="reason" class="form-control" rows="3" placeholder="Opsiyonel..."></textarea>
+                    </div>
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>{{ user.email }}</strong> hesabı banlanacak ve giriş yapamayacak.
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-danger">Banla</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-danger">
+                    <i class="bi bi-exclamation-triangle me-2"></i>Hesabı Sil
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('admin.delete_user_route', user_id=user.id) }}" method="POST">
+                <div class="modal-body">
+                    <div class="alert alert-danger">
+                        <h6 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Dikkat!</h6>
+                        <p class="mb-0">
+                            <strong>{{ user.email }}</strong> hesabı ve tüm verileri <strong>kalıcı olarak
+                                silinecek</strong>.
+                        </p>
+                    </div>
+
+                    <p class="text-muted mb-2">Silinecek veriler:</p>
+                    <ul class="text-muted small">
+                        <li>Tüm ürünler ({{ stats.products }})</li>
+                        <li>Tüm siparişler ({{ stats.orders }})</li>
+                        <li>Tüm XML kaynakları ({{ stats.xml_sources }})</li>
+                        <li>Tüm işlem logları ({{ stats.batch_logs }})</li>
+                        <li>Abonelik ve ödeme bilgileri</li>
+                    </ul>
+
+                    <p class="text-danger small mb-0">
+                        <strong>Bu işlem geri alınamaz!</strong>
+                    </p>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-2"></i>Evet, Sil
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

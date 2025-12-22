@@ -1,0 +1,578 @@
+{% extends "_base.html" %}
+{% block title %}Otomatik Senkronizasyon Ayarları{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    {% for key, name in marketplaces.items() %}
+    <div class="col-md-6 col-xl-4">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-shop me-2"></i> {{ name }}
+                </h6>
+                <div class="form-check form-switch">
+                    <input class="form-check-input sync-toggle" type="checkbox" role="switch" id="sync-toggle-{{ key }}"
+                        data-marketplace="{{ key }}">
+                </div>
+            </div>
+
+            <div class="sync-info">
+                <div class="mb-2">
+                    <small class="text-muted">Son Senkronizasyon:</small>
+                    <div class="last-sync-time" data-marketplace="{{ key }}">
+                        <small class="text-secondary">—</small>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <small class="text-muted">Senkronizasyon Aralığı:</small>
+                    <div class="input-group input-group-sm">
+                        <input type="number" class="form-control sync-interval" min="10" max="1440" value="60"
+                            data-marketplace="{{ key }}">
+                        <span class="input-group-text">dakika</span>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <small class="text-muted">XML Kaynağı:</small>
+                    <select class="form-select form-select-sm sync-xml-source" data-marketplace="{{ key }}">
+                        <option value="">Seçiniz</option>
+                        {% for src in xml_sources %}
+                        <option value="{{ src.id }}">{{ src.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <small class="text-muted">Eşleşme Tipi:</small>
+                    <select class="form-select form-select-sm sync-match-by" data-marketplace="{{ key }}">
+                        <option value="barcode">Barkod</option>
+                        <option value="stock_code">Stok Kodu</option>
+                    </select>
+                </div>
+
+                <!-- Progress Section (Hidden by default) -->
+                <div class="sync-progress-section mb-3 d-none" data-marketplace="{{ key }}">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <small class="text-muted">İlerleme:</small>
+                        <small class="sync-progress-text fw-bold">0 / 0</small>
+                    </div>
+                    <div class="progress mb-1" style="height: 20px;">
+                        <div class="sync-progress-bar progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                            role="progressbar" style="width: 0%">0%</div>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <small class="text-muted sync-progress-message">Hazırlanıyor...</small>
+                        <small class="text-muted sync-progress-eta">—</small>
+                    </div>
+                </div>
+
+                <button class="btn btn-sm btn-outline-primary w-100 manual-sync-btn" data-marketplace="{{ key }}">
+                    <i class="bi bi-play-fill me-1"></i> Şimdi Senkronize Et
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+</div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="bi bi-list-ul me-2"></i> Senkronizasyon Logları
+        </h5>
+        <div>
+            <select class="form-select form-select-sm" id="logMarketplaceFilter">
+                <option value="">Tüm Pazaryerleri</option>
+                {% for key, name in marketplaces.items() %}
+                <option value="{{ key }}">{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle" id="syncLogsTable">
+                <thead>
+                    <tr>
+                        <th>Pazaryeri</th>
+                        <th>Zaman</th>
+                        <th>Güncellenen Ürün</th>
+                        <th>Stok Değişikliği</th>
+                        <th>Fiyat Değişikliği</th>
+                        <th>Durum</th>
+                        <th>Detay</th>
+                    </tr>
+                </thead>
+                <tbody id="syncLogsTableBody">
+                    <tr>
+                        <td colspan="7" class="text-center text-muted">
+                            <i class="bi bi-hourglass-split"></i> Loglar yükleniyor...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (function () {
+        const marketplaces = {{ marketplaces | tojson
+    }};
+    let syncSettings = {};
+    let activeJobs = {}; // Track active job IDs per marketplace
+
+    // --- Order Sync Functions ---
+    async function loadOrderSettings() {
+        try {
+            const response = await fetch('/api/auto_sync/orders/settings');
+            const data = await response.json();
+            if (data.success) {
+                const settings = data.settings;
+                document.getElementById('order-sync-toggle').checked = settings.enabled;
+                document.getElementById('order-sync-interval').value = settings.interval;
+            }
+        } catch (error) {
+            console.error("Order settings load error:", error);
+        }
+    }
+
+    async function saveOrderSettings() {
+        const enabled = document.getElementById('order-sync-toggle').checked;
+        const interval = document.getElementById('order-sync-interval').value;
+
+        try {
+            const response = await fetch('/api/auto_sync/orders/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled, interval })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
+                Toast.fire({
+                    icon: 'success',
+                    title: enabled ? 'Otomatik sipariş çekme aktif edildi' : 'Otomatik sipariş çekme durduruldu'
+                });
+            } else {
+                Swal.fire('Hata', data.message || 'Ayarlar kaydedilemedi', 'error');
+                // Revert UI on error
+                document.getElementById('order-sync-toggle').checked = !enabled;
+            }
+        } catch (error) {
+            console.error("Save error:", error);
+            Swal.fire('Hata', 'Sunucu hatası', 'error');
+        }
+    }
+
+    // --- Product Sync Functions ---
+    async function loadSettings() {
+        try {
+            const resp = await fetch('/api/auto_sync/settings');
+            const data = await resp.json();
+
+            if (data.success && data.settings) {
+                data.settings.forEach(setting => {
+                    syncSettings[setting.marketplace] = setting;
+                    const toggleEl = document.getElementById(`sync-toggle-${setting.marketplace}`);
+                    const intervalEl = document.querySelector(`.sync-interval[data-marketplace="${setting.marketplace}"]`);
+                    const lastSyncEl = document.querySelector(`.last-sync-time[data-marketplace="${setting.marketplace}"]`);
+
+                    if (toggleEl) toggleEl.checked = setting.enabled;
+                    const xmlSelect = document.querySelector(`.sync-xml-source[data-marketplace="${setting.marketplace}"]`);
+                    const matchSelect = document.querySelector(`.sync-match-by[data-marketplace="${setting.marketplace}"]`);
+                    if (intervalEl) {
+                        intervalEl.value = setting.sync_interval_minutes;
+                    }
+                    if (xmlSelect) {
+                        xmlSelect.value = setting.xml_source_id || '';
+                    }
+                    if (matchSelect) {
+                        matchSelect.value = setting.match_by || 'barcode';
+                    }
+                    if (lastSyncEl && setting.last_sync) {
+                        const date = new Date(setting.last_sync);
+                        lastSyncEl.innerHTML = `<small class="text-success">${date.toLocaleString('tr-TR')}</small>`;
+                    }
+                });
+            }
+        } catch (err) {
+            console.error('Error loading settings:', err);
+        }
+    }
+
+    async function toggleSync(marketplace, enabled) {
+        const intervalEl = document.querySelector(`.sync-interval[data-marketplace="${marketplace}"]`);
+        const xmlSelect = document.querySelector(`.sync-xml-source[data-marketplace="${marketplace}"]`);
+        const matchSelect = document.querySelector(`.sync-match-by[data-marketplace="${marketplace}"]`);
+
+        const interval = parseInt(intervalEl?.value || 60);
+        const xmlSourceId = xmlSelect ? xmlSelect.value : null;
+        const matchBy = matchSelect ? matchSelect.value : 'barcode';
+
+        if (enabled && !xmlSourceId) {
+            Swal.fire('Uyarı', 'Lütfen senkronizasyon için bir XML kaynağı seçiniz.', 'warning');
+            const toggleEl = document.getElementById(`sync-toggle-${marketplace}`);
+            if (toggleEl) toggleEl.checked = false;
+            return;
+        }
+
+        try {
+            const resp = await fetch('/api/auto_sync/toggle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    marketplace,
+                    enabled,
+                    interval_minutes: interval,
+                    xml_source_id: xmlSourceId,
+                    match_by: matchBy
+                })
+            });
+            const data = await resp.json();
+
+            if (data.success) {
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: data.message, showConfirmButton: false, timer: 3000 });
+                loadSettings();
+            } else {
+                throw new Error(data.message || 'İşlem başarısız');
+            }
+        } catch (err) {
+            console.error('Toggle error:', err);
+            Swal.fire('Hata', err.message, 'error');
+            const toggleEl = document.getElementById(`sync-toggle-${marketplace}`);
+            if (toggleEl) toggleEl.checked = !enabled;
+        }
+    }
+
+    function showProgress(marketplace) {
+        const progressSection = document.querySelector(`.sync-progress-section[data-marketplace="${marketplace}"]`);
+        if (progressSection) progressSection.classList.remove('d-none');
+    }
+
+    function hideProgress(marketplace) {
+        const progressSection = document.querySelector(`.sync-progress-section[data-marketplace="${marketplace}"]`);
+        if (progressSection) progressSection.classList.add('d-none');
+    }
+
+    function updateProgress(marketplace, current, total, message = '', eta = '') {
+        const card = document.querySelector(`.marketplace-card[data-marketplace="${marketplace}"]`);
+        if (!card) return;
+
+        const progressBar = card.querySelector('.sync-progress-bar');
+        const progressText = card.querySelector('.sync-progress-text');
+        const progressMessage = card.querySelector('.sync-progress-message');
+        const progressEta = card.querySelector('.sync-progress-eta');
+
+        const percent = total > 0 ? Math.round((current / total) * 100) : 0;
+
+        if (progressBar) {
+            progressBar.style.width = `${percent}%`;
+            progressBar.textContent = `${percent}%`;
+        }
+        if (progressText) progressText.textContent = message || `${current} / ${total}`;
+        if (progressMessage) progressMessage.textContent = message || `${current} / ${total} ürün`;
+        if (progressEta) progressEta.textContent = eta || '—';
+    }
+
+    async function pollJobStatus(jobId, marketplace) {
+        if (!jobId || !activeJobs[marketplace]) return;
+
+        try {
+            const resp = await fetch(`/api/job/status/${jobId}`);
+            const data = await resp.json();
+
+            if (!data.success) {
+                delete activeJobs[marketplace];
+                hideProgress(marketplace);
+                return;
+            }
+
+            const status = data.status;
+            const progress = data.progress || {};
+
+            // Update progress
+            updateProgress(
+                marketplace,
+                progress.current || 0,
+                progress.total || 0,
+                progress.message || '',
+                progress.eta || ''
+            );
+
+            // Check if job is complete
+            if (status === 'completed' || status === 'failed') {
+                delete activeJobs[marketplace];
+                setTimeout(() => {
+                    hideProgress(marketplace);
+                    loadLogs();
+                    loadSettings();
+                }, 2000);
+            } else if (activeJobs[marketplace]) {
+                // Continue polling
+                setTimeout(() => pollJobStatus(jobId, marketplace), 2000);
+            }
+        } catch (err) {
+            console.error('Poll error:', err);
+            delete activeJobs[marketplace];
+            hideProgress(marketplace);
+        }
+    }
+
+    async function triggerManualSync(marketplace) {
+        try {
+            const resp = await fetch(`/api/auto_sync/trigger/${marketplace}`, { method: 'POST' });
+            const data = await resp.json();
+
+            if (data.success) {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'Senkronizasyon başlatıldı',
+                    showConfirmButton: false,
+                    timer: 2000
+                });
+
+                // Show progress and start polling
+                if (data.job_id) {
+                    activeJobs[marketplace] = data.job_id;
+                    showProgress(marketplace);
+                    setTimeout(() => pollJobStatus(data.job_id, marketplace), 1000);
+                }
+            } else {
+                throw new Error(data.message || 'İşlem başarısız');
+            }
+        } catch (err) {
+            console.error('Manual sync error:', err);
+            Swal.fire('Hata', err.message, 'error');
+        }
+    }
+
+    async function loadLogs(marketplace = null) {
+        try {
+            const url = marketplace ? `/api/auto_sync/logs?marketplace=${marketplace}&limit=50` : '/api/auto_sync/logs?limit=50';
+            const resp = await fetch(url);
+            const data = await resp.json();
+            const tbody = document.getElementById('syncLogsTableBody');
+
+            if (!data.success || !data.logs || data.logs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted"><i class="bi bi-inbox"></i> Henüz log kaydı yok</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = data.logs.map(log => {
+                const date = new Date(log.timestamp);
+                const statusBadge = log.success ? '<span class="badge bg-success">Başarılı</span>' : '<span class="badge bg-danger">Hatalı</span>';
+
+                // Parse details if string
+                let details = log.details_json;
+                if (typeof details === 'string') {
+                    try { details = JSON.parse(details); } catch (e) { }
+                }
+
+                const hasDetails = details && details.details && details.details.length > 0;
+                const detailBtn = hasDetails
+                    ? `<button class="btn btn-sm btn-outline-info" onclick='showLogDetails(${JSON.stringify(details.details).replace(/'/g, "&#39;")})'><i class="bi bi-eye"></i> Detay</button>`
+                    : '<span class="text-muted">-</span>';
+
+                return `<tr>
+                    <td><strong>${marketplaces[log.marketplace] || log.marketplace}</strong></td>
+                    <td><small>${date.toLocaleString('tr-TR')}</small></td>
+                    <td class="text-center">${log.products_updated}</td>
+                    <td class="text-center">${log.stock_changes}</td>
+                    <td class="text-center">${log.price_changes}</td>
+                    <td>${statusBadge}</td>
+                    <td class="text-center">${detailBtn}</td>
+                </tr>`;
+            }).join('');
+        } catch (err) {
+            console.error('Error loading logs:', err);
+        }
+    }
+
+    window.showLogDetails = function (details) {
+        const tbody = document.getElementById('logDetailsTableBody');
+        if (!details || details.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center">Detay bulunamadı</td></tr>';
+        } else {
+            tbody.innerHTML = details.map(d => {
+                const stockClass = d.stock_changed ? 'text-danger fw-bold' : '';
+                const priceClass = d.price_changed ? 'text-danger fw-bold' : '';
+                return `<tr>
+                    <td>${d.barcode}</td>
+                    <td>${d.old_stock} <i class="bi bi-arrow-right small text-muted"></i> <span class="${stockClass}">${d.new_stock}</span></td>
+                    <td>${d.old_price} <i class="bi bi-arrow-right small text-muted"></i> <span class="${priceClass}">${d.new_price}</span></td>
+                    <td>${d.stock_changed ? '<span class="badge bg-warning text-dark">Stok</span>' : ''}</td>
+                    <td>${d.price_changed ? '<span class="badge bg-info text-dark">Fiyat</span>' : ''}</td>
+                </tr>`;
+            }).join('');
+        }
+        new bootstrap.Modal(document.getElementById('logDetailsModal')).show();
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.sync-toggle').forEach(toggle => {
+            toggle.addEventListener('change', (e) => toggleSync(e.target.dataset.marketplace, e.target.checked));
+        });
+
+        // Listeners for config changes
+        ['sync-interval', 'sync-xml-source', 'sync-match-by'].forEach(cls => {
+            document.querySelectorAll('.' + cls).forEach(el => {
+                el.addEventListener('change', (e) => {
+                    const mp = e.target.dataset.marketplace;
+                    const toggleEl = document.getElementById(`sync-toggle-${mp}`);
+                    // Only auto-update if it's already enabled? Or always save?
+                    // Let's always save, but if enabled, it will restart job.
+                    // If disabled, it just saves config (via same endpoint with enabled=false).
+                    toggleSync(mp, toggleEl ? toggleEl.checked : false);
+                });
+            });
+        });
+
+        document.querySelectorAll('.manual-sync-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => triggerManualSync(e.target.closest('button').dataset.marketplace));
+        });
+
+        const logFilter = document.getElementById('logMarketplaceFilter');
+        if (logFilter) {
+            logFilter.addEventListener('change', (e) => loadLogs(e.target.value || null));
+        }
+        // Initialize
+        loadOrderSettings();
+        loadSettings();
+        loadLogs();
+
+        // Event Listeners for Order Sync
+        document.getElementById('order-sync-toggle').addEventListener('change', saveOrderSettings);
+        document.getElementById('order-sync-interval').addEventListener('change', saveOrderSettings);
+
+        setInterval(() => {
+            const filter = document.getElementById('logMarketplaceFilter');
+            loadLogs(filter ? filter.value : null);
+        }, 30000);
+    });
+    }) ();
+</script>
+
+<style>
+    .marketplace-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .marketplace-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    .sync-toggle:checked+label {
+        background-color: var(--bs-success);
+    }
+
+    .form-check-input:checked {
+        background-color: var(--bs-success);
+        border-color: var(--bs-success);
+    }
+
+    .sync-progress-section {
+        background-color: #f8f9fa;
+        border-radius: 0.375rem;
+        padding: 0.75rem;
+        border: 1px solid #dee2e6;
+    }
+</style>
+<style>
+    @media (prefers-color-scheme: dark) {
+        body {
+            background-color: #212529;
+            color: #f8f9fa;
+        }
+
+        .card,
+        .modal-content {
+            background-color: #2c2f33;
+            color: #f8f9fa;
+            border-color: #495057;
+        }
+
+        .table,
+        .table-hover tbody tr:hover {
+            background-color: #343a40;
+            color: #f8f9fa;
+        }
+
+        .sync-progress-section {
+            background-color: #343a40;
+            border-color: #495057;
+            color: #f8f9fa;
+        }
+
+        .progress-bar {
+            background-color: #0d6efd;
+            color: #fff;
+        }
+
+        .badge.bg-success,
+        .badge.bg-danger,
+        .badge.bg-warning,
+        .badge.bg-info {
+            color: #fff;
+        }
+
+        .text-muted {
+            color: #adb5bd !important;
+        }
+
+        .modal-header,
+        .modal-body,
+        .modal-footer {
+            background-color: #2c2f33;
+            color: #f8f9fa;
+        }
+    }
+</style>
+
+<!-- Log Details Modal -->
+<div class="modal fade" id="logDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Senkronizasyon Detayları</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>Barkod</th>
+                                <th>Stok (Eski -> Yeni)</th>
+                                <th>Fiyat (Eski -> Yeni)</th>
+                                <th>Stok Değ.</th>
+                                <th>Fiyat Değ.</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logDetailsTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

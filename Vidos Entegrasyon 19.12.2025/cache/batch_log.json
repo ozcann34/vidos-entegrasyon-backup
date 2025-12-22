@@ -1,0 +1,79 @@
+[
+  {
+    "batch_id": "1911d0d8-645d-4fcf-8642-896571e5f87d-1762272255",
+    "timestamp": "2025-11-04 15:04:13",
+    "success": true,
+    "product_count": 10,
+    "error": null
+  },
+  {
+    "batch_id": "fbdd6380-3bfa-4a12-a276-44e2b8e71338-1762270499",
+    "timestamp": "2025-11-04 14:34:56",
+    "success": true,
+    "product_count": 10,
+    "error": null
+  },
+  {
+    "batch_id": "e9c99576-14ef-491c-8e4c-8ed4910cf0ee-1762270489",
+    "timestamp": "2025-11-04 14:34:46",
+    "success": true,
+    "product_count": 10,
+    "error": null
+  },
+  {
+    "batch_id": "fd49c74f-1979-4b60-9643-44e3f3bcd2b2-1762270479",
+    "timestamp": "2025-11-04 14:34:36",
+    "success": true,
+    "product_count": 10,
+    "error": null
+  },
+  {
+    "batch_id": "512f397c-b3c3-4660-91cc-54b7b52ef6f7-1762270469",
+    "timestamp": "2025-11-04 14:34:26",
+    "success": true,
+    "product_count": 10,
+    "error": null
+  },
+  {
+    "batch_id": "21afde5e-da19-4132-ab65-b966509bbd43-1762270458",
+    "timestamp": "2025-11-04 14:34:15",
+    "success": true,
+    "product_count": 10,
+    "error": null
+  },
+  {
+    "batch_id": "4bf8b346-543f-487f-bc4d-0c17737d7e62-1762270448",
+    "timestamp": "2025-11-04 14:34:05",
+    "success": true,
+    "product_count": 10,
+    "error": null
+  },
+  {
+    "batch_id": "4adb6871-7abd-4bdb-aef2-b64c9149380a-1762270437",
+    "timestamp": "2025-11-04 14:33:55",
+    "success": true,
+    "product_count": 10,
+    "error": null
+  },
+  {
+    "batch_id": "6e135332-9095-4e2f-bb3a-f9a94d4cfca1-1762270427",
+    "timestamp": "2025-11-04 14:33:45",
+    "success": true,
+    "product_count": 10,
+    "error": null
+  },
+  {
+    "batch_id": "546397d4-0727-43f9-bc3e-564b45d5d98b-1762270417",
+    "timestamp": "2025-11-04 14:33:35",
+    "success": true,
+    "product_count": 10,
+    "error": null
+  },
+  {
+    "batch_id": "81929586-8519-45e7-9b0c-5878ccdf4fd0-1762270407",
+    "timestamp": "2025-11-04 14:33:24",
+    "success": true,
+    "product_count": 10,
+    "error": null
+  }
+]

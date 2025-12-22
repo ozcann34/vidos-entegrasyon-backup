@@ -1,0 +1,352 @@
+{% extends "_base.html" %}
+{% block title %}Instagram Paneli - VIDOS{% endblock %}
+{% block page_title %}Instagram Paylaşım Paneli{% endblock %}
+
+{% block content %}
+<style>
+    .instagram-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        border: none;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .instagram-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .img-container {
+        position: relative;
+        padding-top: 100%;
+        /* 1:1 Aspect Ratio */
+        background-color: #f8f9fa;
+        overflow: hidden;
+    }
+
+    .img-container img {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        /* or cover depending on preference */
+    }
+
+    .card-actions {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+        padding: 20px 10px 10px;
+        opacity: 0;
+        transition: opacity 0.2s;
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .instagram-card:hover .card-actions {
+        opacity: 1;
+    }
+</style>
+
+<div class="animate-fade-in">
+    <!-- Filter Toolbar -->
+    <div class="card mb-4 border-0 shadow-sm">
+        <div class="card-body p-3">
+            <div class="row g-3 align-items-center">
+                <div class="col-lg-5">
+                    <div class="input-group">
+                        <span class="input-group-text border-end-0"
+                            style="background: var(--input-bg); border-color: var(--input-border); color: var(--muted);"><i
+                                class="bi bi-search"></i></span>
+                        <input type="text" id="searchInput" class="form-control border-start-0 ps-0"
+                            style="background: var(--input-bg); border-color: var(--input-border); color: var(--text);"
+                            placeholder="Ürün adı veya barkod ara...">
+                    </div>
+                </div>
+                <div class="col-lg-3">
+                    <select id="xmlSourceSelect" class="form-select">
+                        <option value="">Tüm Kaynaklar</option>
+                        {% for source in xml_sources %}
+                        <option value="{{ source.id }}">{{ source.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-lg-4 text-end">
+                    <span id="productCount" class="badge bg-light text-dark border p-2 me-2">0 Ürün</span>
+                    <button id="refreshBtn" class="btn btn-outline-secondary btn-sm"><i
+                            class="bi bi-arrow-clockwise"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Grid -->
+    <div id="productGrid" class="row g-4">
+        <!-- Products will be loaded here -->
+    </div>
+
+    <!-- Pagination -->
+    <nav class="mt-4 pb-5">
+        <ul class="pagination justify-content-center shadow-sm" id="pagination"></ul>
+    </nav>
+</div>
+
+<!-- Share Modal -->
+<div class="modal fade" id="shareModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-instagram text-danger me-2"></i>Instagram'da Paylaş</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-4">
+                    <div class="col-md-5">
+                        <div class="rounded-3 overflow-hidden shadow-sm border bg-light d-flex align-items-center justify-content-center"
+                            style="height: 300px;">
+                            <img id="modalImage" src="" class="img-fluid" style="max-height: 100%; max-width: 100%;">
+                        </div>
+                        <div class="alert alert-info mt-3 small mb-0">
+                            <i class="bi bi-info-circle me-1"></i> Görsel otomatik olarak Instagram formatına uygun hale
+                            getirilip gönderilecektir.
+                        </div>
+                    </div>
+                    <div class="col-md-7">
+                        <form id="shareForm">
+                            <input type="hidden" id="modalImageUrl">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small text-muted">AÇIKLAMA (CAPTION)</label>
+                                <textarea class="form-control" id="modalCaption" rows="8"
+                                    style="resize: none;"></textarea>
+                                <div class="d-flex justify-content-between mt-1">
+                                    <small class="text-muted" id="charCount">0 karakter</small>
+                                    <button type="button" class="btn btn-sm btn-link text-decoration-none p-0"
+                                        id="addHashtagsBtn">Popular Hashtag Ekle</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-primary px-4 btn-animated" id="btnConfirmShare">
+                    <i class="bi bi-send-fill me-2"></i>Paylaş
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let currentPage = 1;
+    let itemsPerPage = 20; // Grid view needs fewer items per page usually
+    let currentSearch = '';
+    let currentSource = '';
+
+    // Load sources (reused from context if available, or fetch)
+    // Actually we passed xml_sources in render_template via main.py update (to be done)
+
+    document.addEventListener('DOMContentLoaded', () => {
+        fetchProducts();
+
+        document.getElementById('searchInput').addEventListener('input', debounce((e) => {
+            currentSearch = e.target.value.trim();
+            currentPage = 1;
+            fetchProducts();
+        }, 500));
+
+        document.getElementById('xmlSourceSelect').addEventListener('change', (e) => {
+            currentSource = e.target.value;
+            currentPage = 1;
+            fetchProducts();
+        });
+
+        document.getElementById('refreshBtn').addEventListener('click', fetchProducts);
+
+        // Character count
+        document.getElementById('modalCaption').addEventListener('input', function () {
+            document.getElementById('charCount').textContent = this.value.length + " karakter";
+        });
+
+        // Hashtags
+        document.getElementById('addHashtagsBtn').addEventListener('click', function () {
+            const tags = "\n\n#moda #giyim #tarz #indirim #kampanya #alisveris #kesfet #stil #yeni #trend";
+            document.getElementById('modalCaption').value += tags;
+            document.getElementById('modalCaption').dispatchEvent(new Event('input'));
+        });
+
+        // Confirm Share
+        document.getElementById('btnConfirmShare').addEventListener('click', postToInstagram);
+    });
+
+    function debounce(func, wait) {
+        let timeout;
+        return function (...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+    }
+
+    function fetchProducts() {
+        const grid = document.getElementById('productGrid');
+        grid.innerHTML = '<div class="col-12 text-center p-5"><div class="spinner-border text-primary"></div></div>';
+
+        let url = `/api/xml_products?page=${currentPage}&per_page=${itemsPerPage}`;
+        if (currentSearch) url += `&q=${encodeURIComponent(currentSearch)}`;
+        if (currentSource) url += `&source_id=${currentSource}`; // Backend needs to support this combined or xml_source_products
+
+        // We'll reuse the existing logic or create a new endpoint.
+        // Existing endpoints: /api/xml_products (all) OR /api/xml_source_products (specific source)
+        // Let's use a unified logic in our new route or handle it here.
+        // To be safe and simple, let's assume we update backend or use existing:
+        if (currentSource) {
+            url = `/api/xml_source_products?source_id=${currentSource}&page=${currentPage}&per_page=${itemsPerPage}&q=${encodeURIComponent(currentSearch)}`;
+        }
+
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                renderGrid(data.items || []);
+                renderPagination(data.total, currentPage);
+                document.getElementById('productCount').textContent = `${data.total} Ürün`;
+            })
+            .catch(e => {
+                grid.innerHTML = '<div class="col-12 text-center text-danger">Hata oluştu.</div>';
+                console.error(e);
+            });
+    }
+
+    function renderGrid(products) {
+        const grid = document.getElementById('productGrid');
+        grid.innerHTML = '';
+
+        if (products.length === 0) {
+            grid.innerHTML = '<div class="col-12 text-center text-muted py-5">Ürün bulunamadı.</div>';
+            return;
+        }
+
+        products.forEach(p => {
+            // Find valid image
+            let imgUrl = 'https://via.placeholder.com/300?text=No+Image';
+            if (p.images && p.images.length > 0) {
+                // xml_products returns images as list of objects {url: ...} OR list of strings
+                if (typeof p.images[0] === 'string') imgUrl = p.images[0];
+                else if (p.images[0].url) imgUrl = p.images[0].url;
+            }
+
+            const cleanPrice = Number(p.price || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const title = p.title.replace(/"/g, '&quot;');
+
+            const card = `
+                <div class="col-md-4 col-lg-3 col-xl-3 animate-fade-in">
+                    <div class="card instagram-card h-100 shadow-sm">
+                        <div class="img-container">
+                            <img src="${imgUrl}" alt="${title}" loading="lazy">
+                            <div class="card-actions">
+                                <button class="btn btn-light btn-sm rounded-circle shadow" onclick='openShareModal(${JSON.stringify(p).replace(/'/g, "&#39;")})' title="Paylaş">
+                                    <i class="bi bi-send-fill text-primary"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body p-3">
+                            <h6 class="card-title text-truncate mb-1" title="${title}">${title}</h6>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-bold fs-5 text-dark">${cleanPrice} ₺</span>
+                                <span class="badge bg-light text-secondary border">${p.brand || 'Diğer'}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            grid.insertAdjacentHTML('beforeend', card);
+        });
+    }
+
+    function renderPagination(total, current) {
+        const pagination = document.getElementById('pagination');
+        pagination.innerHTML = '';
+        const totalPages = Math.ceil(total / itemsPerPage);
+        if (totalPages <= 1) return;
+
+        // Simple pagination
+        let pages = [];
+        if (current > 1) pages.push({ t: '«', p: current - 1 });
+
+        let start = Math.max(1, current - 2);
+        let end = Math.min(totalPages, current + 2);
+
+        for (let i = start; i <= end; i++) pages.push({ t: i, p: i });
+
+        if (current < totalPages) pages.push({ t: '»', p: current + 1 });
+
+        pages.forEach(item => {
+            const li = document.createElement('li');
+            li.className = `page-item ${item.p === current && item.t !== '«' && item.t !== '»' ? 'active' : ''}`;
+            li.innerHTML = `<a class="page-link" href="#">${item.t}</a>`;
+            li.onclick = (e) => { e.preventDefault(); currentPage = item.p; fetchProducts(); };
+            pagination.appendChild(li);
+        });
+    }
+
+    window.openShareModal = function (product) {
+        // Prepare data
+        let imgUrl = '';
+        if (product.images && product.images.length > 0) {
+            imgUrl = typeof product.images[0] === 'string' ? product.images[0] : product.images[0].url;
+        }
+
+        const price = Number(product.price || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const caption = `${product.title}\n\nFiyat: ${price} TL\n\nÜrün Kodu: ${product.barcode}\n\n#${(product.brand || 'yeni').replace(/\s+/g, '')} #kampanya`;
+
+        document.getElementById('modalImage').src = imgUrl;
+        document.getElementById('modalImageUrl').value = imgUrl;
+        document.getElementById('modalCaption').value = caption;
+        document.getElementById('charCount').textContent = caption.length + " karakter";
+
+        new bootstrap.Modal(document.getElementById('shareModal')).show();
+    }
+
+    function postToInstagram() {
+        const btn = document.getElementById('btnConfirmShare');
+        const originalText = btn.innerHTML;
+        const imgUrl = document.getElementById('modalImageUrl').value;
+        const caption = document.getElementById('modalCaption').value;
+
+        if (!imgUrl) return Swal.fire('Hata', 'Görsel bulunamadı', 'error');
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Paylaşılıyor...';
+
+        fetch('/api/instagram/share', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image_url: imgUrl, caption: caption })
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('shareModal')).hide();
+                    Swal.fire('Başarılı', 'Gönderiniz Instagram\'da paylaşıldı!', 'success');
+                } else {
+                    Swal.fire('Hata', data.message || 'Paylaşılamadı', 'error');
+                }
+            })
+            .catch(err => {
+                Swal.fire('Hata', 'Sunucu hatası oluştu', 'error');
+                console.error(err);
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends "_base.html" %}
+{% block title %}Ürünü Klonla — VIDOS{% endblock %}
+{% block page_title %}Ürünü Yeniden Başlat{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-copy me-2 text-primary"></i>Ürünü Yeni Barkodla Klonla</h5>
+                <p class="text-muted small mb-0 mt-1">Bu işlem arşivdeki ürünü korur, yeni bir barkodla kopyasını
+                    oluşturur.</p>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            {% set imgs = original.get_images %}
+                            <img src="{{ imgs[0] if imgs else 'https://via.placeholder.com/200x200' }}"
+                                class="img-fluid rounded border shadow-sm"
+                                style="max-height: 150px; width: 100%; object-fit: cover;">
+                        </div>
+                        <div class="col-md-9 border-start">
+                            <h6>Orijinal Bilgiler:</h6>
+                            <div class="mb-1"><span class="text-muted small">Başlık:</span> <strong>{{ original.title
+                                    }}</strong></div>
+                            <div class="mb-1"><span class="text-muted small">Eski Barkod:</span> <span
+                                    class="badge bg-light text-dark">{{ original.barcode }}</span></div>
+                            <div class="mb-1"><span class="text-muted small">Marka/Kategori:</span> {{ original.brand }}
+                                / {{ original.top_category }}</div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">Yeni Barkod <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-upc-scan"></i></span>
+                                <input type="text" name="new_barcode" class="form-control form-control-lg"
+                                    placeholder="Örn: VDS-XYZ-123" value="{{ suggested_barcode }}" required>
+                            </div>
+                            <div class="form-text">Ürünü pazaryerine (Trendyol vb.) yeni bir ürün olarak gönderebilmek
+                                için barkod benzersiz olmalıdır.</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Yeni Stok Kodu</label>
+                            <input type="text" name="stock_code" class="form-control" value="{{ original.stockCode }}">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Satış Fiyatı (TL)</label>
+                            <input type="number" step="0.01" name="price" class="form-control"
+                                value="{{ original.listPrice or 0 }}">
+                        </div>
+
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">Ürün Başlığı</label>
+                            <input type="text" name="title" class="form-control" value="{{ original.title }}">
+                        </div>
+
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">Açıklama</label>
+                            <textarea name="description" class="form-control"
+                                rows="4">{{ original.description }}</textarea>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-5">
+                        <a href="{{ url_for('products.archive_list') }}" class="btn btn-light px-4">
+                            <i class="bi bi-arrow-left me-1"></i> İptal
+                        </a>
+                        <button type="submit" class="btn btn-primary px-5 fw-bold">
+                            <i class="bi bi-plus-circle me-1"></i> Klonla ve Oluştur
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

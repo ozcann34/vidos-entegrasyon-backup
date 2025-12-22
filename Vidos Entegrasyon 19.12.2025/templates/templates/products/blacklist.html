@@ -1,0 +1,109 @@
+{% extends "_base.html" %}
+
+{% block title %}Yasaklı Listesi{% endblock %}
+{% block page_title %}Yasaklı Marka ve Kategoriler{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Add New Item Form -->
+    <div class="col-lg-4 mb-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-transparent border-0 py-3">
+                <h5 class="fw-bold mb-0 text-danger">
+                    <i class="bi bi-shield-slash me-2"></i>Yasak Ekle
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-light border small text-muted mb-3">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Eklediğiniz marka veya kategoriler, ürün filtreleme ve pazar yeri gönderimlerinde hariç
+                    tutulacaktır.
+                </div>
+
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">Yasak Türü</label>
+                        <select name="type" class="form-select" required>
+                            <option value="brand">Marka (Brand)</option>
+                            <option value="category">Kategori</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Değer (İsim)</label>
+                        <input type="text" name="value" class="form-control" placeholder="Örn: Samsung veya Telefon"
+                            required>
+                        <div class="form-text">Tam eşleşme aranır.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Sebep (Opsiyonel)</label>
+                        <textarea name="reason" class="form-control" rows="2"
+                            placeholder="Neden yasaklandı?"></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-danger w-100">
+                        <i class="bi bi-plus-lg me-1"></i>Listeye Ekle
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- List Items -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-transparent border-0 py-3 d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0">Mevcut Yasaklılar</h5>
+                <span class="badge bg-secondary">{{ items|length }} Kayıt</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Tür</th>
+                            <th>Değer</th>
+                            <th>Sebep</th>
+                            <th>Eklenme Tarihi</th>
+                            <th class="text-end">İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td>
+                                {% if item.type == 'brand' %}
+                                <span class="badge bg-warning text-dark"><i class="bi bi-tag-fill me-1"></i>Marka</span>
+                                {% else %}
+                                <span class="badge bg-info text-dark"><i
+                                        class="bi bi-grid-fill me-1"></i>Kategori</span>
+                                {% endif %}
+                            </td>
+                            <td class="fw-bold">{{ item.value }}</td>
+                            <td class="text-muted small">{{ item.reason or '-' }}</td>
+                            <td class="small text-muted">{{ item.created_at.strftime('%d.%m.%Y') }}</td>
+                            <td class="text-end">
+                                <form action="{{ url_for('products.delete_blacklist', id=item.id) }}" method="POST"
+                                    class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                        onclick="return confirm('Bu yasağı kaldırmak istediğinize emin misiniz?')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-5 text-muted">
+                                <i class="bi bi-check2-circle fs-1 d-block mb-2 text-success"></i>
+                                Yasaklı kaydı bulunmuyor.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

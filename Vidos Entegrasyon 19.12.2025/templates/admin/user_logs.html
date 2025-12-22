@@ -1,0 +1,91 @@
+{% extends "admin/_base.html" %}
+
+{% block title %}Kullanıcı Logları - {{ user.email }}{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>
+        <a href="{{ url_for('admin.user_detail', user_id=user.id) }}" class="text-muted text-decoration-none me-2">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        İşlem Logları: {{ user.email }}
+    </h1>
+</div>
+
+<div class="admin-card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Tarih</th>
+                    <th>İşlem</th>
+                    <th>Pazaryeri</th>
+                    <th>Detaylar</th>
+                    <th>IP</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs.items %}
+                <tr>
+                    <td class="text-nowrap small">
+                        {{ log.created_at.strftime('%d.%m.%Y %H:%M:%S') }}
+                    </td>
+                    <td>
+                        {% set badge_class = 'bg-secondary' %}
+                        {% if 'delete' in log.action %} {% set badge_class = 'bg-danger' %}
+                        {% elif 'update' in log.action or 'edit' in log.action %} {% set badge_class = 'bg-warning
+                        text-dark' %}
+                        {% elif 'create' in log.action %} {% set badge_class = 'bg-success' %}
+                        {% endif %}
+                        <span class="badge {{ badge_class }}">{{ log.action }}</span>
+                    </td>
+                    <td>{{ log.marketplace or '-' }}</td>
+                    <td class="small text-muted" style="max-width: 300px;">
+                        <div class="text-truncate" title="{{ log.details }}">
+                            {{ log.details or '-' }}
+                        </div>
+                    </td>
+                    <td class="small font-monospace">{{ log.ip_address or '-' }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="text-center py-5 text-muted">İşlem kaydı bulunamadı.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if logs.pages > 1 %}
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if logs.has_prev %}
+            <li class="page-item">
+                <a class="page-link"
+                    href="{{ url_for('admin.user_activity_logs', user_id=user.id, page=logs.prev_num) }}">Geri</a>
+            </li>
+            {% endif %}
+
+            {% for page in logs.iter_pages() %}
+            {% if page %}
+            <li class="page-item {{ 'active' if page == logs.page else '' }}">
+                <a class="page-link" href="{{ url_for('admin.user_activity_logs', user_id=user.id, page=page) }}">{{
+                    page }}</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+            {% endfor %}
+
+            {% if logs.has_next %}
+            <li class="page-item">
+                <a class="page-link"
+                    href="{{ url_for('admin.user_activity_logs', user_id=user.id, page=logs.next_num) }}">İleri</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}

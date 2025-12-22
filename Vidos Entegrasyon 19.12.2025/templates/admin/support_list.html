@@ -1,0 +1,62 @@
+{% extends "admin/_base.html" %}
+
+{% block title %}Destek Talepleri{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1><i class="bi bi-headset me-2"></i>Destek Talepleri</h1>
+</div>
+
+<div class="admin-card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>User</th>
+                    <th>Subject</th>
+                    <th>Status</th>
+                    <th>Last Update</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ticket in tickets %}
+                <tr>
+                    <td>#{{ ticket.id }}</td>
+                    <td>
+                        <a href="{{ url_for('admin.user_detail', user_id=ticket.user_id) }}"
+                            class="text-white text-decoration-none">
+                            {{ ticket.user.full_name or ticket.user.email }}
+                        </a>
+                    </td>
+                    <td>{{ ticket.subject }}</td>
+                    <td>
+                        {% if ticket.status == 'open' %}
+                        <span class="badge bg-warning text-dark">Açık</span>
+                        {% elif ticket.status == 'answered' %}
+                        <span class="badge bg-success">Yanıtlandı</span>
+                        {% elif ticket.status == 'resolved' %}
+                        <span class="badge bg-secondary">Çözüldü</span>
+                        {% elif ticket.status == 'closed' %}
+                        <span class="badge bg-secondary">Kapalı</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ ticket.updated_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                    <td>
+                        <a href="{{ url_for('admin.support_ticket_detail', ticket_id=ticket.id) }}"
+                            class="btn btn-sm btn-outline-light">
+                            <i class="bi bi-pencil-square"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center py-4 text-muted">Açık destek talebi bulunmuyor.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
