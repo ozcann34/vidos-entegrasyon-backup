@@ -15,6 +15,7 @@ class Payment(db.Model):
     amount = db.Column(db.Float, nullable=False)
     currency = db.Column(db.String(10), default='TRY')
     plan = db.Column(db.String(50), nullable=False)  # basic, pro, enterprise
+    billing_cycle = db.Column(db.String(20), default='monthly')  # monthly, yearly
     
     # Gateway information
     gateway = db.Column(db.String(50), nullable=True)  # shopier, iyzico, etc.

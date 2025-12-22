@@ -56,6 +56,7 @@ class User(db.Model, UserMixin):
     is_active = db.Column(db.Boolean, default=True)
     is_banned = db.Column(db.Boolean, default=False)
     ban_reason = db.Column(db.Text, nullable=True)
+    is_email_verified = db.Column(db.Boolean, default=False)
     
     # Permissions (JSON string)
     permissions_json = db.Column(db.Text, nullable=True)
@@ -64,7 +65,9 @@ class User(db.Model, UserMixin):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime, nullable=True)
     
-    # Password reset token
+    # Verification & Reset tokens
+    email_otp = db.Column(db.String(6), nullable=True)
+    otp_expiry = db.Column(db.DateTime, nullable=True)
     reset_token = db.Column(db.String(100), nullable=True)
     reset_token_expiry = db.Column(db.DateTime, nullable=True)
     

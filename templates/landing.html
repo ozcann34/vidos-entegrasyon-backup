@@ -21,7 +21,14 @@
         <!-- Navigation -->
         <nav class="navbar" id="navbar">
             <div class="nav-container">
-                <a href="#" class="logo">Vidos</a>
+                <a href="#" class="logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="Vidos"
+                        style="height: 32px;"></a>
+                <div class="nav-links">
+                    <a href="#features">Özellikler</a>
+                    <a href="#pricing">Fiyatlandırma</a>
+                    <a href="{{ url_for('main.about_us') }}">Hakkımızda</a>
+                    <a href="#contact">İletişim</a>
+                </div>
                 <a href="{{ url_for('auth.login') }}" class="btn-login">Giriş Yap</a>
             </div>
         </nav>
@@ -30,25 +37,14 @@
         <section class="hero" id="home">
             <div class="hero-container">
                 <div class="hero-content">
-                    <div class="badge-new">✨ Yeni: Shopier Entegrasyonu Hazır!</div>
                     <h1>E-Ticaret Entegrasyonlarınızı <span class="text-gradient">Tek Platformda</span> Yönetin</h1>
                     <p class="subtitle">
-                        Trendyol, n11, Pazarama ve daha fazlası... Tüm pazaryeri entegrasyonlarınızı
+                        Trendyol, n11, Pazarama, Hepsiburada ve İdefix... Tüm pazaryeri entegrasyonlarınızı
                         kolayca yönetin, ürünlerinizi senkronize edin ve satışlarınızı artırın.
                     </p>
                     <div class="cta-buttons">
-                        <a href="{{ url_for('auth.login') }}" class="btn-primary">Ücretsiz Başlayın</a>
+                        <a href="{{ url_for('auth.register') }}" class="btn-primary">Ücretsiz Başlayın</a>
                         <a href="#features" class="btn-secondary">Özellikleri Keşfet</a>
-                    </div>
-                    <div class="hero-stats">
-                        <div class="stat-item">
-                            <span class="stat-value">500+</span>
-                            <span class="stat-label">Aktif Kullanıcı</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-value">1M+</span>
-                            <span class="stat-label">Günlük Senkronizasyon</span>
-                        </div>
                     </div>
                 </div>
                 <div class="hero-image scroll-animate">
@@ -67,15 +63,13 @@
                     <div class="slide">N11</div>
                     <div class="slide">PAZARAMA</div>
                     <div class="slide">HEPSİBURADA</div>
-                    <div class="slide">AMAZON</div>
-                    <div class="slide">ÇİÇEKSEPETİ</div>
+                    <div class="slide">İDEFİX</div>
                     <!-- Duplicate for infinite scroll -->
                     <div class="slide">TRENDYOL</div>
                     <div class="slide">N11</div>
                     <div class="slide">PAZARAMA</div>
                     <div class="slide">HEPSİBURADA</div>
-                    <div class="slide">AMAZON</div>
-                    <div class="slide">ÇİÇEKSEPETİ</div>
+                    <div class="slide">İDEFİX</div>
                 </div>
             </div>
         </section>
@@ -231,9 +225,9 @@
                 <h2 class="section-title">Sıkça Sorulan Sorular</h2>
                 <div class="faq-grid">
                     <div class="faq-item scroll-animate">
-                        <h3>Shopier ile ödeme güvenli mi?</h3>
-                        <p>Evet, tüm ödemeler Shopier altyapısı ile 256-bit SSL sertifikalı güvenli ödeme sayfasında
-                            gerçekleşir.</p>
+                        <h3>iyzico ile ödeme güvenli mi?</h3>
+                        <p>Evet, tüm ödemeler iyzico altyapısı ile 256-bit SSL sertifikalı güvenli ödeme sayfasında
+                            gerçekleşir. Kredi kartı bilgileriniz hiçbir şekilde sistemimizde saklanmaz.</p>
                     </div>
                     <div class="faq-item scroll-animate">
                         <h3>Kaç pazaryeri bağlayabilirim?</h3>
@@ -248,6 +242,27 @@
                         <h3>Ürün limitim dolduğunda ne olur?</h3>
                         <p>Ürün limitinize yaklaştığınızda sistem sizi uyarır. Dilerseniz paketinizi istediğiniz zaman
                             yükseltebilirsiniz.</p>
+                    </div>
+                    <div class="faq-item scroll-animate">
+                        <h3>XML ile ürün yüklemek nasıl çalışır?</h3>
+                        <p>Tedarikçinizden aldığınız XML linkini sisteme eklersiniz. Vidos otomatik olarak ürünleri
+                            çeker,
+                            kategori eşleştirmesi yapar ve seçtiğiniz pazaryerlerine gönderir.</p>
+                    </div>
+                    <div class="faq-item scroll-animate">
+                        <h3>Stok ve fiyat güncellemeleri otomatik mi?</h3>
+                        <p>Evet! Paketinize göre belirlenen aralıklarla (30dk - 24 saat) stok ve fiyatlarınız
+                            tüm pazaryerlerinde otomatik güncellenir.</p>
+                    </div>
+                    <div class="faq-item scroll-animate">
+                        <h3>Ücretsiz deneme süresi var mı?</h3>
+                        <p>Evet, tüm yeni kullanıcılarımıza 7 günlük ücretsiz deneme süresi sunuyoruz.
+                            Kredi kartı bilgisi gerekmez.</p>
+                    </div>
+                    <div class="faq-item scroll-animate">
+                        <h3>İptal ve iade politikanız nedir?</h3>
+                        <p>Aylık aboneliklerde istediğiniz zaman iptal edebilirsiniz. Yıllık planlarda
+                            ilk 30 gün içinde tam iade garantisi sunuyoruz.</p>
                     </div>
                 </div>
             </div>
@@ -265,8 +280,8 @@
                         <p class="text-muted small">Saatleri arasında ulaşabilirsiniz.</p>
                     </div>
                     <div class="footer-contact-simple">
-                        <p>+90 850 000 00 00</p>
-                        <p>destek@vidos.com</p>
+                        <p>0850 532 3870</p>
+                        <p>destek@vidos.com.tr</p>
                     </div>
                     <div class="app-buttons">
                         <a href="#" class="app-btn"><img
@@ -300,8 +315,10 @@
                         <li><a href="#">N11 Entegrasyonu</a></li>
                         <li><a href="#">Pazarama Entegrasyonu</a></li>
                         <li><a href="#">Hepsiburada Entegrasyonu</a></li>
+                        <li><a href="#">İdefix Entegrasyonu</a></li>
+                        <li><a href="#">Temu & ÇiçekSepeti (Yakında)</a></li>
+                        <li><a href="#">Instagram Gönderi Yönetimi</a></li>
                         <li><a href="#">XML Ürün Yükleme</a></li>
-                        <li><a href="#">Otomatik Stok Takibi</a></li>
                     </ul>
                 </div>
 
@@ -310,21 +327,20 @@
                     <h4>İletişim</h4>
                     <div class="contact-item">
                         <span class="icon">📞</span>
-                        <p>+90 850 000 00 00</p>
+                        <p>0850 532 3870</p>
                     </div>
                     <div class="contact-item">
                         <span class="icon">✉️</span>
-                        <p>info@vidos.com</p>
+                        <p>info@vidos.com.tr</p>
                     </div>
                     <div class="contact-item">
                         <span class="icon">📍</span>
-                        <p>Merkez Mah. Teknoloji Cad. <br>No:123/A Kağıthane / İstanbul</p>
+                        <p>SANAYİ MAH. KANARYA CAD. NO: 1 <br>İÇ KAPI NO: 2 GÜNGÖREN / İSTANBUL</p>
                     </div>
                     <div class="social-links-footer">
-                        <a href="#">📘</a>
-                        <a href="#">🐦</a>
-                        <a href="#">📷</a>
-                        <a href="#">💼</a>
+                        <a href="https://instagram.com/vidosentegrasyon" target="_blank" title="Instagram">📷</a>
+                        <a href="https://twitter.com/vidosentegrasyon" target="_blank" title="Twitter (X)">🐦</a>
+                        <a href="https://youtube.com/@vidosentegrasyon" target="_blank" title="YouTube">🎬</a>
                     </div>
                 </div>
             </div>

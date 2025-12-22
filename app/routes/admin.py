@@ -1144,6 +1144,20 @@ def activity_monitor():
     """Real-time user activity monitor page."""
     return render_template('admin/activity_monitor.html')
 
+@admin_bp.route('/user_logs/<int:user_id>')
+@admin_required
+def user_activity_logs(user_id):
+    """View paginated logs for a specific user."""
+    user = User.query.get_or_404(user_id)
+    page = request.args.get('page', 1, type=int)
+    per_page = 50
+    
+    logs = UserActivityLog.query.filter_by(user_id=user_id)\
+        .order_by(UserActivityLog.created_at.desc())\
+        .paginate(page=page, per_page=per_page, error_out=False)
+        
+    return render_template('admin/user_logs.html', user=user, logs=logs)
+
 @admin_bp.route('/api/live_logs')
 @admin_required
 def api_live_logs():

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr" data-bs-theme="dark">
+<html lang="tr" data-bs-theme="light">
 
 <head>
     <meta charset="UTF-8">
@@ -10,13 +10,13 @@
     <style>
         :root {
             --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --glass-bg: rgba(255, 255, 255, 0.05);
-            --glass-border: rgba(255, 255, 255, 0.1);
+            --glass-bg: rgba(255, 255, 255, 0.95);
+            --glass-border: rgba(0, 0, 0, 0.1);
         }
 
         body {
             min-height: 100vh;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 50%, #d9e2ec 100%);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -35,7 +35,7 @@
             border: 1px solid var(--glass-border);
             border-radius: 24px;
             padding: 2.5rem;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
         }
 
         .auth-logo {
@@ -66,21 +66,21 @@
         }
 
         .form-floating>.form-control {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.03);
+            border: 1px solid rgba(0, 0, 0, 0.1);
             border-radius: 12px;
-            color: #fff;
+            color: #333;
             height: 56px;
         }
 
         .form-floating>.form-control:focus {
-            background: rgba(255, 255, 255, 0.08);
+            background: #fff;
             border-color: #667eea;
             box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.2);
         }
 
         .form-floating>label {
-            color: rgba(255, 255, 255, 0.6);
+            color: rgba(0, 0, 0, 0.6);
         }
 
         .btn-primary {
@@ -104,13 +104,13 @@
         }
 
         .auth-links a {
-            color: rgba(255, 255, 255, 0.7);
+            color: #667eea;
             text-decoration: none;
             transition: color 0.3s ease;
         }
 
         .auth-links a:hover {
-            color: #667eea;
+            color: #764ba2;
         }
 
         .form-check-input:checked {

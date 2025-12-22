@@ -344,6 +344,12 @@
                         class="form-control" name="HB_PRICE_MULTIPLIER" value="{{ settings.HB_PRICE_MULTIPLIER }}">
                     </div>
                   </div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-bold">Varsayılan Marka Adı</label>
+                    <input type="text" class="form-control" name="HB_BRAND_NAME" value="{{ settings.HB_BRAND_NAME }}"
+                      placeholder="Örn: Samsung">
+                    <div class="form-text">XML'de marka yoksa bu marka kullanılır.</div>
+                  </div>
                   <div class="col-12 mt-3">
                     <button type="submit" class="btn btn-success"><i class="bi bi-save me-2"></i> Kaydet</button>
                     <button type="button" class="btn btn-outline-primary ms-2" onclick="testConnection('hepsiburada')">

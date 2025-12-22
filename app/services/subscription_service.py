@@ -10,7 +10,7 @@ def get_subscription(user_id: int) -> Optional[Subscription]:
     return Subscription.query.filter_by(user_id=user_id).first()
 
 
-def activate_subscription(user_id: int, plan: str, payment_id: int = None) -> Optional[Subscription]:
+def activate_subscription(user_id: int, plan: str, payment_id: int = None, billing_cycle: str = 'monthly', price_paid: float = 0.0) -> Optional[Subscription]:
     """Activate or upgrade user subscription."""
     from app.services.payment_service import get_plan_details
     
@@ -29,7 +29,10 @@ def activate_subscription(user_id: int, plan: str, payment_id: int = None) -> Op
         subscription.start_date = datetime.utcnow()
         subscription.end_date = datetime.utcnow() + timedelta(days=plan_details['duration_days'])
         subscription.max_products = plan_details['max_products']
-        subscription.max_xml_sources = plan_details['max_marketplaces']
+        subscription.max_marketplaces = plan_details['max_marketplaces']
+        subscription.max_xml_sources = plan_details.get('max_xml_sources', 1) # Default to 1
+        subscription.billing_cycle = billing_cycle
+        subscription.price_paid = price_paid
         if payment_id:
             subscription.payment_reference = str(payment_id)
     else:
@@ -37,11 +40,14 @@ def activate_subscription(user_id: int, plan: str, payment_id: int = None) -> Op
         subscription = Subscription(
             user_id=user_id,
             plan=plan,
+            billing_cycle=billing_cycle,
+            price_paid=price_paid,
             status='active',
             start_date=datetime.utcnow(),
             end_date=datetime.utcnow() + timedelta(days=plan_details['duration_days']),
             max_products=plan_details['max_products'],
-            max_xml_sources=plan_details['max_marketplaces'],
+            max_marketplaces=plan_details['max_marketplaces'],
+            max_xml_sources=plan_details.get('max_xml_sources', 1),
             payment_reference=str(payment_id) if payment_id else None
         )
         db.session.add(subscription)
@@ -118,11 +124,20 @@ def check_usage_limit(user_id: int, metric_type: str, current_count: int = None)
             
     elif metric_type == 'xml_sources':
         limit = subscription.max_xml_sources
-        if limit is None: limit = 3 # Fallback
+        if limit is None: limit = 1 # Fallback
         
         if current_count is None:
             from app.models import SupplierXML
             usage = SupplierXML.query.filter_by(user_id=user_id).count()
+        else:
+            usage = current_count
+            
+    elif metric_type == 'marketplaces':
+        limit = subscription.max_marketplaces
+        if limit is None: limit = 1 # Fallback
+        
+        if current_count is None:
+            usage = len(get_active_marketplaces(user_id))
         else:
             usage = current_count
             
@@ -131,6 +146,33 @@ def check_usage_limit(user_id: int, metric_type: str, current_count: int = None)
         return True
         
     return usage < limit
+
+def get_active_marketplaces(user_id: int) -> list:
+    """Check which marketplaces have configured API credentials."""
+    from app.models import Setting
+    active = []
+    
+    # Trendyol
+    if Setting.get("SELLER_ID", user_id=user_id) or Setting.get("API_KEY", user_id=user_id):
+        active.append('trendyol')
+    
+    # Hepsiburada
+    if Setting.get("HB_MERCHANT_ID", user_id=user_id):
+        active.append('hepsiburada')
+        
+    # N11
+    if Setting.get("N11_API_KEY", user_id=user_id):
+        active.append('n11')
+        
+    # Pazarama
+    if Setting.get("PAZARAMA_API_KEY", user_id=user_id):
+        active.append('pazarama')
+        
+    # Idefix
+    if Setting.get("IDEFIX_API_KEY", user_id=user_id):
+        active.append('idefix')
+        
+    return active
     
 
 def get_usage_stats(user_id: int):
@@ -143,6 +185,7 @@ def get_usage_stats(user_id: int):
     
     product_usage = Product.query.filter_by(user_id=user_id).count()
     xml_usage = SupplierXML.query.filter_by(user_id=user_id).count()
+    mp_usage = len(get_active_marketplaces(user_id))
     
     return {
         'products': {
@@ -156,5 +199,11 @@ def get_usage_stats(user_id: int):
             'limit': subscription.max_xml_sources,
             'percent': (xml_usage / subscription.max_xml_sources * 100) if subscription.max_xml_sources and subscription.max_xml_sources > 0 else 0,
             'is_unlimited': subscription.max_xml_sources == -1
+        },
+        'marketplaces': {
+            'used': mp_usage,
+            'limit': subscription.max_marketplaces,
+            'percent': (mp_usage / subscription.max_marketplaces * 100) if subscription.max_marketplaces and subscription.max_marketplaces > 0 else 0,
+            'is_unlimited': subscription.max_marketplaces == -1
         }
     }

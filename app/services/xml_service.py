@@ -162,6 +162,7 @@ def load_xml_source_index(xml_source_id: Any) -> Dict[str, Dict[str, Any]]:
         quantity_str = _g(row, 'quantity', 'Quantity', 'stok', 'Stok', 'OnHand', 'stock') or '0'
         price_str = _g(row, 'price', 'Price', 'salePrice', 'SalePrice', 'unitPrice', 'UnitPrice', 'listPrice', 'ListPrice') or '0'
         vat_raw = _g(row, 'tax', 'Tax', 'taxRate', 'TaxRate')
+        brand_raw = _g(row, 'brand', 'Brand', 'marka', 'Marka', 'manufacturer', 'Manufacturer')
         try:
             quantity = int(float(quantity_str.replace(',', '.')))
         except Exception:
@@ -174,6 +175,9 @@ def load_xml_source_index(xml_source_id: Any) -> Dict[str, Dict[str, Any]]:
             vat_rate = float(str(vat_raw).replace(',', '.')) * (100 if vat_raw and float(str(vat_raw).replace(',', '.')) <= 1 else 1)
         except Exception:
             vat_rate = 20.0
+            
+        # Apply Brand Mapping
+        brand = apply_brand_mapping(brand_raw, src.user_id)
 
         images: List[Dict[str, str]] = []
         # 1. Try standard Image1, Image2...
@@ -221,6 +225,7 @@ def load_xml_source_index(xml_source_id: Any) -> Dict[str, Dict[str, Any]]:
             'quantity': quantity,
             'price': price,
             'vatRate': vat_rate,
+            'brand': brand,
             'category': _g(row, 'category', 'Category', 'top_category', 'TopCategory'),
             'images': images,
             'barcode': barcode,
@@ -297,3 +302,26 @@ def lookup_xml_record(xml_index: Dict[str, Dict[str, Any]], code: Optional[str] 
             if rec.get('title_normalized') == title_norm:
                 return rec
     return None
+
+def apply_brand_mapping(original_brand: str, user_id: int) -> str:
+    """Apply brand mapping rules for a user."""
+    if not original_brand:
+        return ""
+    
+    mapping_data = Setting.get('XML_BRAND_MAPPING', user_id=user_id)
+    if not mapping_data:
+        return original_brand
+        
+    try:
+        mapping = json.loads(mapping_data)
+        # Check for exact match
+        if original_brand in mapping:
+            return mapping[original_brand]
+        # Check for case-insensitive match
+        for k, v in mapping.items():
+            if k.lower() == original_brand.lower():
+                return v
+    except Exception:
+        pass
+        
+    return original_brand

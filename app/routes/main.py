@@ -164,6 +164,12 @@ def index():
 def dashboard():
     user_id = current_user.id
     
+    # Check email verification
+    if not current_user.is_email_verified and not current_user.is_admin:
+        return redirect(url_for('auth.verify_email'))
+    
+    user_id = current_user.id
+    
     # Calculate stats for current month
     now = datetime.now()
     start_of_month = datetime(now.year, now.month, 1)
@@ -564,6 +570,12 @@ def settings_page():
         return render_template("settings.html", settings=settings, xml_sources=xml_sources)
 
     elif request.method == "POST":
+        from app.services.subscription_service import get_active_marketplaces, get_subscription
+        
+        subscription = get_subscription(user_id)
+        active_mps = get_active_marketplaces(user_id)
+        limit = subscription.max_marketplaces if subscription else 1
+        
         # Save all settings
         all_keys = [
             "SELLER_ID", "API_KEY", "API_SECRET", "FORBIDDEN_KEYWORDS", "PRICE_MULTIPLIER",
@@ -581,9 +593,26 @@ def settings_page():
             "CRITICAL_STOCK_LIMIT",
         ]
         
+        # Identify which MP being updated/added
+        mp_check = {
+            "SELLER_ID": "trendyol",
+            "HB_MERCHANT_ID": "hepsiburada",
+            "N11_API_KEY": "n11",
+            "PAZARAMA_API_KEY": "pazarama",
+            "IDEFIX_API_KEY": "idefix"
+        }
+        
         for k in all_keys:
             if k in request.form:
-                val = request.form.get(k, "")
+                val = request.form.get(k, "").strip()
+                
+                # Limit enforcement for NEW marketplaces
+                if k in mp_check and val:
+                    mp_name = mp_check[k]
+                    if mp_name not in active_mps and len(active_mps) >= limit and limit != -1:
+                        flash(f"Pazaryeri limitinize ulaştınız ({limit}). Daha fazlası için paketinizi yükseltin.", "danger")
+                        continue # Skip this setting
+                
                 Setting.set(k, val, user_id=user_id)
                 
         flash("Ayarlar kaydedildi.", "success")

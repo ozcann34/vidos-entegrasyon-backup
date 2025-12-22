@@ -36,7 +36,8 @@ def payment_page():
 def initiate_payment():
     """Initiate payment process."""
     plan = request.form.get('plan', 'basic')
-    gateway = request.form.get('gateway', 'shopier')  # shopier or iyzico
+    billing_cycle = request.form.get('billing_period', 'monthly')
+    gateway = request.form.get('gateway', 'iyzico')  # shopier removed, iyzico only
     
     # Validate plan
     plan_details = get_plan_details(plan)
@@ -49,6 +50,7 @@ def initiate_payment():
     payment = create_payment(
         user_id=current_user.id,
         plan=plan,
+        billing_cycle=billing_cycle,
         ip_address=request.remote_addr,
         user_agent=request.headers.get('User-Agent')
     )

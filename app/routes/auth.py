@@ -43,6 +43,10 @@ def login():
             login_user(user, remember=bool(remember))
             flash(f'Hoş geldiniz, {user.full_name or user.email}!', 'success')
             
+            # Redirect logic
+            if not user.is_email_verified and not user.is_admin:
+                return redirect(url_for('auth.verify_email'))
+                
             # Redirect to next page if exists
             next_page = request.args.get('next')
             if next_page:
@@ -108,16 +112,17 @@ def register():
         if user:
             flash('Hesabınız oluşturuldu!', 'success')
             # Auto login
+            # Auto login
             login_user(user)
+            
+            # Send OTP
+            from app.services.email_service import send_otp_email
+            send_otp_email(user)
             
             # Store selected plan in session
             session['selected_plan'] = plan
             
-            # Redirect to payment if not free plan
-            if plan != 'free':
-                return redirect(url_for('payment.payment_page', plan=plan))
-            else:
-                return redirect(url_for('main.dashboard'))
+            return redirect(url_for('auth.verify_email'))
         else:
             flash('Bu email adresi zaten kayıtlı.', 'danger')
     
@@ -162,6 +167,55 @@ def forgot_password():
         return redirect(url_for('auth.login'))
     
     return render_template('auth/forgot_password.html')
+
+
+@auth_bp.route('/verify-email', methods=['GET', 'POST'])
+@login_required
+def verify_email():
+    """Verify email with OTP code."""
+    if current_user.is_email_verified:
+        return redirect(url_for('main.dashboard'))
+    
+    if request.method == 'POST':
+        otp = request.form.get('otp', '').strip()
+        
+        if not otp:
+            flash('Lütfen doğrulama kodunu girin.', 'warning')
+        elif current_user.email_otp == otp:
+            if current_user.otp_expiry and current_user.otp_expiry > datetime.utcnow():
+                current_user.is_email_verified = True
+                current_user.email_otp = None
+                current_user.otp_expiry = None
+                db.session.commit()
+                
+                flash('E-posta adresiniz başarıyla doğrulandı!', 'success')
+                
+                # Check for pending payment
+                plan = session.get('selected_plan')
+                if plan and plan != 'free':
+                    return redirect(url_for('payment.payment_page', plan=plan))
+                return redirect(url_for('main.dashboard'))
+            else:
+                flash('Doğrulama kodunun süresi dolmuş. Lütfen yeni bir kod isteyin.', 'danger')
+        else:
+            flash('Geçersiz doğrulama kodu.', 'danger')
+            
+    return render_template('auth/verify_email.html')
+
+@auth_bp.route('/resend-otp')
+@login_required
+def resend_otp():
+    """Resend OTP to user."""
+    if current_user.is_email_verified:
+        return redirect(url_for('main.dashboard'))
+    
+    from app.services.email_service import send_otp_email
+    if send_otp_email(current_user):
+        flash('Yeni doğrulama kodu e-posta adresinize gönderildi.', 'success')
+    else:
+        flash('Kod gönderilirken bir hata oluştu. Lütfen tekrar deneyin.', 'danger')
+        
+    return redirect(url_for('auth.verify_email'))
 
 
 @auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])

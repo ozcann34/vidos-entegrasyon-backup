@@ -48,7 +48,7 @@
 {% endif %}
 {% endwith %}
 
-<!-- Bildirimler ve Hata Raporları -->
+<!-- Bildirimler ve Raporlar -->
 {% if stats.announcements %}
 <div class="row g-3 mb-4">
   {% for ann in stats.announcements if 'bakım' not in ann.title|lower %}
@@ -85,12 +85,13 @@
     <div class="modal-dialog modal-dialog-centered modal-lg">
       <div class="modal-content border-0 shadow-lg">
         <div class="modal-header bg-{{ alert_class }} text-white">
-          <h5 class="modal-title fs-6 fw-bold"><i class="bi bi-bug-fill me-2"></i>Hata Detayı: {{ ann.title }}</h5>
+          <h5 class="modal-title fs-6 fw-bold"><i class="bi bi-info-circle-fill me-2"></i>Bildirim Detayı: {{ ann.title
+            }}</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
         </div>
         <div class="modal-body p-4 bg-light">
           <div class="card p-3 border-0 shadow-sm">
-            <h6 class="fw-bold text-muted mb-2">Hata İçeriği</h6>
+            <h6 class="fw-bold text-muted mb-2">İçerik</h6>
             {% if 'Traceback' in ann.content or 'Error' in ann.content or 'Exception' in ann.content %}
             <div class="alert alert-secondary mb-0 p-3"
               style="font-family: monospace; font-size: 0.8rem; white-space: pre-wrap; max-height: 400px; overflow-y: auto;">

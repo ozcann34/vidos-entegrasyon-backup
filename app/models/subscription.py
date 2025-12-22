@@ -12,6 +12,7 @@ class Subscription(db.Model):
     
     # Plan details
     plan = db.Column(db.String(50), default='free')  # free, pro, enterprise
+    billing_cycle = db.Column(db.String(20), default='monthly')  # monthly, yearly
     status = db.Column(db.String(20), default='active')  # active, expired, cancelled, suspended
     
     # Dates
@@ -22,12 +23,15 @@ class Subscription(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Payment reference (for future Shopier integration)
+    # Payment details
     payment_reference = db.Column(db.String(100), nullable=True)
+    price_paid = db.Column(db.Float, default=0.0)
+    currency = db.Column(db.String(10), default='TRY')
     
     # Plan limits (configurable per plan)
     max_products = db.Column(db.Integer, default=100)  # -1 = unlimited
-    max_xml_sources = db.Column(db.Integer, default=3)  # -1 = unlimited
+    max_marketplaces = db.Column(db.Integer, default=1)  # -1 = unlimited
+    max_xml_sources = db.Column(db.Integer, default=1)  # -1 = unlimited
     
     @property
     def is_active(self) -> bool:

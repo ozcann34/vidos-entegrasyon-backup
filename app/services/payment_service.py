@@ -17,6 +17,7 @@ SUBSCRIPTION_PLANS = {
         'features': ['1 Pazaryeri Entegrasyonu', '10.000 Ürün Limiti', '1 XML Tedarikçi', 'Günde 2 Kez Güncelleme', 'Temel Sipariş Listeleme', 'E-posta Destek'],
         'max_products': 10000,
         'max_marketplaces': 1,
+        'max_xml_sources': 1,
         'duration_days': 30,
         'sync_interval_hours': 12
     },
@@ -27,6 +28,7 @@ SUBSCRIPTION_PLANS = {
         'features': ['3 Pazaryeri Entegrasyonu', '25.000 Ürün Limiti', '5 XML Tedarikçi', '2 Saatte Bir Güncelleme', 'Gelişmiş Sipariş Yönetimi', 'Excel İşlemleri', 'Öncelikli Destek'],
         'max_products': 25000,
         'max_marketplaces': 3,
+        'max_xml_sources': 5,
         'duration_days': 30,
         'sync_interval_hours': 2
     },
@@ -37,6 +39,7 @@ SUBSCRIPTION_PLANS = {
         'features': ['10 Pazaryeri Entegrasyonu', '50.000 Ürün Limiti', 'Sınırsız XML Kaynağı', '30 Dk. Hızlı Senkronizasyon', 'Özel Fiyat Motoru', '7/24 WhatsApp Desteği', 'Kişisel Hesap Yöneticisi'],
         'max_products': 50000,
         'max_marketplaces': 10,
+        'max_xml_sources': -1,
         'duration_days': 30,
         'sync_interval_mins': 30
     }
@@ -60,18 +63,24 @@ def generate_payment_reference() -> str:
     return f"PAY-{timestamp}-{random_part}"
 
 
-def create_payment(user_id: int, plan: str, ip_address: str = None, user_agent: str = None) -> Optional[Payment]:
+def create_payment(user_id: int, plan: str, billing_cycle: str = 'monthly', ip_address: str = None, user_agent: str = None) -> Optional[Payment]:
     """Create a new payment record."""
     plan_details = get_plan_details(plan)
     
     if not plan_details:
         return None
     
+    # Calculate amount based on billing cycle
+    amount = plan_details['price']
+    if billing_cycle == 'yearly':
+        amount = int(plan_details['price'] * 12 * 0.8)  # 20% discount
+    
     payment = Payment(
         user_id=user_id,
-        amount=plan_details['price'],
+        amount=amount,
         currency=plan_details['currency'],
         plan=plan,
+        billing_cycle=billing_cycle,
         payment_reference=generate_payment_reference(),
         status='pending',
         ip_address=ip_address,
@@ -101,7 +110,14 @@ def complete_payment(payment_id: int, transaction_id: str = None, gateway: str =
     
     # Create or update subscription
     from app.services.subscription_service import activate_subscription
-    subscription = activate_subscription(payment.user_id, payment.plan, payment.id)
+    # Pass billing_cycle and amount to activate_subscription
+    subscription = activate_subscription(
+        payment.user_id, 
+        payment.plan, 
+        payment.id, 
+        billing_cycle=payment.billing_cycle, 
+        price_paid=payment.amount
+    )
     
     if subscription:
         payment.subscription_id = subscription.id

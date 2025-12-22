@@ -128,6 +128,61 @@ Vidos Entegrasyon
         return False
 
 
+def send_otp_email(user: User) -> bool:
+    """
+    Send OTP verification email to user.
+    """
+    try:
+        import random
+        otp = str(random.randint(100000, 999999))
+        user.email_otp = otp
+        user.otp_expiry = datetime.utcnow() + timedelta(minutes=15)
+        db.session.commit()
+        
+        subject = f"Vidos - E-posta Doğrulama Kodu: {otp}"
+        
+        html_body = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+            <div style="text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px 10px 0 0; color: white;">
+                <h2>E-posta Doğrulama</h2>
+            </div>
+            <div style="padding: 30px; text-align: center;">
+                <p>Merhaba,</p>
+                <p>Vidos Entegrasyon hesabınızı doğrulamak için aşağıdaki kodu kullanın:</p>
+                <div style="background: #f4f4f4; padding: 15px; font-size: 24px; font-weight: bold; letter-spacing: 5px; margin: 20px 0; border-radius: 5px;">
+                    {otp}
+                </div>
+                <p style="color: #666; font-size: 14px;">Bu kod 15 dakika süreyle geçerlidir.</p>
+                <p>Eğer bu işlemi siz yapmadıysanız lütfen bu e-postayı dikkate almayın.</p>
+            </div>
+            <div style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">
+                © 2025 Vidos Entegrasyon
+            </div>
+        </div>
+        """
+        
+        # Check if mail is configured
+        if not current_app.config.get('MAIL_USERNAME'):
+            log_message = f"[{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}] 🔐 OTP Oluşturuldu (Email Yapılandırılmamış)\n   Kullanıcı: {user.email}\n   Kod: {otp}\n\n"
+            print(log_message)
+            
+            try:
+                import os
+                log_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'otp_codes.log')
+                with open(log_file, 'a', encoding='utf-8') as f:
+                    f.write(log_message)
+            except: pass
+            
+            return True
+            
+        msg = Message(subject=subject, recipients=[user.email], html=html_body)
+        mail.send(msg)
+        return True
+    except Exception as e:
+        print(f"OTP Error: {e}")
+        return False
+
+
 def verify_reset_token(token: str) -> User:
     """
     Verify password reset token and return user if valid.
