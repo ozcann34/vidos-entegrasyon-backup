@@ -132,10 +132,6 @@ def chatbot_message():
 def user_manual():
     return render_template('user_manual.html')
 
-@main_bp.route("/hakkimizda")
-def about_us():
-    return render_template('legal/privacy.html', title="Hakkımızda")
-
 @main_bp.route("/gizlilik-politikasi")
 def privacy_policy():
     return render_template('legal/privacy.html', title="Gizlilik Politikası")
