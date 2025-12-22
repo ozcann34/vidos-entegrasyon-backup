@@ -462,6 +462,7 @@
             </li>
             {% endif %}
 
+            {% if current_user.is_authenticated %}
             <!-- Kullanıcı Bilgileri ve Çıkış -->
             <li class="nav-item mt-4 pb-5">
                 <div
@@ -484,10 +485,11 @@
                     </a>
                 </div>
             </li>
+            {% endif %}
         </ul>
     </div>
 
-    <div id="main-content" class="w-100">
+    <div id="main-content">
 
         <div class="flash-message-container">
             {% with messages = get_flashed_messages(with_categories=true) %}
