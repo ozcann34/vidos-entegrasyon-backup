@@ -1691,7 +1691,7 @@ def search_marketplace_categories(marketplace):
     try:
         if marketplace == 'trendyol':
             from app.services.trendyol_service import _CATEGORY_CACHE, fetch_and_cache_categories as fetch_ty_cats
-            if not _CATEGORY_CACHE.get('loaded'): fetch_ty_cats()
+            if not _CATEGORY_CACHE.get('loaded'): fetch_ty_cats(user_id=user_id)
             results = [c for c in _CATEGORY_CACHE.get('list', []) if q in c.get('name', '').lower() or q in c.get('path', '').lower()]
             return jsonify(results[:50])
         elif marketplace == 'hepsiburada':
@@ -1729,7 +1729,7 @@ def get_marketplace_attributes(marketplace, category_id):
     user_id = current_user.id
     try:
         if marketplace == 'trendyol':
-            client = get_trendyol_client()
+            client = get_trendyol_client(user_id=user_id)
             return jsonify(client.get_category_attributes(int(category_id)))
         elif marketplace == 'hepsiburada':
             client = get_hepsiburada_client(user_id=user_id)
@@ -1739,7 +1739,7 @@ def get_marketplace_attributes(marketplace, category_id):
             if not client: return jsonify({"error": "N11 API bilgileri eksik"}), 400
             return jsonify(client.get_category_attributes(int(category_id)))
         elif marketplace == 'pazarama':
-            client = get_pazarama_client()
+            client = get_pazarama_client(user_id=user_id)
             if not client: return jsonify({"error": "Pazarama API bilgileri eksik"}), 400
             return jsonify(client.get_category_with_attributes(str(category_id)))
         elif marketplace == 'idefix':
@@ -1777,13 +1777,13 @@ def api_send_all():
             )
             if mode == 'stock':
                 job_id = submit_mp_job('trendyol_sync_stock', 'trendyol', 
-                    lambda jid: perform_trendyol_sync_stock(jid, xml_source_id))
+                    lambda jid: perform_trendyol_sync_stock(jid, xml_source_id, user_id=current_user.id))
             elif mode == 'price':
                 job_id = submit_mp_job('trendyol_sync_prices', 'trendyol', 
-                    lambda jid: perform_trendyol_sync_prices(jid, xml_source_id, match_by=match_by))
+                    lambda jid: perform_trendyol_sync_prices(jid, xml_source_id, match_by=match_by, user_id=current_user.id))
             else:
                  job_id = submit_mp_job('trendyol_sync_all', 'trendyol', 
-                    lambda jid: perform_trendyol_sync_all(jid, xml_source_id, match_by=match_by))
+                    lambda jid: perform_trendyol_sync_all(jid, xml_source_id, match_by=match_by, user_id=current_user.id))
         
         # N11
         elif marketplace == 'n11':
@@ -1792,13 +1792,13 @@ def api_send_all():
             )
             if mode == 'stock':
                  job_id = submit_mp_job('n11_sync_stock', 'n11', 
-                    lambda jid: perform_n11_sync_stock(jid, xml_source_id))
+                    lambda jid: perform_n11_sync_stock(jid, xml_source_id, user_id=current_user.id))
             elif mode == 'price':
                  job_id = submit_mp_job('n11_sync_prices', 'n11', 
-                    lambda jid: perform_n11_sync_prices(jid, xml_source_id))
+                    lambda jid: perform_n11_sync_prices(jid, xml_source_id, user_id=current_user.id))
             else:
                  job_id = submit_mp_job('n11_sync_all', 'n11', 
-                    lambda jid: perform_n11_sync_all(jid, xml_source_id, match_by=match_by))
+                    lambda jid: perform_n11_sync_all(jid, xml_source_id, match_by=match_by, user_id=current_user.id))
 
         # PAZARAMA
         elif marketplace == 'pazarama':
@@ -1807,13 +1807,13 @@ def api_send_all():
              )
              if mode == 'stock':
                  job_id = submit_mp_job('pazarama_sync_stock', 'pazarama', 
-                    lambda jid: perform_pazarama_sync_stock(jid, xml_source_id))
+                    lambda jid: perform_pazarama_sync_stock(jid, xml_source_id, user_id=current_user.id))
              elif mode == 'price':
                  job_id = submit_mp_job('pazarama_sync_prices', 'pazarama', 
-                    lambda jid: perform_pazarama_sync_prices(jid, xml_source_id))
+                    lambda jid: perform_pazarama_sync_prices(jid, xml_source_id, user_id=current_user.id))
              else:
                  job_id = submit_mp_job('pazarama_sync_all', 'pazarama', 
-                    lambda jid: perform_pazarama_sync_all(jid, xml_source_id))
+                    lambda jid: perform_pazarama_sync_all(jid, xml_source_id, user_id=current_user.id))
 
         else:
             return jsonify({'success': False, 'message': 'Pazaryeri desteklenmiyor.'}), 400

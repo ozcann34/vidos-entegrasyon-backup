@@ -817,7 +817,7 @@ def fetch_trendyol_categories():
     """Fetch all Trendyol categories and cache them."""
     try:
         from app.services.trendyol_service import fetch_and_cache_categories
-        result = fetch_and_cache_categories()
+        result = fetch_and_cache_categories(user_id=current_user.id)
         return jsonify(result)
     except Exception as e:
         return jsonify({
@@ -832,7 +832,7 @@ def fetch_trendyol_brands():
     """Fetch all Trendyol brands and cache them."""
     try:
         from app.services.trendyol_service import fetch_and_cache_brands
-        result = fetch_and_cache_brands()
+        result = fetch_and_cache_brands(user_id=current_user.id)
         return jsonify(result)
     except Exception as e:
         return jsonify({
@@ -847,7 +847,7 @@ def fetch_idefix_categories():
     """Fetch Idefix categories and save to settings."""
     try:
         from app.services.idefix_service import fetch_and_cache_categories
-        result = fetch_and_cache_categories()
+        result = fetch_and_cache_categories(user_id=current_user.id)
         if result.get('success'):
             flash(result.get('message'), 'success')
             return jsonify(result)
@@ -864,9 +864,9 @@ def fetch_idefix_categories():
 def fetch_pazarama_categories():
     """Fetch Pazarama categories and save to settings for TF-IDF matching."""
     try:
-        client = get_pazarama_client()
+        client = get_pazarama_client(user_id=current_user.id)
         leafs = fetch_pazarama_categories_flat(client)
-        Setting.set("PAZARAMA_CATEGORY_TREE", json.dumps(leafs, ensure_ascii=False))
+        Setting.set("PAZARAMA_CATEGORY_TREE", json.dumps(leafs, ensure_ascii=False), user_id=current_user.id)
         return jsonify({
             'success': True, 
             'message': f'Pazarama kategori ağacı çekildi. Toplam {len(leafs)} kategori kaydedildi.'
@@ -884,7 +884,7 @@ def fetch_n11_categories():
     try:
         from app.services.n11_service import fetch_and_cache_n11_categories
         # force=True implies explicit request from UI
-        success = fetch_and_cache_n11_categories(force=True)
+        success = fetch_and_cache_n11_categories(user_id=current_user.id, force=True)
         if success:
             return jsonify({
                 'success': True,

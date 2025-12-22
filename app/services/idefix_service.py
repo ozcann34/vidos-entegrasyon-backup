@@ -935,7 +935,7 @@ items: List[Dict[str, Any]],
             return {'content': [], 'totalElements': 0}
 
 
-def fetch_and_cache_categories() -> Dict[str, Any]:
+def fetch_and_cache_categories(user_id: int = None) -> Dict[str, Any]:
     """
     Fetch all categories from Idefix (Tree Structure) and cache flattened version.
     """
@@ -943,10 +943,11 @@ def fetch_and_cache_categories() -> Dict[str, Any]:
     from flask_login import current_user
     import json
     
-    user_id = current_user.id if current_user and current_user.is_authenticated else None
+    if user_id is None:
+        user_id = current_user.id if current_user and current_user.is_authenticated else None
     
     try:
-        client = get_idefix_client()
+        client = get_idefix_client(user_id=user_id)
         logger.info("[IDEFIX] Fetching entire category tree...")
         
         # 1. Fetch Tree
@@ -1039,6 +1040,12 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
         job_item = get_mp_job(job_id)
         user_id = job_item.get('params', {}).get('_user_id')
     except: pass
+    
+    if not user_id:
+        try:
+             if current_user and current_user.is_authenticated:
+                 user_id = current_user.id
+        except: pass
 
     try:
         client = get_idefix_client(user_id=user_id)
@@ -1734,202 +1741,6 @@ def perform_idefix_product_update(barcode: str, data: Dict[str, Any]) -> Dict[st
     return {'success': success, 'message': ' | '.join(messages)}
 
 
-def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id: Any, title_prefix: str = None, **kwargs) -> Dict[str, Any]:
-    """
-    Send products to Idefix from XML source
-    
-    Args:
-        job_id: Job queue ID for progress tracking
-        barcodes: List of product barcodes to send
-        xml_source_id: XML source database ID
-        
-    Returns:
-        Result dictionary with success status and counts
-    """
-    from app.services.job_queue import update_mp_job, get_mp_job
-    from app.services.xml_service import load_xml_source_index
-    from app.utils.helpers import clean_forbidden_words
-    
-    client = get_idefix_client()
-    append_mp_job_log(job_id, "Idefix istemcisi hazır")
-    
-    # Debug: Log barcode count
-    append_mp_job_log(job_id, f"Gelen barkod sayısı: {len(barcodes) if barcodes else 0}")
-    
-    xml_index = load_xml_source_index(xml_source_id)
-    mp_map = xml_index.get('by_barcode') or {}
-    multiplier = get_marketplace_multiplier('idefix')
-    
-    if not mp_map:
-        append_mp_job_log(job_id, "XML kaynak haritası boş", level='warning')
-        return {'success': False, 'message': 'XML kaynağında ürün bulunamadı.', 'count': 0}
-    
-    if not barcodes:
-        append_mp_job_log(job_id, "Barkod listesi boş", level='warning')
-        return {'success': False, 'message': 'Gönderilecek barkod yok.', 'count': 0}
-    
-    # Ensure categories/TFIDF ready
-    ensure_idefix_tfidf_ready()
-    
-    failures = []
-    skipped = []
-    products_to_send = []
-    
-    total = len(barcodes)
-    
-    # Check for saved brand ID from settings
-    saved_brand_id = Setting.get('IDEFIX_BRAND_ID', '') or ''
-    if saved_brand_id:
-        try: saved_brand_id = int(saved_brand_id)
-        except: saved_brand_id = None
-        append_mp_job_log(job_id, f"Kayıtlı marka ID kullanılıyor: {saved_brand_id}")
-    
-    DEFAULT_DESI = 1
-    # Idefix usually uses KDV Rate e.g. 10, 20
-    DEFAULT_VAT_RATE = 20
-    
-    for idx, barcode in enumerate(barcodes, 1):
-        # Check for pause/cancel
-        job_state = get_mp_job(job_id)
-        if job_state:
-            if job_state.get('cancel_requested'):
-                append_mp_job_log(job_id, "İşlem iptal edildi", level='warning')
-                break
-            
-            while job_state.get('pause_requested'):
-                append_mp_job_log(job_id, "İşlem duraklatıldı...", level='info')
-                time.sleep(5)
-                job_state = get_mp_job(job_id)
-                if job_state.get('cancel_requested'):
-                    break
-        
-        product = mp_map.get(barcode)
-        if not product:
-            skipped.append({'barcode': barcode, 'reason': 'XML verisi yok'})
-            continue
-        
-        try:
-            # Extract product data
-            title = clean_forbidden_words(product.get('title', ''))
-            description = clean_forbidden_words(product.get('description', '') or title)
-            # Ensure description is not empty and reasonably long
-            if not description or len(description) < 10:
-                description = f"{title} - {description}"
-            
-            # Idefix desc max length validation? Usually 20000 chars is fine.
-            
-            top_category = product.get('top_category', '')
-            xml_category = product.get('category', '')
-            brand_name = product.get('brand') or product.get('vendor') or product.get('manufacturer') or ''
-            
-            # Helper for logging
-            def category_log(msg, level='info'):
-                append_mp_job_log(job_id, f"[{barcode[:15]}] {msg}", level=level)
-            
-            # Resolve Brand - Always fallback to saved_brand_id if API fails
-            brand_id = None
-            
-            # Step 1: Try API lookup if brand_name exists
-            if brand_name:
-                # Search brand dynamically
-                b_res = client.search_brand_by_name(brand_name)
-                if b_res:
-                    brand_id = b_res['id']
-                    category_log(f"Marka '{brand_name}' API ile bulundu: {brand_id}")
-            
-            # Step 2: Fallback to saved default brand ID from settings
-            if not brand_id and saved_brand_id:
-                brand_id = saved_brand_id
-                category_log(f"Varsayılan marka ID kullanılıyor: {saved_brand_id}")
-            
-            # Step 3: Skip if still no brand
-            if not brand_id:
-                 skipped.append({'barcode': barcode, 'reason': 'Marka ID bulunamadı (Ayarlardan varsayılan marka tanımlayın)'})
-                 continue
-
-            # Resolve Category
-            category_id = resolve_idefix_category(title, xml_category, log_callback=category_log if idx <= 5 else None)
-            if not category_id:
-                skipped.append({'barcode': barcode, 'reason': 'Kategori eşleşmedi'})
-                continue
-            
-            # Price & Stock
-            base_price = to_float(product.get('price', 0))
-            stock = to_int(product.get('quantity', 0))
-            
-            if base_price <= 0:
-                skipped.append({'barcode': barcode, 'reason': 'Fiyat 0'})
-                continue
-            
-            sale_price = round(base_price * multiplier, 2)
-            # List price usually a bit higher or same
-            list_price = round(sale_price * 1.10, 2) 
-
-            # Images - Idefix expects [{url: "..."}] format
-            raw_images = product.get('images', [])
-            product_images = []
-            for img in raw_images:
-                url = None
-                if isinstance(img, dict): url = img.get('url')
-                elif isinstance(img, str): url = img
-                if url: product_images.append({"url": url})
-            
-            # Create Product Payload (per Idefix API docs)
-            # Endpoint: /pim/pool/{vendorId}/create
-            item_payload = {
-                "barcode": barcode,
-                "title": title[:200] if title else f"Ürün {barcode}",  # Required - cannot be null
-                "productMainId": barcode,  # Required - use barcode as unique ID
-                "description": description[:5000] if description else title[:200],
-                "brandId": brand_id,
-                "categoryId": category_id,
-                "price": sale_price,       # Satış Fiyatı (Kdv Dahil)
-                "comparePrice": list_price,# Liste Fiyatı
-                "vatRate": DEFAULT_VAT_RATE,
-                "vendorStockCode": product.get('stock_code', barcode)[:50],
-                "inventoryQuantity": stock,
-                "desi": DEFAULT_DESI,
-                "deliveryDuration": 3,  # Default 3 days
-                "deliveryType": "regular",
-                "images": product_images[:10]  # Max 10 images
-            }
-            
-            # Attributes? fast_list_products might accept 'attributes' list if mandatory?
-            # Outline for simple fast listing usually doesn't require deep attribute mapping if not strict.
-            # But I'll check if we need to add attributes.
-            # For now, minimal payload.
-            
-            products_to_send.append(item_payload)
-
-            # LOCAL DATABASE SYNC: Create or update local product
-            try:
-                from app.utils.helpers import sync_product_to_local
-                from app import db
-                from flask_login import current_user
-                
-                target_user_id = None
-                if current_user and current_user.is_authenticated:
-                    target_user_id = current_user.id
-                
-                if target_user_id:
-                    sync_product_to_local(
-                        user_id=target_user_id,
-                        barcode=barcode,
-                        product_data=product,
-                        xml_source_id=xml_source_id
-                    )
-                    
-                    if idx % 25 == 0:
-                        db.session.commit()
-            except Exception as db_err:
-                append_mp_job_log(job_id, f"Yerel DB senkronizasyon hatası: {db_err}", level='warning')
-            
-            if idx % 10 == 0:
-                append_mp_job_log(job_id, f"{idx}/{total} ürün hazırlandı...")
-                
-        except Exception as e:
-            failures.append({'barcode': barcode, 'reason': str(e)})
-            append_mp_job_log(job_id, f"Hata {barcode}: {e}", level='error')
     # Final commit for local products
     try:
         from app import db

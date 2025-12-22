@@ -310,9 +310,17 @@ def refresh_n11_cache(user_id: int, job_id: Optional[str] = None) -> Dict[str, A
     except Exception as e:
         return {'success': False, 'message': str(e)}
 
-def load_n11_snapshot() -> Dict[str, Any]:
+def load_n11_snapshot(user_id: int = None) -> Dict[str, Any]:
+    if user_id is None:
+        try:
+            if current_user and current_user.is_authenticated:
+                user_id = current_user.id
+        except: pass
+
+    if not user_id: return {}
+    
     try:
-        raw = Setting.get('N11_EXPORT_SNAPSHOT', '') or ''
+        raw = Setting.get('N11_EXPORT_SNAPSHOT', '', user_id=user_id) or ''
         if raw: return json.loads(raw)
     except: pass
     return {}
@@ -388,7 +396,7 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
     local_by_stock = {}
     if match_by == 'stock_code':
         try:
-            snap = load_n11_snapshot()
+            snap = load_n11_snapshot(user_id=u_id)
             local_list = snap.get('items', [])
             for p in local_list:
                 sc = p.get('stockCode')

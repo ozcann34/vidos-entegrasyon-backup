@@ -434,7 +434,7 @@ def pazarama_fetch_all_products(client: PazaramaClient, page_size: int = 250, fo
     snapshot_items: Optional[List[Dict[str, Any]]] = None
     snapshot_meta: Optional[Dict[str, Any]] = None
     if not force_refresh:
-        snap_raw = Setting.get('PAZARAMA_EXPORT_SNAPSHOT', '') or ''
+        snap_raw = Setting.get('PAZARAMA_EXPORT_SNAPSHOT', '', user_id=user_id) or ''
         if snap_raw:
             try:
                 snap = json.loads(snap_raw)
@@ -561,8 +561,8 @@ def pazarama_fetch_all_products(client: PazaramaClient, page_size: int = 250, fo
         raise last_error
     return []
 
-def pazarama_build_product_index(client: PazaramaClient, force_refresh: bool = False) -> Dict[str, Any]:
-    items = pazarama_fetch_all_products(client, force_refresh=force_refresh)
+def pazarama_build_product_index(client: PazaramaClient, force_refresh: bool = False, user_id: int = None) -> Dict[str, Any]:
+    items = pazarama_fetch_all_products(client, force_refresh=force_refresh, user_id=user_id)
     by_code: Dict[str, Dict[str, Any]] = {}
     by_stock: Dict[str, Dict[str, Any]] = {}
     for row in items:
@@ -574,15 +574,23 @@ def pazarama_build_product_index(client: PazaramaClient, force_refresh: bool = F
             by_stock[stock_code] = row
     return {'items': items, 'by_code': by_code, 'by_stock': by_stock}
 
-def perform_pazarama_sync_stock(job_id: str, xml_source_id: Any) -> Dict[str, Any]:
-    client = get_pazarama_client()
-    append_mp_job_log(job_id, "Pazarama istemcisi hazir")
+def perform_pazarama_sync_stock(job_id: str, xml_source_id: Any, user_id: int = None) -> Dict[str, Any]:
+    # Resolve user_id if not provided
+    if user_id is None:
+        try:
+            from app.services.job_queue import get_mp_job
+            job_data = get_mp_job(job_id)
+            user_id = job_data.get('params', {}).get('_user_id')
+        except: pass
+
+    client = get_pazarama_client(user_id=user_id)
+    append_mp_job_log(job_id, f"Pazarama istemcisi hazır (Kullanıcı: {user_id})")
     xml_index = load_xml_source_index(xml_source_id)
     if not xml_index:
         raise ValueError('XML kaynagindan urun verisi okunamadi.')
     append_mp_job_log(job_id, "XML verisi yuklendi")
 
-    product_index = pazarama_build_product_index(client)
+    product_index = pazarama_build_product_index(client, user_id=user_id)
     products = product_index.get('items') or []
     if not products:
         raise ValueError('Pazarama urun listesi alinamadi.')
@@ -696,21 +704,29 @@ def perform_pazarama_sync_stock(job_id: str, xml_source_id: Any) -> Dict[str, An
     })
     return summary
 
-def perform_pazarama_sync_prices(job_id: str, xml_source_id: Any) -> Dict[str, Any]:
-    client = get_pazarama_client()
-    append_mp_job_log(job_id, "Pazarama istemcisi hazir")
+def perform_pazarama_sync_prices(job_id: str, xml_source_id: Any, user_id: int = None) -> Dict[str, Any]:
+    # Resolve user_id if not provided
+    if user_id is None:
+        try:
+            from app.services.job_queue import get_mp_job
+            job_data = get_mp_job(job_id)
+            user_id = job_data.get('params', {}).get('_user_id')
+        except: pass
+
+    client = get_pazarama_client(user_id=user_id)
+    append_mp_job_log(job_id, f"Pazarama istemcisi hazır (Kullanıcı: {user_id})")
     xml_index = load_xml_source_index(xml_source_id)
     if not xml_index:
         raise ValueError('XML kaynagindan urun verisi okunamadi.')
     append_mp_job_log(job_id, "XML verisi yuklendi")
 
-    product_index = pazarama_build_product_index(client)
+    product_index = pazarama_build_product_index(client, user_id=user_id)
     products = product_index.get('items') or []
     if not products:
         raise ValueError('Pazarama urun listesi alinamadi.')
     append_mp_job_log(job_id, f"{len(products)} urun degerlendiriliyor")
 
-    multiplier = get_marketplace_multiplier('pazarama')
+    multiplier = get_marketplace_multiplier('pazarama', user_id=user_id)
     updates: List[Dict[str, Any]] = []
     changed_samples: List[Dict[str, Any]] = []
     skipped_zero_price: List[str] = []
@@ -975,7 +991,7 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
     total = len(barcodes)
     
     # Check for saved brand ID from settings
-    saved_brand_id = Setting.get('PAZARAMA_BRAND_ID', '') or ''
+    saved_brand_id = Setting.get('PAZARAMA_BRAND_ID', '', user_id=user_id) or ''
     if saved_brand_id:
         append_mp_job_log(job_id, f"Kayitli marka ID kullaniliyor: {saved_brand_id[:20]}...")
     

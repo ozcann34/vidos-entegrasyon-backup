@@ -923,9 +923,9 @@ class TrendyolClient:
     def get_addresses(self) -> Dict[str, Any]:
         """
         Fetch supplier addresses (shipment, invoice, etc.) from Trendyol.
-        GET https://apigw.trendyol.com/integration/product/sellers/{sellerId}/addresses
+        GET https://api.trendyol.com/sapigw/suppliers/{supplierId}/addresses
         """
-        url = f"https://apigw.trendyol.com/integration/product/sellers/{self.seller_id}/addresses"
+        url = f"{self.base_supplier_url}/addresses"
         resp = self.session.get(url, auth=self.auth, timeout=self.timeout)
         resp.raise_for_status()
         return resp.json()

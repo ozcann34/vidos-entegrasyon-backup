@@ -615,19 +615,35 @@ def match_brands_tfidf_batch(names: list[str], user_id: int) -> Dict[str, Option
         
     return results
 
-def load_trendyol_snapshot() -> Dict[str, Any]:
-    cached = getattr(load_trendyol_snapshot, '_cache', None)
-    cached_ts = getattr(load_trendyol_snapshot, '_cache_ts', 0)
+# Snapshot caches per user
+_TRENDYOL_SNAPSHOT_CACHES = {}
+
+def load_trendyol_snapshot(user_id: int = None) -> Dict[str, Any]:
+    """Load Trendyol product snapshot from settings, with memory caching."""
+    if user_id is None:
+        try:
+            from flask_login import current_user
+            if current_user and current_user.is_authenticated:
+                user_id = current_user.id
+        except Exception:
+            pass
+
+    if not user_id:
+        return {}
+
+    cache = _TRENDYOL_SNAPSHOT_CACHES.get(user_id, {})
+    cached_data = cache.get('data')
+    cached_ts = cache.get('ts', 0)
     now = time.time()
-    # Assuming Config is available or we pass it. Let's use Setting or hardcode default for now to avoid circular import with Config if not careful.
-    # Actually Config is in config.py, safe to import.
+    
     from config import Config
     ttl = Config.TRENDYOL_SNAPSHOT_TTL
     
-    if cached and ttl and (now - cached_ts) <= ttl:
-        return cached
+    if cached_data and ttl and (now - cached_ts) <= ttl:
+        return cached_data
+
     try:
-        raw = Setting.get('TRENDYOL_EXPORT_SNAPSHOT', '') or ''
+        raw = Setting.get('TRENDYOL_EXPORT_SNAPSHOT', '', user_id=user_id) or ''
         if not raw:
             return {}
         data = json.loads(raw)
@@ -639,8 +655,7 @@ def load_trendyol_snapshot() -> Dict[str, Any]:
             'total': data.get('count') or data.get('total') or len(items),
             'saved_at': data.get('saved_at'),
         }
-        load_trendyol_snapshot._cache = payload
-        load_trendyol_snapshot._cache_ts = now
+        _TRENDYOL_SNAPSHOT_CACHES[user_id] = {'data': payload, 'ts': now}
         return payload
     except Exception:
         return {}
@@ -876,7 +891,7 @@ def perform_trendyol_sync_stock(job_id: str, xml_source_id: Any, user_id: int = 
         append_mp_job_log(job_id, "XML kaynak haritası boş", level='warning')
         return {'success': False, 'message': 'XML kaynağında uygun ürün bulunamadı.', 'updated_count': 0}
 
-    snapshot_local = load_trendyol_snapshot()
+    snapshot_local = load_trendyol_snapshot(user_id=user_id)
     local_by_barcode = snapshot_local.get('by_barcode') if snapshot_local else {}
 
     updates: List[Dict[str, Any]] = []
@@ -951,7 +966,7 @@ def perform_trendyol_sync_prices(job_id: str, xml_source_id: Any, match_by: str 
     # Load local valid products to know what to update?
     # Ideally we should only update products that exist on Trendyol.
     # Current implementation loads 'snapshot_local' (from previous fetch).
-    snapshot_local = load_trendyol_snapshot()
+    snapshot_local = load_trendyol_snapshot(user_id=user_id)
     local_by_barcode = snapshot_local.get('by_barcode') if snapshot_local else {}
     # Also index local by stock code if needed
     local_by_stock = {}
@@ -1206,7 +1221,7 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
     local_by_stock = {}
     if match_by == 'stock_code':
         try:
-            snap = load_trendyol_snapshot()
+            snap = load_trendyol_snapshot(user_id=resolved_u_id)
             local_list = snap.get('by_barcode', {})
             for b, d in local_list.items():
                 sc = d.get('stockCode') or d.get('productCode')
