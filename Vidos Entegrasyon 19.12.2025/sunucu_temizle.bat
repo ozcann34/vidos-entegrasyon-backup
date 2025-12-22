@@ -25,7 +25,7 @@ echo.
 :: NOT: SSH baglanti bilgilerini (user@host) asagida guncellemeniz gerekebilir.
 :: Su an varsayilan olarak "root@vidos-server" gibi bir placeholder kullaniliyor.
 
-ssh -t root@host "cd /var/www/vidos && sudo rm -rf *"
+ssh -t root@193.35.154.83 "cd /var/www/vidos && sudo rm -rf * && echo 'Klasor Icerigi:' && ls -la"
 
 if %ERRORLEVEL% EQU 0 (
     echo.
