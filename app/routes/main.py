@@ -1,4 +1,5 @@
 import json
+import os
 import time
 from functools import wraps
 from datetime import datetime, timedelta
@@ -950,3 +951,33 @@ def instagram_share():
     
     return jsonify(result)
 
+@main_bp.route("/list-files")
+@login_required
+@admin_required
+def list_files():
+    """List files in the current working directory."""
+    try:
+        # Get current project path
+        path = os.getcwd()
+        items = []
+        
+        for item in os.listdir(path):
+            item_path = os.path.join(path, item)
+            is_dir = os.path.isdir(item_path)
+            size = os.path.getsize(item_path) if not is_dir else 0
+            mtime = datetime.fromtimestamp(os.path.getmtime(item_path)).strftime('%Y-%m-%d %H:%M:%S')
+            
+            items.append({
+                'name': item,
+                'is_dir': is_dir,
+                'size': size,
+                'mtime': mtime
+            })
+            
+        # Sort: directories first, then files by name
+        items.sort(key=lambda x: (not x['is_dir'], x['name'].lower()))
+        
+        return render_template("file_list.html", items=items, path=path)
+    except Exception as e:
+        flash(f"Dosyalar listelenirken hata oluştu: {str(e)}", "danger")
+        return redirect(url_for('main.dashboard'))
