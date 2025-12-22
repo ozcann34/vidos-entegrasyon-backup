@@ -1,0 +1,47 @@
+{% extends "legal/layout.html" %}
+
+{% block title %}İletişim{% endblock %}
+
+{% block legal_content %}
+<h1>İletişim</h1>
+<p class="section-subtitle">Size yardımcı olmaktan mutluluk duyarız.</p>
+
+<div style="margin-top: var(--spacing-xl); display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-2xl);">
+    <div>
+        <h3>İletişim Bilgileri</h3>
+        <div style="margin-bottom: var(--spacing-md);">
+            <strong>📞 Telefon:</strong><br>
+            <a href="tel:8505323870"
+                style="color: var(--color-primary); text-decoration: none; font-size: 1.2rem; font-weight: 700;">850 532
+                3870</a>
+        </div>
+        <div style="margin-bottom: var(--spacing-md);">
+            <strong>✉️ E-posta:</strong><br>
+            <a href="mailto:info@vidos.com.tr"
+                style="color: var(--color-primary); text-decoration: none;">info@vidos.com.tr</a>
+        </div>
+        <div style="margin-bottom: var(--spacing-md);">
+            <strong>📍 Adres:</strong><br>
+            <p>SANAYİ MAH. KANARYA CAD. NO: 1 İÇ KAPI NO: 2<br>GÜNGÖREN / İSTANBUL</p>
+        </div>
+    </div>
+    <div>
+        <h3>Destek Saatleri</h3>
+        <p>Haftaiçi: 09:00 - 18:00</p>
+        <p>Cumartesi: 10:00 - 15:00</p>
+        <div style="background: #f1f5f9; padding: 15px; border-radius: 10px; margin-top: 20px;">
+            <p style="margin-bottom: 0; font-size: 0.9rem;"><strong>Not:</strong> Teknik destek talepleriniz için
+                platform içerisindeki "Destek" bölümünü kullanmanızı öneririz.</p>
+        </div>
+    </div>
+</div>
+
+<div style="margin-top: var(--spacing-2xl);">
+    <h3>Sosyal Medya</h3>
+    <div style="display: flex; gap: 20px; font-size: 1.5rem;">
+        <a href="https://instagram.com/vidosentegrasyon" target="_blank" title="Instagram">📷</a>
+        <a href="https://twitter.com/vidosentegrasyon" target="_blank" title="Twitter (X)">🐦</a>
+        <a href="https://youtube.com/@vidosentegrasyon" target="_blank" title="YouTube">🎬</a>
+    </div>
+</div>
+{% endblock %}

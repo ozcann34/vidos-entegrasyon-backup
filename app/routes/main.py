@@ -160,6 +160,18 @@ def refund_policy():
 def index():
     return render_template('landing.html')
 
+@main_bp.route('/hakkimizda')
+def about_us():
+    """About us page."""
+    return render_template('about_us.html')
+
+
+@main_bp.route('/iletisim')
+def contact():
+    """Contact page."""
+    return render_template('contact.html')
+
+
 @main_bp.route("/dashboard")
 @login_required
 def dashboard():

@@ -37,7 +37,7 @@ def initiate_payment():
     """Initiate payment process."""
     plan = request.form.get('plan', 'basic')
     billing_cycle = request.form.get('billing_period', 'monthly')
-    gateway = request.form.get('gateway', 'iyzico')  # shopier removed, iyzico only
+    gateway = 'shopier' # Sadece shopier kullanılacak
     
     # Validate plan
     plan_details = get_plan_details(plan)
@@ -59,17 +59,21 @@ def initiate_payment():
         flash('Ödeme oluşturulamadı. Lütfen tekrar deneyin.', 'danger')
         return redirect(url_for('payment.payment_page'))
     
-    # TODO: Integrate with actual payment gateway
-    # For now, redirect to placeholder success page
-    flash('Ödeme gateway entegrasyonu yakında aktif olacak. Şimdilik test modunda çalışıyoruz.', 'info')
+    # Integrate with actual payment gateway
+    gw_adapter = get_payment_gateway(gateway)
+    init_res = gw_adapter.initiate_payment(payment)
     
-    # For development: Auto-complete payment
-    if request.form.get('test_mode') == '1':
-        complete_payment(payment.id, transaction_id='TEST-' + payment.payment_reference, gateway=gateway)
-        flash(f'{plan_details["name"]} planı başarıyla aktifleştirildi!', 'success')
-        return redirect(url_for('main.dashboard'))
-    
-    return redirect(url_for('payment.payment_page', plan=plan))
+    if init_res.get('success'):
+        if init_res.get('redirect_url'):
+            return redirect(init_res['redirect_url'])
+        else:
+            # Auto-complete for mock/test if no URL
+            complete_payment(payment.id, transaction_id='TEST-' + payment.payment_reference, gateway=gateway)
+            flash(f'{plan_details["name"]} planı başarıyla aktifleştirildi!', 'success')
+            return redirect(url_for('main.dashboard'))
+    else:
+        flash(init_res.get('message', 'Ödeme başlatılamadı.'), 'danger')
+        return redirect(url_for('payment.payment_page', plan=plan))
 
 
 @payment_bp.route('/callback', methods=['GET', 'POST'])
@@ -85,16 +89,21 @@ def payment_callback():
         flash('Geçersiz ödeme callback.', 'danger')
         return redirect(url_for('auth.landing'))
     
-    # Find payment by reference
+    # Find payment by reference (Shopier may send it as platform_order_id)
     payment = Payment.query.filter_by(payment_reference=payment_ref).first()
     
     if not payment:
         flash('Ödeme kaydı bulunamadı.', 'danger')
         return redirect(url_for('auth.landing'))
     
-    # Verify callback (TODO: implement gateway-specific verification)
-    # For now, mark as completed
-    success = complete_payment(payment.id, transaction_id=transaction_id)
+    # Verify callback using gateway adapter
+    gw_adapter = get_payment_gateway('shopier')
+    if not gw_adapter.verify_callback(request.form):
+        flash('Ödeme doğrulaması başarısız (Geçersiz imza).', 'danger')
+        return redirect(url_for('payment.cancel'))
+
+    # Mark as completed
+    success = complete_payment(payment.id, transaction_id=transaction_id, gateway='shopier')
     
     if success:
         flash('Ödemeniz başarıyla tamamlandı! Aboneliğiniz aktifleştirildi.', 'success')

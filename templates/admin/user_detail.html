@@ -187,21 +187,29 @@
                     <h6 class="text-muted mb-3"><i class="bi bi-sliders me-2"></i>Özel Limitler (Opsiyonel)</h6>
                 </div>
 
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <label class="form-label">Ürün Limiti</label>
                     <div class="input-group">
                         <input type="number" name="max_products" class="form-control"
-                            value="{{ user.subscription.max_products }}" placeholder="Varsayılan için boş bırakın">
+                            value="{{ user.subscription.max_products }}" placeholder="Varsayılan">
                         <span class="input-group-text">Adet</span>
                     </div>
-                    <div class="form-text">Boş bırakılırsa paket limiti geçerli olur. Sınırsız için -1.</div>
                 </div>
 
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <label class="form-label">XML Kaynak Limiti</label>
                     <div class="input-group">
                         <input type="number" name="max_xml_sources" class="form-control"
-                            value="{{ user.subscription.max_xml_sources }}" placeholder="Varsayılan için boş bırakın">
+                            value="{{ user.subscription.max_xml_sources }}" placeholder="Varsayılan">
+                        <span class="input-group-text">Adet</span>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Pazaryeri Limiti</label>
+                    <div class="input-group">
+                        <input type="number" name="max_marketplaces" class="form-control"
+                            value="{{ user.subscription.max_marketplaces }}" placeholder="Varsayılan">
                         <span class="input-group-text">Adet</span>
                     </div>
                 </div>

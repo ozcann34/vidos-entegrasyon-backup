@@ -487,6 +487,7 @@ def update_subscription_route(user_id):
     # Parse overrides
     max_products = request.form.get('max_products')
     max_xml_sources = request.form.get('max_xml_sources')
+    max_marketplaces = request.form.get('max_marketplaces')
     
     # Convert empty strings to None, otherwise int
     try:
@@ -499,7 +500,12 @@ def update_subscription_route(user_id):
     except ValueError:
         max_xml_sources = None
 
-    if update_subscription(user_id, plan, end_date, max_products=max_products, max_xml_sources=max_xml_sources):
+    try:
+        max_marketplaces = int(max_marketplaces) if max_marketplaces and max_marketplaces.strip() != '' else None
+    except ValueError:
+        max_marketplaces = None
+
+    if update_subscription(user_id, plan, end_date, max_products=max_products, max_xml_sources=max_xml_sources, max_marketplaces=max_marketplaces):
 
         # Log action
 

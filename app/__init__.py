@@ -82,12 +82,19 @@ def create_app(config_name='default'):
         from flask_login import logout_user
         
         if current_user.is_authenticated:
+            # 1. Ban check
             if current_user.is_banned:
-                # Store ban info before logout
                 session['banned_email'] = current_user.email
                 session['ban_reason'] = current_user.ban_reason
                 logout_user()
                 return redirect(url_for('auth.banned'))
+            
+            # 2. Email verification check (Force OTP)
+            # Allow access to auth blueprints and static files
+            if not current_user.is_email_verified and not current_user.is_admin:
+                allowed_endpoints = ['auth.verify_email', 'auth.resend_otp', 'auth.logout', 'static']
+                if request.endpoint and request.endpoint not in allowed_endpoints and not request.endpoint.startswith('auth.'):
+                    return redirect(url_for('auth.verify_email'))
 
     
     # Initialize scheduler for auto sync

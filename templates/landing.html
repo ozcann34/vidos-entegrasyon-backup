@@ -21,8 +21,9 @@
         <!-- Navigation -->
         <nav class="navbar" id="navbar">
             <div class="nav-container">
-                <a href="#" class="logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="Vidos"
-                        style="height: 32px;"></a>
+                <a href="#" class="logo">
+                    <img src="{{ url_for('static', filename='logo.png') }}" alt="Vidos" style="height: 50px;">
+                </a>
                 <div class="nav-links">
                     <a href="#features">Özellikler</a>
                     <a href="#pricing">Fiyatlandırma</a>
@@ -49,8 +50,9 @@
                 </div>
                 <div class="hero-image scroll-animate">
                     <img src="{{ url_for('static', filename='hero.png') }}" alt="Vidos Dashboard">
-                    <div class="floating-card card-1">🚀 +127% Satış Artışı</div>
-                    <div class="floating-card card-2">📦 15.000+ Ürün Aktif</div>
+                    <!-- Updated floating cards -->
+                    <div class="floating-card card-1">🚀 Ömür Boyu Güncelleme</div>
+                    <div class="floating-card card-2">📦 Otomatik Senkronizasyon</div>
                 </div>
             </div>
         </section>
@@ -134,7 +136,7 @@
                 <div class="feature-card scroll-animate">
                     <div class="feature-icon">📱</div>
                     <h3>Çoklu Platform</h3>
-                    <p>Trendyol, n11, Pazarama, Ciceksepeti ve daha fazla platformu tek yerden yönetin.</p>
+                    <p>Trendyol, N11, Pazarama, Hepsiburada, İdefix ve daha fazlasını tek yerden yönetin.</p>
                 </div>
 
                 <div class="feature-card scroll-animate">
@@ -151,68 +153,65 @@
             <p class="section-subtitle">İşletmenize uygun paketi seçin</p>
 
             <div class="pricing-grid">
-                <!-- Basic Plan -->
+                <!-- Giriş Paketi -->
                 <div class="pricing-card scroll-animate">
                     <h3>Giriş Paketi</h3>
                     <div class="pricing-price">
                         ₺790
-                        <span>/ay</span>
-                    </div>
-                    <div class="text-success small fw-bold mb-3">
-                        (Yıllık 7.590₺ - %20 İndirimli)
+                        <span
+                            style="text-decoration: line-through; color: #ff4d4d; font-size: 1rem; margin-left: 10px;">(₺1.290)</span>
                     </div>
                     <ul class="pricing-features">
-                        <li>1 Pazaryeri Entegrasyonu</li>
-                        <li>3.000 Ürün Limiti</li>
-                        <li>1 XML Tedarikçi</li>
-                        <li>Günde 2 Kez Güncelleme</li>
+                        <li>3 Pazaryeri Entegrasyonu</li>
+                        <li>5.000 Ürün Limiti</li>
+                        <li>3 XML Tedarikçi</li>
+                        <li>Günde 2 Kez Otomatik Güncelleme</li>
                         <li>Temel Sipariş Listeleme</li>
-                        <li>E-posta Destek</li>
+                        <li>7/24 Destek</li>
                     </ul>
                     <button class="btn-pricing">Paketi Seç</button>
                 </div>
 
-                <!-- Pro Plan (Featured) -->
+                <!-- Ticaret Paketi (Featured) -->
                 <div class="pricing-card featured scroll-animate">
                     <span class="pricing-badge">Popüler</span>
                     <h3>Ticaret Paketi</h3>
                     <div class="pricing-price">
                         ₺1.490
-                        <span>/ay</span>
-                    </div>
-                    <div class="text-warning small fw-bold mb-3">
-                        (Yıllık 14.300₺ - %20 İndirimli)
+                        <span
+                            style="text-decoration: line-through; color: #ff4d4d; font-size: 1rem; margin-left: 10px;">(₺2.390)</span>
                     </div>
                     <ul class="pricing-features">
-                        <li>3 Pazaryeri Entegrasyonu</li>
+                        <li>5 Pazaryeri Entegrasyonu</li>
                         <li>15.000 Ürün Limiti</li>
-                        <li>5 XML Tedarikçi</li>
-                        <li>2 Saatte Bir Güncelleme</li>
+                        <li>6 XML Tedarikçi</li>
+                        <li>2 Saatte Bir Otomatik Güncelleme</li>
                         <li>Gelişmiş Sipariş Yönetimi</li>
+                        <li>7/24 Destek</li>
                         <li>Excel İle Yönetim</li>
-                        <li>Öncelikli Destek</li>
+                        <li>Sosyal Medya AI Taslakları</li>
                     </ul>
                     <button class="btn-pricing">Paketi Seç</button>
                 </div>
 
-                <!-- Enterprise Plan -->
+                <!-- Kurumsal Paket -->
                 <div class="pricing-card scroll-animate">
                     <h3>Kurumsal Paket</h3>
                     <div class="pricing-price">
                         ₺2.990
-                        <span>/ay</span>
-                    </div>
-                    <div class="text-success small fw-bold mb-3">
-                        (Yıllık 28.700₺ - %20 İndirimli)
+                        <span
+                            style="text-decoration: line-through; color: #ff4d4d; font-size: 1rem; margin-left: 10px;">(₺4.290)</span>
                     </div>
                     <ul class="pricing-features">
                         <li>10 Pazaryeri Entegrasyonu</li>
-                        <li>50.000 Ürün Limiti</li>
-                        <li>Sınırsız XML Kaynağı</li>
-                        <li>30 Dk. Hızlı Senkronizasyon</li>
-                        <li>Özel Fiyat Motoru</li>
-                        <li>7/24 WhatsApp Desteği</li>
-                        <li>Kişisel Hesap Yöneticisi</li>
+                        <li>30.000 Ürün Limiti</li>
+                        <li>Sınırsız XML Tedarikçi</li>
+                        <li>1 Saatte Bir Sınırsız Güncelleme</li>
+                        <li>Gelişmiş Sipariş Yönetimi</li>
+                        <li>7/24 Destek</li>
+                        <li>Excel İle Yönetim</li>
+                        <li>Zamanlamalı Sosyal Medya Paylaşımı</li>
+                        <li>Kişisel E-ticaret Entegrasyonu</li>
                     </ul>
                     <button class="btn-pricing">Paketi Seç</button>
                 </div>
@@ -225,8 +224,8 @@
                 <h2 class="section-title">Sıkça Sorulan Sorular</h2>
                 <div class="faq-grid">
                     <div class="faq-item scroll-animate">
-                        <h3>iyzico ile ödeme güvenli mi?</h3>
-                        <p>Evet, tüm ödemeler iyzico altyapısı ile 256-bit SSL sertifikalı güvenli ödeme sayfasında
+                        <h3>Shopier ile ödeme güvenli mi?</h3>
+                        <p>Evet, tüm ödemeler Shopier altyapısı ile 256-bit SSL sertifikalı güvenli ödeme sayfasında
                             gerçekleşir. Kredi kartı bilgileriniz hiçbir şekilde sistemimizde saklanmaz.</p>
                     </div>
                     <div class="faq-item scroll-animate">
@@ -316,7 +315,7 @@
                         <li><a href="#">Pazarama Entegrasyonu</a></li>
                         <li><a href="#">Hepsiburada Entegrasyonu</a></li>
                         <li><a href="#">İdefix Entegrasyonu</a></li>
-                        <li><a href="#">Temu & ÇiçekSepeti (Yakında)</a></li>
+                        <li><a href="#">Temu & Çiçeksepeti (Yakında)</a></li>
                         <li><a href="#">Instagram Gönderi Yönetimi</a></li>
                         <li><a href="#">XML Ürün Yükleme</a></li>
                     </ul>

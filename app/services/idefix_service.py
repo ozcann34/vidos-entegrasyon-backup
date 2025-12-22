@@ -210,6 +210,12 @@ class IdefixClient:
         token = base64.b64encode(auth_string.encode('utf-8')).decode('utf-8')
         return token
     
+    def get_token(self) -> str:
+        """
+        Satisfies the Connection Test call. Returns the auth token.
+        """
+        return self._auth_token
+    
     def _get_headers(self) -> Dict[str, str]:
         """Get default headers for API requests."""
         vendor_token = base64.b64encode(f"{self.api_key}:{self.api_secret}".encode('utf-8')).decode('utf-8')
@@ -368,8 +374,21 @@ items: List[Dict[str, Any]],
         try:
             logger.info("[IDEFIX] Requesting category tree...")
             response = self.session.get(url, headers=self._get_headers(), timeout=120)
-            response.raise_for_status()
-            data = response.json()
+            
+            # Better error reporting if not 200
+            if response.status_code != 200:
+                logger.error(f"[IDEFIX] get_categories failed: status {response.status_code}")
+                # Log a bit of the body to see if it's HTML
+                logger.error(f"[IDEFIX] Response start: {response.text[:200]}")
+                response.raise_for_status()
+                
+            try:
+                data = response.json()
+            except json.JSONDecodeError as je:
+                logger.error(f"[IDEFIX] JSON format error in categories: {je}")
+                logger.error(f"[IDEFIX] Raw content (first 500 chars): {response.text[:500]}")
+                raise ValueError("Idefix API geçersiz bir JSON yanıtı döndürdü. Detaylar için logları kontrol edin.")
+                
             if isinstance(data, list):
                 return data
             elif isinstance(data, dict) and 'content' in data:

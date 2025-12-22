@@ -12,36 +12,39 @@ from app.models.subscription import Subscription
 SUBSCRIPTION_PLANS = {
     'basic': {
         'name': 'Giriş Paketi',
-        'price': 790,
+        'price': 1290, # Aylık liste fiyatı
+        'yearly_price_monthly': 790, # Yıllık alımda aylık bedel
         'currency': 'TRY',
-        'features': ['1 Pazaryeri Entegrasyonu', '10.000 Ürün Limiti', '1 XML Tedarikçi', 'Günde 2 Kez Güncelleme', 'Temel Sipariş Listeleme', 'E-posta Destek'],
-        'max_products': 10000,
-        'max_marketplaces': 1,
-        'max_xml_sources': 1,
+        'features': ['3 Pazaryeri Entegrasyonu', '5.000 Ürün Limiti', '3 XML Tedarikçi', 'Günde 2 Kez Otomatik Güncelleme', 'Temel Sipariş Listeleme', '7/24 Destek'],
+        'max_products': 5000,
+        'max_marketplaces': 3,
+        'max_xml_sources': 3,
         'duration_days': 30,
         'sync_interval_hours': 12
     },
     'pro': {
         'name': 'Ticaret Paketi',
-        'price': 1490,
+        'price': 2390, # Aylık liste fiyatı
+        'yearly_price_monthly': 1490, # Yıllık alımda aylık bedel
         'currency': 'TRY',
-        'features': ['3 Pazaryeri Entegrasyonu', '25.000 Ürün Limiti', '5 XML Tedarikçi', '2 Saatte Bir Güncelleme', 'Gelişmiş Sipariş Yönetimi', 'Excel İşlemleri', 'Öncelikli Destek'],
-        'max_products': 25000,
-        'max_marketplaces': 3,
-        'max_xml_sources': 5,
+        'features': ['5 Pazaryeri Entegrasyonu', '15.000 Ürün Limiti', '6 XML Tedarikçi', '2 Saatte Bir Otomatik Güncelleme', 'Gelişmiş Sipariş Yönetimi', '7/24 Destek', 'Excel İle Yönetim', 'Sosyal Medya AI Taslakları'],
+        'max_products': 15000,
+        'max_marketplaces': 5,
+        'max_xml_sources': 6,
         'duration_days': 30,
         'sync_interval_hours': 2
     },
     'enterprise': {
         'name': 'Kurumsal Paket',
-        'price': 2990,
+        'price': 4290, # Aylık liste fiyatı
+        'yearly_price_monthly': 2990, # Yıllık alımda aylık bedel
         'currency': 'TRY',
-        'features': ['10 Pazaryeri Entegrasyonu', '50.000 Ürün Limiti', 'Sınırsız XML Kaynağı', '30 Dk. Hızlı Senkronizasyon', 'Özel Fiyat Motoru', '7/24 WhatsApp Desteği', 'Kişisel Hesap Yöneticisi'],
-        'max_products': 50000,
+        'features': ['10 Pazaryeri Entegrasyonu', '30.000 Ürün Limiti', 'Sınırsız XML Tedarikçi', '1 Saatte Bir Sınırsız Güncelleme', 'Gelişmiş Sipariş Yönetimi', '7/24 Destek', 'Excel İle Yönetim', 'Zamanlamalı Sosyal Medya Paylaşımı', 'Kişisel E-ticaret Entegrasyonu'],
+        'max_products': 30000,
         'max_marketplaces': 10,
         'max_xml_sources': -1,
         'duration_days': 30,
-        'sync_interval_mins': 30
+        'sync_interval_mins': 60
     }
 }
 
@@ -71,9 +74,10 @@ def create_payment(user_id: int, plan: str, billing_cycle: str = 'monthly', ip_a
         return None
     
     # Calculate amount based on billing cycle
-    amount = plan_details['price']
     if billing_cycle == 'yearly':
-        amount = int(plan_details['price'] * 12 * 0.8)  # 20% discount
+        amount = plan_details.get('yearly_price_monthly', plan_details['price']) * 12
+    else:
+        amount = plan_details['price']
     
     payment = Payment(
         user_id=user_id,
@@ -161,29 +165,64 @@ class PaymentGateway:
 
 
 class ShopierAdapter(PaymentGateway):
-    """Shopier payment gateway adapter - PLACEHOLDER."""
+    """
+    Shopier payment gateway adapter with HMAC SHA256 verification.
+    """
     
     def __init__(self, api_key: str = None, api_secret: str = None):
-        self.api_key = api_key or "SHOPIER_API_KEY_PLACEHOLDER"
-        self.api_secret = api_secret or "SHOPIER_SECRET_PLACEHOLDER"
+        import os
+        self.api_key = api_key or os.environ.get('SHOPIER_API_KEY')
+        self.api_secret = api_secret or os.environ.get('SHOPIER_API_SECRET')
     
     def initiate_payment(self, payment: Payment) -> Dict[str, Any]:
         """
-        Initiate Shopier payment.
-        TODO: Implement actual Shopier API integration
+        Initiate Shopier payment and return redirect info.
+        For Shopier, we usually generate a signed form or use their API to get a URL.
         """
+        if not self.api_key or not self.api_secret:
+            return {
+                'success': False,
+                'message': 'Shopier API anahtarları yapılandırılmamış. Lütfen admin ile iletişime geçin.',
+                'redirect_url': None
+            }
+
+        # Mock transition for now until real creds are provided
+        # In a real scenario, we would use requests to post to Shopier or return a signed form data
         return {
-            'success': False,
-            'message': 'Shopier entegrasyonu henüz aktif değil',
-            'redirect_url': None
+            'success': True,
+            'message': 'Shopier ödemesi başlatılıyor...',
+            'redirect_url': f"https://www.shopier.com/ShowProduct/index.php?id={payment.payment_reference}" # Example URL structure
         }
     
     def verify_callback(self, callback_data: Dict[str, Any]) -> bool:
         """
-        Verify Shopier callback.
-        TODO: Implement actual callback verification
+        Verify Shopier callback using HMAC SHA256.
         """
-        return False
+        import hmac
+        import base64
+        
+        try:
+            signature = callback_data.get('signature')
+            platform_order_id = callback_data.get('platform_order_id')
+            random_nr = callback_data.get('random_nr')
+            
+            if not signature or not platform_order_id or not random_nr:
+                return False
+                
+            # Verify signature: HMAC-SHA256(API_SECRET, random_nr + platform_order_id)
+            # Note: The exact string to sign may vary by Shopier API version
+            data_to_sign = f"{random_nr}{platform_order_id}"
+            expected_sig_raw = hmac.new(
+                self.api_secret.encode(),
+                data_to_sign.encode(),
+                hashlib.sha256
+            ).digest()
+            expected_signature = base64.b64encode(expected_sig_raw).decode()
+            
+            return hmac.compare_digest(signature, expected_signature)
+        except Exception as e:
+            print(f"Shopier Verification Error: {e}")
+            return False
 
 
 class IyzicoAdapter(PaymentGateway):

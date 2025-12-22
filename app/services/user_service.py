@@ -159,7 +159,8 @@ def unban_user(user_id: int) -> bool:
 
 
 def update_subscription(user_id: int, plan: str, end_date: datetime = None, 
-                        max_products: int = None, max_xml_sources: int = None) -> bool:
+                        max_products: int = None, max_xml_sources: int = None,
+                        max_marketplaces: int = None) -> bool:
     """Update user subscription with optional overrides."""
     from app.models import Subscription
     from app.services.payment_service import get_plan_details
@@ -195,6 +196,16 @@ def update_subscription(user_id: int, plan: str, end_date: datetime = None,
         if plan == 'free': subscription.max_xml_sources = 3
         elif plan == 'pro': subscription.max_xml_sources = 10
         elif plan == 'enterprise': subscription.max_xml_sources = -1
+
+    if max_marketplaces is not None:
+        subscription.max_marketplaces = max_marketplaces
+    elif plan_details:
+        subscription.max_marketplaces = plan_details.get('max_marketplaces', 1)
+    else:
+        # Legacy fallbacks
+        if plan == 'free': subscription.max_marketplaces = 1
+        elif plan == 'pro': subscription.max_marketplaces = 3
+        elif plan == 'enterprise': subscription.max_marketplaces = 10
     
     db.session.commit()
     return True

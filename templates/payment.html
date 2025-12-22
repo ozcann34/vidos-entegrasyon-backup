@@ -9,182 +9,196 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         :root {
-            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --glass-bg: rgba(255, 255, 255, 0.95);
-            --glass-border: rgba(0, 0, 0, 0.1);
+            --primary-gradient: linear-gradient(135deg, #4f46e5 0%, #db2777 100%);
+            --vidos-blue: #4f46e5;
+            --white-bg: #ffffff;
+            --light-grey: #f8fafc;
+            --border-color: #e2e8f0;
         }
 
         body {
             min-height: 100vh;
-            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 50%, #d9e2ec 100%);
-            padding: 2rem 0;
+            background-color: var(--light-grey);
+            font-family: 'Inter', -apple-system, sans-serif;
+            color: #0f172a;
+            padding: 3rem 0;
         }
 
         .payment-container {
-            max-width: 800px;
+            max-width: 700px;
             margin: 0 auto;
         }
 
-        .card {
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            border-radius: 24px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+        .auth-card {
+            background: var(--white-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 2.5rem;
+            box-shadow: 0 10px 25px -4px rgba(0, 0, 0, 0.05);
         }
 
-        .plan-badge {
-            background: var(--primary-gradient);
-            color: white;
-            padding: 0.5rem 1.5rem;
-            border-radius: 50px;
-            display: inline-block;
-            font-weight: 600;
+        .auth-logo {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .auth-logo img {
+            height: 50px;
             margin-bottom: 1rem;
         }
 
+        .plan-info {
+            background-color: #f1f5f9;
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border-left: 4px solid var(--vidos-blue);
+        }
+
         .price-display {
-            font-size: 3rem;
+            font-size: 2.5rem;
             font-weight: 800;
-            background: var(--primary-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: var(--vidos-blue);
         }
 
         .btn-payment {
+            padding: 1rem;
             background: var(--primary-gradient);
             border: none;
-            padding: 1rem 2rem;
             border-radius: 12px;
             font-weight: 600;
+            font-size: 1.1rem;
+            color: white;
             transition: all 0.3s ease;
         }
 
         .btn-payment:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 8px 25px rgba(79, 70, 229, 0.4);
         }
 
-        .gateway-option {
-            padding: 1.5rem;
-            border: 2px solid var(--glass-border);
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-bottom: 1rem;
-        }
-
-        .gateway-option:hover {
-            border-color: #667eea;
-            background: rgba(102, 126, 234, 0.1);
-        }
-
-        .gateway-option input[type="radio"] {
-            margin-right: 1rem;
-        }
-
-        .feature-list {
-            list-style: none;
-            padding: 0;
-        }
-
-        .feature-list li {
-            padding: 0.5rem 0;
+        .feature-item {
             display: flex;
             align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+            color: #475569;
         }
 
-        .feature-list li i {
-            color: #667eea;
-            margin-right: 0.75rem;
+        .feature-item i {
+            color: #22c55e;
+        }
+
+        .billing-cycle-card {
+            cursor: pointer;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 1rem;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .billing-cycle-card.active {
+            border-color: var(--vidos-blue);
+            background-color: rgba(79, 70, 229, 0.03);
+        }
+
+        .billing-cycle-card input {
+            position: absolute;
+            opacity: 0;
+        }
+
+        .shopier-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 0.5rem;
+            margin-top: 1rem;
         }
     </style>
 </head>
 
 <body>
     <div class="payment-container">
-        <div class="card p-4 mb-4">
-            <div class="text-center mb-4">
-                <h1 class="h3">Ödeme Bilgileri</h1>
-                <p class="text-muted">Seçtiğiniz planı onaylayın ve ödemenizi tamamlayın</p>
+        <div class="auth-card">
+            <div class="auth-logo">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Vidos">
+                <h3>Güvenli Ödeme</h3>
+                <p class="text-muted">Aboneliğinizi başlatmak için ödeme yöntemi seçin</p>
             </div>
 
-            <!-- Plan Summary -->
-            <div class="card p-4 mb-4">
-                <div class="text-center">
-                    <span class="plan-badge">{{ plan_details.name }}</span>
-                    <div class="price-display">₺{{ plan_details.price }}</div>
-                    <p class="text-muted mb-0">/ay</p>
+            <div class="plan-info">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0">Seçilen Paket: <strong>{{ plan_details.name }}</strong></h5>
+                    <span class="badge bg-primary rounded-pill">Aktif Plan</span>
                 </div>
-
-                <hr class="my-4">
-
-                <h6 class="mb-3">Plan Özellikleri:</h6>
-                <ul class="feature-list">
-                    {% for feature in plan_details.features %}
-                    <li>
-                        <i class="bi bi-check-circle-fill"></i>
+                <div class="mb-3">
+                    {% for feature in plan_details.features[:4] %}
+                    <div class="feature-item">
+                        <i class="bi bi-check2-circle"></i>
                         {{ feature }}
-                    </li>
+                    </div>
                     {% endfor %}
-                </ul>
+                    {% if plan_details.features|length > 4 %}
+                    <div class="text-muted small ps-4">+ {{ plan_details.features|length - 4 }} özellik daha</div>
+                    {% endif %}
+                </div>
             </div>
 
-            <!-- Payment Gateway Selection -->
-            <form method="POST" action="{{ url_for('payment.initiate_payment') }}">
+            <form method="POST" action="{{ url_for('payment.initiate_payment') }}" id="payment-form">
                 <input type="hidden" name="plan" value="{{ plan }}">
+                <input type="hidden" name="gateway" value="shopier">
 
-                <h5 class="mb-3">Ödeme Dönemi Seçin</h5>
-
-                <div class="row mb-4">
-                    <div class="col-6">
-                        <label class="gateway-option h-100" id="monthly-option">
+                <h6 class="mb-3 fw-bold">Ödeme Aralığı Seçin</h6>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label class="billing-cycle-card active w-100" id="monthly-label">
                             <input type="radio" name="billing_period" value="monthly" checked>
-                            <strong>Aylık Ödeme</strong>
-                            <p class="text-muted mb-0 ms-4">₺{{ plan_details.price }}/ay</p>
+                            <div class="fw-bold">Aylık Ödeme</div>
+                            <div class="text-muted small">₺{{ plan_details.price }}/ay</div>
                         </label>
                     </div>
-                    <div class="col-6">
-                        <label class="gateway-option h-100 border-success" id="yearly-option">
+                    <div class="col-md-6">
+                        <label class="billing-cycle-card w-100" id="yearly-label">
                             <input type="radio" name="billing_period" value="yearly">
-                            <strong>Yıllık Ödeme</strong>
-                            <span class="badge bg-success ms-2">%20 İndirim</span>
-                            <p class="text-muted mb-0 ms-4">₺{{ (plan_details.price * 12 * 0.8)|int }}/yıl</p>
+                            <div class="fw-bold">Yıllık Ödeme <span class="badge bg-success ms-1">%20</span></div>
+                            <div class="text-muted small">₺{{ (plan_details.price * 12 * 0.8)|int }}/yıl</div>
                         </label>
                     </div>
                 </div>
 
-                <h5 class="mb-3">Ödeme Yöntemi</h5>
+                <div class="price-summary mb-4 text-center">
+                    <div class="text-muted small">Toplam Ödenecek Tutar</div>
+                    <div class="price-display" id="total-price">₺{{ plan_details.price }}</div>
+                </div>
 
-                <label class="gateway-option">
-                    <input type="radio" name="gateway" value="iyzico" checked>
-                    <strong>İyzico ile Öde</strong>
-                    <p class="text-muted mb-0 ms-4">Tüm Kredi Kartları, Banka Kartları</p>
-                </label>
-
-                <!-- Test Mode -->
-                <input type="hidden" name="test_mode" value="1">
-
-                <div class="d-grid gap-2 mt-4">
-                    <button type="submit" class="btn btn-payment btn-lg">
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-payment">
                         <i class="bi bi-credit-card me-2"></i>
-                        Ödemeyi Tamamla (₺{{ plan_details.price }})
+                        Shopier ile Ödemeyi Tamamla
                     </button>
-                    <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
-                        <i class="bi bi-arrow-left me-2"></i>
-                        İptal Et
+                </div>
+
+                <div class="shopier-badge">
+                    <img src="https://www.shopier.com/images/shopier_logo_main.png" alt="Shopier"
+                        style="height: 20px; filter: grayscale(1);">
+                    <span class="ms-2 text-muted small">Shopier Güvencesiyle</span>
+                </div>
+
+                <div class="text-center mt-4">
+                    <a href="{{ url_for('main.dashboard') }}" class="text-muted small text-decoration-none">
+                        <i class="bi bi-arrow-left me-1"></i> İptal et ve kontrol paneline dön
                     </a>
                 </div>
             </form>
         </div>
 
-        <!-- Security Info -->
-        <div class="text-center text-muted">
-            <p class="small">
-                <i class="bi bi-shield-check me-1"></i>
-                Güvenli ödeme - Tüm bilgileriniz şifrelenir
-            </p>
+        <div class="text-center mt-4 text-muted small">
+            <i class="bi bi-shield-lock me-1"></i> Ödemeleriniz 256-bit SSL ile şifrelenir.
         </div>
     </div>
 
@@ -192,17 +206,24 @@
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const periodRadios = document.querySelectorAll('input[name="billing_period"]');
-            const paymentBtn = document.querySelector('.btn-payment');
-            const monthlyPrice = {{ plan_details.price }
+            const priceDisplay = document.getElementById('total-price');
+            const monthlyLabel = document.getElementById('monthly-label');
+            const yearlyLabel = document.getElementById('yearly-label');
+
+            const mPrice = {{ plan_details.price }
         };
-        const yearlyPrice = {{ (plan_details.price * 12 * 0.8) | int }};
+        const yPrice = {{ (plan_details.price * 12 * 0.8) | int }};
 
         periodRadios.forEach(radio => {
             radio.addEventListener('change', function () {
                 if (this.value === 'yearly') {
-                    paymentBtn.innerHTML = `<i class="bi bi-credit-card me-2"></i> Ödemeyi Tamamla (₺${yearlyPrice})`;
+                    priceDisplay.innerText = '₺' + yPrice;
+                    yearlyLabel.classList.add('active');
+                    monthlyLabel.classList.remove('active');
                 } else {
-                    paymentBtn.innerHTML = `<i class="bi bi-credit-card me-2"></i> Ödemeyi Tamamla (₺${monthlyPrice})`;
+                    priceDisplay.innerText = '₺' + mPrice;
+                    monthlyLabel.classList.add('active');
+                    yearlyLabel.classList.remove('active');
                 }
             });
         });
