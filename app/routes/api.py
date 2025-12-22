@@ -1510,7 +1510,7 @@ def api_n11_search_brand():
         if results:
             return jsonify({'success': True, 'brands': results})
         else:
-            return jsonify({'success': False, 'message': 'Marka bulunamadı'}), 404
+            return jsonify({'success': False, 'message': 'Marka bulunamadı'})
             
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -1852,7 +1852,7 @@ def api_trendyol_search_brand():
             return jsonify({'success': False, 'message': 'Marka adı boş olamaz'}), 400
         
         from app.services.trendyol_service import get_trendyol_client
-        client = get_trendyol_client()
+        client = get_trendyol_client(user_id=current_user.id)
         
         # Search for brand using the existing method
         brands = client.get_brands_by_name(brand_name)
@@ -1897,7 +1897,7 @@ def api_hepsiburada_search_brand():
             return jsonify({'success': False, 'message': 'Marka adı boş olamaz'}), 400
         
         from app.services.hepsiburada_service import get_hepsiburada_client
-        client = get_hepsiburada_client()
+        client = get_hepsiburada_client(user_id=current_user.id)
         
         results = client.search_brands(brand_name)
         items = results.get('data', []) if isinstance(results, dict) else []
@@ -1927,7 +1927,7 @@ def api_idefix_search_brand():
             return jsonify({'success': False, 'message': 'Marka adı gereklidir'}), 400
         
         from app.services.idefix_service import get_idefix_client
-        client = get_idefix_client()
+        client = get_idefix_client(user_id=current_user.id)
         
         logging.info(f"[IDEFIX] İdefix client created, searching for brand...")
         brand = client.search_brand_by_name(brand_name)
@@ -1936,11 +1936,11 @@ def api_idefix_search_brand():
             logging.info(f"[IDEFIX] Brand found: {brand.get('title')} (ID: {brand.get('id')})")
             return jsonify({
                 'success': True,
-                'brand': {
+                'brands': [{
                     'id': brand['id'],
-                    'title': brand['title'],
-                    'slug': brand.get('slug', '')
-                }
+                    'name': brand['title']
+                }],
+                'message': '1 marka bulundu'
             })
         else:
             logging.warning(f"[IDEFIX] Brand '{brand_name}' not found in API response")
@@ -1970,7 +1970,7 @@ def api_pazarama_search_brand():
             return jsonify({'success': False, 'message': 'Marka adı gereklidir'}), 400
         
         from app.services.pazarama_service import get_pazarama_client
-        client = get_pazarama_client()
+        client = get_pazarama_client(user_id=current_user.id)
         
         # Search for brands with the given name
         results = client.get_brands(name=brand_name, size=10)

@@ -13,6 +13,7 @@ from app.services.trendyol_client import TrendyolClient, build_attributes_payloa
 from app.services.xml_service import load_xml_source_index
 from app.services.job_queue import append_mp_job_log, get_mp_job, update_mp_job
 from app.utils.helpers import to_int, to_float, chunked, get_marketplace_multiplier, clean_forbidden_words
+from flask_login import current_user
 
 # User-specific caches for Trendyol
 _TRENDYOL_USER_CACHES: Dict[int, Dict[str, Any]] = {}
@@ -1067,19 +1068,27 @@ def perform_trendyol_sync_all(job_id: str, xml_source_id: Any, match_by: str = '
     return result
 
 
-def ensure_tfidf_ready():
-    if _CAT_TFIDF.get('vectorizer'):
+def ensure_tfidf_ready(user_id: int = None):
+    # Resolve user_id if not provided
+    if user_id is None:
+        try:
+            if current_user and current_user.is_authenticated:
+                user_id = current_user.id
+        except Exception:
+            pass
+    
+    if user_id is None:
         return
-    u_id = None
-    from flask_login import current_user
-    if current_user and current_user.is_authenticated:
-        u_id = current_user.id
+
+    cache = get_trendyol_cache(user_id)["cat_tfidf"]
+    if cache.get('vectorizer'):
+        return
         
-    raw = Setting.get("TRENDYOL_CATEGORY_TREE", "", user_id=u_id)
+    raw = Setting.get("TRENDYOL_CATEGORY_TREE", "", user_id=user_id)
     if raw:
         try:
             leafs = json.loads(raw)
-            prepare_tfidf(leafs)
+            prepare_tfidf(user_id, leafs)
         except Exception:
             pass
 
@@ -1103,11 +1112,15 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
              if ':' in s_id and s_id.startswith('excel'):
                  pass 
              elif s_id.isdigit():
+                 from app.models import SupplierXML
                  src = SupplierXML.query.get(int(s_id))
                  if src:
                      user_id = src.user_id
         except Exception as e:
              logging.warning(f"Failed to resolve user_id from xml_source_id {xml_source_id}: {e}")
+
+    # Set target_user_id early to avoid scope errors
+    target_user_id = user_id or (current_user.id if current_user and current_user.is_authenticated else None)
 
     # Pre-fetch Global Default Brand ID to ensure proper fallback
     global_default_brand = 0
@@ -1503,11 +1516,7 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
             from app.utils.helpers import sync_product_to_local
             from app import db
             
-            target_user_id = user_id
-            if not target_user_id:
-                from flask_login import current_user
-                if current_user and current_user.is_authenticated:
-                    target_user_id = current_user.id
+            # target_user_id already defined at function start
             
             if target_user_id:
                 # Use centralized helper

@@ -1140,15 +1140,48 @@
       });
     });
 
-    // Idefix Brand Search Logic (Preserved)
+    // Idefix Brand Search Logic (Standardized)
     document.getElementById('searchIdefixBrand')?.addEventListener('click', function () {
       const name = document.getElementById('IDEFIX_BRAND_NAME').value.trim();
       if (!name) { Swal.fire('Uyarı', 'Marka adı girin', 'warning'); return; }
-      Swal.fire({ title: 'Aranıyor...', didOpen: () => Swal.showLoading() });
-      fetch('/api/idefix/search_brand', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ brand_name: name }) })
+      Swal.fire({ title: 'Aranıyor...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+      fetch('/api/idefix/search_brand', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brand_name: name })
+      })
         .then(r => r.json()).then(j => {
-          if (j.success && j.brand) { document.getElementById('IDEFIX_BRAND_ID').value = j.brand.id; Swal.fire('Bulundu', 'ID: ' + j.brand.id, 'success'); }
-          else Swal.fire('Bulunamadı', '', 'warning');
+          Swal.close();
+          if (j.success && j.brands && j.brands.length > 0) {
+            const items = j.brands;
+            if (items.length === 1) {
+              document.getElementById('IDEFIX_BRAND_ID').value = items[0].id;
+              if (document.getElementById('IDEFIX_BRAND_NAME')) document.getElementById('IDEFIX_BRAND_NAME').value = items[0].name;
+              Swal.fire('Bulundu', `Marka: ${items[0].name}\nID: ${items[0].id}`, 'success');
+            } else {
+              const opts = {};
+              items.forEach(b => opts[b.id] = b.name);
+              Swal.fire({
+                title: 'İdefix Marka Seçin',
+                input: 'select',
+                inputOptions: opts,
+                showCancelButton: true,
+                confirmButtonText: 'Seç'
+              }).then(res => {
+                if (res.isConfirmed) {
+                  const sel = items.find(x => x.id == res.value);
+                  document.getElementById('IDEFIX_BRAND_ID').value = sel.id;
+                  if (document.getElementById('IDEFIX_BRAND_NAME')) document.getElementById('IDEFIX_BRAND_NAME').value = sel.name;
+                }
+              });
+            }
+          } else {
+            Swal.fire('Bulunamadı', j.message || 'İdefix\'te marka bulunamadı.', 'warning');
+          }
+        }).catch(err => {
+          Swal.close();
+          Swal.fire('Hata', 'İdefix arama hatası: ' + err, 'error');
         });
     });
 
