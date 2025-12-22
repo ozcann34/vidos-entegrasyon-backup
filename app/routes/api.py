@@ -2097,7 +2097,7 @@ def api_test_connection(marketplace):
         
         if marketplace == 'trendyol':
             from app.services.trendyol_service import get_trendyol_client
-            client = get_trendyol_client()
+            client = get_trendyol_client(user_id=current_user.id)
             # Try fetching a simple data point like supplier addresses or just init
             # validation often happens in init, but let's try a call
             try:

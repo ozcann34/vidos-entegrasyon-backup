@@ -118,7 +118,7 @@ def load_xml_source_index(xml_source_id: Any) -> Dict[str, Dict[str, Any]]:
             if cached:
                 ts, data = cached
                 if ttl == 0 or (now - ts) <= ttl:
-                    return copy.deepcopy(data)
+                    return data
                 _XML_SOURCE_CACHE.pop(cache_key, None)
 
     try:
@@ -288,7 +288,7 @@ def load_xml_source_index(xml_source_id: Any) -> Dict[str, Dict[str, Any]]:
             if len(_XML_SOURCE_CACHE) >= XML_SOURCE_CACHE_MAX:
                 oldest_key = min(_XML_SOURCE_CACHE.items(), key=lambda item: item[1][0])[0]
                 _XML_SOURCE_CACHE.pop(oldest_key, None)
-            _XML_SOURCE_CACHE[cache_key] = (now, copy.deepcopy(index))
+            _XML_SOURCE_CACHE[cache_key] = (now, index)
 
     return index
 

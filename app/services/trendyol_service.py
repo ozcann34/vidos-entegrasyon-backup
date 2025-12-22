@@ -1093,40 +1093,45 @@ def ensure_tfidf_ready(user_id: int = None):
             pass
 
 def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_id: Any = None, auto_match: bool = False, send_options: Dict[str, Any] = None, match_by: str = 'barcode', title_prefix: str = None, is_manual: bool = False) -> Dict[str, Any]:
-    client = get_trendyol_client()
-    append_mp_job_log(job_id, "Trendyol istemcisi başlatıldı.")
-    
-    # Resolve User ID
-    user_id = None
+    # 1. Resolve User ID First (Critical for scope and isolation)
+    resolved_u_id = None
     try:
         from app.services.job_queue import get_mp_job
         job_data = get_mp_job(job_id)
-        user_id = job_data.get('params', {}).get('_user_id')
+        resolved_u_id = job_data.get('params', {}).get('_user_id')
     except:
         pass
 
-    if not user_id and xml_source_id:
+    if not resolved_u_id and xml_source_id:
         try:
-             # Handle "excel:123" or just "123"
              s_id = str(xml_source_id)
-             if ':' in s_id and s_id.startswith('excel'):
-                 pass 
-             elif s_id.isdigit():
+             if s_id.isdigit():
                  from app.models import SupplierXML
                  src = SupplierXML.query.get(int(s_id))
                  if src:
-                     user_id = src.user_id
-        except Exception as e:
-             logging.warning(f"Failed to resolve user_id from xml_source_id {xml_source_id}: {e}")
+                     resolved_u_id = src.user_id
+        except:
+             pass
 
-    # Set target_user_id early to avoid scope errors
-    target_user_id = user_id or (current_user.id if current_user and current_user.is_authenticated else None)
+    if not resolved_u_id:
+        try:
+            if current_user and current_user.is_authenticated:
+                resolved_u_id = current_user.id
+        except:
+            pass
+            
+    # Initial logging with ID
+    append_mp_job_log(job_id, f"Trendyol işlemi başlatıldı (Kullanıcı: {resolved_u_id or 'Sistem'}).")
+
+    # 2. Initialize client with resolved ID
+    client = get_trendyol_client(user_id=resolved_u_id)
+    append_mp_job_log(job_id, "Trendyol istemcisi başlatıldı.")
 
     # Pre-fetch Global Default Brand ID to ensure proper fallback
     global_default_brand = 0
     try:
         from app.models import Setting
-        val = Setting.get('TRENDYOL_BRAND_ID', '', user_id=user_id)
+        val = Setting.get('TRENDYOL_BRAND_ID', '', user_id=resolved_u_id)
         if val and str(val).isdigit():
             global_default_brand = int(val)
             append_mp_job_log(job_id, f"Varsayılan Marka ID aktif: {global_default_brand}")
@@ -1150,7 +1155,7 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
     if is_manual:
         append_mp_job_log(job_id, "Manuel ürün gönderimi aktif, veritabanından okunuyor...")
         from app.models.product import Product
-        prods = Product.query.filter(Product.barcode.in_(barcodes), Product.user_id == user_id).all()
+        prods = Product.query.filter(Product.barcode.in_(barcodes), Product.user_id == resolved_u_id).all()
         for p in prods:
             # Map model to dict compatible with the sync logic
             mp_map[p.barcode] = {
@@ -1184,9 +1189,9 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
     
     if auto_match:
         append_mp_job_log(job_id, "Kategori ağacı yükleniyor...")
-        ensure_tfidf_ready(target_user_id)
-        cache = get_trendyol_cache(target_user_id)["cat_tfidf"]
-        if not cache.get('vectorizer'):
+        ensure_tfidf_ready(resolved_u_id)
+        cache_data = get_trendyol_cache(resolved_u_id)["cat_tfidf"]
+        if not cache_data.get('vectorizer'):
              append_mp_job_log(job_id, "Kategori ağacı bulunamadı! Ayarlardan 'Kategorileri Çek' işlemini yapınız.", level='error')
              return {'success': False, 'message': 'Kategori verisi eksik.', 'count': 0}
 
@@ -1368,7 +1373,7 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
             
             # If not pre-resolved, use resolve_brand_id (handles empty brand with fallback)
             if not brand_id:
-                brand_id = resolve_brand_id(brand_name, user_id=target_user_id)
+                brand_id = resolve_brand_id(brand_name, user_id=resolved_u_id)
         
         if not brand_id:
             skipped.append({'barcode': barcode, 'reason': f'Marka bulunamadı: {brand_name or "boş"} (Ayarlarda varsayılan marka tanımlayın)'})
@@ -1392,27 +1397,26 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
         # 2. If not pre-resolved, try Smart Match DB (Confirmed Mappings)
         if not category_id and excel_category:
             from app.services.smart_match_service import SmartMatchService
-            u_id = user_id or (current_user.id if current_user and current_user.is_authenticated else None)
-            sm_cat_id, sm_cat_path = SmartMatchService.get_category_match(excel_category, 'trendyol', user_id=u_id)
+            sm_cat_id, sm_cat_path = SmartMatchService.get_category_match(excel_category, 'trendyol', user_id=resolved_u_id)
             if sm_cat_id:
                 category_id = sm_cat_id
                 append_mp_job_log(job_id, f"Kategori DB Eşleşmesi: '{excel_category}' -> {category_id} ({sm_cat_path})")
         
         # 3. If not in DB, try exact/partial cache match
         if not category_id and excel_category:
-            category_id = get_cached_category_id(excel_category, user_id=target_user_id, default_id=0)
+            category_id = get_cached_category_id(excel_category, user_id=resolved_u_id, default_id=0)
             if category_id:
                 append_mp_job_log(job_id, f"Kategori cache'den eşleşti: '{excel_category}' -> {category_id}")
         
         # 3. If still no match, try TF-IDF with Excel category name
         if not category_id and excel_category and auto_match:
-            category_id = match_category_id_for_title_tfidf(excel_category, user_id=target_user_id)
+            category_id = match_category_id_for_title_tfidf(excel_category, user_id=resolved_u_id)
             if category_id:
                 append_mp_job_log(job_id, f"Kategori TF-IDF (kategori ismi): '{excel_category}' -> {category_id}")
         
         # 4. Last resort: TF-IDF with product title
         if not category_id and auto_match:
-            category_id = match_category_id_for_title_tfidf(title, user_id=target_user_id)
+            category_id = match_category_id_for_title_tfidf(title, user_id=resolved_u_id)
             if category_id:
                 matched_count += 1
                 append_mp_job_log(job_id, f"Kategori TF-IDF (ürün başlığı): '{title[:50]}...' -> {category_id}")
@@ -1516,12 +1520,10 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
             from app.utils.helpers import sync_product_to_local
             from app import db
             
-            # target_user_id already defined at function start
-            
-            if target_user_id:
+            if resolved_u_id:
                 # Use centralized helper
                 sync_product_to_local(
-                    user_id=target_user_id,
+                    user_id=resolved_u_id,
                     barcode=barcode,
                     product_data=product,
                     xml_source_id=xml_source_id
