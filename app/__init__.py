@@ -67,7 +67,6 @@ def create_app(config_name='default'):
     app.register_blueprint(report_bp)
 
     from app.routes.error_handlers import errors_bp
-    from app.routes.error_handlers import errors_bp
     app.register_blueprint(errors_bp)
 
     from app.routes.products import products_bp
@@ -78,7 +77,7 @@ def create_app(config_name='default'):
     def check_banned_user():
         """Check if logged-in user is banned before each request."""
         from flask_login import current_user
-        from flask import redirect, url_for, session
+        from flask import redirect, url_for, session, request
         from flask_login import logout_user
         
         if current_user.is_authenticated:
@@ -107,7 +106,7 @@ def create_app(config_name='default'):
             pass # Race condition handling for multiple workers
         except Exception as e:
             print(f"DB Error: {e}")
-        
+
         # Create admin user if not exists
         try:
             from app.services.user_service import create_admin_user_if_not_exists

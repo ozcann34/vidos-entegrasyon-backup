@@ -68,7 +68,26 @@ def run_repair():
         ('products', 'desi', 'FLOAT DEFAULT 1.0'),
         ('products', 'attributes_json', 'TEXT'),
         ('products', 'images_json', 'TEXT'),
-        ('products', 'top_category', 'VARCHAR(255)')
+        ('products', 'top_category', 'VARCHAR(255)'),
+
+        # PAYMENTS Tablosu (YENİ)
+        ('payments', 'user_id', 'INTEGER'),
+        ('payments', 'subscription_id', 'INTEGER'),
+        ('payments', 'amount', 'FLOAT'),
+        ('payments', 'currency', "VARCHAR(10) DEFAULT 'TRY'"),
+        ('payments', 'plan', 'VARCHAR(50)'),
+        ('payments', 'billing_cycle', "VARCHAR(20) DEFAULT 'monthly'"),
+        ('payments', 'gateway', 'VARCHAR(50)'),
+        ('payments', 'transaction_id', 'VARCHAR(200)'),
+        ('payments', 'payment_reference', 'VARCHAR(200)'),
+        ('payments', 'status', "VARCHAR(20) DEFAULT 'pending'"),
+        ('payments', 'payment_method', 'VARCHAR(50)'),
+        ('payments', 'ip_address', 'VARCHAR(50)'),
+        ('payments', 'user_agent', 'TEXT'),
+        ('payments', 'payment_metadata', 'TEXT'),
+        ('payments', 'created_at', 'TIMESTAMP'),
+        ('payments', 'completed_at', 'TIMESTAMP'),
+        ('payments', 'updated_at', 'TIMESTAMP')
     ]
 
     for table, col, dtype in schema_updates:
