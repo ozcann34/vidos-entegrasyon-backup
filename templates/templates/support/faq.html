@@ -1,0 +1,93 @@
+{% extends "_base.html" %}
+
+{% block title %}Sıkça Sorulan Sorular{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <h2 class="text-center mb-5 fw-bold text-primary">Nasıl Yardımcı Olabiliriz?</h2>
+
+        <div class="accordion shadow-sm" id="faqAccordion">
+
+            <!-- Kategori: Ürün Gönderimi -->
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingOne">
+                    <button class="accordion-button" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                        <i class="bi bi-box-seam me-2 text-primary"></i> Ürünlerimi Trendyol'a nasıl gönderirim?
+                    </button>
+                </h2>
+                <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne"
+                    data-bs-parent="#faqAccordion">
+                    <div class="accordion-body text-muted">
+                        Sol menüden <strong>XML Ürünleri</strong> veya <strong>Excel Ürünleri</strong> sayfasına gidin.
+                        Göndermek istediğiniz ürünleri seçin veya filtreleyin. Ardından üst kısımdaki "Pazaryerine
+                        Gönder" butonuna tıklayıp Trendyol'u seçin. İşlem arka planda başlayacaktır.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kategori: Hatalar -->
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingTwo">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                        <i class="bi bi-exclamation-triangle me-2 text-warning"></i> "XML verisi yok" hatası alıyorum,
+                        ne yapmalıyım?
+                    </button>
+                </h2>
+                <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo"
+                    data-bs-parent="#faqAccordion">
+                    <div class="accordion-body text-muted">
+                        Bu hata genellikle yüklenen ürün verisinin veritabanında tam olarak eşleşmediğini gösterir.
+                        Lütfen XML/Excel dosyanızı tekrar yüklemeyi deneyin. Sorun devam ederse <strong>Destek
+                            Talebi</strong> oluşturarak dosyanızı bizimle paylaşın.
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingThree">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                        <i class="bi bi-shop me-2 text-success"></i> Yeni pazaryeri (N11, Amazon) ne zaman eklenecek?
+                    </button>
+                </h2>
+                <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree"
+                    data-bs-parent="#faqAccordion">
+                    <div class="accordion-body text-muted">
+                        Şu anda Trendyol, Hepsiburada, Pazarama ve İdefix entegrasyonlarımız aktif. N11 ve Amazon
+                        entegrasyonları geliştirme aşamasındadır ve çok yakında sisteme dahil edilecektir. Duyuruları
+                        takip edebilirsiniz.
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingFour">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
+                        <i class="bi bi-arrow-repeat me-2 text-info"></i> Stoklar ne sıklıkla güncelleniyor?
+                    </button>
+                </h2>
+                <div id="collapseFour" class="accordion-collapse collapse" aria-labelledby="headingFour"
+                    data-bs-parent="#faqAccordion">
+                    <div class="accordion-body text-muted">
+                        Otomatik senkronizasyon ayarlarınıza bağlı olarak stoklar günde bir kez veya belirli aralıklarla
+                        güncellenir. "Otomatik Senkronizasyon" menüsünden bu sıklığı kontrol edebilir ve manuel
+                        güncelleme başlatabilirsiniz.
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="text-center mt-5">
+            <p class="mb-3">Aradığınız cevabı bulamadınız mı?</p>
+            <a href="{{ url_for('support.create') }}" class="btn btn-primary rounded-pill px-4">
+                <i class="bi bi-headset me-2"></i> Destek Talebi Oluştur
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,18 +1,11 @@
 import os
 
 class Config:
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-key-must-change-in-prod-123456789'
-    MAX_CONTENT_LENGTH = int(os.environ.get('MAX_CONTENT_LENGTH', 32 * 1024 * 1024)) # 32MB default
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    
     # Use environment variable for DB if available (important for production)
-    _db_url = os.environ.get('DATABASE_URL')
-    if _db_url and _db_url.startswith("postgres://"):
-        _db_url = _db_url.replace("postgres://", "postgresql://", 1)
-    
-    SQLALCHEMY_DATABASE_URI = _db_url or f"sqlite:///{os.path.join(BASE_DIR, 'panel.db')}"
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or f"sqlite:///{os.path.join(BASE_DIR, 'panel.db')}"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    WTF_CSRF_ENABLED = True
     
     # Marketplace Settings
     TRENDYOL_SNAPSHOT_TTL = int(os.environ.get("TRENDYOL_SNAPSHOT_TTL", "300"))

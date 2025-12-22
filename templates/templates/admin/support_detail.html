@@ -1,0 +1,112 @@
+{% extends "admin/_base.html" %}
+
+{% block title %}Talep #{{ ticket.id }} Detay{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="admin-header mb-0">
+        <h1><i class="bi bi-ticket-detailed me-2"></i>Talep #{{ ticket.id }}</h1>
+    </div>
+    <a href="{{ url_for('admin.support_tickets') }}" class="btn btn-outline-light">
+        <i class="bi bi-arrow-left me-2"></i>Geri
+    </a>
+</div>
+
+<div class="row">
+    <!-- Ticket Info -->
+    <div class="col-md-4 mb-4">
+        <div class="admin-card mb-3">
+            <h5 class="card-title">Talep Bilgileri</h5>
+            <div class="mb-3">
+                <small class="text-muted d-block">Kullanıcı</small>
+                <a href="{{ url_for('admin.user_detail', user_id=ticket.user_id) }}" class="text-white">
+                    {{ ticket.user.full_name or ticket.user.email }}
+                </a>
+            </div>
+            <div class="mb-3">
+                <small class="text-muted d-block">Konu</small>
+                <div class="fw-bold">{{ ticket.subject }}</div>
+            </div>
+            <div class="mb-3">
+                <small class="text-muted d-block">Durum</small>
+                {% if ticket.status == 'open' %}
+                <span class="badge bg-warning text-dark">Açık</span>
+                {% elif ticket.status == 'answered' %}
+                <span class="badge bg-success">Yanıtlandı</span>
+                {% elif ticket.status == 'resolved' %}
+                <span class="badge bg-secondary">Çözüldü</span>
+                {% elif ticket.status == 'closed' %}
+                <span class="badge bg-secondary">Kapalı</span>
+                {% endif %}
+            </div>
+            <hr>
+            <form method="POST">
+                <div class="d-grid gap-2">
+                    {% if ticket.status != 'resolved' and ticket.status != 'closed' %}
+                    <button type="submit" name="resolve" value="true" class="btn btn-outline-success">
+                        <i class="bi bi-check-circle me-2"></i>Çözüldü Olarak İşaretle
+                    </button>
+                    {% endif %}
+                    {% if ticket.status != 'closed' %}
+                    <button type="submit" name="close" value="true" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-circle me-2"></i>Talebi Kapat
+                    </button>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Message Thread -->
+    <div class="col-md-8">
+        <div class="d-flex flex-column gap-3 mb-4">
+            {% for msg in ticket.messages %}
+            <div class="admin-card p-3 {% if msg.is_admin_reply %}border-admin{% endif %}"
+                style="{% if msg.is_admin_reply %}border-color: var(--admin-primary);{% endif %}">
+                <div class="d-flex justify-content-between mb-2">
+                    <div>
+                        {% if msg.sender_id == ticket.user_id %}
+                        <span class="fw-bold text-white">{{ ticket.user.full_name or 'Kullanıcı' }}</span>
+                        {% else %}
+                        <span class="fw-bold text-danger">Destek Ekibi ({{ msg.sender.full_name or 'Admin' }})</span>
+                        {% endif %}
+                    </div>
+                    <small class="text-muted">{{ msg.created_at.strftime('%d.%m.%Y %H:%M') }}</small>
+                </div>
+                <div class="text-white-50" style="white-space: pre-wrap;">{{ msg.message }}</div>
+                {% if msg.attachment_path %}
+                <div class="mt-2 pt-2 border-top border-secondary">
+                    <small class="text-muted d-block mb-1"><i class="bi bi-paperclip me-1"></i>Ek Dosya</small>
+                    <a href="{{ url_for('support.download_file', filename=msg.attachment_path) }}" target="_blank"
+                        class="text-info text-decoration-none">
+                        <i class="bi bi-download me-1"></i>Dosyayı Görüntüle / İndir
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if ticket.status != 'closed' %}
+        <div class="admin-card">
+            <h5 class="card-title">Yanıtla</h5>
+            <form method="POST" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <textarea class="form-control bg-dark text-white border-secondary" name="message" rows="5" required
+                        placeholder="Yanıtınızı yazın..."></textarea>
+                </div>
+                <div class="mb-3">
+                    <input class="form-control bg-dark text-white border-secondary form-control-sm" type="file"
+                        name="file">
+                </div>
+                <div class="text-end">
+                    <button type="submit" name="reply" value="true" class="btn btn-admin">
+                        <i class="bi bi-send me-2"></i>Yanıtı Gönder
+                    </button>
+                </div>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

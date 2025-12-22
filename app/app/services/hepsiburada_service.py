@@ -1,0 +1,149 @@
+
+import logging
+import time
+from typing import List, Dict, Any, Optional
+
+from app.models import Setting, SupplierXML
+from app.services.hepsiburada_client import HepsiburadaClient
+from app.services.xml_service import load_xml_source_index
+from app.services.job_queue import append_mp_job_log, update_mp_job, get_mp_job
+from app.utils.helpers import get_marketplace_multiplier, to_float, to_int
+
+def get_hepsiburada_client(user_id: int = None) -> HepsiburadaClient:
+    """Factory to get authenticated client."""
+    if user_id is None:
+        from flask_login import current_user
+        if current_user and current_user.is_authenticated:
+            user_id = current_user.id
+            
+    merchant_id = Setting.get("HB_MERCHANT_ID", "", user_id=user_id)
+    service_key = Setting.get("HB_SERVICE_KEY", "", user_id=user_id)
+    
+    if not merchant_id or not service_key:
+        raise ValueError("Hepsiburada Merchant ID veya Servis Anahtarı eksik. Ayarlar sayfasından giriniz.")
+        
+    return HepsiburadaClient(merchant_id.strip(), service_key.strip())
+
+def perform_hepsiburada_send_products(job_id: str, barcodes: List[str], xml_source_id: Any) -> Dict[str, Any]:
+    """
+    Send selected products from XML to Hepsiburada.
+    """
+    append_mp_job_log(job_id, "Hepsiburada gönderim işlemi başlatılıyor...")
+    
+    try:
+        client = get_hepsiburada_client()
+    except Exception as e:
+        return {'success': False, 'message': str(e)}
+
+    # Load Source
+    xml_index = load_xml_source_index(xml_source_id)
+    mp_map = xml_index.get('by_barcode') or {}
+    
+    # Options
+    multiplier = get_marketplace_multiplier('hepsiburada')
+    
+    products_to_send = []
+    skipped = []
+    
+    processed_count = 0
+    total_count = len(barcodes)
+    
+    for barcode in barcodes:
+        processed_count += 1
+        
+        # Check Cancel
+        job = get_mp_job(job_id)
+        if job and job.get('cancel_requested'):
+            append_mp_job_log(job_id, "İşlem iptal edildi.", level='warning')
+            break
+            
+        product = mp_map.get(barcode)
+        if not product:
+            skipped.append({'barcode': barcode, 'reason': 'XML verisi bulunamadı'})
+            continue
+            
+        # Basic Mapping
+        # Hepsiburada requires: MerchantSku, ProductName, Price, Stock, etc.
+        # Actually for 'Catalog' integration it is complex, but for 'Listing' (Inventory) 
+        # it typically matches via Barcode or MerchantSku.
+        # Required fields for Inventory Upload often:
+        # - merchantSku (we use barcode or stock code)
+        # - price
+        # - availableStock
+        # - dispatchTime (handling time)
+        # - cargoCompany
+        
+        # Assuming we are using the "Listing API" which connects to existing catalog products via barcode?
+        # OR if we are creating new products (Catalog integration)? 
+        # User said "xmlden ürün gönderilebilir olsun" -> implies listing or full creation.
+        # Usually full creation requires a lot of attributes. Listing is safer first step.
+        # Let's try to map what we can for a "Listing" (Match & Publish) payload.
+        # Hepsiburada Listing API payload format (list of object):
+        # {
+        #   "merchantSku": "...",
+        #   "productName": "...", (Optional if matching)
+        #   "price": { "amount": 100.0, "currency": "TRY" },
+        #   "availableStock": 10,
+        #   "dispatchTime": 3,
+        #   "cargoCompany1": "Aras Kargo",
+        #   ...
+        # }
+        
+        start_price = to_float(product.get('price')) or 0
+        final_price = round(start_price * multiplier, 2)
+        stock = to_int(product.get('quantity'))
+        
+        if final_price <= 0:
+            skipped.append({'barcode': barcode, 'reason': 'Fiyat 0'})
+            continue
+            
+        # Simplified Catalog Import Schema (based on common practices for Hepsiburada)
+        # Hepsiburada usually matches via "merchantSku" or "ean".
+        # This payload attempts to Create/Update listing.
+        
+        if final_price <= 0:
+            skipped.append({'barcode': barcode, 'reason': 'Fiyat 0'})
+            continue
+            
+        # Switch back to Listing API (Inventory Uploads) as Import API gives 403
+        # Payload for Inventory Uploads (Listing API)
+        # reference: https://developers.hepsiburada.com/hepsiburada/reference/inventory-uploads
+        
+        item = {
+            "merchantSku": barcode,
+            "price": {
+                "amount": final_price,
+                "currency": "TRY"
+            },
+            "availableStock": stock,
+            "dispatchTime": 3,
+            "cargoCompany1": "Yurtiçi Kargo"
+        }
+        
+        products_to_send.append(item)
+        
+    if not products_to_send:
+        return {'success': False, 'message': 'Gönderilecek geçerli ürün yok.', 'skipped': skipped}
+        
+    append_mp_job_log(job_id, f"{len(products_to_send)} ürün hazırlanarak Hepsiburada'ya gönderiliyor (Listing API)...")
+    
+    # Send
+    try:
+        # Submit via Listing API using the fixed Auth method in client
+        result = client.upload_products(products_to_send)
+        track_id = result.get('id') or result.get('trackingId')
+        
+        append_mp_job_log(job_id, f"Gönderim başarılı. Takip ID: {track_id}")
+        
+        return {
+            'success': True,
+            'count': len(products_to_send),
+            'tracking_id': track_id,
+            'skipped': skipped,
+            'message': f"{len(products_to_send)} ürün Hepsiburada'ya iletildi. (Takip ID: {track_id})"
+        }
+        
+    except Exception as e:
+        msg = f"Hepsiburada API hatası: {str(e)}"
+        append_mp_job_log(job_id, msg, level='error')
+        return {'success': False, 'message': msg}
