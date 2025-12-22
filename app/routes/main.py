@@ -610,7 +610,7 @@ def settings_page():
                 # Limit enforcement for NEW marketplaces
                 if k in mp_check and val:
                     mp_name = mp_check[k]
-                    if mp_name not in active_mps and len(active_mps) >= limit and limit != -1:
+                    if mp_name not in active_mps and len(active_mps) >= limit and limit != -1 and not current_user.is_admin:
                         flash(f"Pazaryeri limitinize ulaştınız ({limit}). Daha fazlası için paketinizi yükseltin.", "danger")
                         continue # Skip this setting
                 
