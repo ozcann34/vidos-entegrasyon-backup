@@ -2101,7 +2101,7 @@ def api_test_connection(marketplace):
             # Try fetching a simple data point like supplier addresses or just init
             # validation often happens in init, but let's try a call
             try:
-               client.get_shipment_addresses() # Lightweight call
+               client.get_addresses() # Lightweight call
                success = True
                message = "Trendyol bağlantısı başarılı."
             except Exception as e:

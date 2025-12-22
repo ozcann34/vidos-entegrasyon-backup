@@ -920,6 +920,16 @@ class TrendyolClient:
 
 
 
+    def get_addresses(self) -> Dict[str, Any]:
+        """
+        Fetch supplier addresses (shipment, invoice, etc.) from Trendyol.
+        GET https://apigw.trendyol.com/integration/product/sellers/{sellerId}/addresses
+        """
+        url = f"https://apigw.trendyol.com/integration/product/sellers/{self.seller_id}/addresses"
+        resp = self.session.get(url, auth=self.auth, timeout=self.timeout)
+        resp.raise_for_status()
+        return resp.json()
+
     def get_product_count(self) -> int:
         """
         Get total product count from Trendyol.

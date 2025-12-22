@@ -986,7 +986,7 @@
               });
             }
           } else {
-            Swal.fire('Bulunamadı', data.message || 'Trendyol\'da bu marka bulunamadı.', 'error');
+            Swal.fire('Bulunamadı', data.message || 'Trendyol\'da bu marka bulunamadı.', 'warning');
           }
         })
         .catch(err => {
@@ -1041,7 +1041,7 @@
               });
             }
           } else {
-            Swal.fire('Bulunamadı', data.message || 'Hepsiburada\'da bu marka bulunamadı.', 'error');
+            Swal.fire('Bulunamadı', data.message || 'Hepsiburada\'da bu marka bulunamadı.', 'warning');
           }
         })
         .catch(err => {
@@ -1085,7 +1085,7 @@
               });
             }
           } else {
-            Swal.fire('Bulunamadı', j.message || 'Pazarama\'da marka bulunamadı', 'error');
+            Swal.fire('Bulunamadı', j.message || 'Pazarama\'da marka bulunamadı', 'warning');
           }
         }).catch(err => { Swal.close(); Swal.fire('Hata', 'Pazarama arama hatası: ' + err, 'error'); });
     });
@@ -1125,7 +1125,7 @@
               });
             }
           } else {
-            Swal.fire('Bulunamadı', j.message || 'N11\'de marka bulunamadı', 'error');
+            Swal.fire('Bulunamadı', j.message || 'N11\'de marka bulunamadı', 'warning');
           }
         }).catch(err => Swal.fire('Hata', 'N11 arama hatası: ' + err, 'error'));
     });
