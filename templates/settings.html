@@ -234,58 +234,18 @@
                 style="color: #5c21df; font-weight: bold;">N11</button>
             </li>
             {% endif %}
+            {% if current_user.has_permission('instagram_panel') %}
             <li class="nav-item">
               <button class="nav-link" data-bs-toggle="tab" data-bs-target="#instagram-pane"
                 style="color: #E1306C; font-weight: bold;">
                 <i class="bi bi-instagram me-1"></i>Instagram
               </button>
             </li>
+            {% endif %}
           </ul>
 
-          <div class="tab-content">
-            <!-- Instagram -->
-            <div class="tab-pane fade" id="instagram-pane">
-              <form method="POST" action="{{ url_for('main.settings_page') }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div class="alert alert-light border shadow-sm mb-3">
-                  <h6 class="alert-heading text-dark fw-bold"><i
-                      class="bi bi-info-circle-fill text-primary me-2"></i>Bilgi</h6>
-                  <p class="mb-0 small text-muted">
-                    Instagram entegrasyonu için Facebook Geliştirici panelinden aldığınız <strong>"Uzun Süreli Erişim
-                      Jetonu"</strong> (Long-lived Access Token) ve <strong>"Instagram Business Account ID"</strong>
-                    bilgilerinizi giriniz.
-                    Bu bilgiler olmadan paylaşım yapılamaz.
-                  </p>
-                </div>
-                <div class="row g-3">
-                  <div class="col-md-12">
-                    <label class="form-label fw-bold">Instagram Business Account ID</label>
-                    <input type="text" class="form-control" name="INSTAGRAM_ACCOUNT_ID"
-                      value="{{ settings.INSTAGRAM_ACCOUNT_ID }}" placeholder="Örn: 17841400000000000">
-                  </div>
-                  <div class="col-md-12">
-                    <label class="form-label fw-bold">Erişim Jetonu (Access Token)</label>
-                    <div class="input-group">
-                      <textarea class="form-control font-monospace" id="INSTAGRAM_ACCESS_TOKEN"
-                        name="INSTAGRAM_ACCESS_TOKEN" rows="3" placeholder="EAAB..." style="font-size: 0.85rem;"
-                        readonly>{{ settings.INSTAGRAM_ACCESS_TOKEN }}</textarea>
-                      <button class="btn btn-outline-secondary" type="button"
-                        onclick="togglePasswordDisplay('INSTAGRAM_ACCESS_TOKEN', true)">
-                        <i class="bi bi-eye"></i>
-                      </button>
-                    </div>
-                  </div>
-                  <div class="col-12 mt-3">
-                    <button type="submit" class="btn btn-success"><i class="bi bi-save me-2"></i> Kaydet</button>
-                    <!-- Test butonu (henuz API endpoint yoksa devre disi birakilabilir veya basit bir alert verebiliriz) -->
-                    <button type="button" class="btn btn-outline-primary ms-2" disabled title="Önce kaydedin"><i
-                        class="bi bi-link-45deg me-1"></i> Bağlantıyı Test Et (Yakında)</button>
-                  </div>
-                </div>
-              </form>
-            </div>
-
-            <!-- Trendyol -->
+          <div class="tab-content" id="marketTabContent">
+            <!-- Trendyol (Default Active if permission exists) -->
             {% if current_user.has_permission('trendyol') %}
             <div class="tab-pane fade show active" id="trendyol-pane">
               <form method="POST" action="{{ url_for('main.settings_page') }}">
@@ -363,408 +323,455 @@
                 </div>
               </form>
             </div>
-            </form>
-          </div>
-          {% endif %}
+            {% endif %}
 
-          <!-- Hepsiburada -->
-          {% if current_user.has_permission('hepsiburada') %}
-          <div class="tab-pane fade" id="hb-pane">
-            <form method="POST" action="{{ url_for('main.settings_page') }}">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <div class="row g-3">
-                <div class="col-md-6"><label class="form-label fw-bold">Merchant ID</label><input class="form-control"
-                    name="HB_MERCHANT_ID" value="{{ settings.HB_MERCHANT_ID }}"></div>
-                <div class="col-md-6"><label class="form-label fw-bold">Service Key (Servis Anahtarı)</label>
-                  <div class="input-group">
-                    <input type="password" class="form-control" name="HB_SERVICE_KEY" id="HB_SERVICE_KEY"
-                      value="{{ settings.HB_SERVICE_KEY }}">
-                    <button class="btn btn-outline-secondary" type="button"
-                      onclick="togglePasswordDisplay('HB_SERVICE_KEY')">
-                      <i class="bi bi-eye"></i>
+            <!-- Hepsiburada -->
+            {% if current_user.has_permission('hepsiburada') %}
+            <div class="tab-pane fade" id="hb-pane">
+              <form method="POST" action="{{ url_for('main.settings_page') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-3">
+                  <div class="col-md-6"><label class="form-label fw-bold">Merchant ID</label><input class="form-control"
+                      name="HB_MERCHANT_ID" value="{{ settings.HB_MERCHANT_ID }}"></div>
+                  <div class="col-md-6"><label class="form-label fw-bold">Service Key (Servis Anahtarı)</label>
+                    <div class="input-group">
+                      <input type="password" class="form-control" name="HB_SERVICE_KEY" id="HB_SERVICE_KEY"
+                        value="{{ settings.HB_SERVICE_KEY }}">
+                      <button class="btn btn-outline-secondary" type="button"
+                        onclick="togglePasswordDisplay('HB_SERVICE_KEY')">
+                        <i class="bi bi-eye"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-bold">API Kullanıcı Adı (User-Agent)</label>
+                    <input class="form-control" name="HB_API_USERNAME" value="{{ settings.HB_API_USERNAME }}"
+                      placeholder="Örn: saticikodu_dev">
+                    <div class="form-text">Hepsiburada panelindeki 'Entegratör Kodu / Kullanıcı Adı'.</div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-bold">Fiyat Çarpanı</label>
+                    <div class="input-group"><span class="input-group-text">x</span><input type="number" step="0.01"
+                        class="form-control" name="HB_PRICE_MULTIPLIER" value="{{ settings.HB_PRICE_MULTIPLIER }}">
+                    </div>
+                  </div>
+                  <div class="col-md-6 d-flex align-items-center mt-4">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" name="HB_TEST_MODE" id="HB_TEST_MODE" {% if
+                        settings.HB_TEST_MODE=='on' %}checked{% endif %}>
+                      <label class="form-check-label fw-bold pulsate-red" for="HB_TEST_MODE">Hepsiburada Test Ortamı
+                        (SIT)</label>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-bold">Varsayılan Marka Adı</label>
+                    <div class="input-group">
+                      <input type="text" class="form-control" id="HB_BRAND_NAME" name="HB_BRAND_NAME"
+                        value="{{ settings.HB_BRAND_NAME }}" placeholder="Örn: BUZ">
+                      <button type="button" class="btn btn-primary" id="searchHBBrand">
+                        <i class="bi bi-search"></i> Marka ID Bul
+                      </button>
+                    </div>
+                    <div class="form-text">Hepsiburada'ya gönderirken bu marka kullanılır.</div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-bold">Marka ID (Otomatik)</label>
+                    <input class="form-control" id="HB_BRAND_ID" name="HB_BRAND_ID" value="{{ settings.HB_BRAND_ID }}"
+                      readonly>
+                    <div class="form-text">Hepsiburada sistemindeki marka ID'si.</div>
+                  </div>
+                  <div class="col-12 mt-3">
+                    <button type="submit" class="btn btn-success"><i class="bi bi-save me-2"></i> Kaydet</button>
+                    <button type="button" class="btn btn-outline-primary ms-2" onclick="testConnection('hepsiburada')">
+                      <i class="bi bi-wifi me-1"></i> Bağlantı Testi
+                    </button>
+                    <button type="button" class="btn btn-outline-danger ms-2" id="clearHBCacheBtn">
+                      <i class="bi bi-trash me-1"></i> Önbellek Temizle
                     </button>
                   </div>
                 </div>
-                <div class="col-md-6">
-                  <label class="form-label fw-bold">API Kullanıcı Adı (User-Agent)</label>
-                  <input class="form-control" name="HB_API_USERNAME" value="{{ settings.HB_API_USERNAME }}"
-                    placeholder="Örn: saticikodu_dev">
-                  <div class="form-text">Hepsiburada panelindeki 'Entegratör Kodu / Kullanıcı Adı'.</div>
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label fw-bold">Fiyat Çarpanı</label>
-                  <div class="input-group"><span class="input-group-text">x</span><input type="number" step="0.01"
-                      class="form-control" name="HB_PRICE_MULTIPLIER" value="{{ settings.HB_PRICE_MULTIPLIER }}">
+              </form>
+            </div>
+            {% endif %}
+
+            <!-- Pazarama -->
+            {% if current_user.has_permission('pazarama') %}
+            <div class="tab-pane fade" id="pazarama-pane">
+              <form method="POST" action="{{ url_for('main.settings_page') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <label class="form-label fw-bold">API Key</label>
+                    <div class="input-group">
+                      <input type="password" class="form-control" name="PAZARAMA_API_KEY" id="PAZARAMA_API_KEY"
+                        value="{{ settings.PAZARAMA_API_KEY }}">
+                      <button class="btn btn-outline-secondary" type="button"
+                        onclick="togglePasswordDisplay('PAZARAMA_API_KEY')">
+                        <i class="bi bi-eye"></i>
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <div class="col-md-6 d-flex align-items-center mt-4">
-                  <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" name="HB_TEST_MODE" id="HB_TEST_MODE" {% if
-                      settings.HB_TEST_MODE=='on' %}checked{% endif %}>
-                    <label class="form-check-label fw-bold pulsate-red" for="HB_TEST_MODE">Hepsiburada Test Ortamı
-                      (SIT)</label>
+                  <div class="col-md-4"><label class="form-label fw-bold">API Secret</label>
+                    <div class="input-group">
+                      <input type="password" class="form-control" name="PAZARAMA_API_SECRET" id="PAZARAMA_API_SECRET"
+                        value="{{ settings.PAZARAMA_API_SECRET }}">
+                      <button class="btn btn-outline-secondary" type="button"
+                        onclick="togglePasswordDisplay('PAZARAMA_API_SECRET')">
+                        <i class="bi bi-eye"></i>
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label fw-bold">Varsayılan Marka Adı</label>
-                  <div class="input-group">
-                    <input type="text" class="form-control" id="HB_BRAND_NAME" name="HB_BRAND_NAME"
-                      value="{{ settings.HB_BRAND_NAME }}" placeholder="Örn: BUZ">
-                    <button type="button" class="btn btn-primary" id="searchHBBrand">
-                      <i class="bi bi-search"></i> Marka ID Bul
+                  <div class="col-md-4">
+                    <label class="form-label fw-bold">Fiyat Çarpanı</label>
+                    <div class="input-group"><span class="input-group-text">x</span><input type="number" step="0.01"
+                        class="form-control" name="PAZARAMA_PRICE_MULTIPLIER"
+                        value="{{ settings.PAZARAMA_PRICE_MULTIPLIER }}">
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-bold">Marka Adı</label>
+                    <div class="input-group">
+                      <input type="text" class="form-control" id="PAZARAMA_BRAND_NAME" name="PAZARAMA_BRAND_NAME"
+                        value="{{ settings.PAZARAMA_BRAND_NAME }}">
+                      <button type="button" class="btn btn-primary" id="searchPazaramaBrand"><i
+                          class="bi bi-search"></i>
+                        Bul</button>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-bold">Marka ID</label>
+                    <input class="form-control" id="PAZARAMA_BRAND_ID" name="PAZARAMA_BRAND_ID"
+                      value="{{ settings.PAZARAMA_BRAND_ID }}" readonly>
+                  </div>
+                  <div class="col-12">
+                    <hr>
+                    <button type="button" class="btn btn-outline-info" id="fetchPazaramaCategoriesBtn"><i
+                        class="bi bi-diagram-3 me-1"></i> Kategorileri Çek</button>
+                    <button type="button" class="btn btn-outline-warning ms-2" id="clearPazaramaCacheBtn"><i
+                        class="bi bi-trash me-1"></i> Önbellek Temizle</button>
+                    <button type="button" class="btn btn-outline-primary ms-2" onclick="testConnection('pazarama')">
+                      <i class="bi bi-wifi me-1"></i> Bağlantı Testi
                     </button>
                   </div>
-                  <div class="form-text">Hepsiburada'ya gönderirken bu marka kullanılır.</div>
+                  <div class="col-12 mt-3"><button type="submit" class="btn btn-success"><i class="bi bi-save me-2"></i>
+                      Kaydet</button></div>
                 </div>
-                <div class="col-md-6">
-                  <label class="form-label fw-bold">Marka ID (Otomatik)</label>
-                  <input class="form-control" id="HB_BRAND_ID" name="HB_BRAND_ID" value="{{ settings.HB_BRAND_ID }}"
-                    readonly>
-                  <div class="form-text">Hepsiburada sistemindeki marka ID'si.</div>
+              </form>
+            </div>
+            {% endif %}
+
+            <!-- İdefix -->
+            {% if current_user.has_permission('idefix') %}
+            <div class="tab-pane fade" id="idefix-pane">
+              <form method="POST" action="{{ url_for('main.settings_page') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-3">
+                  <div class="col-md-6"><label class="form-label fw-bold">API Key</label>
+                    <div class="input-group">
+                      <input type="password" class="form-control" name="IDEFIX_API_KEY" id="IDEFIX_API_KEY"
+                        value="{{ settings.IDEFIX_API_KEY }}">
+                      <button class="btn btn-outline-secondary" type="button"
+                        onclick="togglePasswordDisplay('IDEFIX_API_KEY')">
+                        <i class="bi bi-eye"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="col-md-6"><label class="form-label fw-bold">API Secret</label>
+                    <div class="input-group">
+                      <input type="password" class="form-control" name="IDEFIX_API_SECRET" id="IDEFIX_API_SECRET"
+                        value="{{ settings.IDEFIX_API_SECRET }}">
+                      <button class="btn btn-outline-secondary" type="button"
+                        onclick="togglePasswordDisplay('IDEFIX_API_SECRET')">
+                        <i class="bi bi-eye"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="col-md-6"><label class="form-label fw-bold">Vendor ID</label><input class="form-control"
+                      name="IDEFIX_VENDOR_ID" value="{{ settings.IDEFIX_VENDOR_ID }}"></div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-bold">Marka Adı</label>
+                    <div class="input-group">
+                      <input type="text" class="form-control" id="IDEFIX_BRAND_NAME" name="IDEFIX_BRAND_NAME"
+                        value="{{ settings.IDEFIX_BRAND_NAME }}">
+                      <button type="button" class="btn btn-primary" id="searchIdefixBrand"><i class="bi bi-search"></i>
+                        Bul</button>
+                    </div>
+                  </div>
+                  <div class="col-md-6"><label class="form-label fw-bold">Marka ID</label><input class="form-control"
+                      id="IDEFIX_BRAND_ID" name="IDEFIX_BRAND_ID" value="{{ settings.IDEFIX_BRAND_ID }}"></div>
+
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">Varsayılan Kategori ID (Zorunlu)</label>
+                    <input type="text" class="form-control" name="IDEFIX_DEFAULT_CATEGORY_ID"
+                      value="{{ settings.IDEFIX_DEFAULT_CATEGORY_ID }}" placeholder="Örn: 12345">
+                    <div class="form-text">Yeni ürün oluşturulurken kullanılır.</div>
+                  </div>
+
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">Barkod Ön Eki Temizle</label>
+                    <input type="text" class="form-control" name="IDEFIX_BARCODE_PREFIX"
+                      value="{{ settings.IDEFIX_BARCODE_PREFIX }}" placeholder="Örn: BGZ">
+                    <div class="form-text">Bu ön ek barkoddan silinir.</div>
+                  </div>
+
+                  <div class="col-md-12 mb-3">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="idefixRandomBarcode"
+                        name="IDEFIX_USE_RANDOM_BARCODE" {% if settings.IDEFIX_USE_RANDOM_BARCODE=='on' %}checked{%
+                        endif %}>
+                      <label class="form-check-label" for="idefixRandomBarcode">Barkod geçersizse rastgele barkod
+                        oluştur (GEN-XXXXXX)</label>
+                    </div>
+                  </div>
+
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">Fiyat Çarpanı</label>
+                    <input type="number" step="0.01" class="form-control" name="IDEFIX_PRICE_MULTIPLIER"
+                      value="{{ settings.IDEFIX_PRICE_MULTIPLIER }}">
+                  </div>
+
+                  <div class="col-12 mt-3">
+                    <button type="button" class="btn btn-outline-info" id="fetchIdefixCategoriesBtn">
+                      <i class="bi bi-diagram-3 me-1"></i> Kategorileri Çek
+                    </button>
+                    <button type="submit" class="btn btn-success ms-2"><i class="bi bi-save me-2"></i> Kaydet</button>
+                    <button type="button" class="btn btn-outline-primary ms-2" onclick="testConnection('idefix')">
+                      <i class="bi bi-wifi me-1"></i> Bağlantı Testi
+                    </button>
+                    <button type="button" class="btn btn-outline-danger ms-2" id="clearIdefixCacheBtn">
+                      <i class="bi bi-trash me-1"></i> Önbellek Temizle
+                    </button>
+                  </div>
                 </div>
-                <div class="col-12 mt-3">
-                  <button type="submit" class="btn btn-success"><i class="bi bi-save me-2"></i> Kaydet</button>
-                  <button type="button" class="btn btn-outline-primary ms-2" onclick="testConnection('hepsiburada')">
-                    <i class="bi bi-wifi me-1"></i> Bağlantı Testi
-                  </button>
-                  <button type="button" class="btn btn-outline-danger ms-2" id="clearHBCacheBtn">
-                    <i class="bi bi-trash me-1"></i> Önbellek Temizle
-                  </button>
+              </form>
+            </div>
+            {% endif %}
+
+            <!-- N11 -->
+            {% if current_user.has_permission('n11') %}
+            <div class="tab-pane fade" id="n11-pane">
+              <form method="POST" action="{{ url_for('main.settings_page') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label fw-bold">App Key (API Anahtarı)</label>
+                    <div class="input-group">
+                      <input type="password" class="form-control" name="N11_API_KEY" id="N11_API_KEY"
+                        value="{{ settings.N11_API_KEY }}" required>
+                      <button class="btn btn-outline-secondary" type="button"
+                        onclick="togglePasswordDisplay('N11_API_KEY')">
+                        <i class="bi bi-eye"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-bold">App Secret (Gizli Anahtar)</label>
+                    <div class="input-group">
+                      <input type="password" class="form-control" name="N11_API_SECRET" id="N11_API_SECRET"
+                        value="{{ settings.N11_API_SECRET }}" required>
+                      <button class="btn btn-outline-secondary" type="button"
+                        onclick="togglePasswordDisplay('N11_API_SECRET')">
+                        <i class="bi bi-eye"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-bold">Fiyat Çarpanı</label>
+                    <div class="input-group">
+                      <span class="input-group-text">x</span>
+                      <input type="number" step="0.01" class="form-control" name="N11_PRICE_MULTIPLIER"
+                        value="{{ settings.N11_PRICE_MULTIPLIER }}">
+                    </div>
+                  </div>
+                  <div class="col-md-6 mt-3">
+                    <label class="form-label fw-bold">Varsayılan Marka (Zorunlu İçin)</label>
+                    <div class="input-group">
+                      <input type="text" class="form-control" id="N11_DEFAULT_BRAND" name="N11_DEFAULT_BRAND"
+                        value="{{ settings.N11_DEFAULT_BRAND }}" placeholder="Örn: Apple">
+                      <button type="button" class="btn btn-primary" id="searchN11Brand"><i class="bi bi-search"></i>
+                        Bul</button>
+                    </div>
+                  </div>
+                  <div class="col-md-6 mt-3">
+                    <label class="form-label fw-bold">Marka ID (Otomatik)</label>
+                    <input class="form-control" id="N11_DEFAULT_BRAND_ID" name="N11_DEFAULT_BRAND_ID"
+                      value="{{ settings.N11_DEFAULT_BRAND_ID }}" readonly placeholder="Marka ID">
+                  </div>
+                  <div class="col-md-6 mt-3">
+                    <label class="form-label fw-bold">Kargo Şablonu İsmi</label>
+                    <input class="form-control" name="N11_DEFAULT_SHIPMENT_TEMPLATE"
+                      value="{{ settings.N11_DEFAULT_SHIPMENT_TEMPLATE }}" placeholder="Örn: Standart">
+                    <div class="form-text">N11 panelinizdeki kargo şablonu ismiyle birebir aynı olmalıdır.</div>
+                  </div>
+                  <div class="col-12 mt-3">
+                    <button type="submit" class="btn btn-success"><i class="bi bi-save me-2"></i> Kaydet</button>
+                    <button type="button" class="btn btn-outline-primary ms-2" onclick="testConnection('n11')">
+                      <i class="bi bi-wifi me-1"></i> Bağlantı Testi
+                    </button>
+                    <button type="button" class="btn btn-outline-info ms-2" id="fetchN11DataBtn">
+                      <i class="bi bi-diagram-3 me-1"></i> Kategorileri Çek
+                    </button>
+                    <button type="button" class="btn btn-outline-danger ms-2" id="clearN11CacheBtn">
+                      <i class="bi bi-trash me-1"></i> Önbellek Temizle
+                    </button>
+                  </div>
                 </div>
+              </form>
+            </div>
+            {% if current_user.has_permission('instagram_panel') %}
+            <!-- Instagram -->
+            <div class="tab-pane fade" id="instagram-pane">
+              <form method="POST" action="{{ url_for('main.settings_page') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="alert alert-light border shadow-sm mb-3">
+                  <h6 class="alert-heading text-dark fw-bold"><i
+                      class="bi bi-info-circle-fill text-primary me-2"></i>Bilgi</h6>
+                  <p class="mb-0 small text-muted">
+                    Instagram entegrasyonu için Facebook Geliştirici panelinden aldığınız <strong>"Uzun Süreli Erişim
+                      Jetonu"</strong> (Long-lived Access Token) ve <strong>"Instagram Business Account ID"</strong>
+                    bilgilerinizi giriniz.
+                    Bu bilgiler olmadan paylaşım yapılamaz.
+                  </p>
+                </div>
+                <div class="row g-3">
+                  <div class="col-md-12">
+                    <label class="form-label fw-bold">Instagram Business Account ID</label>
+                    <input type="text" class="form-control" name="INSTAGRAM_ACCOUNT_ID"
+                      value="{{ settings.INSTAGRAM_ACCOUNT_ID }}" placeholder="Örn: 17841400000000000">
+                  </div>
+                  <div class="col-md-12">
+                    <label class="form-label fw-bold">Erişim Jetonu (Access Token)</label>
+                    <div class="input-group">
+                      <textarea class="form-control font-monospace" id="INSTAGRAM_ACCESS_TOKEN_2"
+                        name="INSTAGRAM_ACCESS_TOKEN" rows="3" placeholder="EAAB..." style="font-size: 0.85rem;"
+                        readonly>{{ settings.INSTAGRAM_ACCESS_TOKEN }}</textarea>
+                      <button class="btn btn-outline-secondary" type="button"
+                        onclick="togglePasswordDisplay('INSTAGRAM_ACCESS_TOKEN_2', true)">
+                        <i class="bi bi-eye"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="col-12 mt-3">
+                    <button type="submit" class="btn btn-success"><i class="bi bi-save me-2"></i> Kaydet</button>
+                  </div>
+                </div>
+              </form>
+            </div>
+            {% endif %}
+          </div> <!-- End tab-content -->
+        </div> <!-- End accordion-body -->
+      </div> <!-- End accordion-collapse -->
+    </div> <!-- End accordion-item (Pazaryeri) -->
+
+    <!-- XML Kaynakları -->
+    <div class="accordion-item">
+      <h2 class="accordion-header">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+          data-bs-target="#xmlCollapse">
+          <i class="bi bi-file-code me-2"></i>
+          XML Kaynakları
+        </button>
+      </h2>
+      <div id="xmlCollapse" class="accordion-collapse collapse" data-bs-parent="#settingsAccordion">
+        <div class="accordion-body">
+
+          <!-- XML Tablo ve Form -->
+          <ul class="nav nav-tabs mb-3" id="xmlSourceTypeTabs">
+            <li class="nav-item">
+              <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#xmlUrlPane" type="button">URL
+                Ekle</button>
+            </li>
+          </ul>
+
+          <div class="tab-content mb-3">
+            <div class="tab-pane fade show active" id="xmlUrlPane">
+              <div class="row g-2 align-items-end">
+                <div class="col-md-3"><label class="form-label">İsim</label><input id="xmlName" class="form-control"
+                    placeholder="Tedarikçi A"></div>
+                <div class="col-md-6"><label class="form-label">XML URL</label><input id="xmlUrl" class="form-control"
+                    placeholder="https://.../urunler.xml"></div>
+                <div class="col-md-3"><button id="btnAddXml" type="button" class="btn btn-primary w-100"><i
+                      class="bi bi-plus-lg me-1"></i> Ekle</button></div>
               </div>
-            </form>
+            </div>
           </div>
-          {% endif %}
 
-          <!-- Pazarama -->
-          {% if current_user.has_permission('pazarama') %}
-          <div class="tab-pane fade" id="pazarama-pane">
-            <form method="POST" action="{{ url_for('main.settings_page') }}">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <div class="row g-3">
-                <div class="col-md-4">
-                  <label class="form-label fw-bold">API Key</label>
-                  <div class="input-group">
-                    <input type="password" class="form-control" name="PAZARAMA_API_KEY" id="PAZARAMA_API_KEY"
-                      value="{{ settings.PAZARAMA_API_KEY }}">
-                    <button class="btn btn-outline-secondary" type="button"
-                      onclick="togglePasswordDisplay('PAZARAMA_API_KEY')">
-                      <i class="bi bi-eye"></i>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>İsim</th>
+                  <th>URL</th>
+                  <th>Tarih</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="xmlTableBody">
+                {% for x in xml_sources %}
+                <tr data-id="{{ x.id }}">
+                  <td>{{ x.id }}</td>
+                  <td>{{ x.name }}</td>
+                  <td class="text-truncate" style="max-width:400px">{{ x.url }}</td>
+                  <td>{{ x.created_at }}</td>
+                  <td>
+                    <button class="btn btn-sm btn-outline-primary btnSyncXmlCosts"
+                      title="XML'deki maliyetleri ürünlere aktar">
+                      <i class="bi bi-currency-dollar"></i> Maliyetleri Güncelle
                     </button>
-                  </div>
-                </div>
-                <div class="col-md-4"><label class="form-label fw-bold">API Secret</label>
-                  <div class="input-group">
-                    <input type="password" class="form-control" name="PAZARAMA_API_SECRET" id="PAZARAMA_API_SECRET"
-                      value="{{ settings.PAZARAMA_API_SECRET }}">
-                    <button class="btn btn-outline-secondary" type="button"
-                      onclick="togglePasswordDisplay('PAZARAMA_API_SECRET')">
-                      <i class="bi bi-eye"></i>
-                    </button>
-                  </div>
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label fw-bold">Fiyat Çarpanı</label>
-                  <div class="input-group"><span class="input-group-text">x</span><input type="number" step="0.01"
-                      class="form-control" name="PAZARAMA_PRICE_MULTIPLIER"
-                      value="{{ settings.PAZARAMA_PRICE_MULTIPLIER }}">
-                  </div>
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label fw-bold">Marka Adı</label>
-                  <div class="input-group">
-                    <input type="text" class="form-control" id="PAZARAMA_BRAND_NAME" name="PAZARAMA_BRAND_NAME"
-                      value="{{ settings.PAZARAMA_BRAND_NAME }}">
-                    <button type="button" class="btn btn-primary" id="searchPazaramaBrand"><i class="bi bi-search"></i>
-                      Bul</button>
-                  </div>
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label fw-bold">Marka ID</label>
-                  <input class="form-control" id="PAZARAMA_BRAND_ID" name="PAZARAMA_BRAND_ID"
-                    value="{{ settings.PAZARAMA_BRAND_ID }}" readonly>
-                </div>
-                <div class="col-12">
-                  <hr>
-                  <button type="button" class="btn btn-outline-info" id="fetchPazaramaCategoriesBtn"><i
-                      class="bi bi-diagram-3 me-1"></i> Kategorileri Çek</button>
-                  <button type="button" class="btn btn-outline-warning ms-2" id="clearPazaramaCacheBtn"><i
-                      class="bi bi-trash me-1"></i> Önbellek Temizle</button>
-                  <button type="button" class="btn btn-outline-primary ms-2" onclick="testConnection('pazarama')">
-                    <i class="bi bi-wifi me-1"></i> Bağlantı Testi
-                  </button>
-                </div>
-                <div class="col-12 mt-3"><button type="submit" class="btn btn-success"><i class="bi bi-save me-2"></i>
-                    Kaydet</button></div>
-              </div>
-            </form>
+                    <button class="btn btn-sm btn-outline-danger btnDelXml">Sil</button>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
           </div>
-          {% endif %}
+        </div>
+      </div>
+    </div> <!-- End accordion-item (XML) -->
 
-          <!-- İdefix -->
-          {% if current_user.has_permission('idefix') %}
-          <div class="tab-pane fade" id="idefix-pane">
-            <form method="POST" action="{{ url_for('main.settings_page') }}">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <div class="row g-3">
-                <div class="col-md-6"><label class="form-label fw-bold">API Key</label>
-                  <div class="input-group">
-                    <input type="password" class="form-control" name="IDEFIX_API_KEY" id="IDEFIX_API_KEY"
-                      value="{{ settings.IDEFIX_API_KEY }}">
-                    <button class="btn btn-outline-secondary" type="button"
-                      onclick="togglePasswordDisplay('IDEFIX_API_KEY')">
-                      <i class="bi bi-eye"></i>
-                    </button>
-                  </div>
-                </div>
-                <div class="col-md-6"><label class="form-label fw-bold">API Secret</label>
-                  <div class="input-group">
-                    <input type="password" class="form-control" name="IDEFIX_API_SECRET" id="IDEFIX_API_SECRET"
-                      value="{{ settings.IDEFIX_API_SECRET }}">
-                    <button class="btn btn-outline-secondary" type="button"
-                      onclick="togglePasswordDisplay('IDEFIX_API_SECRET')">
-                      <i class="bi bi-eye"></i>
-                    </button>
-                  </div>
-                </div>
-                <div class="col-md-6"><label class="form-label fw-bold">Vendor ID</label><input class="form-control"
-                    name="IDEFIX_VENDOR_ID" value="{{ settings.IDEFIX_VENDOR_ID }}"></div>
-                <div class="col-md-6">
-                  <label class="form-label fw-bold">Marka Adı</label>
-                  <div class="input-group">
-                    <input type="text" class="form-control" id="IDEFIX_BRAND_NAME" name="IDEFIX_BRAND_NAME"
-                      value="{{ settings.IDEFIX_BRAND_NAME }}">
-                    <button type="button" class="btn btn-primary" id="searchIdefixBrand"><i class="bi bi-search"></i>
-                      Bul</button>
-                  </div>
-                </div>
-                <div class="col-md-6"><label class="form-label fw-bold">Marka ID</label><input class="form-control"
-                    id="IDEFIX_BRAND_ID" name="IDEFIX_BRAND_ID" value="{{ settings.IDEFIX_BRAND_ID }}"></div>
+    <!-- Bildirim Ayarları -->
+    <div class="accordion-item">
+      <h2 class="accordion-header">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+          data-bs-target="#notificationCollapse">
+          <i class="bi bi-bell me-2"></i>
+          Bildirim Ayarları
+        </button>
+      </h2>
+      <div id="notificationCollapse" class="accordion-collapse collapse" data-bs-parent="#settingsAccordion">
+        <div class="accordion-body">
+          <div class="info-card">
+            <h6 class="mb-3 text-muted">Web Push Bildirimleri</h6>
+            <p class="small text-muted mb-3">Bu özellik sayesinde siparişleriniz ve sistem duyuruları hakkında anlık
+              bildirim alabilirsiniz.</p>
 
-                <div class="col-md-6 mb-3">
-                  <label class="form-label fw-bold">Varsayılan Kategori ID (Zorunlu)</label>
-                  <input type="text" class="form-control" name="IDEFIX_DEFAULT_CATEGORY_ID"
-                    value="{{ settings.IDEFIX_DEFAULT_CATEGORY_ID }}" placeholder="Örn: 12345">
-                  <div class="form-text">Yeni ürün oluşturulurken kullanılır.</div>
-                </div>
-
-                <div class="col-md-6 mb-3">
-                  <label class="form-label fw-bold">Barkod Ön Eki Temizle</label>
-                  <input type="text" class="form-control" name="IDEFIX_BARCODE_PREFIX"
-                    value="{{ settings.IDEFIX_BARCODE_PREFIX }}" placeholder="Örn: BGZ">
-                  <div class="form-text">Bu ön ek barkoddan silinir.</div>
-                </div>
-
-                <div class="col-md-12 mb-3">
-                  <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="idefixRandomBarcode"
-                      name="IDEFIX_USE_RANDOM_BARCODE" {% if settings.IDEFIX_USE_RANDOM_BARCODE=='on' %}checked{% endif
-                      %}>
-                    <label class="form-check-label" for="idefixRandomBarcode">Barkod geçersizse rastgele barkod
-                      oluştur (GEN-XXXXXX)</label>
-                  </div>
-                </div>
-
-                <div class="col-md-6 mb-3">
-                  <label class="form-label fw-bold">Fiyat Çarpanı</label>
-                  <input type="number" step="0.01" class="form-control" name="IDEFIX_PRICE_MULTIPLIER"
-                    value="{{ settings.IDEFIX_PRICE_MULTIPLIER }}">
-                </div>
-
-                <div class="col-12 mt-3">
-                  <button type="button" class="btn btn-outline-info" id="fetchIdefixCategoriesBtn">
-                    <i class="bi bi-diagram-3 me-1"></i> Kategorileri Çek
-                  </button>
-                  <button type="submit" class="btn btn-success ms-2"><i class="bi bi-save me-2"></i> Kaydet</button>
-                  <button type="button" class="btn btn-outline-primary ms-2" onclick="testConnection('idefix')">
-                    <i class="bi bi-wifi me-1"></i> Bağlantı Testi
-                  </button>
-                  <button type="button" class="btn btn-outline-danger ms-2" id="clearIdefixCacheBtn">
-                    <i class="bi bi-trash me-1"></i> Önbellek Temizle
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
-          {% endif %}
-
-          <!-- N11 -->
-          {% if current_user.has_permission('n11') %}
-          <div class="tab-pane fade" id="n11-pane">
-            <form method="POST" action="{{ url_for('main.settings_page') }}">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <div class="row g-3">
-                <div class="col-md-6">
-                  <label class="form-label fw-bold">App Key (API Anahtarı)</label>
-                  <div class="input-group">
-                    <input type="password" class="form-control" name="N11_API_KEY" id="N11_API_KEY"
-                      value="{{ settings.N11_API_KEY }}" required>
-                    <button class="btn btn-outline-secondary" type="button"
-                      onclick="togglePasswordDisplay('N11_API_KEY')">
-                      <i class="bi bi-eye"></i>
-                    </button>
-                  </div>
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label fw-bold">App Secret (Gizli Anahtar)</label>
-                  <div class="input-group">
-                    <input type="password" class="form-control" name="N11_API_SECRET" id="N11_API_SECRET"
-                      value="{{ settings.N11_API_SECRET }}" required>
-                    <button class="btn btn-outline-secondary" type="button"
-                      onclick="togglePasswordDisplay('N11_API_SECRET')">
-                      <i class="bi bi-eye"></i>
-                    </button>
-                  </div>
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label fw-bold">Fiyat Çarpanı</label>
-                  <div class="input-group">
-                    <span class="input-group-text">x</span>
-                    <input type="number" step="0.01" class="form-control" name="N11_PRICE_MULTIPLIER"
-                      value="{{ settings.N11_PRICE_MULTIPLIER }}">
-                  </div>
-                </div>
-                <div class="col-md-6 mt-3">
-                  <label class="form-label fw-bold">Varsayılan Marka (Zorunlu İçin)</label>
-                  <div class="input-group">
-                    <input type="text" class="form-control" id="N11_DEFAULT_BRAND" name="N11_DEFAULT_BRAND"
-                      value="{{ settings.N11_DEFAULT_BRAND }}" placeholder="Örn: Apple">
-                    <button type="button" class="btn btn-primary" id="searchN11Brand"><i class="bi bi-search"></i>
-                      Bul</button>
-                  </div>
-                </div>
-                <div class="col-md-6 mt-3">
-                  <label class="form-label fw-bold">Marka ID (Otomatik)</label>
-                  <input class="form-control" id="N11_DEFAULT_BRAND_ID" name="N11_DEFAULT_BRAND_ID"
-                    value="{{ settings.N11_DEFAULT_BRAND_ID }}" readonly placeholder="Marka ID">
-                </div>
-                <div class="col-md-6 mt-3">
-                  <label class="form-label fw-bold">Kargo Şablonu İsmi</label>
-                  <input class="form-control" name="N11_DEFAULT_SHIPMENT_TEMPLATE"
-                    value="{{ settings.N11_DEFAULT_SHIPMENT_TEMPLATE }}" placeholder="Örn: Standart">
-                  <div class="form-text">N11 panelinizdeki kargo şablonu ismiyle birebir aynı olmalıdır.</div>
-                </div>
-                <div class="col-12 mt-3">
-                  <button type="submit" class="btn btn-success"><i class="bi bi-save me-2"></i> Kaydet</button>
-                  <button type="button" class="btn btn-outline-primary ms-2" onclick="testConnection('n11')">
-                    <i class="bi bi-wifi me-1"></i> Bağlantı Testi
-                  </button>
-                  <button type="button" class="btn btn-outline-info ms-2" id="fetchN11DataBtn">
-                    <i class="bi bi-diagram-3 me-1"></i> Kategorileri Çek
-                  </button>
-                  <button type="button" class="btn btn-outline-danger ms-2" id="clearN11CacheBtn">
-                    <i class="bi bi-trash me-1"></i> Önbellek Temizle
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
-          {% endif %}
-        </div> <!-- End tab-content -->
-      </div> <!-- End accordion-body -->
-    </div> <!-- End accordion-collapse -->
-  </div> <!-- End accordion-item (Pazaryeri) -->
-
-  <!-- XML Kaynakları -->
-  <div class="accordion-item">
-    <h2 class="accordion-header">
-      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#xmlCollapse">
-        <i class="bi bi-file-code me-2"></i>
-        XML Kaynakları
-      </button>
-    </h2>
-    <div id="xmlCollapse" class="accordion-collapse collapse" data-bs-parent="#settingsAccordion">
-      <div class="accordion-body">
-
-        <!-- XML Tablo ve Form -->
-        <ul class="nav nav-tabs mb-3" id="xmlSourceTypeTabs">
-          <li class="nav-item">
-            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#xmlUrlPane" type="button">URL
-              Ekle</button>
-          </li>
-        </ul>
-
-        <div class="tab-content mb-3">
-          <div class="tab-pane fade show active" id="xmlUrlPane">
-            <div class="row g-2 align-items-end">
-              <div class="col-md-3"><label class="form-label">İsim</label><input id="xmlName" class="form-control"
-                  placeholder="Tedarikçi A"></div>
-              <div class="col-md-6"><label class="form-label">XML URL</label><input id="xmlUrl" class="form-control"
-                  placeholder="https://.../urunler.xml"></div>
-              <div class="col-md-3"><button id="btnAddXml" type="button" class="btn btn-primary w-100"><i
-                    class="bi bi-plus-lg me-1"></i> Ekle</button></div>
+            <div class="d-flex align-items-center gap-2">
+              <button type="button" class="btn btn-primary" id="btnSendTestPush">
+                <i class="bi bi-send me-2"></i> Test Bildirimi Gönder
+              </button>
+              <span id="pushStatus" class="small text-muted">Bildirim testi yapmak için butona tıklayın.</span>
             </div>
           </div>
         </div>
-
-        <div class="table-responsive">
-          <table class="table table-sm align-middle">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>İsim</th>
-                <th>URL</th>
-                <th>Tarih</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="xmlTableBody">
-              {% for x in xml_sources %}
-              <tr data-id="{{ x.id }}">
-                <td>{{ x.id }}</td>
-                <td>{{ x.name }}</td>
-                <td class="text-truncate" style="max-width:400px">{{ x.url }}</td>
-                <td>{{ x.created_at }}</td>
-                <td>
-                  <button class="btn btn-sm btn-outline-primary btnSyncXmlCosts"
-                    title="XML'deki maliyetleri ürünlere aktar">
-                    <i class="bi bi-currency-dollar"></i> Maliyetleri Güncelle
-                  </button>
-                  <button class="btn btn-sm btn-outline-danger btnDelXml">Sil</button>
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
       </div>
-    </div>
-  </div> <!-- End accordion-item (XML) -->
+    </div> <!-- End accordion-item (Notifications) -->
 
-  <!-- Bildirim Ayarları -->
-  <div class="accordion-item">
-    <h2 class="accordion-header">
-      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-        data-bs-target="#notificationCollapse">
-        <i class="bi bi-bell me-2"></i>
-        Bildirim Ayarları
-      </button>
-    </h2>
-    <div id="notificationCollapse" class="accordion-collapse collapse" data-bs-parent="#settingsAccordion">
-      <div class="accordion-body">
-        <div class="info-card">
-          <h6 class="mb-3 text-muted">Web Push Bildirimleri</h6>
-          <p class="small text-muted mb-3">Bu özellik sayesinde siparişleriniz ve sistem duyuruları hakkında anlık
-            bildirim alabilirsiniz.</p>
-
-          <div class="d-flex align-items-center gap-2">
-            <button type="button" class="btn btn-primary" id="btnSendTestPush">
-              <i class="bi bi-send me-2"></i> Test Bildirimi Gönder
-            </button>
-            <span id="pushStatus" class="small text-muted">Bildirim testi yapmak için butona tıklayın.</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div> <!-- End accordion-item (Notifications) -->
-
-</div> <!-- End settingsAccordion -->
+  </div> <!-- End settingsAccordion -->
 </div> <!-- End card -->
 {% endblock %}
 
 {% block scripts %}
 <script>
   document.addEventListener('DOMContentLoaded', function () {
+    // Ensure at least one tab is active
+    if (!document.querySelector('#marketTabs .nav-link.active')) {
+      const firstTab = document.querySelector('#marketTabs .nav-link');
+      if (firstTab) {
+        const tab = new bootstrap.Tab(firstTab);
+        tab.show();
+      }
+    }
 
     // Push Notification Test
     const btnSendTestPush = document.getElementById('btnSendTestPush');

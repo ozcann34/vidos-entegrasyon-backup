@@ -1035,7 +1035,7 @@ def contact_submit():
     
     if not all([name, email, message]):
         flash('Lütfen zorunlu alanları doldurun.', 'danger')
-        return redirect(url_for('main.landing', _anchor='contact'))
+        return redirect(url_for('main.index', _anchor='contact'))
     
     try:
         from flask_mail import Message
@@ -1072,7 +1072,7 @@ Mesaj:
         logging.error(f"Error handling contact submission: {e}")
         flash('Mesajınız alınırken bir hata oluştu. Lütfen doğrudan e-posta ile ulaşmayı deneyin.', 'warning')
         
-    return redirect(url_for('main.landing', _anchor='contact'))
+    return redirect(url_for('main.index', _anchor='contact'))
 @main_bp.app_context_processor
 def inject_announcements():
     """Make active announcements available to all templates."""

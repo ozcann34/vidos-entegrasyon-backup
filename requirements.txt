@@ -16,3 +16,4 @@ Pillow==10.2.0
 gunicorn==22.0.0
 psycopg2-binary==2.9.9
 Flask-WTF==1.2.1
+pywebpush==1.14.0
