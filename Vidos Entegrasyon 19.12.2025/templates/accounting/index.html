@@ -1,0 +1,393 @@
+{% extends "_base.html" %}
+{% block title %}Muhasebe ve Kârlılık — VIDOS{% endblock %}
+{% block page_title %}Muhasebe / Kârlılık{% endblock %}
+
+{% block content %}
+<!-- Filtreleme Bölümü -->
+<div class="card border-0 shadow-sm mb-4 px-3 py-2">
+    <form class="row g-3 align-items-center" method="GET">
+        <div class="col-auto">
+            <label class="form-label mb-0 small text-muted">Aralık Seçin:</label>
+        </div>
+        <div class="col-auto">
+            <input type="date" name="start_date" class="form-control form-control-sm" value="{{ start_date }}">
+        </div>
+        <div class="col-auto">
+            <input type="date" name="end_date" class="form-control form-control-sm" value="{{ end_date }}">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary btn-sm px-4">Uygula</button>
+        </div>
+        <div class="col-auto ms-auto">
+            <span class="badge bg-light text-dark border">{{ start_date }} - {{ end_date }}</span>
+        </div>
+    </form>
+</div>
+
+<div class="row g-3 mb-4">
+    <!-- Özet Kartları -->
+    <div class="col-md-4 col-xl">
+        <div class="card border-0 shadow-sm bg-primary text-white h-100">
+            <div class="card-body">
+                <h6 class="card-title opacity-75 small fw-bold text-uppercase">Toplam Ciro (Brüt)</h6>
+                <h3 class="fw-bold mb-0">₺{{ "{:,.2f}".format(stats.revenue) }}</h3>
+                <div class="small mt-2"><i class="bi bi-cart-check me-1"></i>{{ stats.order_count }} Teslim Edilen</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 col-xl">
+        <div class="card border-0 shadow-sm bg-warning text-dark h-100">
+            <div class="card-body">
+                <h6 class="card-title opacity-75 small fw-bold text-uppercase">Tahmini KDV Yükü</h6>
+                <h3 class="fw-bold mb-0">₺{{ "{:,.2f}".format(stats.total_tax) }}</h3>
+                <div class="small mt-2"><i class="bi bi-bank me-1"></i>Hesaplanan (Net Ciro)</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 col-xl">
+        <div class="card border-0 shadow-sm bg-danger text-white h-100">
+            <div class="card-body">
+                <h6 class="card-title opacity-75 small fw-bold text-uppercase">Toplam Giderler</h6>
+                <h3 class="fw-bold mb-0">₺{{ "{:,.2f}".format(stats.general_expenses + stats.total_shipping +
+                    stats.total_commission + stats.total_product_cost) }}</h3>
+                <div class="small mt-2"><i class="bi bi-arrow-down-circle me-1"></i>Operasyon + XML Maliyet</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl">
+        <div class="card border-0 shadow-sm bg-success text-white h-100">
+            <div class="card-body">
+                <h6 class="card-title opacity-75 small fw-bold text-uppercase">Gerçek Net Kâr</h6>
+                <h3 class="fw-bold mb-0">₺{{ "{:,.2f}".format(stats.net_profit) }}</h3>
+                <div class="small mt-2"><i class="bi bi-graph-up-arrow me-1"></i>Marj: %{{
+                    "{:.1f}".format(stats.net_margin) }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl">
+        <div class="card border-0 shadow-sm bg-secondary text-white h-100">
+            <div class="card-body">
+                <h6 class="card-title opacity-75 small fw-bold text-uppercase">İptal / İade & Kayıp</h6>
+                <h3 class="fw-bold mb-0">₺{{ "{:,.2f}".format(stats.cancelled_loss) }}</h3>
+                <div class="small mt-2"><i class="bi bi-x-circle me-1"></i>{{ stats.cancelled_count }} Sipariş (Kayıp
+                    Ciro)</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pazar Yeri Dağılımı Bölümü -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bold"><i class="bi bi-shop me-2"></i>Pazar Yeri Dağılımı</h5>
+        <button class="btn btn-outline-info btn-sm" onclick="syncFinances()" id="syncBtn">
+            <i class="bi bi-arrow-repeat me-1"></i>Finansal Verileri Güncelle
+        </button>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-4">Pazar Yeri</th>
+                    <th>Adet</th>
+                    <th>Brüt Ciro</th>
+                    <th class="text-danger small">İndirim</th>
+                    <th class="text-danger small">Komisyon</th>
+                    <th class="text-danger small">Kargo</th>
+                    <th class="text-warning small">KDV</th>
+                    <th class="text-muted small">Maliyet</th>
+                    <th class="text-success">Net Kâr</th>
+                    <th class="text-end pe-4">Marj</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in stats.mp_breakdown %}
+                <tr>
+                    <td class="ps-4 fw-bold text-capitalize">
+                        {% if item.name == 'trendyol' %}
+                        <span class="text-warning">Trendyol</span>
+                        {% elif item.name == 'hepsiburada' %}
+                        <span class="text-orange" style="color:#ff6000">Hepsiburada</span>
+                        {% elif item.name == 'n11' %}
+                        <span class="text-primary" style="color:#5c21df !important">N11</span>
+                        {% elif item.name == 'pazarama' %}
+                        <span class="text-primary">Pazarama</span>
+                        {% elif item.name == 'idefix' %}
+                        <span class="text-success">İdefix</span>
+                        {% else %}
+                        {{ item.name }}
+                        {% endif %}
+                    </td>
+                    <td>{{ item.count }}</td>
+                    <td class="fw-bold">₺{{ "{:,.2f}".format(item.revenue) }}</td>
+                    <td class="small text-danger">₺{{ "{:,.2f}".format(item.discount) }}</td>
+                    <td class="small text-danger">₺{{ "{:,.2f}".format(item.commission) }}</td>
+                    <td class="small text-danger">₺{{ "{:,.2f}".format(item.shipping) }}</td>
+                    <td class="small text-warning">₺{{ "{:,.2f}".format(item.tax) }}</td>
+                    <td class="small text-muted">₺{{ "{:,.2f}".format(item.cost) }}</td>
+                    <td class="fw-bold text-success">₺{{ "{:,.2f}".format(item.profit) }}</td>
+                    <td class="text-end pe-4 fw-bold">
+                        {% set mp_net = item.revenue - (item.discount or 0) %}
+                        {% if mp_net > 0 %}
+                        %{{ "{:.1f}".format(item.profit / (mp_net / (1 + (stats.avg_vat or 20)/100.0)) * 100) }}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="text-center py-4 text-muted">
+                        Bu tarih aralığında satış bulunamadı.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Gider Girişi ve Listesi -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold">Operasyonel Giderler</h5>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addExpenseModal">
+                    <i class="bi bi-plus-lg me-1"></i>Gider Ekle
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Tarih</th>
+                                <th>Kategori</th>
+                                <th>Açıklama</th>
+                                <th class="text-end">Tutar</th>
+                                <th class="text-end">İşlem</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for e in expenses %}
+                            <tr>
+                                <td>{{ e.date.strftime('%d.%m.%Y') }}</td>
+                                <td><span class="badge bg-light text-dark">{{ e.category }}</span></td>
+                                <td class="text-muted small">{{ e.description or '-' }}</td>
+                                <td class="text-end fw-bold">{{ "{:,.2f}".format(e.amount) }} {{ e.currency }}</td>
+                                <td class="text-end">
+                                    <button class="btn btn-link text-danger p-0" onclick="deleteExpense('{{ e.id }}')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center py-5 text-muted">Henüz gider kaydı bulunmuyor.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analiz Grafikleri -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 fw-bold">Gider Dağılımı</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="expenseChart" data-chart='{{ chart_data | tojson | safe }}'
+                    style="max-height: 250px;"></canvas>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm border-start border-4 border-info">
+            <div class="card-body">
+                <h6 class="fw-bold text-info"><i class="bi bi-info-circle me-1"></i>Analiz Notu</h6>
+                <p class="small text-muted mb-0">
+                    Net kâr hesabı; brüt satıştan vergi (KDV), pazaryeri komisyonları, kargo ücretleri, ürün maliyetleri
+                    ve girdiğiniz operasyonel giderler düşülerek hesaplanır.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gider Ekleme Modalı -->
+<div class="modal fade" id="addExpenseModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-bottom-0">
+                <h5 class="modal-title fw-bold">Yeni Gider Kaydı</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="expenseForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Kategori</label>
+                        <select name="category" class="form-select" required>
+                            <option value="Kira">Kira</option>
+                            <option value="Personel">Personel</option>
+                            <option value="Pazarlama">Reklam / Pazarlama</option>
+                            <option value="Yazılım">Yazılım / Abonelik</option>
+                            <option value="Lojistik">Depo / Lojistik</option>
+                            <option value="Diğer">Diğer</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tutar (TL)</label>
+                        <input type="number" step="0.01" name="amount" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tarih</label>
+                        <input type="date" name="date" class="form-control" value="{{ now_date }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Açıklama</label>
+                        <input type="text" name="description" class="form-control" placeholder="Opsiyonel">
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="is_recurring" id="recurringCheck">
+                        <label class="form-check-label" for="recurringCheck">Aylık tekrar eden gider</label>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary px-4">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Bugünün tarihini inputa set etme
+    document.querySelector('input[type="date"]').value = new Date().toISOString().split('T')[0];
+
+    // Gider Formu Gönderimi
+    document.getElementById('expenseForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const payload = Object.fromEntries(formData.entries());
+        payload.amount = parseFloat(payload.amount);
+        payload.is_recurring = e.target.is_recurring.checked;
+
+        try {
+            const res = await fetch('{{ url_for("accounting.add_expense") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (data.success) {
+                location.reload();
+            } else {
+                Swal.fire('Hata', data.message, 'error');
+            }
+        } catch (err) {
+            Swal.fire('Hata', 'Gider kaydedilemedi.', 'error');
+        }
+    });
+
+    // Gider Silme
+    async function deleteExpense(id) {
+        const result = await Swal.fire({
+            title: 'Emin misiniz?',
+            text: "Bu gider kaydı kalıcı olarak silinecek.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, Sil',
+            cancelButtonText: 'İptal'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const res = await fetch(`{{ url_for("accounting.index") }}api/expenses/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    location.reload();
+                }
+            } catch (err) {
+                Swal.fire('Hata', 'Silme işlemi başarısız.', 'error');
+            }
+        }
+    }
+
+    // Grafik Hazırlama
+    const chartEl = document.getElementById('expenseChart');
+    const ctx = chartEl.getContext('2d');
+    const expenseData = JSON.parse(chartEl.dataset.chart || '{}');
+
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: Object.keys(expenseData),
+            datasets: [{
+                data: Object.values(expenseData),
+                backgroundColor: [
+                    '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796'
+                ],
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+
+    // Finansal Verileri Güncelleme
+    async function syncFinances() {
+        const btn = document.getElementById('syncBtn');
+        const originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Güncelleniyor...';
+
+        try {
+            const res = await fetch('{{ url_for("accounting.sync_finances") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({ days: 30 })
+            });
+            const data = await res.json();
+            if (data.success) {
+                Swal.fire({
+                    title: 'Başarılı',
+                    text: data.message,
+                    icon: 'success',
+                    timer: 2000,
+                    showConfirmButton: false
+                }).then(() => location.reload());
+            } else {
+                Swal.fire('Hata', data.message, 'error');
+            }
+        } catch (err) {
+            Swal.fire('Hata', 'İşlem başarısız.', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+    }
+</script>
+{% endblock %}

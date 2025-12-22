@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Ödeme Yap - Vidos Entegrasyon{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg border-0 rounded-4">
+                <div class="card-body p-5">
+                    <div class="text-center mb-4">
+                        <h2 class="fw-bold">Ödeme Formu</h2>
+                        <p class="text-muted">{{ plan_details.name }} - {{ plan_details.price }} {{
+                            plan_details.currency }}</p>
+                    </div>
+
+                    <div id="iyzipay-checkout-form" class="responsive">
+                        {{ checkout_content|safe }}
+                    </div>
+
+                    <div class="text-center mt-4">
+                        <p class="small text-muted">
+                            <i class="bi bi-shield-lock-fill me-1"></i>
+                            Tüm işlemleriniz İyzico altyapısı ile 256-bit SSL sertifikasıyla korunmaktadır.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

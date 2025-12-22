@@ -1,0 +1,33 @@
+{
+  "barcode": "BgzA0488683140632670",
+  "title": "BUĞZ Huawei Matepad 11 (2023) Tablet Cam Ekran Koruyucu",
+  "productMainId": "BgzA0488683140632670",
+  "brandId": 2770299,
+  "categoryId": 1420,
+  "quantity": 100,
+  "stockCode": "BgzA0488683140632670",
+  "dimensionalWeight": 2,
+  "description": "Huawei Matepad 11 (2023) Tablet Cam Ekran Koruyucu",
+  "currencyType": "TRY",
+  "listPrice": 196.75,
+  "salePrice": 187.38,
+  "vatRate": 20,
+  "cargoCompanyId": 10,
+  "images": [
+    {
+      "url": "https://cdn.qukasoft.com/f/364078/bzR6YWFtNG0vcUp3ZXk4Z0hzWnBhZlJiYmNBPQ/p/bugz-huawei-matepad-11-2023-tablet-cam-ekran-koruyucu-119294249-sw1200sh1200.png"
+    },
+    {
+      "url": "https://cdn.qukasoft.com/f/364078/bzR6YWFtNG0vcUp3ZXk4Z0hzWnBhZlJiYmNBPQ/p/bugz-huawei-matepad-11-2023-tablet-cam-ekran-koruyucu-289138379-sw1200sh1200.png"
+    },
+    {
+      "url": "https://cdn.qukasoft.com/f/364078/bzR6YWFtNG0vcUp3ZXk4Z0hzWnBhZlJiYmNBPQ/p/bugz-huawei-matepad-11-2023-tablet-cam-ekran-koruyucu-352704684-sw1200sh1200.png"
+    }
+  ],
+  "attributes": [
+    {
+      "attributeId": 1192,
+      "attributeValueId": 10633877
+    }
+  ]
+}
