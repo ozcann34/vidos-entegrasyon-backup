@@ -41,31 +41,8 @@ def admin_required(f):
         
 
         if not current_user.is_admin:
-
             abort(403)
-
         
-
-        # Check if request is from localhost
-
-        remote_addr = request.remote_addr
-
-        allowed_hosts = ['127.0.0.1', 'localhost', '::1']
-
-        
-
-        if remote_addr not in allowed_hosts:
-
-            # Also check X-Forwarded-For for reverse proxy setups
-
-            forwarded_for = request.headers.get('X-Forwarded-For', '')
-
-            if not any(host in forwarded_for for host in allowed_hosts):
-
-                abort(403)
-
-        
-
         return f(*args, **kwargs)
 
     return decorated_function

@@ -1079,13 +1079,30 @@ def perform_trendyol_sync_all(job_id: str, xml_source_id: Any, match_by: str = '
 def ensure_tfidf_ready():
     if _CAT_TFIDF.get('vectorizer'):
         return
-    raw = Setting.get("TRENDYOL_CATEGORY_TREE", "")
+    
+    # Check if cache is already loaded in memory
+    if not _CATEGORY_CACHE.get("loaded"):
+        load_category_cache_from_db()
+    
+    if _CATEGORY_CACHE.get("loaded") and _CATEGORY_CACHE.get("list"):
+        logging.info(f"Preparing TF-IDF with {_CATEGORY_CACHE['count']} categories from memory cache.")
+        prepare_tfidf(_CATEGORY_CACHE["list"])
+        return
+
+    # Fallback to direct DB fetch if memory cache is empty
+    raw = Setting.get("TRENDYOL_CATEGORY_CACHE", "")
     if raw:
         try:
-            leafs = json.loads(raw)
-            prepare_tfidf(leafs)
-        except Exception:
-            pass
+            data = json.loads(raw)
+            leafs = data.get('list', [])
+            if not leafs and isinstance(data, list):
+                leafs = data
+            
+            if leafs:
+                prepare_tfidf(leafs)
+                logging.info(f"TF-IDF prepared from DB fallback ({len(leafs)} categories).")
+        except Exception as e:
+            logging.error(f"Error preparing TF-IDF: {e}")
 
 def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_id: Any, auto_match: bool = False, send_options: Dict[str, Any] = None, match_by: str = 'barcode', title_prefix: str = None) -> Dict[str, Any]:
     client = get_trendyol_client()
