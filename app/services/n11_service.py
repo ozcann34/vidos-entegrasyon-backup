@@ -12,7 +12,7 @@ from app.models import Product, Setting
 from flask_login import current_user
 from app.services.n11_client import get_n11_client
 from app.services.job_queue import append_mp_job_log
-from app.utils.helpers import clean_forbidden_words
+from app.utils.helpers import clean_forbidden_words, to_int, to_float
 
 # ---------------------------------------------------
 # N11 Category Caching & Auto Match Globals
@@ -313,17 +313,22 @@ def load_n11_snapshot() -> Dict[str, Any]:
 # Sending Logic
 # ---------------------------------------------------
 
-def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: Any, auto_match: bool = False, send_options: Dict[str, Any] = None, match_by: str = 'barcode', title_prefix: str = None) -> Dict[str, Any]:
+def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: Any, auto_match: bool = False, match_by: str = 'barcode', title_prefix: str = None, **kwargs) -> Dict[str, Any]:
     from app.services.xml_service import load_xml_source_index
     from app.utils.helpers import get_marketplace_multiplier
     
-    send_options = send_options or {}
+    # Extract options from kwargs
+    price_multiplier = to_float(kwargs.get('price_multiplier', 1.0))
+    default_price_val = to_float(kwargs.get('default_price', 0.0))
+    skip_no_barcode = kwargs.get('skip_no_barcode', False)
+    skip_no_image = kwargs.get('skip_no_image', False)
+    zero_stock_as_one = kwargs.get('zero_stock_as_one', False)
     
     client = get_n11_client()
     if not client:
         return {'success': False, 'message': 'N11 API bilgileri eksik.'}
         
-    append_mp_job_log(job_id, "N11 gönderimi başlatılıyor...")
+    append_mp_job_log(job_id, f"N11 gönderimi başlatılıyor... Seçenekler: Çarpan={price_multiplier}, Barkodsuz Atla={skip_no_barcode}")
     
     # 1. Load Categories if needed
     if auto_match:
@@ -332,7 +337,9 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
 
     xml_index = load_xml_source_index(xml_source_id)
     mp_map = xml_index.get('by_barcode') or {}
-    multiplier = get_marketplace_multiplier('n11') or 1.0
+    
+    # Use price_multiplier directly
+    multiplier = price_multiplier
     shipment_template = Setting.get("N11_DEFAULT_SHIPMENT_TEMPLATE", "Standart")
 
     items_to_send = []
@@ -643,7 +650,7 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
         'message': f"{total_sent} ürün N11'e iletildi."
     }
 
-def perform_n11_send_all(job_id: str, xml_source_id: Any, auto_match: bool = False, match_by: str = 'barcode') -> Dict[str, Any]:
+def perform_n11_send_all(job_id: str, xml_source_id: Any, auto_match: bool = False, **kwargs) -> Dict[str, Any]:
     from app.services.xml_service import load_xml_source_index
     
     append_mp_job_log(job_id, "Tüm ürünler hazırlanıyor...")
@@ -653,7 +660,7 @@ def perform_n11_send_all(job_id: str, xml_source_id: Any, auto_match: bool = Fal
     if not all_barcodes:
         return {'success': False, 'message': 'XML kaynağında ürün bulunamadı.'}
         
-    return perform_n11_send_products(job_id, all_barcodes, xml_source_id, auto_match, match_by=match_by)
+    return perform_n11_send_products(job_id, all_barcodes, xml_source_id, auto_match, **kwargs)
 
 def delete_n11_product(barcode: str) -> Dict[str, Any]:
     try:

@@ -908,7 +908,7 @@ def perform_pazarama_sync_all(job_id: str, xml_source_id: Any) -> Dict[str, Any]
 
 # Pazarama urun gonderme fonksiyonu
 
-def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_id: Any, title_prefix: str = None) -> Dict[str, Any]:
+def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_id: Any, title_prefix: str = None, **kwargs) -> Dict[str, Any]:
     """
     Send products to Pazarama from XML source
     
@@ -925,6 +925,19 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
     
     client = get_pazarama_client()
     append_mp_job_log(job_id, "Pazarama istemcisi hazir")
+    
+    # Extract options
+    price_multiplier = to_float(kwargs.get('price_multiplier', 1.0))
+    default_price_val = to_float(kwargs.get('default_price', 0.0))
+    skip_no_barcode = kwargs.get('skip_no_barcode', False)
+    skip_no_image = kwargs.get('skip_no_image', False)
+    zero_stock_as_one = kwargs.get('zero_stock_as_one', False)
+    
+    append_mp_job_log(job_id, f"Seçenekler: Çarpan={price_multiplier}, Varsayılan Fiyat={default_price_val}, Barkodsuz Atla={skip_no_barcode}, Resimsiz Atla={skip_no_image}")
+    
+    xml_index = load_xml_source_index(xml_source_id)
+    mp_map = xml_index.get('by_barcode') or {}
+    multiplier = get_marketplace_multiplier('pazarama')
     
     # Debug: Log barcode count
     append_mp_job_log(job_id, f"Gelen barkod sayisi: {len(barcodes) if barcodes else 0}")
@@ -945,6 +958,9 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
             'count': 0
         }
     
+    # We use price_multiplier directly
+    multiplier = price_multiplier
+            
     if not barcodes:
         append_mp_job_log(job_id, "Barkod listesi bos", level='warning')
         return {
@@ -1267,6 +1283,22 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
             'batch_ids': batch_ids
         }
     }
+
+def perform_pazarama_send_all(job_id: str, xml_source_id: Any, **kwargs) -> Dict[str, Any]:
+    """Send ALL products from XML source to Pazarama"""
+    append_mp_job_log(job_id, "Tüm ürünler hazırlanıyor...")
+    
+    from app.services.xml_service import load_xml_source_index
+    xml_index = load_xml_source_index(xml_source_id)
+    mp_map = xml_index.get('by_barcode') or {}
+    all_barcodes = list(mp_map.keys())
+    
+    if not all_barcodes:
+        return {'success': False, 'message': 'XML kaynağında ürün bulunamadı.', 'count': 0}
+    
+    append_mp_job_log(job_id, f"Toplam {len(all_barcodes)} ürün bulundu. Gönderim başlıyor...")
+    
+    return perform_pazarama_send_products(job_id, all_barcodes, xml_source_id, **kwargs)
 
 def perform_pazarama_batch_update(job_id: str, items: List[Dict[str, Any]]) -> Dict[str, Any]:
     """

@@ -219,7 +219,9 @@ body {
 
 .hero-content {
     max-width: 900px;
-    z-index: 1;
+    z-index: 10;
+    /* Daha yüksek bir değer */
+    position: relative;
     animation: fadeInUp 1s ease-out;
 }
 
@@ -693,6 +695,9 @@ body {
 .hero-content {
     flex: 1;
     max-width: 650px;
+    z-index: 10;
+    /* Daha yüksek bir değer */
+    position: relative;
     animation: fadeInLeft 1s ease-out;
 }
 

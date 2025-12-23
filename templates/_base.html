@@ -82,11 +82,23 @@
             max-width: 260px;
             background-color: var(--sidebar-bg);
             color: #fff;
-            min-height: 100vh;
+            height: 100vh;
             position: fixed;
             top: 0;
             left: 0;
             z-index: 1000;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+        }
+
+        #sidebar::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        #sidebar::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
         }
 
         #sidebar .nav-link {
@@ -167,6 +179,9 @@
             <h5 class="fw-bold text-white mb-0">Vidos Entegrasyon</h5>
         </div>
         <ul class="nav nav-pills flex-column mb-auto">
+            <!-- GRUP: ANALİZ -->
+            <li class="nav-section-title px-3 mb-2 mt-2 small text-uppercase text-white-50 fw-bold"
+                style="font-size: 0.7rem; letter-spacing: 1px;">Analiz</li>
             <li class="nav-item">
                 <a href="{{ url_for('main.dashboard') }}"
                     class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}" aria-current="page">
@@ -174,36 +189,55 @@
                 </a>
             </li>
 
-
+            <!-- GRUP: ÜRÜNLER -->
+            <li class="nav-section-title px-3 mb-2 mt-4 small text-uppercase text-white-50 fw-bold"
+                style="font-size: 0.7rem; letter-spacing: 1px;">Ürün Yönetimi</li>
             <li class="nav-item">
                 <a href="{{ url_for('main.xml_urunler') }}"
                     class="nav-link {% if request.endpoint == 'main.xml_urunler' %}active{% endif %}">
                     <i class="bi bi-file-earmark-code me-2"></i> XML Ürünleri
                 </a>
             </li>
-
             <li class="nav-item">
                 <a href="{{ url_for('main.excel_products_page') }}"
                     class="nav-link {% if request.endpoint == 'main.excel_products_page' %}active{% endif %}">
                     <i class="bi bi-file-earmark-excel me-2"></i> Excel Ürünleri
                 </a>
             </li>
-
-            <!-- Pazaryeri Dropdown -->
             <li class="nav-item">
-                {% set marketplaces = {'trendyol': 'Trendyol', 'hepsiburada': 'Hepsiburada', 'n11': 'N11', 'pazarama':
-                'Pazarama',
-                'idefix': 'İdefix'} %}
-                {% set marketplace_active = request.view_args and request.view_args.get('marketplace') in
-                marketplaces.keys() %}
-                <a href="#marketplaceSubmenu" data-bs-toggle="collapse"
-                    aria-expanded="{{ 'true' if marketplace_active else 'false' }}"
-                    class="nav-link dropdown-toggle text-white {% if not marketplace_active %}collapsed{% endif %}">
-                    <i class="bi bi-shop-window me-2"></i> Pazar Yerleri
+                <a href="{{ url_for('products.create_product') }}"
+                    class="nav-link {% if request.endpoint == 'products.create_product' %}active{% endif %}">
+                    <i class="bi bi-plus-circle me-2"></i> Manuel Ürün Ekle
                 </a>
-                <ul class="collapse list-unstyled ps-3 {{ 'show' if marketplace_active else '' }}"
-                    id="marketplaceSubmenu" data-bs-parent="#sidebar-nav">
-                    {% for key, name in marketplaces.items() %}
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('products.blacklist') }}"
+                    class="nav-link {% if request.endpoint == 'products.blacklist' %}active{% endif %}">
+                    <i class="bi bi-slash-circle me-2"></i> Yasaklı Liste
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('main.instagram_panel') }}"
+                    class="nav-link {% if request.endpoint == 'main.instagram_panel' %}active{% endif %}">
+                    <i class="bi bi-instagram me-2"></i> Instagram Paneli
+                </a>
+            </li>
+
+            <!-- GRUP: PAZARYERLERİ -->
+            <li class="nav-section-title px-3 mb-2 mt-4 small text-uppercase text-white-50 fw-bold"
+                style="font-size: 0.7rem; letter-spacing: 1px;">Pazar Yerleri</li>
+            <li class="nav-item">
+                {% set pm_list = {'trendyol': 'Trendyol', 'hepsiburada': 'Hepsiburada', 'n11': 'N11', 'pazarama':
+                'Pazarama', 'idefix': 'İdefix'} %}
+                {% set mp_active = request.view_args and request.view_args.get('marketplace') in pm_list.keys() %}
+                <a href="#marketplaceSubmenu" data-bs-toggle="collapse"
+                    aria-expanded="{{ 'true' if mp_active else 'false' }}"
+                    class="nav-link dropdown-toggle text-white {% if not mp_active %}collapsed{% endif %}">
+                    <i class="bi bi-shop-window me-2"></i> Mağazalarım
+                </a>
+                <ul class="collapse list-unstyled ps-3 {{ 'show' if mp_active else '' }}" id="marketplaceSubmenu"
+                    data-bs-parent="#sidebar-nav">
+                    {% for key, name in pm_list.items() %}
                     {% if current_user.is_admin or current_user.has_permission(key) %}
                     <li>
                         <a href="{{ url_for('main.marketplace_products_page', marketplace=key) }}"
@@ -215,24 +249,32 @@
                     {% endfor %}
                 </ul>
             </li>
-            <li>
-                <a href="{{ url_for('main.instagram_panel') }}"
-                    class="nav-link {% if request.endpoint == 'main.instagram_panel' %}active{% endif %}">
-                    <i class="bi bi-instagram me-2"></i> Instagram Paneli
+            <li class="nav-item">
+                <a href="{{ url_for('main.trendyol_claims_page') }}"
+                    class="nav-link {% if request.endpoint == 'main.trendyol_claims_page' %}active{% endif %}">
+                    <i class="bi bi-arrow-return-left me-2"></i> İade Talepleri
                 </a>
             </li>
 
-            <!-- İşlemler Dropdown -->
+            <!-- GRUP: İŞLEMLER -->
+            <li class="nav-section-title px-3 mb-2 mt-4 small text-uppercase text-white-50 fw-bold"
+                style="font-size: 0.7rem; letter-spacing: 1px;">Operasyon & Raporlar</li>
             <li class="nav-item">
-                {% set operations_active = (request.endpoint in ['main.batch_logs', 'main.batch_detail',
-                'main.orders_page', 'main.order_detail', 'main.auto_sync_page', 'products.bulk_update']) %}
-                <a href="#operationsSubmenu" data-bs-toggle="collapse"
-                    aria-expanded="{{ 'true' if operations_active else 'false' }}"
-                    class="nav-link dropdown-toggle text-white {% if not operations_active %}collapsed{% endif %}">
+                {% set ops_active = (request.endpoint in ['main.orders_page', 'main.order_detail', 'main.batch_logs',
+                'main.batch_detail', 'main.auto_sync_page', 'main.xml_updates', 'products.bulk_update',
+                'report.error_history', 'report.profit_loss_report']) %}
+                <a href="#opsSubmenu" data-bs-toggle="collapse" aria-expanded="{{ 'true' if ops_active else 'false' }}"
+                    class="nav-link dropdown-toggle text-white {% if not ops_active %}collapsed{% endif %}">
                     <i class="bi bi-gear-wide-connected me-2"></i> İşlemler
                 </a>
-                <ul class="collapse list-unstyled ps-3 {{ 'show' if operations_active else '' }}" id="operationsSubmenu"
+                <ul class="collapse list-unstyled ps-3 {{ 'show' if ops_active else '' }}" id="opsSubmenu"
                     data-bs-parent="#sidebar-nav">
+                    <li>
+                        <a href="{{ url_for('main.orders_page') }}"
+                            class="nav-link py-2 fs-6 {% if request.endpoint == 'main.orders_page' or request.endpoint == 'main.order_detail' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
+                            <i class="bi bi-caret-right-fill me-1 small"></i> Siparişler
+                        </a>
+                    </li>
                     {% if current_user.is_admin %}
                     <li>
                         <a href="{{ url_for('main.batch_logs') }}"
@@ -241,12 +283,6 @@
                         </a>
                     </li>
                     {% endif %}
-                    <li>
-                        <a href="{{ url_for('main.orders_page') }}"
-                            class="nav-link py-2 fs-6 {% if request.endpoint == 'main.orders_page' or request.endpoint == 'main.order_detail' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
-                            <i class="bi bi-caret-right-fill me-1 small"></i> Siparişler
-                        </a>
-                    </li>
                     <li>
                         <a href="{{ url_for('main.auto_sync_page') }}"
                             class="nav-link py-2 fs-6 {% if request.endpoint == 'main.auto_sync_page' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
@@ -262,137 +298,46 @@
                     <li>
                         <a href="{{ url_for('products.bulk_update') }}"
                             class="nav-link py-2 fs-6 {% if request.endpoint == 'products.bulk_update' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
-                            <i class="bi bi-caret-right-fill me-1 small"></i> Toplu Excel Güncelle
+                            <i class="bi bi-caret-right-fill me-1 small"></i> Toplu Güncelleme
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('report.error_history') }}"
+                            class="nav-link py-2 fs-6 {% if request.endpoint == 'report.error_history' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
+                            <i class="bi bi-caret-right-fill me-1 small"></i> Hata Geçmişi
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('report.profit_loss_report') }}"
+                            class="nav-link py-2 fs-6 {% if request.endpoint == 'report.profit_loss_report' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
+                            <i class="bi bi-caret-right-fill me-1 small"></i> Kâr / Zarar Analizi
                         </a>
                     </li>
                 </ul>
             </li>
 
-            <!-- Pazaryeri Yönetimi Dropdown -->
+            <!-- GRUP: DESTEK & AYARLAR -->
+            <li class="nav-section-title px-3 mb-2 mt-4 small text-uppercase text-white-50 fw-bold"
+                style="font-size: 0.7rem; letter-spacing: 1px;">Sistem</li>
+            {% if current_user.is_admin or current_user.has_permission('settings') %}
             <li class="nav-item">
-                {% set pm_active = (request.endpoint in ['main.trendyol_questions_page', 'main.trendyol_claims_page'])
-                %}
-                <a href="#marketplaceSubmenu" data-bs-toggle="collapse"
-                    aria-expanded="{{ 'true' if marketplace_active else 'false' }}"
-                    class="nav-link {% if marketplace_active %}active{% endif %} d-flex justify-content-between align-items-center">
-                    <span><i class="bi bi-shop me-2"></i> Pazaryerleri</span>
-                    <i class="bi bi-chevron-down small"></i>
-                </a>
-                <ul class="collapse list-unstyled ps-3 {% if marketplace_active %}show{% endif %}"
-                    id="marketplaceSubmenu">
-                    {% set limit = current_user.subscription.max_marketplaces if current_user.subscription else 1 %}
-                    {% if current_user.is_admin %}{% set limit = 100 %}{% endif %}
-
-                    {% if limit >= 1 %}
-                    <li><a href="{{ url_for('main.marketplace_products_page', marketplace='trendyol') }}"
-                            class="nav-link small {% if request.view_args.get('marketplace') == 'trendyol' %}active{% endif %}">Trendyol</a>
-                    </li>
-                    {% endif %}
-
-                    {% if limit >= 2 %}
-                    <li><a href="{{ url_for('main.marketplace_products_page', marketplace='hepsiburada') }}"
-                            class="nav-link small {% if request.view_args.get('marketplace') == 'hepsiburada' %}active{% endif %}">Hepsiburada</a>
-                    </li>
-                    {% endif %}
-
-                    {% if limit >= 3 %}
-                    <li><a href="{{ url_for('main.marketplace_products_page', marketplace='n11') }}"
-                            class="nav-link small {% if request.view_args.get('marketplace') == 'n11' %}active{% endif %}">N11</a>
-                    </li>
-                    {% endif %}
-
-                    {% if limit >= 4 %}
-                    <li><a href="{{ url_for('main.marketplace_products_page', marketplace='pazarama') }}"
-                            class="nav-link small {% if request.view_args.get('marketplace') == 'pazarama' %}active{% endif %}">Pazarama</a>
-                    </li>
-                    {% endif %}
-
-                    {% if limit >= 5 %}
-                    <li><a href="{{ url_for('main.marketplace_products_page', marketplace='idefix') }}"
-                            class="nav-link small {% if request.view_args.get('marketplace') == 'idefix' %}active{% endif %}">İdefix</a>
-                    </li>
-                    {% endif %}
-                </ul>
-            </li>
-
-            <li class="nav-item">
-                <a href="{{ url_for('main.instagram_panel') }}"
-                    class="nav-link {% if request.endpoint == 'main.instagram_panel' %}active{% endif %}">
-                    <i class="bi bi-instagram me-2"></i> Instagram AI
+                <a href="{{ url_for('main.settings_page') }}"
+                    class="nav-link {% if request.endpoint == 'main.settings_page' %}active{% endif %}">
+                    <i class="bi bi-gear me-2"></i> Ayarlar
                 </a>
             </li>
-
-            <hr class="text-white-50">
-
+            {% endif %}
             <li class="nav-item">
-                <a href="{{ url_for('main.about_us') }}"
-                    class="nav-link {% if request.endpoint == 'main.about_us' %}active{% endif %}">
-                    <i class="bi bi-info-circle me-2"></i> Hakkımızda
+                <a href="{{ url_for('support.index') }}"
+                    class="nav-link {% if request.endpoint and 'support' in request.endpoint %}active{% endif %}">
+                    <i class="bi bi-life-preserver me-2"></i> Destek Taleplerim
                 </a>
             </li>
             <li class="nav-item">
-                <a href="{{ url_for('main.contact') }}"
-                    class="nav-link {% if request.endpoint == 'main.contact' %}active{% endif %}">
-                    <i class="bi bi-telephone me-2"></i> İletişim
+                <a href="#" onclick="toggleChatbot(); return false;" class="nav-link text-white">
+                    <i class="bi bi-robot me-2 text-warning"></i> Vidos Asistan
                 </a>
             </li>
-            <li>
-                <a href="{{ url_for('main.trendyol_claims_page') }}"
-                    class="nav-link py-2 fs-6 {% if request.endpoint == 'main.trendyol_claims_page' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
-                    <i class="bi bi-caret-right-fill me-1 small"></i> İade Talepleri
-                </a>
-            </li>
-            <li>
-                <a href="{{ url_for('products.blacklist') }}"
-                    class="nav-link py-2 fs-6 {% if request.endpoint and 'blacklist' in request.endpoint %}active fw-bold text-white{% else %}text-white-50{% endif %}">
-                    <i class="bi bi-caret-right-fill me-1 small"></i> Yasaklı Liste
-                </a>
-            </li>
-        </ul>
-        </li>
-
-        <!-- Finansal Analiz Dropdown -->
-        <li class="nav-item">
-            {% set finance_active = (request.endpoint in ['report.profit_loss_report']) %}
-            <a href="#financeSubmenu" data-bs-toggle="collapse"
-                aria-expanded="{{ 'true' if finance_active else 'false' }}"
-                class="nav-link dropdown-toggle text-white {% if not finance_active %}collapsed{% endif %}">
-                <i class="bi bi-graph-up-arrow me-2"></i> Finansal Analiz
-            </a>
-            <ul class="collapse list-unstyled ps-3 {{ 'show' if finance_active else '' }}" id="financeSubmenu"
-                data-bs-parent="#sidebar-nav">
-                <li>
-                    <a href="{{ url_for('report.profit_loss_report') }}"
-                        class="nav-link py-2 fs-6 {% if request.endpoint == 'report.profit_loss_report' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
-                        <i class="bi bi-caret-right-fill me-1 small"></i> Kâr / Zarar Analizi
-                    </a>
-                </li>
-            </ul>
-        </li>
-
-        <li>
-            <a href="{{ url_for('report.error_history') }}"
-                class="nav-link {% if request.endpoint and 'report' in request.endpoint %}active{% endif %}">
-                <i class="bi bi-file-earmark-text me-2"></i> Raporlar
-            </a>
-        </li>
-        <!-- Chatbot Sidebar Item -->
-        <li class="mt-auto pt-3 border-top">
-            <a href="#" onclick="toggleChatbot(); return false;" class="nav-link text-white">
-                <i class="bi bi-robot me-2 text-warning"></i> Vidos Asistan
-            </a>
-        </li>
-        <a href="{{ url_for('support.index') }}"
-            class="nav-link {% if request.endpoint and 'support' in request.endpoint %}active{% endif %}">
-            <i class="bi bi-life-preserver me-2"></i> Destek Taleplerim
-        </a>
-        {% if current_user.is_admin or current_user.has_permission('settings') %}
-        <a href="{{ url_for('main.settings_page') }}"
-            class="nav-link {% if request.endpoint == 'main.settings_page' %}active{% endif %}">
-            <i class="bi bi-gear me-2"></i> Ayarlar
-        </a>
-        {% endif %}
-        </li>
         </ul>
     </div>
 

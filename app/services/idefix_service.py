@@ -1044,7 +1044,7 @@ def get_idefix_client(user_id: Optional[int] = None) -> IdefixClient:
     
     return IdefixClient(api_key, api_secret, vendor_id)
 
-def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id: Optional[int] = None, title_prefix: str = None) -> Dict[str, Any]:
+def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id: Optional[int] = None, title_prefix: str = None, **kwargs) -> Dict[str, Any]:
     from app.services.job_queue import append_mp_job_log, get_mp_job, update_mp_job
     from app.services.xml_service import load_xml_source_index
     from app.utils.helpers import to_float, to_int
@@ -1052,12 +1052,14 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
     from flask_login import current_user
     import time
     
-    def check_cancelled() -> bool:
-        """Check if job was cancelled by user"""
-        job_state = get_mp_job(job_id)
-        return job_state and job_state.get('cancel_requested', False)
+    # Extract options
+    price_multiplier = to_float(kwargs.get('price_multiplier', 1.0))
+    default_price_val = to_float(kwargs.get('default_price', 0.0))
+    skip_no_barcode = kwargs.get('skip_no_barcode', False)
+    skip_no_image = kwargs.get('skip_no_image', False)
+    zero_stock_as_one = kwargs.get('zero_stock_as_one', False)
     
-    append_mp_job_log(job_id, "İdefix gönderim işlemi başlatılıyor...")
+    append_mp_job_log(job_id, f"İdefix gönderim işlemi başlatılıyor... Seçenekler: Çarpan={price_multiplier}, Barkodsuz Atla={skip_no_barcode}")
     
     try:
         client = get_idefix_client()
@@ -1081,10 +1083,8 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
     user_id = current_user.id if hasattr(current_user, 'id') else None
     
     
-    try:
-        multiplier = float(Setting.get("IDEFIX_PRICE_MULTIPLIER", "1.0", user_id=user_id) or "1.0")
-    except:
-        multiplier = 1.0
+    # Use provided multiplier
+    multiplier = price_multiplier
         
     default_cat_id = Setting.get("IDEFIX_DEFAULT_CATEGORY_ID", "", user_id=user_id)
     default_brand_id = Setting.get("IDEFIX_BRAND_ID", "", user_id=user_id)  # Fallback brand ID
@@ -1434,12 +1434,27 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
 
     return {
         "success_count": success_count,
-        "fail_count": fail_count + skipped_count,
-        "failures": failures,
-        "matched": [p['barcode'] for p in create_batch_list],
-        "skipped": skipped_list,
-        "batch_request_ids": batch_request_ids
+        "fail_count": fail_count,
+        "failures": failures[:20],
+        "batch_id": batch_request_id if 'batch_request_id' in locals() else None,
+        "skipped": skipped_list
     }
+
+def perform_idefix_send_all(job_id: str, xml_source_id: Any, **kwargs) -> Dict[str, Any]:
+    """Send ALL products from XML source to Idefix"""
+    from app.services.job_queue import append_mp_job_log
+    from app.services.xml_service import load_xml_source_index
+    
+    append_mp_job_log(job_id, "Tüm ürünler hazırlanıyor...")
+    xml_index = load_xml_source_index(xml_source_id)
+    all_barcodes = list((xml_index.get('by_barcode') or {}).keys())
+    
+    if not all_barcodes:
+        return {'success': False, 'message': 'XML kaynağında ürün bulunamadı.', 'count': 0}
+    
+    append_mp_job_log(job_id, f"Toplam {len(all_barcodes)} ürün bulundu. Gönderim başlıyor...")
+    
+    return perform_idefix_send_products(job_id, all_barcodes, xml_source_id, **kwargs)
 
 def fetch_all_idefix_products(user_id: Optional[int] = None, job_id: Optional[str] = None) -> List[Dict[str, Any]]:
     """Fetch all products from Idefix API across all status pools."""

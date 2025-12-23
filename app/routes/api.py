@@ -193,6 +193,7 @@ def api_job_control():
         logging.exception('Job control hatası')
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 @api_bp.route('/api/pazarama/sync_stock', methods=['POST'])
 def api_pazarama_sync_stock():
     try:
@@ -413,6 +414,15 @@ def api_xml_source_products():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 25, type=int)
     query = (request.args.get('q') or '').strip().lower()
+    
+    # New Filters
+    min_stock = request.args.get('min_stock', type=int)
+    max_stock = request.args.get('max_stock', type=int)
+    min_price = request.args.get('min_price', type=float)
+    max_price = request.args.get('max_price', type=float)
+    category = (request.args.get('category') or '').strip().lower()
+    has_image = request.args.get('has_image') == 'true'
+
     if not source_id:
         return jsonify({'total': 0, 'items': []})
     
@@ -422,13 +432,41 @@ def api_xml_source_products():
         all_records = index.get('__records__') or []
     except Exception:
         return jsonify({'total': 0, 'items': []})
-
+    
     # Filter
     filtered = []
     for rec in all_records:
+        # Search Query (Title or Barcode)
         if query:
             if query not in rec.get('title_normalized', '') and query not in str(rec.get('barcode', '')).lower():
                 continue
+        
+        # Stock Filter
+        stock = to_int(rec.get('quantity', 0))
+        if min_stock is not None and stock < min_stock:
+            continue
+        if max_stock is not None and stock > max_stock:
+            continue
+            
+        # Price Filter
+        price = to_float(rec.get('listPrice', 0))
+        if min_price is not None and price < min_price:
+            continue
+        if max_price is not None and price > max_price:
+            continue
+            
+        # Category Filter
+        if category:
+            rec_cat = str(rec.get('category', '')).lower()
+            if category not in rec_cat:
+                continue
+                
+        # Image Filter
+        if has_image:
+            images = rec.get('images', [])
+            if not images or (isinstance(images, list) and len(images) == 0):
+                continue
+                
         filtered.append(rec)
     
     total = len(filtered)
@@ -1193,8 +1231,19 @@ def api_trendyol_send_all():
     try:
         payload = request.get_json(force=True) or {}
         xml_source_id = payload.get('source_id')
-        auto_match = payload.get('auto_match', False)
+        auto_match = payload.get('auto_match', True)
         match_by = payload.get('match_by', 'barcode')
+        
+        # New Sending Options
+        send_options = {
+            'price_multiplier': payload.get('price_multiplier', 1.0),
+            'default_price': payload.get('default_price', 0.0),
+            'skip_no_barcode': payload.get('skip_no_barcode', False),
+            'skip_no_image': payload.get('skip_no_image', False),
+            'zero_stock_as_one': payload.get('zero_stock_as_one', False),
+            'title_prefix': payload.get('title_prefix', ''),
+            'match_by': match_by
+        }
         
         if not xml_source_id:
             return jsonify({'success': False, 'message': 'Kaynak ID zorunludur.'}), 400
@@ -1204,18 +1253,10 @@ def api_trendyol_send_all():
         job_id = submit_mp_job(
             'trendyol_send_all',
             'trendyol',
-            lambda job_id: perform_trendyol_send_all(job_id, xml_source_id, auto_match=auto_match, match_by=match_by),
-            params={'xml_source_id': xml_source_id, 'match_by': match_by}
+            lambda job_id: perform_trendyol_send_all(job_id, xml_source_id, auto_match=auto_match, **send_options),
+            params={'xml_source_id': xml_source_id, 'auto_match': auto_match, **send_options},
         )
-        
-        return jsonify({
-            'success': True, 
-            'batch_id': job_id,
-            'message': 'Tüm ürünler gönderim kuyruğuna alındı.'
-        })
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
+        return jsonify({'success': True, 'job_id': job_id, 'batch_id': job_id}), 202
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
@@ -1228,8 +1269,19 @@ def api_n11_send_all():
     try:
         payload = request.get_json(force=True) or {}
         xml_source_id = payload.get('source_id')
-        auto_match = payload.get('auto_match', False)
+        auto_match = payload.get('auto_match', True)
         match_by = payload.get('match_by', 'barcode')
+        
+        # New Sending Options
+        send_options = {
+            'price_multiplier': payload.get('price_multiplier', 1.0),
+            'default_price': payload.get('default_price', 0.0),
+            'skip_no_barcode': payload.get('skip_no_barcode', False),
+            'skip_no_image': payload.get('skip_no_image', False),
+            'zero_stock_as_one': payload.get('zero_stock_as_one', False),
+            'title_prefix': payload.get('title_prefix', ''),
+            'match_by': match_by
+        }
         
         if not xml_source_id:
             return jsonify({'success': False, 'message': 'Kaynak ID zorunludur.'}), 400
@@ -1239,15 +1291,10 @@ def api_n11_send_all():
         job_id = submit_mp_job(
             'n11_send_all',
             'n11',
-            lambda job_id: perform_n11_send_all(job_id, xml_source_id, auto_match=auto_match, match_by=match_by),
-            params={'xml_source_id': xml_source_id, 'match_by': match_by}
+            lambda job_id: perform_n11_send_all(job_id, xml_source_id, auto_match=auto_match, **send_options),
+            params={'xml_source_id': xml_source_id, 'auto_match': auto_match, **send_options},
         )
-        
-        return jsonify({
-            'success': True, 
-            'batch_id': job_id,
-            'message': 'Tüm ürünler N11 gönderim kuyruğuna alındı.'
-        })
+        return jsonify({'success': True, 'job_id': job_id, 'batch_id': job_id}), 202
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
@@ -1274,42 +1321,68 @@ def api_n11_search_brand():
 
 @api_bp.route('/api/pazarama/send_all', methods=['POST'])
 def api_pazarama_send_all():
+    """Pazarama için XML'deki tüm ürünleri gönder"""
     try:
         payload = request.get_json(force=True) or {}
         xml_source_id = payload.get('source_id')
+        
+        # New Sending Options
+        send_options = {
+            'price_multiplier': payload.get('price_multiplier', 1.0),
+            'default_price': payload.get('default_price', 0.0),
+            'skip_no_barcode': payload.get('skip_no_barcode', False),
+            'skip_no_image': payload.get('skip_no_image', False),
+            'zero_stock_as_one': payload.get('zero_stock_as_one', False),
+            'title_prefix': payload.get('title_prefix', ''),
+            'match_by': payload.get('match_by', 'barcode')
+        }
         
         if not xml_source_id:
             return jsonify({'success': False, 'message': 'Kaynak ID zorunludur.'}), 400
 
         from app.services.pazarama_service import perform_pazarama_send_all
         
-        # Get all barcodes from XML source
-        xml_index = load_xml_source_index(xml_source_id)
-        all_barcodes = list((xml_index.get('by_barcode') or {}).keys())
-        
-        if not all_barcodes:
-            return jsonify({'success': False, 'message': 'XML kaynağında ürün bulunamadı.'}), 400
-        
-        from app.services.pazarama_service import perform_pazarama_send_products
-        
         job_id = submit_mp_job(
             'pazarama_send_all',
             'pazarama',
-            lambda job_id: perform_pazarama_send_products(job_id, all_barcodes, xml_source_id),
-            params={'xml_source_id': xml_source_id}
+            lambda job_id: perform_pazarama_send_all(job_id, xml_source_id, **send_options),
+            params={'xml_source_id': xml_source_id, **send_options},
         )
-        
-        return jsonify({
-            'success': True, 
-            'batch_id': job_id,
-            'message': 'Tüm ürünler Pazarama gönderim kuyruğuna alındı.'
-        })
+        return jsonify({'success': True, 'job_id': job_id, 'batch_id': job_id}), 202
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @api_bp.route('/api/idefix/send_all', methods=['POST'])
 def api_idefix_send_all():
-    return jsonify({'success': False, 'message': 'İdefix toplu gönderim henüz aktif değil.'}), 501
+    try:
+        payload = request.get_json(force=True) or {}
+        xml_source_id = payload.get('source_id')
+        
+        # New Sending Options
+        send_options = {
+            'price_multiplier': payload.get('price_multiplier', 1.0),
+            'default_price': payload.get('default_price', 0.0),
+            'skip_no_barcode': payload.get('skip_no_barcode', False),
+            'skip_no_image': payload.get('skip_no_image', False),
+            'zero_stock_as_one': payload.get('zero_stock_as_one', False),
+            'title_prefix': payload.get('title_prefix', ''),
+            'match_by': payload.get('match_by', 'barcode')
+        }
+        
+        if not xml_source_id:
+            return jsonify({'success': False, 'message': 'Kaynak ID zorunludur.'}), 400
+
+        from app.services.idefix_service import perform_idefix_send_all
+        
+        job_id = submit_mp_job(
+            'idefix_send_all',
+            'idefix',
+            lambda job_id: perform_idefix_send_all(job_id, xml_source_id, **send_options),
+            params={'xml_source_id': xml_source_id, **send_options},
+        )
+        return jsonify({'success': True, 'job_id': job_id, 'batch_id': job_id}), 202
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 @api_bp.route('/api/job/control', methods=['POST'])
 def api_control_job():
@@ -1370,6 +1443,17 @@ def api_send_selected(marketplace):
         match_by = payload.get('match_by', 'barcode')
         title_prefix = payload.get('title_prefix')
         
+        # New Sending Options
+        send_options = {
+            'price_multiplier': payload.get('price_multiplier', 1.0),
+            'default_price': payload.get('default_price', 0.0),
+            'skip_no_barcode': payload.get('skip_no_barcode', False),
+            'skip_no_image': payload.get('skip_no_image', False),
+            'zero_stock_as_one': payload.get('zero_stock_as_one', False),
+            'title_prefix': title_prefix,
+            'match_by': match_by
+        }
+        
         if not barcodes:
             return jsonify({'success': False, 'message': 'Ürün seçilmedi.'}), 400
 
@@ -1378,32 +1462,32 @@ def api_send_selected(marketplace):
             job_id = submit_mp_job(
                 'idefix_send_selected',
                 'idefix',
-                lambda job_id: perform_idefix_send_products(job_id, barcodes, xml_source_id, title_prefix=title_prefix),
-                params={'barcodes': barcodes, 'xml_source_id': xml_source_id, 'requested_marketplace': marketplace}
+                lambda job_id: perform_idefix_send_products(job_id, barcodes, xml_source_id, **send_options),
+                params={'barcodes': barcodes, 'xml_source_id': xml_source_id, 'requested_marketplace': marketplace, **send_options}
             )
         elif marketplace == 'trendyol':
             from app.services.trendyol_service import perform_trendyol_send_products
             job_id = submit_mp_job(
                 'trendyol_send_selected',
                 'trendyol',
-                lambda job_id: perform_trendyol_send_products(job_id, barcodes, xml_source_id, auto_match=True, match_by=match_by, title_prefix=title_prefix),
-                params={'barcodes': barcodes, 'xml_source_id': xml_source_id, 'requested_marketplace': marketplace, 'match_by': match_by}
+                lambda job_id: perform_trendyol_send_products(job_id, barcodes, xml_source_id, auto_match=True, **send_options),
+                params={'barcodes': barcodes, 'xml_source_id': xml_source_id, 'requested_marketplace': marketplace, **send_options}
             )
         elif marketplace == 'pazarama':
             from app.services.pazarama_service import perform_pazarama_send_products
             job_id = submit_mp_job(
                 'pazarama_send_selected',
                 'pazarama',
-                lambda job_id: perform_pazarama_send_products(job_id, barcodes, xml_source_id, title_prefix=title_prefix),
-                params={'barcodes': barcodes, 'xml_source_id': xml_source_id, 'requested_marketplace': marketplace}
+                lambda job_id: perform_pazarama_send_products(job_id, barcodes, xml_source_id, **send_options),
+                params={'barcodes': barcodes, 'xml_source_id': xml_source_id, 'requested_marketplace': marketplace, **send_options}
             )
         elif marketplace == 'n11':
             from app.services.n11_service import perform_n11_send_products
             job_id = submit_mp_job(
                 'n11_send_selected',
                 'n11',
-                lambda job_id: perform_n11_send_products(job_id, barcodes, xml_source_id, auto_match=True, match_by=match_by, title_prefix=title_prefix),
-                params={'barcodes': barcodes, 'xml_source_id': xml_source_id, 'requested_marketplace': marketplace, 'match_by': match_by}
+                lambda job_id: perform_n11_send_products(job_id, barcodes, xml_source_id, auto_match=True, **send_options),
+                params={'barcodes': barcodes, 'xml_source_id': xml_source_id, 'requested_marketplace': marketplace, **send_options}
             )
 
         else:

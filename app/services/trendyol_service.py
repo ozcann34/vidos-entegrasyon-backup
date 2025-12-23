@@ -1104,74 +1104,36 @@ def ensure_tfidf_ready():
         except Exception as e:
             logging.error(f"Error preparing TF-IDF: {e}")
 
-def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_id: Any, auto_match: bool = False, send_options: Dict[str, Any] = None, match_by: str = 'barcode', title_prefix: str = None) -> Dict[str, Any]:
+def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_id: Any, auto_match: bool = False, match_by: str = 'barcode', title_prefix: str = None, **kwargs) -> Dict[str, Any]:
     client = get_trendyol_client()
     append_mp_job_log(job_id, "Trendyol istemcisi başlatıldı.")
     
-    # Resolve User ID from XML Source for settings context
+    # Resolve User ID from XML Source
     user_id = None
     if xml_source_id:
         try:
-             # Handle "excel:123" or just "123"
              s_id = str(xml_source_id)
-             if ':' in s_id and s_id.startswith('excel'):
-                 pass 
-             elif s_id.isdigit():
+             if s_id.isdigit():
                  src = SupplierXML.query.get(int(s_id))
-                 if src:
-                     user_id = src.user_id
+                 if src: user_id = src.user_id
         except Exception as e:
-             logging.warning(f"Failed to resolve user_id from xml_source_id {xml_source_id}: {e}")
+             logging.warning(f"Failed to resolve user_id: {e}")
 
-    # Pre-fetch Global Default Brand ID to ensure proper fallback
-    global_default_brand = 0
-    try:
-        from app.models import Setting
-        
-        # Try with resolved user_id
-        val = None
-        if user_id:
-            val = Setting.get('TRENDYOL_BRAND_ID', '', user_id=user_id)
-        
-        # If failed or no user_id, try with context (might be none in threads)
-        if not val:
-            try:
-                from flask_login import current_user
-                is_auth = False
-                try: is_auth = current_user.is_authenticated
-                except: pass
-                
-                uid = None
-                if is_auth: uid = current_user.id
-                
-                val = Setting.get('TRENDYOL_BRAND_ID', '', user_id=uid)
-            except:
-                pass
-        
-        if val and str(val).isdigit():
-            global_default_brand = int(val)
-            append_mp_job_log(job_id, f"Varsayılan Marka ID aktif: {global_default_brand}")
-        else:
-            append_mp_job_log(job_id, "⚠️ Varsayılan Marka ID ayarlanmamış! Ayarlar > Trendyol'dan tanımlayın.", level='warning')
-    except Exception as e:
-        logging.warning(f"Error pre-fetching default brand: {e}")
+    # Extract options from kwargs or defaults
+    zero_stock_as_one = kwargs.get('zero_stock_as_one', False)
+    skip_no_image = kwargs.get('skip_no_image', False)
+    skip_no_barcode = kwargs.get('skip_no_barcode', False)
+    default_price = to_float(kwargs.get('default_price', 0))
+    price_multiplier = to_float(kwargs.get('price_multiplier', 1.0))
     
-    # Extract send options
-    if send_options is None:
-        send_options = {}
-    zero_stock_as_one = send_options.get('zero_stock_as_one', False)
-    skip_no_image = send_options.get('skip_no_image', False)
-    apply_multiplier = send_options.get('apply_multiplier', False)
-    skip_no_barcode = send_options.get('skip_no_barcode', False)
-    default_price = send_options.get('default_price', 0)
-    
-    append_mp_job_log(job_id, f"Seçenekler: Stok0→1={zero_stock_as_one}, Görselsiz atla={skip_no_image}, Çarpan={apply_multiplier}, Varsayılan fiyat={default_price}")
+    append_mp_job_log(job_id, f"Seçenekler: Stok0→1={zero_stock_as_one}, Görselsiz atla={skip_no_image}, Çarpan={price_multiplier}, Barkodsuz atla={skip_no_barcode}")
     
     xml_index = load_xml_source_index(xml_source_id)
     mp_map = xml_index.get('by_barcode') or {}
     
-    # Only apply multiplier if option is enabled
-    multiplier = get_marketplace_multiplier('trendyol') if apply_multiplier else 1.0
+    # We use price_multiplier directly if provided, otherwise fallback to settings multiplier if apply_multiplier was intended
+    # But now we passed it explicitly from UI.
+    multiplier = price_multiplier
     
     # Debug logging
     append_mp_job_log(job_id, f"Kaynak tipi: {str(xml_source_id)[:20]}...")
@@ -1587,7 +1549,7 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
         }
     }
 
-def perform_trendyol_send_all(job_id: str, xml_source_id: Any, auto_match: bool = False) -> Dict[str, Any]:
+def perform_trendyol_send_all(job_id: str, xml_source_id: Any, auto_match: bool = False, **kwargs) -> Dict[str, Any]:
     """Send ALL products from XML source to Trendyol"""
     append_mp_job_log(job_id, "Tüm ürünler hazırlanıyor...")
     
@@ -1600,7 +1562,7 @@ def perform_trendyol_send_all(job_id: str, xml_source_id: Any, auto_match: bool 
     
     append_mp_job_log(job_id, f"Toplam {len(all_barcodes)} ürün bulundu. Gönderim başlıyor...")
     
-    return perform_trendyol_send_products(job_id, all_barcodes, xml_source_id, auto_match)
+    return perform_trendyol_send_products(job_id, all_barcodes, xml_source_id, auto_match=auto_match, **kwargs)
 
 
 def perform_trendyol_batch_update(job_id: str, items: List[Dict[str, Any]]) -> Dict[str, Any]:

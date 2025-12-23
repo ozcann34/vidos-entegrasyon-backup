@@ -4,141 +4,143 @@
 
 {% block content %}
 <div class="animate-fade-in">
-  <div class="card mb-4 border-0 shadow-sm">
-    <div class="card-body p-3">
-      <div class="row g-3 align-items-center">
-        <div class="col-lg-4">
-          <div class="input-group">
-            <span class="input-group-text border-end-0"
-              style="background: var(--input-bg); border-color: var(--input-border); color: var(--muted);"><i
-                class="bi bi-search"></i></span>
-            <input type="text" id="searchInput" class="form-control border-start-0 ps-0"
-              style="background: var(--input-bg); border-color: var(--input-border); color: var(--text);"
-              placeholder="Ürün Adı veya Barkod ile ara...">
-          </div>
-        </div>
-        <div class="col-lg-8">
-          <div class="d-flex flex-wrap justify-content-lg-end gap-2 align-items-center">
-            <div class="d-flex align-items-center gap-2 me-2">
-              <div class="input-group input-group-sm" style="width: 120px;">
-                <input id="goToInput" type="number" min="1" class="form-control" placeholder="Sayfa">
-                <button id="goToBtn" class="btn btn-outline-secondary">Git</button>
-              </div>
-            </div>
+</div>
 
-            <div class="vr mx-1 d-none d-lg-block"></div>
-
-            <div class="btn-group" role="group">
-              <button id="sendTrendyolBtn" class="btn btn-sm btn-outline-warning text-dark fw-bold"
-                title="Seçili ürünleri Trendyol'a gönder">
-                <i class="bi bi-shop"></i><span class="d-none d-xl-inline ms-1">Trendyol</span>
-              </button>
-              <button id="sendHepsiburadaBtn" class="btn btn-sm btn-outline-warning fw-bold"
-                style="color:#FF6000; border-color:#FF6000;" title="Seçili ürünleri Hepsiburada'ya gönder">
-                <i class="bi bi-bag-fill"></i><span class="d-none d-xl-inline ms-1">Hepsiburada</span>
-              </button>
-              <button id="sendPazaramaBtn" class="btn btn-sm btn-outline-primary fw-bold"
-                title="Seçili ürünleri Pazarama'ya gönder">
-                <i class="bi bi-credit-card-fill"></i><span class="d-none d-xl-inline ms-1">Pazarama</span>
-              </button>
-              <button id="sendIdefixBtn" class="btn btn-sm btn-outline-info fw-bold"
-                title="Seçili ürünleri İdefix'e gönder">
-                <i class="bi bi-box-seam-fill"></i><span class="d-none d-xl-inline ms-1">İdefix</span>
-              </button>
-              <button id="sendN11Btn" class="btn btn-sm btn-outline-danger fw-bold"
-                style="color:#5f259f; border-color:#5f259f;" title="Seçili ürünleri N11'e gönder">
-                <i class="bi bi-shop-window"></i><span class="d-none d-xl-inline ms-1">N11</span>
-              </button>
-            </div>
-
-            <button id="sendAllBtn" class="btn btn-success btn-sm fw-bold btn-animated" title="Tüm ürünleri gönder">
-              <i class="bi bi-send-fill me-1"></i>Tümünü Gönder
-            </button>
-
-            <div class="btn-group ms-2">
-              <button id="changeSourceBtn" class="btn btn-outline-secondary btn-sm" title="XML Kaynağını Değiştir">
-                <i class="bi bi-shuffle"></i>
-              </button>
-              <button id="toggleViewBtn" class="btn btn-outline-primary btn-sm" data-mode="list"
-                title="Görünümü Değiştir">
-                <i class="bi bi-grid-3x3-gap"></i>
-              </button>
-            </div>
-          </div>
-        </div>
+<!-- Advanced Filters -->
+<div class="card mb-3 border-0 shadow-sm animate-fade-in" style="background: var(--card);">
+  <div class="card-body p-3">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h6 class="mb-0 text-secondary"><i class="bi bi-funnel me-2"></i>Gelişmiş Filtreler</h6>
+      <button class="btn btn-sm btn-link text-decoration-none text-muted p-0" onclick="clearFilters()">Filtreleri
+        Temizle</button>
+    </div>
+    <div class="row g-3">
+      <div class="col-md-2">
+        <label class="form-label small fw-bold mb-1">Min. Stok</label>
+        <input type="number" id="minStockInput" class="form-control form-control-sm" placeholder="0">
       </div>
-      <div class="row mt-2">
-        <div class="col-12 text-end">
-          <span id="productCount" class="badge bg-light text-dark border p-2">Toplam 0 ürün</span>
+      <div class="col-md-2">
+        <label class="form-label small fw-bold mb-1">Max. Stok</label>
+        <input type="number" id="maxStockInput" class="form-control form-control-sm" placeholder="99999">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-bold mb-1">Min. Fiyat</label>
+        <input type="number" id="minPriceInput" class="form-control form-control-sm" placeholder="0.00">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-bold mb-1">Max. Fiyat</label>
+        <input type="number" id="maxPriceInput" class="form-control form-control-sm" placeholder="100000.00">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-bold mb-1">Kategori</label>
+        <input type="text" id="categoryInput" class="form-control form-control-sm" placeholder="Kategori ara...">
+      </div>
+      <div class="col-md-2 d-flex align-items-end">
+        <div class="form-check form-switch mb-1">
+          <input class="form-check-input" type="checkbox" id="hasImageFilter">
+          <label class="form-check-label small" for="hasImageFilter">Sadece Resimliler</label>
         </div>
       </div>
     </div>
-  </div>
-
-  <!-- Tools & Options -->
-  <div class="card mb-4 border-0 shadow-sm animate-fade-in" style="background: var(--card);">
-    <div class="card-body p-3">
-      <div class="d-flex align-items-center justify-content-between mb-2">
-        <h6 class="mb-0 text-secondary"><i class="bi bi-sliders me-2"></i>Gönderim Ayarları</h6>
-        <span class="badge text-muted border" style="background: var(--input-bg);">Seçimleriniz gönderim anında
-          uygulanır (Sayfa yenilenince
-          sıfırlanır)</span>
+    <div class="row mt-3">
+      <div class="col-12 text-end">
+        <button id="applyFiltersBtn" class="btn btn-primary btn-sm px-4 shadow-sm" onclick="fetchProducts(1)">
+          Filtreleri Uygula
+        </button>
       </div>
-      <div class="row g-3">
-        <div class="col-md-4 col-lg-3">
-          <label class="form-label small fw-bold mb-1">Ürün İsmi Öneki (Prefix)</label>
-          <div class="input-group input-group-sm">
-            <span class="input-group-text border-end-0"
-              style="background: var(--input-bg); border-color: var(--input-border); color: var(--muted);"><i
-                class="bi bi-fonts"></i></span>
-            <input type="text" id="titlePrefixInput" class="form-control border-start-0"
-              style="background: var(--input-bg); border-color: var(--input-border); color: var(--text);"
+    </div>
+  </div>
+</div>
+
+<!-- Tools & Options -->
+<div class="card mb-4 border-0 shadow-sm animate-fade-in" style="background: var(--card);">
+  <div class="card-body p-3">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h6 class="mb-0 text-secondary"><i class="bi bi-sliders me-2"></i>Gönderim Ayarları</h6>
+      <span class="badge text-muted border py-1 px-2" style="background: var(--input-bg);">
+        Ayarlar toplu gönderim sırasında otomatik uygulanır.
+      </span>
+    </div>
+    <div class="row g-4">
+      <!-- Sol Kolon: Başlık ve Fiyat Ayarları -->
+      <div class="col-lg-5 border-end">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label small fw-bold mb-1">Başlık Ön Ek (Prefix)</label>
+            <input type="text" id="titlePrefixInput" class="form-control form-control-sm"
               placeholder="Örn: [KAMPANYA] ">
           </div>
-          <div class="form-text small mt-0" style="font-size: 0.75rem;">Başlığın önüne eklenir. Boş bırakılabilir.</div>
-        </div>
-        <div class="col-md-8 col-lg-9">
-          <label class="form-label small fw-bold mb-1">Seçenekler</label>
-          <div class="d-flex flex-wrap gap-3">
-            <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" id="optMatchByStockCode">
-              <label class="form-check-label small" for="optMatchByStockCode">Stok Kodu İle Eşleştir (Barkod
-                yerine)</label>
+          <div class="col-md-6">
+            <label class="form-label small fw-bold mb-1">Fiyat Çarpanı</label>
+            <input type="number" id="priceMultiplierInput" class="form-control form-control-sm" value="1.0" step="0.01">
+          </div>
+          <div class="col-md-12">
+            <label class="form-label small fw-bold mb-1">Fiyat 0 ise varsayılan fiyat</label>
+            <input type="number" id="defaultPriceInput" class="form-control form-control-sm" placeholder="0.00">
+            <div class="form-text small mt-1" style="font-size: 0.7rem;">XML'de fiyat bulunamazsa bu değer kullanılır.
             </div>
-            <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" id="optZeroStockAsOne">
-              <label class="form-check-label small" for="optZeroStockAsOne">Stok 0 ise 1 gönder</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sağ Kolon: Atlatma ve Eşleştirme Seçenekleri -->
+      <div class="col-lg-7">
+        <label class="form-label small fw-bold mb-2">Gönderim Seçenekleri</label>
+        <div class="row g-2">
+          <div class="col-md-6">
+            <div class="form-check form-switch p-2 border rounded-3 bg-light bg-opacity-10 mb-2">
+              <input class="form-check-input ms-0 me-2" type="checkbox" id="optSkipNoBarcode">
+              <label class="form-check-label small fw-semibold" for="optSkipNoBarcode">Barkodsuz Ürünleri Atla</label>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-check form-switch p-2 border rounded-3 bg-light bg-opacity-10 mb-2">
+              <input class="form-check-input ms-0 me-2" type="checkbox" id="optSkipNoImage">
+              <label class="form-check-label small fw-semibold" for="optSkipNoImage">Resimsiz Ürünleri Atla</label>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-check form-switch p-2 border rounded-3 bg-light bg-opacity-10 mb-2">
+              <input class="form-check-input ms-0 me-2" type="checkbox" id="optMatchByStockCode">
+              <label class="form-check-label small fw-semibold" for="optMatchByStockCode">Stok Kodu İle Eşleştir</label>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-check form-switch p-2 border rounded-3 bg-light bg-opacity-10 mb-2">
+              <input class="form-check-input ms-0 me-2" type="checkbox" id="optZeroStockAsOne">
+              <label class="form-check-label small fw-semibold" for="optZeroStockAsOne">Stok 0 ise 1 Gönder</label>
             </div>
           </div>
         </div>
       </div>
     </div>
   </div>
+</div>
 
-  <div class="table-responsive shadow-sm card border-0 mb-4" id="listContainer">
-    <table class="table table-hover align-middle mb-0">
-      <thead class="bg-light">
-        <tr>
-          <th style="width: 40px;" class="ps-3"><input id="selectAll" type="checkbox" class="form-check-input"></th>
-          <th style="width: 70px;">Görsel</th>
-          <th style="width: 30%;">Ürün Adı</th>
-          <th>Barkod</th>
-          <th>Kategori Yolu</th>
-          <th>Fiyat / Stok</th>
-          <th>Durum</th>
-        </tr>
-      </thead>
-      <tbody id="productListBody"></tbody>
-    </table>
-  </div>
+<div class="table-responsive shadow-sm card border-0 mb-4" id="listContainer">
+  <table class="table table-hover align-middle mb-0">
+    <thead class="bg-light">
+      <tr>
+        <th style="width: 40px;" class="ps-3"><input id="selectAll" type="checkbox" class="form-check-input"></th>
+        <th style="width: 70px;">Görsel</th>
+        <th style="width: 30%;">Ürün Adı</th>
+        <th>Barkod</th>
+        <th>Kategori Yolu</th>
+        <th>Fiyat / Stok</th>
+        <th>Durum</th>
+      </tr>
+    </thead>
+    <tbody id="productListBody"></tbody>
+  </table>
+</div>
 
-  <div id="gridContainer" class="d-none mb-4">
-    <div id="productGrid" class="row g-3"></div>
-  </div>
+<div id="gridContainer" class="d-none mb-4">
+  <div id="productGrid" class="row g-3"></div>
+</div>
 
-  <nav class="pb-4">
-    <ul class="pagination justify-content-center shadow-sm" id="pagination"></ul>
-  </nav>
+<nav class="pb-4">
+  <ul class="pagination justify-content-center shadow-sm" id="pagination"></ul>
+</nav>
 </div>
 {% endblock %}
 
@@ -380,11 +382,20 @@
     addPageItem(Math.min(totalPages, current + 1), false, current === totalPages, '»');
   }
 
-  function fetchProducts() {
+  async function fetchProducts(page = 1) {
     if (!selectedSourceId) {
       productListBody.innerHTML = '<tr><td colspan="7" class="text-center p-5 text-muted">Lütfen bir XML kaynağı seçin.</td></tr>';
-      return Promise.resolve();
+      return;
     }
+    currentPage = page;
+    currentSearchQuery = searchInput.value;
+
+    const minStock = document.getElementById('minStockInput')?.value;
+    const maxStock = document.getElementById('maxStockInput')?.value;
+    const minPrice = document.getElementById('minPriceInput')?.value;
+    const maxPrice = document.getElementById('maxPriceInput')?.value;
+    const category = document.getElementById('categoryInput')?.value;
+    const hasImage = document.getElementById('hasImageFilter')?.checked;
 
     if (viewMode === 'list') {
       productListBody.innerHTML = '<tr><td colspan="7" class="text-center p-5 text-primary"><div class="spinner-border spinner-border-sm me-2"></div> Ürünler yükleniyor...</td></tr>';
@@ -393,34 +404,43 @@
       if (grid) grid.innerHTML = '<div class="col-12 text-center p-5 text-primary"><div class="spinner-border spinner-border-sm me-2"></div> Ürünler yükleniyor...</div>';
     }
 
-    const url = `/api/xml_source_products?source_id=${selectedSourceId}&page=${currentPage}&per_page=${itemsPerPage}&q=${encodeURIComponent(currentSearchQuery)}`;
+    let url = `/api/xml_source_products?source_id=${selectedSourceId}&page=${page}&per_page=${itemsPerPage}&q=${encodeURIComponent(currentSearchQuery)}`;
 
-    return fetch(url)
-      .then(response => {
-        if (!response.ok) {
-          throw new Error("API Hatası: " + response.status);
-        }
-        return response.json();
-      })
-      .then(data => {
-        if (!data || !Array.isArray(data.items)) {
-          throw new Error("Veri formatı geçersiz");
-        }
-        currentTotal = data.total || 0;
-        productCountSpan.textContent = `Toplam ${currentTotal} ürün (${currentPage}/${Math.ceil(currentTotal / itemsPerPage) || 1} sayfa)`;
-        renderProducts(data.items);
-        renderPagination(currentTotal, currentPage);
-      })
-      .catch((err) => {
-        console.error("Fetch error:", err);
-        const errorMsg = '<tr><td colspan="7" class="text-center p-5 text-danger">Ürünler yüklenemedi. Lütfen sayfayı yenileyin.</td></tr>';
-        if (viewMode === 'list') productListBody.innerHTML = errorMsg;
-        else {
-          const grid = document.getElementById('productGrid');
-          if (grid) grid.innerHTML = '<div class="col-12 text-center p-5 text-danger">Ürünler yüklenemedi.</div>';
-        }
-        productCountSpan.textContent = 'Toplam 0 ürün';
-      });
+    if (minStock) url += `&min_stock=${minStock}`;
+    if (maxStock) url += `&max_stock=${maxStock}`;
+    if (minPrice) url += `&min_price=${minPrice}`;
+    if (maxPrice) url += `&max_price=${maxPrice}`;
+    if (category) url += `&category=${encodeURIComponent(category)}`;
+    if (hasImage) url += `&has_image=true`;
+
+    try {
+      const resp = await fetch(url);
+      const data = await resp.json();
+      currentTotal = data.total || 0;
+      productCountSpan.innerText = `Toplam ${currentTotal.toLocaleString('tr-TR')} ürün`;
+      renderProducts(data.items || []);
+      renderPagination(currentTotal, currentPage);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (e) {
+      console.error("Fetch error:", e);
+      const errorMsg = '<tr><td colspan="7" class="text-center p-5 text-danger">Ürünler yüklenemedi. Lütfen sayfayı yenileyin.</td></tr>';
+      if (viewMode === 'list') productListBody.innerHTML = errorMsg;
+      else {
+        const grid = document.getElementById('productGrid');
+        if (grid) grid.innerHTML = '<div class="col-12 text-center p-5 text-danger">Ürünler yüklenemedi.</div>';
+      }
+    }
+  }
+
+  function clearFilters() {
+    document.getElementById('minStockInput').value = '';
+    document.getElementById('maxStockInput').value = '';
+    document.getElementById('minPriceInput').value = '';
+    document.getElementById('maxPriceInput').value = '';
+    document.getElementById('categoryInput').value = '';
+    document.getElementById('hasImageFilter').checked = false;
+    searchInput.value = '';
+    fetchProducts(1);
   }
 
   // --- Event Listeners ---
@@ -523,19 +543,14 @@
       if (!confirm.isConfirmed) return;
 
       function getOptions() {
-        const titlePrefix = document.getElementById('titlePrefixInput')?.value || '';
-        const matchBy = document.getElementById('optMatchByStockCode')?.checked ? 'stock_code' : 'barcode';
-        // Note: API send_selected extraction looks for title_prefix in payload root, not nested
-        // We will put them in root
         return {
-          title_prefix: titlePrefix,
-          match_by: matchBy,
-          // Some services might need send_options dict? api.py currently ignores it in lambda but we can try passing it if we update api.py later. 
-          // Currently I updated API to extract title_prefix and match_by.
-          // I did NOT update api.py to pass 'zero_stock_as_one' etc to lambda for ALL services, only some?
-          // Actually api.py lambda signatures I updated only added title_prefix.
-          // So zero stock options might not work yet unless I update api.py/services more.
-          // But Title Prefix is the main goal.
+          title_prefix: document.getElementById('titlePrefixInput')?.value || '',
+          match_by: document.getElementById('optMatchByStockCode')?.checked ? 'stock_code' : 'barcode',
+          price_multiplier: parseFloat(document.getElementById('priceMultiplierInput')?.value || '1.0'),
+          default_price: parseFloat(document.getElementById('defaultPriceInput')?.value || '0'),
+          skip_no_barcode: document.getElementById('optSkipNoBarcode')?.checked || false,
+          skip_no_image: document.getElementById('optSkipNoImage')?.checked || false,
+          zero_stock_as_one: document.getElementById('optZeroStockAsOne')?.checked || false
         };
       }
 
