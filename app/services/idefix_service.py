@@ -5,7 +5,7 @@ import logging
 import requests
 from typing import List, Dict, Optional, Any
 from datetime import datetime
-from app.utils.helpers import chunked, get_marketplace_multiplier, to_int, to_float, clean_forbidden_words
+from app.utils.helpers import chunked, get_marketplace_multiplier, to_int, to_float, clean_forbidden_words, is_product_forbidden
 from app.utils.rate_limiter import idefix_limiter
 
 from app.services.job_queue import append_mp_job_log, get_mp_job, update_mp_job
@@ -1747,6 +1747,18 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
     # Debug: Log barcode count
     append_mp_job_log(job_id, f"Gelen barkod sayısı: {len(barcodes) if barcodes else 0}")
     
+    # Resolve User ID from XML Source
+    user_id = None
+    if xml_source_id:
+        try:
+            from app.models import SupplierXML
+            s_id = str(xml_source_id)
+            if s_id.isdigit():
+                src = SupplierXML.query.get(int(s_id))
+                if src: user_id = src.user_id
+        except Exception as e:
+            logging.warning(f"Failed to resolve user_id: {e}")
+    
     xml_index = load_xml_source_index(xml_source_id)
     mp_map = xml_index.get('by_barcode') or {}
     multiplier = get_marketplace_multiplier('idefix')
@@ -1799,6 +1811,12 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
             skipped.append({'barcode': barcode, 'reason': 'XML verisi yok'})
             continue
         
+        # Blacklist check
+        forbidden_reason = is_product_forbidden(user_id, title=product.get('title'), brand=product.get('brand'), category=product.get('category'))
+        if forbidden_reason:
+            skipped.append({'barcode': barcode, 'reason': f"Yasakli Liste: {forbidden_reason}"})
+            continue
+            
         try:
             # Extract product data
             title = clean_forbidden_words(product.get('title', ''))

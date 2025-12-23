@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Modern e-ticaret entegrasyon platformu - Pazaryeri yönetiminizi kolaylaştırın">
     <title>Vidos Entegrasyon - E-Ticaret Çözümleri</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -152,13 +153,24 @@
             <h2 class="section-title">Fiyatlandırma</h2>
             <p class="section-subtitle">İşletmenize uygun paketi seçin</p>
 
+            <div class="pricing-toggle-container">
+                <span class="pricing-toggle-label active" id="monthly-label">Aylık</span>
+                <label class="switch">
+                    <input type="checkbox" id="pricing-toggle">
+                    <span class="slider"></span>
+                </label>
+                <span class="pricing-toggle-label" id="yearly-label">Yıllık <span class="save-badge">%20
+                        İndirim</span></span>
+            </div>
+
             <div class="pricing-grid">
                 <!-- Giriş Paketi -->
                 <div class="pricing-card scroll-animate">
                     <h3>Giriş Paketi</h3>
                     <div class="pricing-price">
-                        ₺790
-                        <span
+                        <span class="currency">₺</span><span class="price-val" data-monthly="790"
+                            data-yearly="6320">790</span>
+                        <span class="strike-price" data-monthly="1.290" data-yearly="10.320"
                             style="text-decoration: line-through; color: #ff4d4d; font-size: 1rem; margin-left: 10px;">(₺1.290)</span>
                     </div>
                     <ul class="pricing-features">
@@ -177,8 +189,9 @@
                     <span class="pricing-badge">Popüler</span>
                     <h3>Ticaret Paketi</h3>
                     <div class="pricing-price">
-                        ₺1.490
-                        <span
+                        <span class="currency">₺</span><span class="price-val" data-monthly="1.490"
+                            data-yearly="11.920">1.490</span>
+                        <span class="strike-price" data-monthly="2.390" data-yearly="19.120"
                             style="text-decoration: line-through; color: #ff4d4d; font-size: 1rem; margin-left: 10px;">(₺2.390)</span>
                     </div>
                     <ul class="pricing-features">
@@ -198,8 +211,9 @@
                 <div class="pricing-card scroll-animate">
                     <h3>Kurumsal Paket</h3>
                     <div class="pricing-price">
-                        ₺2.990
-                        <span
+                        <span class="currency">₺</span><span class="price-val" data-monthly="2.990"
+                            data-yearly="23.920">2.990</span>
+                        <span class="strike-price" data-monthly="4.290" data-yearly="34.320"
                             style="text-decoration: line-through; color: #ff4d4d; font-size: 1rem; margin-left: 10px;">(₺4.290)</span>
                     </div>
                     <ul class="pricing-features">
@@ -396,13 +410,51 @@
             observer.observe(element);
         });
 
+        // Pricing toggle logic
+        const pricingToggle = document.getElementById('pricing-toggle');
+        const monthlyLabel = document.getElementById('monthly-label');
+        const yearlyLabel = document.getElementById('yearly-label');
+        const priceVals = document.querySelectorAll('.price-val');
+        const strikePrices = document.querySelectorAll('.strike-price');
+
+        pricingToggle.addEventListener('change', function () {
+            if (this.checked) {
+                // Yearly
+                monthlyLabel.classList.remove('active');
+                yearlyLabel.classList.add('active');
+
+                priceVals.forEach(val => {
+                    val.textContent = val.getAttribute('data-yearly');
+                });
+
+                strikePrices.forEach(strike => {
+                    const yearlyStrike = strike.getAttribute('data-yearly');
+                    strike.textContent = `(₺${yearlyStrike})`;
+                });
+            } else {
+                // Monthly
+                monthlyLabel.classList.add('active');
+                yearlyLabel.classList.remove('active');
+
+                priceVals.forEach(val => {
+                    val.textContent = val.getAttribute('data-monthly');
+                });
+
+                strikePrices.forEach(strike => {
+                    const monthlyStrike = strike.getAttribute('data-monthly');
+                    strike.textContent = `(₺${monthlyStrike})`;
+                });
+            }
+        });
+
         // Pricing button interactions
         document.querySelectorAll('.btn-pricing').forEach(button => {
             button.addEventListener('click', function () {
                 const card = this.closest('.pricing-card');
                 const planName = card.querySelector('h3').textContent;
+                const isYearly = pricingToggle.checked;
 
-                // Determine plan ID  from plan name
+                // Determine plan ID from plan name
                 let planId = 'basic';
                 if (planName.includes('Ticaret')) {
                     planId = 'pro';
@@ -410,8 +462,10 @@
                     planId = 'enterprise';
                 }
 
-                // Redirect to registration with plan parameter
-                window.location.href = "{{ url_for('auth.register') }}?plan=" + planId;
+                const billing = isYearly ? 'yearly' : 'monthly';
+
+                // Redirect to registration with plan and billing parameters
+                window.location.href = "{{ url_for('auth.register') }}?plan=" + planId + "&billing=" + billing;
             });
         });
     </script>

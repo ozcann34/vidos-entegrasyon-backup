@@ -19,7 +19,7 @@ from app.models import Setting
 from app.services.pazarama_client import PazaramaClient
 from app.services.xml_service import load_xml_source_index, lookup_xml_record
 from app.services.job_queue import append_mp_job_log
-from app.utils.helpers import to_int, to_float, chunked, get_marketplace_multiplier, clean_forbidden_words
+from app.utils.helpers import to_int, to_float, chunked, get_marketplace_multiplier, clean_forbidden_words, is_product_forbidden
 
 # Category cache for basic operations
 _PAZARAMA_CATEGORY_CACHE = {"list": [], "names": [], "ids": []}
@@ -925,6 +925,19 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
     
     client = get_pazarama_client()
     append_mp_job_log(job_id, "Pazarama istemcisi hazir")
+
+    # Resolve User ID from XML Source
+    user_id = None
+    if xml_source_id:
+        try:
+            from app.models import SupplierXML
+            s_id = str(xml_source_id)
+            if s_id.isdigit():
+                src = SupplierXML.query.get(int(s_id))
+                if src: user_id = src.user_id
+        except Exception as e:
+            logging.warning(f"Failed to resolve user_id: {e}")
+
     
     # Extract options
     price_multiplier = to_float(kwargs.get('price_multiplier', 1.0))
@@ -1009,6 +1022,12 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
             skipped.append({'barcode': barcode, 'reason': 'XML\'de bulunamadi'})
             continue
         
+        # Blacklist check
+        forbidden_reason = is_product_forbidden(user_id, title=product.get('title'), brand=product.get('brand'), category=product.get('category'))
+        if forbidden_reason:
+            skipped.append({'barcode': barcode, 'reason': f"Yasakli Liste: {forbidden_reason}"})
+            continue
+            
         try:
             # Extract product data
             title = clean_forbidden_words(product.get('title', ''))

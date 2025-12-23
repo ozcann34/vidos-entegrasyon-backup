@@ -12,7 +12,7 @@ from app.models import Setting, Product, SupplierXML
 from app.services.trendyol_client import TrendyolClient, build_attributes_payload
 from app.services.xml_service import load_xml_source_index
 from app.services.job_queue import append_mp_job_log, get_mp_job, update_mp_job
-from app.utils.helpers import to_int, to_float, chunked, get_marketplace_multiplier, clean_forbidden_words
+from app.utils.helpers import to_int, to_float, chunked, get_marketplace_multiplier, clean_forbidden_words, is_product_forbidden
 
 _CAT_TFIDF = {
     "leaf": [],
@@ -1301,6 +1301,11 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
                 target_barcode = matched_local.get('barcode')
                 append_mp_job_log(job_id, f"Stok Kodu Eşleşmesi: XML({barcode}) -> MP({target_barcode})")
             
+        # Blacklist check (Forbidden words/brands/categories)
+        forbidden_reason = is_product_forbidden(user_id, title=product.get('title'), brand=product.get('brand'), category=product.get('category'))
+        if forbidden_reason:
+            skipped.append({'barcode': barcode, 'reason': f"Yasaklı Liste: {forbidden_reason}"})
+            continue
         title = clean_forbidden_words(product.get('title', ''))
         if title_prefix:
              title = f"{title_prefix} {title}"

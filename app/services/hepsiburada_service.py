@@ -7,7 +7,7 @@ from app.models import Setting, SupplierXML
 from app.services.hepsiburada_client import HepsiburadaClient
 from app.services.xml_service import load_xml_source_index
 from app.services.job_queue import append_mp_job_log, update_mp_job, get_mp_job
-from app.utils.helpers import get_marketplace_multiplier, to_float, to_int
+from app.utils.helpers import get_marketplace_multiplier, to_float, to_int, is_product_forbidden
 
 def get_hepsiburada_client(user_id: int = None) -> HepsiburadaClient:
     """Factory to get authenticated client."""
@@ -29,6 +29,17 @@ def perform_hepsiburada_send_products(job_id: str, barcodes: List[str], xml_sour
     Send selected products from XML to Hepsiburada.
     """
     append_mp_job_log(job_id, "Hepsiburada gönderim işlemi başlatılıyor...")
+    
+    # Resolve User ID from XML Source
+    user_id = None
+    if xml_source_id:
+        try:
+            s_id = str(xml_source_id)
+            if s_id.isdigit():
+                src = SupplierXML.query.get(int(s_id))
+                if src: user_id = src.user_id
+        except Exception as e:
+            logging.warning(f"Failed to resolve user_id: {e}")
     
     try:
         client = get_hepsiburada_client()
@@ -62,6 +73,12 @@ def perform_hepsiburada_send_products(job_id: str, barcodes: List[str], xml_sour
             skipped.append({'barcode': barcode, 'reason': 'XML verisi bulunamadı'})
             continue
             
+        # Blacklist check
+        forbidden_reason = is_product_forbidden(user_id, title=product.get('title'), brand=product.get('brand'), category=product.get('category'))
+        if forbidden_reason:
+            skipped.append({'barcode': barcode, 'reason': f"Yasaklı Liste: {forbidden_reason}"})
+            continue
+
         # Basic Mapping
         # Hepsiburada requires: MerchantSku, ProductName, Price, Stock, etc.
         # Actually for 'Catalog' integration it is complex, but for 'Listing' (Inventory) 

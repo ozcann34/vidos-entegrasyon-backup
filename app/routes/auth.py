@@ -140,7 +140,8 @@ def logout():
     """Logout user."""
     logout_user()
     flash('Başarıyla çıkış yaptınız.', 'info')
-    return redirect(url_for('auth.login'))
+    return redirect(url_for('auth.landing'))
+
 
 
 @auth_bp.route('/forgot-password', methods=['GET', 'POST'])

@@ -99,6 +99,7 @@ def create_product():
                 top_category=category,
                 description=description,
                 desi=desi,
+                vatRate=float(request.form.get('vat_rate', 20.0)),
                 attributes_json=attributes_json,
                 images_json=images_json
             )

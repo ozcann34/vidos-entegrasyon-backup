@@ -12,7 +12,7 @@ from app.models import Product, Setting
 from flask_login import current_user
 from app.services.n11_client import get_n11_client
 from app.services.job_queue import append_mp_job_log
-from app.utils.helpers import clean_forbidden_words, to_int, to_float
+from app.utils.helpers import clean_forbidden_words, to_int, to_float, is_product_forbidden
 
 # ---------------------------------------------------
 # N11 Category Caching & Auto Match Globals
@@ -330,6 +330,18 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
         
     append_mp_job_log(job_id, f"N11 gönderimi başlatılıyor... Seçenekler: Çarpan={price_multiplier}, Barkodsuz Atla={skip_no_barcode}")
     
+    # Resolve User ID from XML Source
+    user_id = None
+    if xml_source_id:
+        try:
+            from app.models import SupplierXML
+            s_id = str(xml_source_id)
+            if s_id.isdigit():
+                src = SupplierXML.query.get(int(s_id))
+                if src: user_id = src.user_id
+        except Exception as e:
+            logging.warning(f"Failed to resolve user_id: {e}")
+    
     # 1. Load Categories if needed
     if auto_match:
         append_mp_job_log(job_id, "Kategoriler yükleniyor ve kontrol ediliyor...")
@@ -405,6 +417,12 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
                  # User intent: "Match if exists, otherwise create new" usually.
                  pass
             
+        # Blacklist check
+        forbidden_reason = is_product_forbidden(user_id, title=product.get('title'), brand=product.get('brand'), category=product.get('category'))
+        if forbidden_reason:
+            skipped.append({'barcode': barcode, 'reason': f"Yasaklı Liste: {forbidden_reason}"})
+            continue
+
         title = clean_forbidden_words(product.get('title', ''))
         if title_prefix:
             title = f"{title_prefix} {title}"

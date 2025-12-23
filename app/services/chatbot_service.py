@@ -10,13 +10,23 @@ KNOWLEDGE_BASE = {
     "trendyol kategori eşleştirme": "Kategorileri eşleştirmek için ürün listesinde 'Kategori Eşleştir' butonunu kullanın.",
 
     # Hepsiburada
-    "hepsiburada ürün gönderimi": "Hepsiburada'ya ürün göndermek için merchant ID'nizin doğru girildiğinden emin olun.",
+    "hepsiburada ürün gönderimi": "Hepsiburada'ya ürün göndermek için merchant ID'nizin doğru girildiğinden emin olun. Ürünler Hepsiburada Listing API üzerinden iletilir.",
     "hepsiburada 403 hatası": "403 hatası genellikle yetki sorunudur. API anahtarlarınızı kontrol edin.",
+
+    # Pazarama & Idefix
+    "pazarama ürün gönderimi": "Pazarama'ya ürün göndermek için Ayarlar > Pazarama API bilgilerinizin (E-posta, Şifre) doğru olduğunu kontrol edin.",
+    "idefix ürün gönderimi": "Idefix entegrasyonu için API bilgilerini girdikten sonra XML ürünlerini seçerek gönderim yapabilirsiniz.",
 
     # XML / Excel
     "xml yükleme": "XML linki eklemek için 'XML Ürünleri' sayfasına gidin ve 'Yeni XML Ekle' butonunu kullanın.",
     "excel ürün yükleme": "Excel ile ürün yüklemek için şablonu indirin, doldurun ve 'Excel Ürünleri' sayfasından yükleyin.",
     "stok 0": "Stok 0 olan ürünleri satışa kapatmak veya 1 olarak göndermek için Ayarlar sayfasını kontrol edebilirsiniz.",
+
+    # New Features
+    "yasaklı liste": "Yasaklı Liste (Blacklist), belirli marka, kategori veya kelimeleri içeren ürünlerin pazar yerlerine gönderilmesini engeller. Ayarlar > Yasaklı Liste menüsünden yönetebilirsiniz.",
+    "kara liste": "Kara Liste özelliği ile istemediğiniz markaları veya kelimeleri engelleyerek satış listenizi kontrol altında tutabilirsiniz.",
+    "kdv oranı": "Ürün ekleme veya düzenleme sayfasında KDV oranını manuel seçebilirsiniz. Ayrıca XML'den gelen verilerde varsayılan KDV oranı kullanılır.",
+    "fiyat toggle": "Landing sayfasındaki fiyatlar aylık veya yıllık (indirimli) olarak görüntülenebilir. Yıllık alımlarda %20 indirim uygulanır.",
 
     # Orders / Invoice
     "fatura kesme": "Sipariş detay sayfasında 'Fatura Oluştur' butonunu kullanabilirsiniz. Henüz entegrasyon tamamlanmadıysa manuel yükleyebilirsiniz.",

@@ -148,3 +148,34 @@ def clean_forbidden_words(text: str, user_id: Optional[int] = None) -> str:
     
     return result
 
+def is_product_forbidden(user_id: int, title: str = "", brand: str = "", category: str = "") -> Optional[str]:
+    """
+    Check if a product is in the forbidden list.
+    
+    Returns:
+        The reason (value/type) if forbidden, None otherwise.
+    """
+    from app.models import Blacklist
+    
+    # Get all blacklist items for this user
+    items = Blacklist.query.filter_by(user_id=user_id).all()
+    if not items:
+        return None
+    
+    title_low = (title or "").lower()
+    brand_low = (brand or "").lower()
+    category_low = (category or "").lower()
+    
+    for item in items:
+        val_low = item.value.lower()
+        if item.type == 'brand':
+            if val_low == brand_low:
+                return f"Yasaklı Marka: {item.value}"
+        elif item.type == 'category':
+            if val_low in category_low: # Category usually contains breadcrumbs
+                return f"Yasaklı Kategori: {item.value}"
+        elif item.type == 'word':
+            if val_low in title_low or val_low in brand_low or val_low in category_low:
+                return f"Yasaklı Kelime: {item.value}"
+                
+    return None

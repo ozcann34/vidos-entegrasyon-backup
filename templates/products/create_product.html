@@ -129,6 +129,15 @@
                                     </div>
                                 </div>
                                 <div class="mb-3">
+                                    <label class="form-label fw-bold">KDV Oranı (%)</label>
+                                    <select name="vat_rate" class="form-select">
+                                        <option value="20" selected>%20 (Genel)</option>
+                                        <option value="10">%10 (Gıda vb.)</option>
+                                        <option value="1">%1 (Temel Gıda)</option>
+                                        <option value="0">%0 (Muaf)</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
                                     <label class="form-label">Maliyet Fiyatı</label>
                                     <div class="input-group">
                                         <input type="number" name="cost_price" class="form-control" step="0.01"

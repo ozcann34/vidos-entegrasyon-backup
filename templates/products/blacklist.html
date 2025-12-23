@@ -26,6 +26,7 @@
                         <select name="type" class="form-select" required>
                             <option value="brand">Marka (Brand)</option>
                             <option value="category">Kategori</option>
+                            <option value="word">Yasaklı Kelime</option>
                         </select>
                     </div>
 
@@ -74,9 +75,11 @@
                             <td>
                                 {% if item.type == 'brand' %}
                                 <span class="badge bg-warning text-dark"><i class="bi bi-tag-fill me-1"></i>Marka</span>
-                                {% else %}
+                                {% elif item.type == 'category' %}
                                 <span class="badge bg-info text-dark"><i
                                         class="bi bi-grid-fill me-1"></i>Kategori</span>
+                                {% else %}
+                                <span class="badge bg-danger text-white"><i class="bi bi-fonts me-1"></i>Kelime</span>
                                 {% endif %}
                             </td>
                             <td class="fw-bold">{{ item.value }}</td>
