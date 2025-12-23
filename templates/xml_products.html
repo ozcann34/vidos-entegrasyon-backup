@@ -3,26 +3,75 @@
 {% block page_title %}Tedarikçi XML'den Gelen Ürünler{% endblock %}
 
 {% block content %}
+<style>
+  .text-orange {
+    color: #FF6000 !important;
+  }
+
+  .text-purple {
+    color: #5f259f !important;
+  }
+
+  .btn-outline-warning:hover,
+  .btn-outline-danger:hover,
+  .btn-outline-primary:hover,
+  .btn-outline-info:hover,
+  .btn-outline-secondary:hover {
+    transform: translateY(-2px);
+    transition: all 0.2s;
+  }
+</style>
 <div class="animate-fade-in">
-  <div class="d-flex align-items-center justify-content-between mb-4">
-    <div class="d-flex align-items-center gap-2">
-      <button id="changeSourceBtn"
-        class="btn btn-outline-primary border-2 px-3 shadow-sm d-flex align-items-center gap-2">
-        <i class="bi bi-hdd-network fs-5"></i>
-        <span class="fw-bold">Kaynak Değiştir</span>
-      </button>
-      <span id="productCount"
-        class="badge bg-primary bg-opacity-10 text-primary border border-primary px-3 py-2 rounded-pill fw-bold">
-        Yükleniyor...
-      </span>
-    </div>
-    <div class="d-flex align-items-center gap-2">
-      <button id="toggleViewBtn" class="btn btn-light border shadow-sm px-3" data-mode="list">
-        <i class="bi bi-grid-3x3-gap me-1"></i> Görünüm: Grid
-      </button>
-      <button id="sendAllBtn" class="btn btn-admin px-4 shadow-sm animate-pulse">
-        <i class="bi bi-rocket-takeoff me-2"></i> Tümünü Gönder
-      </button>
+  <!-- Minimalist Toolbar -->
+  <div class="card border-0 shadow-sm mb-4" style="background: var(--card); border-radius: 1rem;">
+    <div class="card-body p-2">
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <!-- Left Side: Source & Basic View -->
+        <div class="d-flex align-items-center gap-2">
+          <button id="changeSourceBtn"
+            class="btn btn-sm btn-outline-primary border-2 fw-bold d-flex align-items-center gap-2 rounded-pill px-3">
+            <i class="bi bi-hdd-network"></i> Kaynak
+          </button>
+          <button id="toggleViewBtn"
+            class="btn btn-sm btn-light border d-flex align-items-center gap-2 rounded-pill px-3" data-mode="list">
+            <i class="bi bi-grid-3x3-gap"></i> Görünüm
+          </button>
+        </div>
+
+        <!-- Center: Marketplace Send Buttons -->
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <span class="small text-muted fw-bold me-1">Seçilileri Gönder:</span>
+          <button id="sendTrendyolBtn"
+            class="btn btn-sm btn-outline-warning rounded-pill px-3 fw-bold shadow-sm d-flex align-items-center gap-1">
+            <i class="bi bi-lightning-fill"></i> Trendyol
+          </button>
+          <button id="sendHepsiburadaBtn"
+            class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold shadow-sm d-flex align-items-center gap-1"
+            style="border-color: #FF6000; color: #FF6000;">
+            <i class="bi bi-lightning-fill"></i> Hepsiburada
+          </button>
+          <button id="sendPazaramaBtn"
+            class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold shadow-sm d-flex align-items-center gap-1">
+            <i class="bi bi-lightning-fill"></i> Pazarama
+          </button>
+          <button id="sendIdefixBtn"
+            class="btn btn-sm btn-outline-info rounded-pill px-3 fw-bold shadow-sm d-flex align-items-center gap-1">
+            <i class="bi bi-lightning-fill"></i> İdefix
+          </button>
+          <button id="sendN11Btn"
+            class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-bold shadow-sm d-flex align-items-center gap-1"
+            style="border-color: #5f259f; color: #5f259f;">
+            <i class="bi bi-lightning-fill"></i> N11
+          </button>
+        </div>
+
+        <!-- Right Side: Global Actions -->
+        <div class="d-flex align-items-center gap-2">
+          <button id="sendAllBtn" class="btn btn-sm btn-admin rounded-pill px-4 shadow-sm">
+            <i class="bi bi-rocket-takeoff me-2"></i> Tümünü Gönder
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -169,7 +218,7 @@
 <script>
   // Global Variables
   let currentPage = 1;
-  let itemsPerPage = 5000;
+  let itemsPerPage = 100;
   let currentSearchQuery = '';
   let currentTotal = 0;
   let selectedSourceId = localStorage.getItem('vidos_xml_source_id') || null;
@@ -179,7 +228,6 @@
   // DOM Elements
   const productListBody = document.getElementById('productListBody');
   const pagination = document.getElementById('pagination');
-  const productCountSpan = document.getElementById('productCount');
   const searchInput = document.getElementById('searchInput');
   const perPageSelect = document.getElementById('perPageSelect');
   const goToInput = document.getElementById('goToInput');
@@ -438,7 +486,6 @@
       const resp = await fetch(url);
       const data = await resp.json();
       currentTotal = data.total || 0;
-      productCountSpan.innerText = `Toplam ${currentTotal.toLocaleString('tr-TR')} ürün`;
       renderProducts(data.items || []);
       renderPagination(currentTotal, currentPage);
       window.scrollTo({ top: 0, behavior: 'smooth' });
