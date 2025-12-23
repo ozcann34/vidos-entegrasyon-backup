@@ -709,11 +709,16 @@ body[data-brand="ikas"] {
 }
 
 @media (max-width: 991.98px) {
+  body {
+    display: block !important;
+  }
+
   #main-content {
     padding-top: 70px !important;
     padding-bottom: 90px !important;
     /* Bottom nav space */
     margin-left: 0 !important;
+    width: 100% !important;
   }
 
   #sidebar {
@@ -725,14 +730,20 @@ body[data-brand="ikas"] {
     height: calc(100vh - 60px);
     transform: translateX(-100%);
     z-index: 2000;
-    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: none;
     border-radius: 0 20px 0 0;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
   }
 
   #sidebar.active {
     transform: translateX(0);
     box-shadow: 15px 0 50px rgba(0, 0, 0, 0.6);
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
   }
 
   .quick-actions-bar {

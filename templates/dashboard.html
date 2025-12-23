@@ -39,7 +39,6 @@
   </span>
 </button>
 {% endif %}
-</div>
 
 {% with messages = get_flashed_messages(with_categories=true) %}
 {% if messages %}
@@ -73,7 +72,7 @@
             onclick="dismissAnnouncement('{{ ann.id }}')"></button>
         </div>
         <div class="small text-muted flex-grow-1 mb-2"
-          style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+          style="display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
           {{ ann.content | striptags }}
         </div>
         <button class="btn btn-sm btn-outline-{{ alert_class }} w-100 rounded-pill fw-bold"
@@ -540,7 +539,7 @@
   }
 
   // --- Live Order Polling ---
-  function fetchRecentOrders() {
+  window.fetchRecentOrders = function () {
     const btn = document.querySelector('button[onclick="fetchRecentOrders()"]');
     const originalIcon = btn ? btn.innerHTML : '';
 
@@ -602,7 +601,7 @@
   setInterval(fetchRecentOrders, 30000);
 
   // --- Live Stats Polling ---
-  function fetchDashboardStats() {
+  window.fetchDashboardStats = function () {
     fetch('/api/dashboard/stats')
       .then(r => r.json())
       .then(data => {
