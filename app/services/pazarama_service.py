@@ -1058,8 +1058,52 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
                 skipped.append({'barcode': barcode, 'reason': 'Kategori eslesmedi', 'top_cat': top_category, 'xml_cat': xml_category})
                 continue
             
-            # Get required attributes for category
-            attributes = pazarama_get_required_attributes(client, category_id)
+            # Get required attributes for category with variant matching
+            variant_attributes = product.get('variant_attributes', [])
+            
+            def get_variant_value(at_name):
+                at_name_lower = at_name.lower()
+                for va in variant_attributes:
+                    v_name = va['name'].lower()
+                    if v_name in at_name_lower or at_name_lower in v_name:
+                        return va['value']
+                return None
+
+            attributes = []
+            try:
+                full_cat_data = client.get_category_with_attributes(category_id)
+                for attr_def in full_cat_data.get('data', {}).get('attributes', []):
+                    if not attr_def.get('isRequired'):
+                        continue
+                    
+                    at_id = attr_def.get('id')
+                    at_name = attr_def.get('name', '')
+                    at_values = attr_def.get('attributeValues') or []
+                    
+                    val_from_xml = get_variant_value(at_name)
+                    matched_val_id = None
+                    
+                    if val_from_xml and at_values:
+                        val_from_xml_l = val_from_xml.lower()
+                        for v_opt in at_values:
+                            if v_opt.get('name', '').lower() == val_from_xml_l:
+                                matched_val_id = v_opt.get('id')
+                                break
+                    
+                    if matched_val_id:
+                        attributes.append({
+                            'attributeId': at_id,
+                            'attributeValueId': matched_val_id
+                        })
+                    elif at_values:
+                        # Fallback to first value
+                        attributes.append({
+                            'attributeId': at_id,
+                            'attributeValueId': at_values[0].get('id')
+                        })
+            except Exception as attr_err:
+                # Fallback to simple cached attributes if detailed fetch fails
+                attributes = pazarama_get_required_attributes(client, category_id)
             
             # Price & Stock
             base_price = to_float(product.get('price', 0))

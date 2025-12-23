@@ -146,6 +146,7 @@ def perform_hepsiburada_send_products(job_id: str, barcodes: List[str], xml_sour
         item = {
             "merchantSku": barcode,
             "productName": title[:200], # Added title if needed
+            "VaryantGroupID": product.get('parent_barcode') or barcode, # For variant grouping
             "price": {
                 "amount": final_price,
                 "currency": "TRY"

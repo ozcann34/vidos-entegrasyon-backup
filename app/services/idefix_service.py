@@ -1278,9 +1278,18 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
             else:
                 append_mp_job_log(job_id, f"   ⚠️ Kategori için özellik bulunamadı!", level='warning')
         
-        # Build required attributes with first available value
+        # Build required attributes with variant matching
         product_attributes = []
         missing_required = []
+        variant_attributes = rec.get('variant_attributes', [])
+        
+        def get_variant_value(attr_name):
+            attr_name_lower = attr_name.lower()
+            for va in variant_attributes:
+                v_name = va['name'].lower()
+                if v_name in attr_name_lower or attr_name_lower in v_name:
+                    return va['value']
+            return None
         
         for attr in category_attrs_cache.get(item_cat_id, []):
             if attr.get('required', False):
@@ -1288,8 +1297,39 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
                 attr_name = attr.get('attributeTitle') or attr.get('name', 'Bilinmeyen')
                 attr_values = attr.get('attributeValues', [])
                 
-                if attr_values and len(attr_values) > 0:
-                    # Use first available value if no custom mapping
+                # Try to get value from XML variants
+                val_from_xml = get_variant_value(attr_name)
+                matched_val_id = None
+                
+                if val_from_xml and attr_values:
+                    val_from_xml_lower = val_from_xml.lower()
+                    for v in attr_values:
+                        v_name = v.get('value', '').lower()
+                        if v_name == val_from_xml_lower:
+                            matched_val_id = v.get('id')
+                            break
+                    # Fuzzy match
+                    if not matched_val_id:
+                        for v in attr_values:
+                            v_name = v.get('value', '').lower()
+                            if v_name in val_from_xml_lower or val_from_xml_lower in v_name:
+                                matched_val_id = v.get('id')
+                                break
+                
+                if matched_val_id:
+                    product_attributes.append({
+                        "attributeId": attr_id,
+                        "attributeValueId": matched_val_id,
+                        "customAttributeValue": None
+                    })
+                elif val_from_xml and attr.get('allowCustom', False):
+                    product_attributes.append({
+                        "attributeId": attr_id,
+                        "attributeValueId": None,
+                        "customAttributeValue": val_from_xml[:100]
+                    })
+                elif attr_values and len(attr_values) > 0:
+                    # Fallback to first available value
                     first_value = attr_values[0]
                     product_attributes.append({
                         "attributeId": attr_id,
@@ -1297,7 +1337,7 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
                         "customAttributeValue": None
                     })
                 elif attr.get('allowCustom', False):
-                    # Use custom value if allowed (use product title/description)
+                    # Use custom value from title
                     product_attributes.append({
                         "attributeId": attr_id,
                         "attributeValueId": None,

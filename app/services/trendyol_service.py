@@ -1244,12 +1244,22 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
         "Web Color": "Belirtilmemiş"
     }
 
-    def build_simple_attributes(category_id: int) -> List[dict]:
-        """Build minimal required attributes for a category"""
+    def build_simple_attributes(category_id: int, variant_attributes: List[dict] = None) -> List[dict]:
+        """Build minimal required attributes for a category, integrating variant attributes if provided"""
         try:
             attrs = client.get_category_attributes(category_id)
             payload = []
             
+            # Helper to find a value for an attribute in variant_attributes
+            def get_variant_value(attr_name):
+                if not variant_attributes: return None
+                attr_name_lower = attr_name.lower()
+                for va in variant_attributes:
+                    v_name = va['name'].lower()
+                    if v_name in attr_name_lower or attr_name_lower in v_name:
+                        return va['value']
+                return None
+
             for attr_def in attrs.get("categoryAttributes", []):
                 attr_info = attr_def.get("attribute", {})
                 attr_id = attr_info.get("id")
@@ -1262,13 +1272,43 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
                     continue
                 
                 item = {"attributeId": attr_id}
-                default_value = DEFAULT_ATTRS.get(attr_name, "Bilinmiyor")
                 
-                if attr_values and not allow_custom:
-                    # Use first available value for required attributes
-                    item["attributeValueId"] = attr_values[0]['id']
+                # Try to get value from variant_attributes
+                val_from_xml = get_variant_value(attr_name)
+                
+                # Search for the value in Trendyol's attribute values
+                matched_val_id = None
+                if val_from_xml and attr_values:
+                    val_from_xml_lower = val_from_xml.lower()
+                    for v in attr_values:
+                        if v['name'].lower() == val_from_xml_lower:
+                            matched_val_id = v['id']
+                            break
+                    # Fuzzy match if exact fails
+                    if not matched_val_id:
+                        for v in attr_values:
+                            if v['name'].lower() in val_from_xml_lower or val_from_xml_lower in v['name'].lower():
+                                matched_val_id = v['id']
+                                break
+
+                if matched_val_id:
+                    item["attributeValueId"] = matched_val_id
+                elif allow_custom and val_from_xml:
+                    item["customAttributeValue"] = str(val_from_xml)
+                elif attr_values:
+                    # Fallback: check if we can match from title if not in variant_attributes
+                    for v in attr_values:
+                        if v['name'].lower() in title.lower():
+                            matched_val_id = v['id']
+                            break
+                    
+                    if matched_val_id:
+                        item["attributeValueId"] = matched_val_id
+                    else:
+                        # Final resort: use first value
+                        item["attributeValueId"] = attr_values[0]['id']
                 elif allow_custom:
-                    item["customAttributeValue"] = str(default_value)
+                    item["customAttributeValue"] = DEFAULT_ATTRS.get(attr_name, "Bilinmiyor")
                 else:
                     continue
                 
@@ -1418,7 +1458,7 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
             product_images = ["https://via.placeholder.com/500"]
 
         # Build minimal required attributes
-        attributes_payload = build_simple_attributes(category_id)
+        attributes_payload = build_simple_attributes(category_id, variant_attributes=product.get('variant_attributes'))
 
         # Build V2 Payload Item
         item = {

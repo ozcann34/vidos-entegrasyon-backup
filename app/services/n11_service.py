@@ -499,6 +499,17 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
         # Add default brand if exists and not already present
         brand_added = False
         
+        # --- PREPARE VARIANT ATTRIBUTE MATCHING ---
+        variant_attributes = p.get('variant_attributes', [])
+        
+        def get_variant_value(attr_name):
+            attr_name_lower = attr_name.lower()
+            for va in variant_attributes:
+                v_name = va['name'].lower()
+                if v_name in attr_name_lower or attr_name_lower in v_name:
+                    return va['value']
+            return None
+        
         # --- AUTO-MATCH MANDATORY ATTRIBUTES ---
         try:
              # Fetch attributes for this category
@@ -513,17 +524,6 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
                  
                  # Handling Brand Specifics (ID 1 is usually Brand)
                  if str(attr_id) == '1':
-                     # [USER REQUEST] FORCE STRING / CustomValue even if ID exists
-                     # We keep the ID logic commented out for future use
-                     # if default_brand_id:
-                     #      attributes.append({
-                     #         "id": 1,
-                     #         "valueId": default_brand_id,
-                     #         "customValue": None
-                     #     })
-                     #      brand_added = True
-                     # elif default_brand:
-                     
                      if default_brand:
                          attributes.append({
                              "id": 1,
@@ -535,21 +535,36 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
 
                  # Ensure mandatory attributes are handled
                  if mandatory:
-                     # Try to match from title
-                     # FIX: N11 CDN uses 'attributeValues'
-                     values = cat_attr.get('values') or cat_attr.get('valueList') or cat_attr.get('attributeValues') or []
+                     # Try to match from variant_attributes first
+                     val_from_xml = get_variant_value(attr_name)
                      
+                     # Search for the value in N11's attribute values
                      matched_value_id = None
-                     matched_custom_value = None
+                     values = cat_attr.get('values') or cat_attr.get('valueList') or cat_attr.get('attributeValues') or []
+
+                     if val_from_xml and values:
+                         val_from_xml_lower = val_from_xml.lower()
+                         for v in values:
+                              v_opt_name = (v.get('name') or v.get('value', '')).lower()
+                              if v_opt_name == val_from_xml_lower:
+                                  matched_value_id = v.get('id')
+                                  break
+                         # Fuzzy match
+                         if not matched_value_id:
+                             for v in values:
+                                 v_opt_name = (v.get('name') or v.get('value', '')).lower()
+                                 if v_opt_name in val_from_xml_lower or val_from_xml_lower in v_opt_name:
+                                     matched_value_id = v.get('id')
+                                     break
                      
-                     # Simple exact substring match
-                     # Sort values by length descending to match "iPhone 13 Pro Max" before "iPhone 13"
-                     if values:
+                     # Fallback to title matching if no variant attribute or match
+                     if not matched_value_id and values:
+                         # Sort values by length descending to match "iPhone 13 Pro Max" before "iPhone 13"
                          values.sort(key=lambda x: len(x.get('name') or x.get('value', '')), reverse=True)
                          
                          for val in values:
-                             v_name = val.get('name') or val.get('value')
-                             if v_name and v_name.lower() in item['title'].lower():
+                             v_opt_name = (val.get('name') or val.get('value', '')).lower()
+                             if v_opt_name and v_opt_name in item['title'].lower():
                                  matched_value_id = val.get('id')
                                  break
                      
@@ -558,9 +573,24 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
                              "id": attr_id,
                              "valueId": matched_value_id
                          })
-                         append_mp_job_log(job_id, f"OTOMATİK EŞLEŞME: {attr_name} ({attr_id}) -> {v_name}")
+                         append_mp_job_log(job_id, f"OTOMATİK EŞLEŞME: {attr_name} ({attr_id}) -> {val_from_xml or 'Başlıktan'}")
+                     elif val_from_xml:
+                         # If no ID found but we have a value, try customValue
+                         attributes.append({
+                             "id": attr_id,
+                             "valueId": None,
+                             "customValue": val_from_xml
+                         })
+                         append_mp_job_log(job_id, f"ÖZEL DEĞER: {attr_name} ({attr_id}) -> {val_from_xml}")
+                     elif values:
+                         # Final resort: first value
+                         attributes.append({
+                             "id": attr_id,
+                             "valueId": values[0].get('id')
+                         })
+                         append_mp_job_log(job_id, f"VARSAYILAN: {attr_name} ({attr_id}) için ilk değer kullanıldı.", level='info')
                      else:
-                         append_mp_job_log(job_id, f"UYARI: Zorunlu özellik '{attr_name}' ({attr_id}) için başlıktan eşleşme bulunamadı.", level='warning')
+                         append_mp_job_log(job_id, f"UYARI: Zorunlu özellik '{attr_name}' ({attr_id}) için eşleşme bulunamadı.", level='warning')
                          
         except Exception as e:
             append_mp_job_log(job_id, f"Özellik eşleştirme hatası: {e}", level='error')

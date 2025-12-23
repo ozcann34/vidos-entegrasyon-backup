@@ -274,10 +274,18 @@ def load_xml_source_index(xml_source_id: Any) -> Dict[str, Dict[str, Any]]:
                 v_record['quantity'] = to_int(_g(v, 'stock', 'Stock', 'quantity', 'Quantity') or '0')
                 v_record['price'] = to_float(_g(v, 'price', 'Price') or str(price))
                 
-                v_name1 = _g(v, 'name1', 'Name1', 'name', 'Name')
-                v_val1 = _g(v, 'value1', 'Value1', 'value', 'Value')
-                if v_name1 and v_val1:
-                    v_record['title'] = f"{title} ({v_val1})"
+                # Varyant ozelliklerini sakla (Eslesme icin kritik)
+                v_attrs = []
+                for i in range(1, 4): # support name1..name3
+                    v_n = _g(v, f'name{i}', f'Name{i}')
+                    v_v = _g(v, f'value{i}', f'Value{i}')
+                    if v_n and v_v:
+                        v_attrs.append({'name': v_n, 'value': v_v})
+                
+                if v_attrs:
+                    v_record['variant_attributes'] = v_attrs
+                    # Title'i guncelle (Eger varyant degeri varsa sona ekle)
+                    v_record['title'] = f"{title} ({', '.join([a['value'] for a in v_attrs])})"
                 
                 records.append(v_record)
                 index[str(v_barcode)] = v_record
