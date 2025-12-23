@@ -117,7 +117,8 @@ def register():
             
             # Send OTP
             from app.services.email_service import send_otp_email
-            send_otp_email(user)
+            if not send_otp_email(user):
+                flash('Kayıt başarılı ancak doğrulama e-postası gönderilemedi. Lütfen teknik ekibe ulaşın veya daha sonra tekrar deneyin.', 'warning')
             
             # Store selected plan in session
             session['selected_plan'] = plan

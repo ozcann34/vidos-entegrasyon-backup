@@ -177,9 +177,17 @@ def send_otp_email(user: User) -> bool:
             
         msg = Message(subject=subject, recipients=[user.email], html=html_body)
         mail.send(msg)
+        print(f"✅ OTP emaili gönderildi: {user.email}")
         return True
     except Exception as e:
-        print(f"OTP Error: {e}")
+        error_msg = f"[{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}] ❌ OTP Gönderim Hatası ({user.email}): {str(e)}\n"
+        print(error_msg)
+        try:
+            import os
+            log_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'email_errors.log')
+            with open(log_file, 'a', encoding='utf-8') as f:
+                f.write(error_msg)
+        except: pass
         return False
 
 
@@ -354,4 +362,47 @@ def send_support_ticket_resolved_email(user: User, ticket) -> bool:
             
     except Exception as e:
         print(f"Email error: {e}")
+        return False
+
+def send_contact_form_email(name, email, subject, message) -> bool:
+    """Send contact form message to admin."""
+    try:
+        admin_email = "bugraerkaradeniz34@gmail.com"
+        mail_subject = f"Yeni İletişim Formu Mesajı: {subject}"
+        
+        html_body = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+            <div style="background: #2c3e50; padding: 20px; border-radius: 10px 10px 0 0; color: white; text-align: center;">
+                <h2>Yeni İletişim Mesajı</h2>
+            </div>
+            <div style="padding: 20px;">
+                <p><strong>Gönderen:</strong> {name}</p>
+                <p><strong>E-posta:</strong> {email}</p>
+                <p><strong>Konu:</strong> {subject}</p>
+                <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+                <p><strong>Mesaj:</strong></p>
+                <p style="white-space: pre-wrap; background: #f9f9f9; padding: 15px; border-radius: 5px;">{message}</p>
+            </div>
+            <div style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">
+                Vidos Entegrasyon - İletişim Formu
+            </div>
+        </div>
+        """
+        
+        msg = Message(
+            subject=mail_subject,
+            recipients=[admin_email],
+            reply_to=email,
+            html=html_body
+        )
+        
+        if current_app.config.get('MAIL_USERNAME'):
+            mail.send(msg)
+            return True
+        else:
+            print(f"Contact form simulation: {name} ({email}) - {subject}")
+            return True
+            
+    except Exception as e:
+        print(f"Contact form email error: {e}")
         return False

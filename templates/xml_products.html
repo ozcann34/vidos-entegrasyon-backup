@@ -4,6 +4,27 @@
 
 {% block content %}
 <div class="animate-fade-in">
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <div class="d-flex align-items-center gap-2">
+      <button id="changeSourceBtn"
+        class="btn btn-outline-primary border-2 px-3 shadow-sm d-flex align-items-center gap-2">
+        <i class="bi bi-hdd-network fs-5"></i>
+        <span class="fw-bold">Kaynak Değiştir</span>
+      </button>
+      <span id="productCount"
+        class="badge bg-primary bg-opacity-10 text-primary border border-primary px-3 py-2 rounded-pill fw-bold">
+        Yükleniyor...
+      </span>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <button id="toggleViewBtn" class="btn btn-light border shadow-sm px-3" data-mode="list">
+        <i class="bi bi-grid-3x3-gap me-1"></i> Görünüm: Grid
+      </button>
+      <button id="sendAllBtn" class="btn btn-admin px-4 shadow-sm animate-pulse">
+        <i class="bi bi-rocket-takeoff me-2"></i> Tümünü Gönder
+      </button>
+    </div>
+  </div>
 </div>
 
 <!-- Advanced Filters -->

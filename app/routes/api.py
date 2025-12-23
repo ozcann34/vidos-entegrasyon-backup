@@ -433,41 +433,30 @@ def api_xml_source_products():
     except Exception:
         return jsonify({'total': 0, 'items': []})
     
-    # Filter
-    filtered = []
-    for rec in all_records:
-        # Search Query (Title or Barcode)
-        if query:
-            if query not in rec.get('title_normalized', '') and query not in str(rec.get('barcode', '')).lower():
-                continue
+    # Optimized filtering for large datasets
+    def _match(rec):
+        if query and query not in rec.get('title_normalized', '') and query not in str(rec.get('barcode', '')).lower():
+            return False
         
-        # Stock Filter
         stock = to_int(rec.get('quantity', 0))
-        if min_stock is not None and stock < min_stock:
-            continue
-        if max_stock is not None and stock > max_stock:
-            continue
+        if min_stock is not None and stock < min_stock: return False
+        if max_stock is not None and stock > max_stock: return False
+        
+        price = to_float(rec.get('price', 0))
+        if min_price is not None and price < min_price: return False
+        if max_price is not None and price > max_price: return False
+        
+        if category and category not in str(rec.get('category', '')).lower():
+            return False
             
-        # Price Filter
-        price = to_float(rec.get('listPrice', 0))
-        if min_price is not None and price < min_price:
-            continue
-        if max_price is not None and price > max_price:
-            continue
-            
-        # Category Filter
-        if category:
-            rec_cat = str(rec.get('category', '')).lower()
-            if category not in rec_cat:
-                continue
-                
-        # Image Filter
         if has_image:
-            images = rec.get('images', [])
-            if not images or (isinstance(images, list) and len(images) == 0):
-                continue
-                
-        filtered.append(rec)
+            imgs = rec.get('images', [])
+            if not imgs or (isinstance(imgs, list) and len(imgs) == 0):
+                return False
+        
+        return True
+
+    filtered = [rec for rec in all_records if _match(rec)]
     
     total = len(filtered)
     start = max(0, (page-1)*per_page)

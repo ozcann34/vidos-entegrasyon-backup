@@ -230,7 +230,27 @@ def ban_user_route(user_id):
 
 
 
-@admin_bp.route('/users/<int:user_id>/unban', methods=['POST'])
+@admin_bp.route('/users/<int:user_id>/verify', methods=['POST'])
+@admin_required
+def verify_user_route(user_id):
+    """Manually verify a user's email."""
+    user = User.query.get_or_404(user_id)
+    user.is_email_verified = True
+    user.email_otp = None
+    user.otp_expiry = None
+    db.session.commit()
+    
+    # Log action
+    AdminLog.log_action(
+        admin_id=current_user.id,
+        action='verify_email_manual',
+        target_user_id=user_id,
+        details=f'User {user.email} manually verified by admin.',
+        ip_address=request.remote_addr
+    )
+    
+    flash(f'{user.email} başarıyla doğrulandı.', 'success')
+    return redirect(url_for('admin.user_detail', user_id=user_id))
 
 @admin_required
 

@@ -1,37 +1,33 @@
-{% extends "_base.html" %}
+{% extends "legal/layout.html" %}
 
-{% block content %}
-<div class="container py-5 my-5">
-    <div class="card shadow-lg border-0 p-5 rounded-4"
-        style="background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1) !important;">
-        <h1 class="mb-4 text-white fw-bold">{{ title }}</h1>
-        <div class="legal-content text-light opacity-75" style="line-height: 1.8;">
-            <p><strong>Son Güncelleme:</strong> {{ now.strftime('%d.%m.%Y') if now else '18.12.2024' }}</p>
-            <hr class="border-secondary opacity-25">
-            <p>Bu bölüm henüz hazırlık aşamasındadır.</p>
-            <p>Vidos Entegrasyon olarak kullanıcılarımızın haklarını ve verilerini önemsiyoruz. Sözleşme metinleri en
-                kısa sürede buraya eklenecektir.</p>
-            <p>Sorularınız için <a href="mailto:destek@vidos.com" class="text-primary-light">destek@vidos.com</a>
-                adresinden bizimle iletişime geçebilirsiniz.</p>
-        </div>
-        <div class="mt-5">
-            <a href="{{ url_for('main.index') }}" class="btn btn-primary px-4 py-2">Ana Sayfaya Dön</a>
-        </div>
-    </div>
-</div>
+{% block title %}Gizlilik Politikası{% endblock %}
 
-<style>
-    .text-primary-light {
-        color: #818cf8;
-        text-decoration: none;
-    }
+{% block legal_content %}
+<h1>Gizlilik Politikası</h1>
+<p>Vidos Entegrasyon (biz, Vidos veya Platform), kullanıcılarımızın gizliliğine ve kişisel verilerinin korunmasına büyük
+    önem vermektedir. Bu politika, hizmetlerimizi kullanırken bilgilerinizin nasıl toplandığını, kullanıldığını ve
+    korunduğunu açıklar.</p>
 
-    .text-primary-light:hover {
-        text-decoration: underline;
-    }
+<h2>1. Toplanan Bilgiler</h2>
+<p>Sisteme kayıt olurken verdiğiniz isim, e-posta, telefon ve fatura bilgilerinin yanı sıra, entegrasyon için
+    sağladığınız pazaryeri API anahtarlarını topluyoruz.</p>
 
-    body {
-        background: #0a0a0f !important;
-    }
-</style>
+<h2>2. Verilerin Kullanımı</h2>
+<p>Verileriniz yalnızca aşağıdaki amaçlarla kullanılır:</p>
+<ul>
+    <li>Entegrasyon hizmetlerinin sağlanması ve sipariş yönetimi.</li>
+    <li>Kullanıcı hesabı güvenliğinin sağlanması.</li>
+    <li>Hizmet kalitesinin artırılması ve teknik destek süreçleri.</li>
+</ul>
+
+<h2>3. Pazaryeri Verileri</h2>
+<p>Pazaryerlerinden çekilen ürün ve sipariş verileri, yalnızca size raporlama sunmak ve stok/fiyat güncellemelerini
+    yönetmek amacıyla işlenir. Bu veriler üçüncü şahıslarla reklam amaçlı paylaşılmaz.</p>
+
+<h2>4. Güvenlik</h2>
+<p>Verileriniz endüstri standardı şifreleme yöntemleri ile korunmaktadır. API anahtarlarınız veritabanımızda
+    kriptolanmış olarak saklanır.</p>
+
+<h2>5. İletişim</h2>
+<p>Gizlilik politikamız ile ilgili her türlü sorunuz için destek@vidos.com adresinden bize ulaşabilirsiniz.</p>
 {% endblock %}

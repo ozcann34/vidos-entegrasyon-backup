@@ -86,6 +86,14 @@
             </button>
             {% endif %}
 
+            {% if not user.is_email_verified %}
+            <form action="{{ url_for('admin.verify_user_route', user_id=user.id) }}" method="POST" class="mb-2">
+                <button type="submit" class="btn btn-success w-100">
+                    <i class="bi bi-patch-check me-2"></i>Manuel Doğrula
+                </button>
+            </form>
+            {% endif %}
+
             <button type="button" class="btn btn-outline-danger w-100" data-bs-toggle="modal"
                 data-bs-target="#deleteModal">
                 <i class="bi bi-trash me-2"></i>Hesabı Sil

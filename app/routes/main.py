@@ -134,23 +134,23 @@ def user_manual():
 
 @main_bp.route("/gizlilik-politikasi")
 def privacy_policy():
-    return render_template('legal/privacy.html', title="Gizlilik Politikası")
+    return render_template('legal/privacy.html')
 
 @main_bp.route("/kullanim-kosullari")
 def terms_of_use():
-    return render_template('legal/privacy.html', title="Kullanım Koşulları")
+    return render_template('legal/terms.html')
 
 @main_bp.route("/kvkk")
 def kvkk():
-    return render_template('legal/privacy.html', title="KVKK Aydınlatma Metni")
+    return render_template('legal/kvkk.html')
 
 @main_bp.route("/mesafeli-satis")
 def distance_sales():
-    return render_template('legal/privacy.html', title="Mesafeli Satış Sözleşmesi")
+    return render_template('legal/distance_sales.html')
 
 @main_bp.route("/iptal-iade")
 def refund_policy():
-    return render_template('legal/privacy.html', title="İptal ve İade Koşulları")
+    return render_template('legal/refund.html')
 
 @main_bp.route("/")
 def index():
@@ -162,9 +162,22 @@ def about_us():
     return render_template('about_us.html')
 
 
-@main_bp.route('/iletisim')
+@main_bp.route('/iletisim', methods=['GET', 'POST'])
 def contact():
-    """Contact page."""
+    """Contact page with form handling."""
+    if request.method == 'POST':
+        name = request.form.get('name')
+        email = request.form.get('email')
+        subject = request.form.get('subject')
+        message = request.form.get('message')
+        
+        from app.services.email_service import send_contact_form_email
+        if send_contact_form_email(name, email, subject, message):
+            flash('Mesajınız başarıyla iletildi. En kısa sürede dönüş yapacağız.', 'success')
+        else:
+            flash('Mesaj gönderilirken bir hata oluştu. Lütfen daha sonra tekrar deneyin.', 'danger')
+        return redirect(url_for('main.contact'))
+        
     return render_template('contact.html')
 
 

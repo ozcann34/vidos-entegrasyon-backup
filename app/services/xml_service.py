@@ -112,7 +112,9 @@ def load_xml_source_index(xml_source_id: Any) -> Dict[str, Dict[str, Any]]:
             if cached:
                 ts, data = cached
                 if ttl == 0 or (now - ts) <= ttl:
-                    return copy.deepcopy(data)
+                    # Removed deepcopy for performance with large (30k+) XML datasets.
+                    # Callers must treat this as read-only.
+                    return data
                 _XML_SOURCE_CACHE.pop(cache_key, None)
 
     try:
