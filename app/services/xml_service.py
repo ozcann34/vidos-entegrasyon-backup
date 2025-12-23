@@ -155,48 +155,48 @@ def load_xml_source_index(xml_source_id: Any) -> Dict[str, Dict[str, Any]]:
                     return val
         return ''
 
-        # Pre-load brand mapping to avoid 37k DB queries
-        mapping_data = Setting.get('XML_BRAND_MAPPING', user_id=src.user_id)
-        brand_mapping = {}
-        if mapping_data:
-            try:
-                brand_mapping = json.loads(mapping_data)
-                # Normalize keys for faster lookup
-                brand_mapping = {k.lower(): v for k, v in brand_mapping.items()}
-            except Exception: pass
+    # Pre-load brand mapping to avoid 37k DB queries
+    mapping_data = Setting.get('XML_BRAND_MAPPING', user_id=src.user_id)
+    brand_mapping = {}
+    if mapping_data:
+        try:
+            brand_mapping = json.loads(mapping_data)
+            # Normalize keys for faster lookup
+            brand_mapping = {k.lower(): v for k, v in brand_mapping.items()}
+        except Exception: pass
 
-        for row in items:
-            if not isinstance(row, dict):
-                continue
-            barcode = _g(row, 'barcode', 'barcod', 'Barkod', 'BARKOD', 'productBarcode', 'ProductBarcode', 'Barcode')
-            if not barcode:
-                barcode = _g(row, 'stockCode', 'StockCode', 'sku', 'SKU', 'productCode', 'ProductCode')
-            if not barcode:
-                continue
-            title = _g(row, 'name', 'Name', 'productName', 'ProductName', 'title', 'Title')
-            description = _g(row, 'detail', 'Detail', 'description', 'Description')
-            stock_code = _g(row, 'stockCode', 'StockCode', 'productCode', 'ProductCode') or barcode
-            quantity_str = _g(row, 'quantity', 'Quantity', 'stok', 'Stok', 'OnHand', 'stock') or '0'
-            price_str = _g(row, 'price', 'Price', 'salePrice', 'SalePrice', 'unitPrice', 'UnitPrice', 'listPrice', 'ListPrice') or '0'
-            vat_raw = _g(row, 'tax', 'Tax', 'taxRate', 'TaxRate')
-            brand_raw = _g(row, 'brand', 'Brand', 'marka', 'Marka', 'manufacturer', 'Manufacturer')
-            try:
-                quantity = int(float(quantity_str.replace(',', '.')))
-            except Exception:
-                quantity = 0
-            try:
-                price = float(str(price_str).replace(',', '.'))
-            except Exception:
-                price = 0.0
-            try:
-                vat_rate = float(str(vat_raw).replace(',', '.')) * (100 if vat_raw and float(str(vat_raw).replace(',', '.')) <= 1 else 1)
-            except Exception:
-                vat_rate = 20.0
-                
-            # Apply Brand Mapping (FAST - No DB query inside loop)
-            brand = brand_raw
-            if brand_raw and brand_mapping:
-                brand = brand_mapping.get(brand_raw.lower(), brand_raw)
+    for row in items:
+        if not isinstance(row, dict):
+            continue
+        barcode = _g(row, 'barcode', 'barcod', 'Barkod', 'BARKOD', 'productBarcode', 'ProductBarcode', 'Barcode')
+        if not barcode:
+            barcode = _g(row, 'stockCode', 'StockCode', 'sku', 'SKU', 'productCode', 'ProductCode')
+        if not barcode:
+            continue
+        title = _g(row, 'name', 'Name', 'productName', 'ProductName', 'title', 'Title')
+        description = _g(row, 'detail', 'Detail', 'description', 'Description')
+        stock_code = _g(row, 'stockCode', 'StockCode', 'productCode', 'ProductCode') or barcode
+        quantity_str = _g(row, 'quantity', 'Quantity', 'stok', 'Stok', 'OnHand', 'stock') or '0'
+        price_str = _g(row, 'price', 'Price', 'salePrice', 'SalePrice', 'unitPrice', 'UnitPrice', 'listPrice', 'ListPrice') or '0'
+        vat_raw = _g(row, 'tax', 'Tax', 'taxRate', 'TaxRate')
+        brand_raw = _g(row, 'brand', 'Brand', 'marka', 'Marka', 'manufacturer', 'Manufacturer')
+        try:
+            quantity = int(float(quantity_str.replace(',', '.')))
+        except Exception:
+            quantity = 0
+        try:
+            price = float(str(price_str).replace(',', '.'))
+        except Exception:
+            price = 0.0
+        try:
+            vat_rate = float(str(vat_raw).replace(',', '.')) * (100 if vat_raw and float(str(vat_raw).replace(',', '.')) <= 1 else 1)
+        except Exception:
+            vat_rate = 20.0
+            
+        # Apply Brand Mapping (FAST - No DB query inside loop)
+        brand = brand_raw
+        if brand_raw and brand_mapping:
+            brand = brand_mapping.get(brand_raw.lower(), brand_raw)
 
         images: List[Dict[str, str]] = []
         # 1. Try standard Image1, Image2...
@@ -300,7 +300,7 @@ def load_xml_source_index(xml_source_id: Any) -> Dict[str, Dict[str, Any]]:
             if len(_XML_SOURCE_CACHE) >= XML_SOURCE_CACHE_MAX:
                 oldest_key = min(_XML_SOURCE_CACHE.items(), key=lambda item: item[1][0])[0]
                 _XML_SOURCE_CACHE.pop(oldest_key, None)
-            _XML_SOURCE_CACHE[cache_key] = (now, copy.deepcopy(index))
+            _XML_SOURCE_CACHE[cache_key] = (now, index)
 
     return index
 
