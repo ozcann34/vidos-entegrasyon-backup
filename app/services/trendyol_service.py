@@ -1424,7 +1424,7 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
         item = {
             "barcode": barcode,
             "title": title[:100],
-            "productMainId": barcode,
+            "productMainId": product.get('parent_barcode') or barcode,
             "brandId": brand_id,
             "categoryId": category_id,
             "quantity": stock,

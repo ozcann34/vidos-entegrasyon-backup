@@ -1318,7 +1318,7 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
         new_prod = {
             "barcode": item['barcode'],
             "title": item['title'],
-            "productMainId": item.get('vendorStockCode', item['barcode']),
+            "productMainId": rec.get('parent_barcode') or item.get('vendorStockCode', item['barcode']),
             "brandId": int(item_brand_id),
             "categoryId": int(item_cat_id),
             "inventoryQuantity": int(item.get('inventoryQuantity', 0)),

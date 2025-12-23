@@ -254,7 +254,6 @@ def load_xml_source_index(xml_source_id: Any) -> Dict[str, Dict[str, Any]]:
         # Varyant bilgilerini cek (XML'de variants etiketi varsa)
         variants_node = row.get('variants') or row.get('Variants') or row.get('varyantlar') or row.get('Varyantlar')
         if variants_node:
-            variants_list = []
             # variants icerisindeki variant etiketlerini bul
             variant_items = variants_node.get('variant') or variants_node.get('Variant') or variants_node
             if not isinstance(variant_items, list):
@@ -264,30 +263,31 @@ def load_xml_source_index(xml_source_id: Any) -> Dict[str, Dict[str, Any]]:
                 if not isinstance(v, dict):
                     continue
                 
-                # name1/value1, name2/value2 formatini destekle (ornek XML'deki gibi)
-                var_item = {
-                    'name1': _g(v, 'name1', 'Name1'),
-                    'value1': _g(v, 'value1', 'Value1'),
-                    'name2': _g(v, 'name2', 'Name2'),
-                    'value2': _g(v, 'value2', 'Value2'),
-                    # Eski format icin de destekle
-                    'name': _g(v, 'name', 'Name', 'variantName', 'VariantName'),
-                    'value': _g(v, 'value', 'Value', 'variantValue', 'VariantValue'),
-                    'barcode': _g(v, 'barcode', 'Barcode', 'barkod', 'Barkod'),
-                    'stock': to_int(_g(v, 'stock', 'Stock', 'quantity', 'Quantity') or '0'),
-                    'price': to_float(_g(v, 'price', 'Price') or '0'),
-                }
+                v_barcode = _g(v, 'barcode', 'Barcode', 'barkod', 'Barkod')
+                if not v_barcode:
+                    continue
+
+                # Ana urun bilgilerini kopyala ve varyant ozellikleri ile guncelle
+                v_record = copy.deepcopy(record)
+                v_record['barcode'] = v_barcode
+                v_record['parent_barcode'] = barcode
+                v_record['quantity'] = to_int(_g(v, 'stock', 'Stock', 'quantity', 'Quantity') or '0')
+                v_record['price'] = to_float(_g(v, 'price', 'Price') or str(price))
                 
-                # En az bir varyant bilgisi olmali
-                if var_item.get('barcode') or var_item.get('name1') or var_item.get('name'):
-                    variants_list.append(var_item)
-            
-            if variants_list:
-                record['variants'] = variants_list
-        
-        records.append(record)
-        index[str(barcode)] = record
-        by_barcode[str(barcode)] = record
+                v_name1 = _g(v, 'name1', 'Name1', 'name', 'Name')
+                v_val1 = _g(v, 'value1', 'Value1', 'value', 'Value')
+                if v_name1 and v_val1:
+                    v_record['title'] = f"{title} ({v_val1})"
+                
+                records.append(v_record)
+                index[str(v_barcode)] = v_record
+                by_barcode[str(v_barcode)] = v_record
+        else:
+            # Varyant yoksa sadece ana urunu ekle (Zaten eklenmisti, sadece mantiksal ayrim)
+            records.append(record)
+            index[str(barcode)] = record
+            by_barcode[str(barcode)] = record
+
         if stock_code and stock_code != barcode:
             index[f'stock::{stock_code.lower()}'] = record
     index['__records__'] = records
