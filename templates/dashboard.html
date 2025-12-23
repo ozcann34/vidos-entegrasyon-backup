@@ -5,36 +5,40 @@
 {% block content %}
 
 <div class="d-flex flex-wrap gap-2 mb-4 align-items-center">
-  <div class="btn-group">
+  <div class="btn-group btn-group-mobile">
     <a href="{{ url_for('main.settings_page') }}" class="btn btn-outline-secondary">
       <i class="bi bi-gear me-1"></i> Ayarlar
     </a>
     <a href="{{ url_for('main.user_manual') }}" class="btn btn-primary shadow-sm fw-bold">
-      <i class="bi bi-book-half me-2"></i>Kullanım Kılavuzu
+      <i class="bi bi-book-half me-2"></i>Rehber
     </a>
   </div>
 
-  <div class="btn-group">
-    <a href="{{ url_for('main.dashboard', force_sync='true') }}" class="btn btn-outline-info shadow-sm fw-bold">
+  <div class="btn-group btn-group-mobile">
+    <a href="{{ url_for('main.dashboard', force_sync='true') }}"
+      class="btn btn-outline-info shadow-sm fw-bold text-center">
       <i class="bi bi-arrow-clockwise me-1"></i> Verileri Güncelle
     </a>
-    {% if last_sync %}
+  </div>
+  {% if last_sync %}
+  <div class="w-100 text-end mobile-hide">
     <span class="btn btn-light disabled text-muted small" style="font-size: 0.8rem;" id="last-sync-time">
       Son Güncelleme: {{ last_sync }}
     </span>
-    {% endif %}
   </div>
-
-  <!-- Kritik Stok Butonu -->
-  {% if stats.critical_stock %}
-  <button type="button" class="btn btn-danger position-relative" data-bs-toggle="modal"
-    data-bs-target="#criticalStockModal">
-    <i class="bi bi-exclamation-triangle-fill"></i> Kritik Stok
-    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light">
-      {{ stats.critical_stock|length }}
-    </span>
-  </button>
   {% endif %}
+</div>
+
+<!-- Kritik Stok Butonu -->
+{% if stats.critical_stock %}
+<button type="button" class="btn btn-danger position-relative" data-bs-toggle="modal"
+  data-bs-target="#criticalStockModal">
+  <i class="bi bi-exclamation-triangle-fill"></i> Kritik Stok
+  <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light">
+    {{ stats.critical_stock|length }}
+  </span>
+</button>
+{% endif %}
 </div>
 
 {% with messages = get_flashed_messages(with_categories=true) %}
@@ -168,29 +172,28 @@
 
   {# PAZAR YERLERİ STATİSTİKLERİ #}
   {% for mp in stats.marketplaces %}
-  <div class="col-md-6 col-lg-3">
+  <div class="col-sm-6 col-md-6 col-lg-3">
     {% set mkey = mp.key if mp.key is defined else mp.name|lower %}
     {% set color_class = 'warning' if mkey == 'trendyol' else mp.color %}
-    <div class="card p-4 stat-card border-{{ color_class }}">
+    <div class="card p-3 p-md-4 stat-card border-{{ color_class }} card-mobile-stack">
       <div class="d-flex align-items-center">
         <i class="bi bi-{{ mp.icon }} text-{{ color_class }} fs-3 me-3"></i>
-        <div>
-          <p class="text-muted mb-0">{{ mp.name }} Ürün Sayısı</p>
+        <div class="overflow-hidden">
+          <p class="text-muted mb-0 small text-truncate">{{ mp.name }} Ürün Sayısı</p>
           <h4 class="mb-0 fw-bold text-{{ color_class }}" id="mp-count-{{ mkey }}">
-            {% if mp.count is not none %}{{ mp.count }}{% else %}Yüklenmedi{% endif %}
+            {% if mp.count is not none %}{{ mp.count }}{% else %}0{% endif %}
           </h4>
-          <p class="text-muted mt-1 mb-0" style="font-size: 0.85rem;">
-            Gönderilen: {{ mp.sent }} / Hatalı: {{ mp.failed }}
+          <p class="text-muted mt-1 mb-0" style="font-size: 0.75rem;">
+            Gönder: {{ mp.sent }} / Hata: {{ mp.failed }}
           </p>
-          {% set last_sync_key = mkey ~ '_last_sync' %}
-          <p class="text-muted mt-1 mb-0" style="font-size:.8rem;">Son Senkron: {{ stats.get(last_sync_key, '-') }}</p>
         </div>
       </div>
-      <div class="d-flex gap-2 mt-3">
-        <a class="btn btn-sm btn-outline-primary btn-animated"
-          href="{{ url_for('main.marketplace_products_page', marketplace=mkey) }}">Ürünlere Git</a>
-        <a class="btn btn-sm btn-outline-secondary btn-animated"
-          href="{{ url_for('main.marketplace_products_page', marketplace=mkey) }}">Toplu İşlem</a>
+      <div class="d-flex gap-2 mt-3 w-100">
+        <a class="btn btn-xs btn-outline-primary btn-animated flex-grow-1" style="font-size: 0.7rem; padding: 0.25rem;"
+          href="{{ url_for('main.marketplace_products_page', marketplace=mkey) }}">Ürünler</a>
+        <a class="btn btn-xs btn-outline-secondary btn-animated flex-grow-1"
+          style="font-size: 0.7rem; padding: 0.25rem;"
+          href="{{ url_for('main.marketplace_products_page', marketplace=mkey) }}">Görüntüle</a>
       </div>
     </div>
   </div>

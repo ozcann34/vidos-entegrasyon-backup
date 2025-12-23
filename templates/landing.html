@@ -33,19 +33,45 @@
             <div class="nav-container">
                 <a href="#" class="logo">
                     <img src="{{ url_for('static', filename='logo.png') }}" alt="Vidos" style="height: 50px;">
+                    <span class="logo-text d-none d-md-inline"
+                        style="font-weight: 800; font-size: 1.5rem; margin-left: 10px; color: var(--color-primary);">VIDOS</span>
                 </a>
-                <div class="nav-links">
+                <div class="nav-links d-none d-lg-flex">
                     <a href="#features">Özellikler</a>
                     <a href="#pricing">Fiyatlandırma</a>
                     <a href="{{ url_for('main.about_us') }}">Hakkımızda</a>
                     <a href="#contact">İletişim</a>
                 </div>
-                <a href="{{ url_for('auth.login') }}" class="btn-login">Giriş Yap</a>
+                <div class="d-flex align-items-center gap-2">
+                    <a href="{{ url_for('auth.login') }}" class="btn-login">Giriş</a>
+                    <a href="{{ url_for('auth.register') }}" class="btn-primary d-none d-md-flex"
+                        style="padding: 0.6rem 1.2rem; font-size: 0.9rem;">Kayıt Ol</a>
+                </div>
             </div>
         </nav>
 
-        <!-- Hero Section -->
-        <section class="hero" id="home">
+        <!-- Mobile-Only Hero (Clean & App-like) -->
+        <div class="mobile-hero d-lg-none text-center p-4" style="padding-top: 100px !important;">
+            <div class="mobile-hero-icon mb-4">
+                <div class="icon-blob">
+                    <img src="{{ url_for('static', filename='logo.png') }}" width="80">
+                </div>
+            </div>
+            <h1 class="fw-bold mb-3"
+                style="font-size: 2.2rem; background: var(--gradient-primary); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">
+                E-Ticaret Artık Cebinizde</h1>
+            <p class="text-muted mb-4 small">Trendyol'dan Hepsiburada'ya tüm mağazalarınızı tek ekrandan yönetin.</p>
+            <div class="mobile-cta d-grid gap-3">
+                <a href="{{ url_for('auth.register') }}" class="btn-primary py-3"
+                    style="border-radius: 15px; font-weight: 700; font-size: 1.1rem; box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);">Hemen
+                    Ücretsiz Başla</a>
+                <a href="{{ url_for('auth.login') }}" class="btn-secondary py-3"
+                    style="border-radius: 15px; font-weight: 600;">Giriş Yap</a>
+            </div>
+        </div>
+
+        <!-- Desktop Hero Section -->
+        <section class="hero d-none d-lg-block" id="home">
             <div class="hero-container">
                 <div class="hero-content">
                     <h1>E-Ticaret Entegrasyonlarınızı <span class="text-gradient">Tek Platformda</span> Yönetin</h1>
