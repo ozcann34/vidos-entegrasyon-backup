@@ -1171,3 +1171,63 @@ input:checked+.slider:before {
         }
     }
 }
+
+/* --- Fixed Resolutions Compatibility (390x844, 412x883) --- */
+@media (max-width: 430px) {
+    :root {
+        --spacing-4xl: 2.5rem;
+        --spacing-xl: 1.5rem;
+    }
+
+    .mobile-hero h1 {
+        font-size: 1.8rem !important;
+        line-height: 1.2;
+    }
+
+    .mobile-hero p {
+        font-size: 0.85rem !important;
+        padding: 0 10px;
+    }
+
+    .mobile-cta .btn-primary,
+    .mobile-cta .btn-secondary {
+        padding: 0.85rem !important;
+        font-size: 1rem !important;
+    }
+
+    .icon-blob {
+        width: 100px;
+        height: 100px;
+    }
+
+    .icon-blob img {
+        width: 50px;
+    }
+
+    .pricing-card {
+        padding: 1.5rem !important;
+    }
+
+    /* Legal & About Us specifically */
+    .legal-container {
+        padding: 60px 10px !important;
+    }
+
+    .legal-card {
+        padding: 1.5rem !important;
+        border-radius: 15px !important;
+    }
+
+    .legal-card h1 {
+        font-size: 1.5rem !important;
+    }
+
+    .legal-card h3 {
+        font-size: 1.1rem !important;
+    }
+
+    /* Padding adjustments for desktop-style boxes on mobile */
+    [style*="padding: 2rem"] {
+        padding: 1.25rem !important;
+    }
+}

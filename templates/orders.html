@@ -6,13 +6,13 @@
 
 {% block content %}
 <div class="card p-4 mb-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-3">
         <div>
             <h5 class="mb-1">Sipariş Listesi</h5>
             <p class="text-muted small mb-0">Tüm pazaryerlerinden gelen siparişleri görüntüleyin</p>
         </div>
-        <div class="d-flex gap-2 align-items-center">
-            <select class="form-select form-select-sm" id="perPageSelect" style="width: auto;">
+        <div class="d-flex gap-2 align-items-center justify-content-between-mobile">
+            <select class="form-select form-select-sm w-100-mobile" id="perPageSelect" style="width: auto;">
                 <option value="5">5 sipariş</option>
                 <option value="10">10 sipariş</option>
                 <option value="20">20 sipariş</option>
@@ -23,8 +23,8 @@
 
     <!-- Filters Form -->
     <form id="filterForm" method="GET" action="{{ url_for('main.orders_page') }}">
-        <div class="row g-3 mb-3">
-            <div class="col-md-3">
+        <div class="row g-2 mb-3">
+            <div class="col-6 col-md-3">
                 <select class="form-select" name="marketplace" id="marketplaceFilter" onchange="this.form.submit()">
                     <option value="">Tüm Pazaryerleri</option>
                     <option value="trendyol">Trendyol</option>
@@ -34,7 +34,7 @@
                     <option value="hepsiburada">Hepsiburada</option>
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-6 col-md-3">
                 <select class="form-select" name="status" id="statusFilter" onchange="this.form.submit()">
                     <option value="">Tüm Durumlar</option>
                     <option value="Oluşturuldu">Oluşturuldu</option>
@@ -48,7 +48,7 @@
                     <option value="Beklemede">Beklemede</option>
                 </select>
             </div>
-            <div class="col-md-6">
+            <div class="col-12 col-md-6">
                 <div class="input-group">
                     <input type="text" class="form-control" name="search" id="searchInput"
                         placeholder="Sipariş no, müşteri adı..." value="{{ request.args.get('search', '') }}">

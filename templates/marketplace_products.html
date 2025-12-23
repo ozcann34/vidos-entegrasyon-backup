@@ -3,7 +3,7 @@
 {% block page_title %}{{ marketplace_name or marketplace|capitalize }} Ürünleri{% endblock %}
 
 {% block content %}
-<ul class="nav nav-tabs mb-3" id="innerTabs">
+<ul class="nav nav-tabs-mobile mb-3" id="innerTabs">
   <li class="nav-item">
     <a href="#" class="nav-link active" data-tab="mp">
       <i class="bi bi-shop me-2"></i>
@@ -26,7 +26,7 @@
     <div class="card-body p-2">
       <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
         <!-- Search Bar (Flexible Pivot) -->
-        <div class="input-group flex-grow-1" style="min-width: 250px; max-width: 600px;">
+        <div class="input-group w-100-mobile flex-grow-1" style="min-width: 250px; max-width: 600px;">
           <span class="input-group-text border-end-0"
             style="background: var(--input-bg); border-color: var(--input-border); color: var(--muted);"><i
               class="bi bi-search"></i></span>
@@ -40,9 +40,9 @@
         </div>
 
         <!-- Toolbar Right: View Toggles & Bulk Actions -->
-        <div class="d-flex gap-2 align-items-center">
+        <div class="d-flex gap-2 align-items-center w-100-mobile justify-content-between-mobile">
           <!-- Advanced Filter Toggle -->
-          <button class="btn btn-outline-secondary" type="button" data-bs-toggle="collapse"
+          <button class="btn btn-outline-secondary flex-fill-mobile" type="button" data-bs-toggle="collapse"
             data-bs-target="#advancedFilterPanel" aria-expanded="false" aria-controls="advancedFilterPanel">
             <i class="bi bi-sliders me-1"></i> Filtrele
           </button>
