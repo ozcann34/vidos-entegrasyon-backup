@@ -15,6 +15,15 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="{{ url_for('static', filename='landing.css') }}">
+
+    <!-- PWA & Mobile Meta -->
+    <meta name="theme-color" content="#6366f1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Vidos">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='logo.png') }}">
+    <link rel="manifest" href="/static/manifest.json">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 
 <body>
@@ -47,6 +56,10 @@
                     <div class="cta-buttons">
                         <a href="{{ url_for('auth.register') }}" class="btn-primary">Ücretsiz Başlayın</a>
                         <a href="#features" class="btn-secondary">Özellikleri Keşfet</a>
+                        <a href="#" class="btn-secondary" id="hero-install-btn"
+                            style="display: none; background: rgba(99, 102, 241, 0.1); border: 1px solid #6366f1; color: #6366f1;">
+                            <i class="bi bi-download me-2"></i> Uygulamayı Yükle
+                        </a>
                     </div>
                 </div>
                 <div class="hero-image scroll-animate">
@@ -302,10 +315,10 @@
                         <p>destek@vidos.com.tr</p>
                     </div>
                     <div class="app-buttons">
-                        <a href="#" class="app-btn"><img
+                        <a href="#" class="app-btn" id="landing-apple-btn"><img
                                 src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg"
                                 alt="App Store"></a>
-                        <a href="#" class="app-btn"><img
+                        <a href="#" class="app-btn" id="landing-google-btn"><img
                                 src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg"
                                 alt="Play Store"></a>
                     </div>
@@ -473,6 +486,55 @@
                 window.location.href = "{{ url_for('auth.register') }}?plan=" + planId + "&billing=" + billing;
             });
         });
+
+        // PWA Install Logic for Landing Page
+        let deferredPrompt;
+        const appleBtn = document.getElementById('landing-apple-btn');
+        const googleBtn = document.getElementById('landing-google-btn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const heroBtn = document.getElementById('hero-install-btn');
+            if (heroBtn) heroBtn.style.display = 'inline-flex';
+        });
+
+        async function handleInstallUI(e) {
+            if (e) e.preventDefault();
+            console.log('Install prompt triggered');
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                deferredPrompt = null;
+            } else {
+                const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                if (isIos) {
+                    Swal.fire({
+                        title: 'Vidos Uygulamasını Yükle',
+                        html: 'iPhone/iPad cihazlarda yüklemek için:<br>1. Safari\'de <b>Paylaş</b> simgesine dokunun<br>2. <b>Ana Ekrana Ekle</b> seçeneğini seçin.',
+                        icon: 'info',
+                        confirmButtonText: 'Tamam'
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Vidos Entegrasyon',
+                        text: 'Uygulamayı yüklemek için tarayıcınızın "Yükle" seçeneğini kullanabilir veya giriş yaptıktan sonra "Uygulamayı Yükle" butonuna basabilirsiniz.',
+                        icon: 'info'
+                    });
+                }
+            }
+        }
+
+        if (appleBtn) appleBtn.addEventListener('click', handleInstallUI);
+        if (googleBtn) googleBtn.addEventListener('click', handleInstallUI);
+        const heroInstallBtn = document.getElementById('hero-install-btn');
+        if (heroInstallBtn) heroInstallBtn.addEventListener('click', handleInstallUI);
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/sw.js');
+            });
+        }
     </script>
 </body>
 
