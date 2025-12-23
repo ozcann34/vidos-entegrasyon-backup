@@ -65,8 +65,14 @@
           </button>
         </div>
 
-        <!-- Right Side: Global Actions -->
+        <!-- Right Side: Global Actions & Search -->
         <div class="d-flex align-items-center gap-2">
+          <span id="productCountInfo" class="small fw-bold text-muted me-2"></span>
+          <div class="position-relative">
+            <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+            <input type="text" id="searchInput" class="form-control form-control-sm rounded-pill ps-5"
+              placeholder="Ürün veya Barkod Ara..." style="width: 200px;">
+          </div>
           <button id="sendAllBtn" class="btn btn-sm btn-admin rounded-pill px-4 shadow-sm">
             <i class="bi bi-rocket-takeoff me-2"></i> Tümünü Gönder
           </button>
@@ -229,9 +235,6 @@
   const productListBody = document.getElementById('productListBody');
   const pagination = document.getElementById('pagination');
   const searchInput = document.getElementById('searchInput');
-  const perPageSelect = document.getElementById('perPageSelect');
-  const goToInput = document.getElementById('goToInput');
-  const goToBtn = document.getElementById('goToBtn');
   const selectAll = document.getElementById('selectAll');
   const changeSourceBtn = document.getElementById('changeSourceBtn');
   const toggleViewBtn = document.getElementById('toggleViewBtn');
@@ -486,6 +489,8 @@
       const resp = await fetch(url);
       const data = await resp.json();
       currentTotal = data.total || 0;
+      const countInfo = document.getElementById('productCountInfo');
+      if (countInfo) countInfo.innerText = `${currentTotal.toLocaleString('tr-TR')} Ürün`;
       renderProducts(data.items || []);
       renderPagination(currentTotal, currentPage);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -525,16 +530,6 @@
       }, 500);
     });
   }
-
-
-  // Go to Page
-  function goToPage() {
-    const val = parseInt(goToInput.value || '1');
-    const totalPages = Math.ceil(currentTotal / itemsPerPage) || 1;
-    if (val >= 1 && val <= totalPages) { currentPage = val; fetchProducts(); }
-  }
-  if (goToBtn) goToBtn.addEventListener('click', goToPage);
-  if (goToInput) goToInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); goToPage(); } });
 
   // Select All
   if (selectAll) {
