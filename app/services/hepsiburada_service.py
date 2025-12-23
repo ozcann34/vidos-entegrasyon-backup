@@ -24,7 +24,7 @@ def get_hepsiburada_client(user_id: int = None) -> HepsiburadaClient:
         
     return HepsiburadaClient(merchant_id.strip(), service_key.strip())
 
-def perform_hepsiburada_send_products(job_id: str, barcodes: List[str], xml_source_id: Any) -> Dict[str, Any]:
+def perform_hepsiburada_send_products(job_id: str, barcodes: List[str], xml_source_id: Any, **kwargs) -> Dict[str, Any]:
     """
     Send selected products from XML to Hepsiburada.
     """
@@ -50,8 +50,13 @@ def perform_hepsiburada_send_products(job_id: str, barcodes: List[str], xml_sour
     xml_index = load_xml_source_index(xml_source_id)
     mp_map = xml_index.get('by_barcode') or {}
     
-    # Options
-    multiplier = get_marketplace_multiplier('hepsiburada')
+    # Options from kwargs or defaults
+    multiplier = to_float(kwargs.get('price_multiplier', get_marketplace_multiplier('hepsiburada')))
+    default_price = to_float(kwargs.get('default_price', 0))
+    title_prefix = kwargs.get('title_prefix', '')
+    skip_no_image = kwargs.get('skip_no_image', False)
+    skip_no_barcode = kwargs.get('skip_no_barcode', False)
+    zero_stock_as_one = kwargs.get('zero_stock_as_one', False)
     
     products_to_send = []
     skipped = []
@@ -106,9 +111,21 @@ def perform_hepsiburada_send_products(job_id: str, barcodes: List[str], xml_sour
         #   ...
         # }
         
+        title = (product.get('title') or '')
+        if title_prefix:
+            title = f"{title_prefix}{title}"
+
         start_price = to_float(product.get('price')) or 0
+        if start_price <= 0 and default_price > 0:
+            start_price = default_price
+            append_mp_job_log(job_id, f"Varsayılan fiyat uygulandı: {barcode}")
+
         final_price = round(start_price * multiplier, 2)
         stock = to_int(product.get('quantity'))
+
+        if stock <= 0 and zero_stock_as_one:
+            stock = 1
+            append_mp_job_log(job_id, f"Stok 0→1 uygulandı: {barcode}")
         
         if final_price <= 0:
             skipped.append({'barcode': barcode, 'reason': 'Fiyat 0'})
@@ -128,6 +145,7 @@ def perform_hepsiburada_send_products(job_id: str, barcodes: List[str], xml_sour
         
         item = {
             "merchantSku": barcode,
+            "productName": title[:200], # Added title if needed
             "price": {
                 "amount": final_price,
                 "currency": "TRY"
@@ -164,3 +182,18 @@ def perform_hepsiburada_send_products(job_id: str, barcodes: List[str], xml_sour
         msg = f"Hepsiburada API hatası: {str(e)}"
         append_mp_job_log(job_id, msg, level='error')
         return {'success': False, 'message': msg}
+
+def perform_hepsiburada_send_all(job_id: str, xml_source_id: Any, **kwargs) -> Dict[str, Any]:
+    """Send ALL products from XML source to Hepsiburada"""
+    append_mp_job_log(job_id, "Tüm ürünler hazırlanıyor...")
+    
+    xml_index = load_xml_source_index(xml_source_id)
+    mp_map = xml_index.get('by_barcode') or {}
+    all_barcodes = list(mp_map.keys())
+    
+    if not all_barcodes:
+        return {'success': False, 'message': 'XML kaynağında ürün bulunamadı.', 'count': 0}
+    
+    append_mp_job_log(job_id, f"Toplam {len(all_barcodes)} ürün bulundu. Gönderim başlıyor...")
+    
+    return perform_hepsiburada_send_products(job_id, all_barcodes, xml_source_id, **kwargs)

@@ -429,7 +429,11 @@
     const label = text || num;
     li.innerHTML = `<a class="page-link" href="#" data-page="${num}">${label}</a>`;
     if (!disabled) {
-      li.addEventListener('click', (e) => { e.preventDefault(); currentPage = parseInt(e.target.dataset.page); fetchProducts(); });
+      li.addEventListener('click', (e) => {
+        e.preventDefault();
+        currentPage = parseInt(e.target.dataset.page);
+        fetchProducts(currentPage);
+      });
     }
     pagination.appendChild(li);
   }
@@ -561,7 +565,7 @@
         toggleViewBtn.innerHTML = '<i class="bi bi-grid-3x3-gap me-1"></i> Görünüm: Grid';
       }
       localStorage.setItem('vidos_view_mode', viewMode);
-      fetchProducts(); // Re-render logic handles container visibility
+      fetchProducts(currentPage); // Re-render logic handles container visibility
     });
   }
 
@@ -710,10 +714,26 @@
       });
       if (result.isConfirmed) {
         const { marketplace, autoMatch, matchBy } = result.value;
+
+        // Get current options from UI
+        const sendOptions = {
+          title_prefix: document.getElementById('titlePrefixInput')?.value || '',
+          price_multiplier: parseFloat(document.getElementById('priceMultiplierInput')?.value || '1.0'),
+          default_price: parseFloat(document.getElementById('defaultPriceInput')?.value || '0'),
+          skip_no_barcode: document.getElementById('optSkipNoBarcode')?.checked || false,
+          skip_no_image: document.getElementById('optSkipNoImage')?.checked || false,
+          zero_stock_as_one: document.getElementById('optZeroStockAsOne')?.checked || false
+        };
+
         try {
           const response = await fetch(`/api/${marketplace}/send_all`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ source_id: selectedSourceId, auto_match: autoMatch, match_by: matchBy })
+            body: JSON.stringify({
+              source_id: selectedSourceId,
+              auto_match: autoMatch,
+              match_by: matchBy,
+              ...sendOptions
+            })
           });
           const data = await response.json();
           if (data.success && data.batch_id && window.showJobWidget) {

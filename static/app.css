@@ -247,20 +247,42 @@ body {
 
 /* Sidebar */
 #sidebar {
+  width: 260px;
+  min-width: 260px;
   background: linear-gradient(180deg, var(--sidebar-bg) 0%, rgba(10, 10, 15, 0.95) 100%) !important;
   color: var(--sidebar-fg) !important;
   border-right: 1px solid rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(20px);
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  overflow-y: auto !important;
+  z-index: 1000;
+  transition: all 0.3s ease;
+}
+
+#sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+#sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
 }
 
 #sidebar .nav-link {
   color: rgba(255, 255, 255, 0.7);
   border-radius: 10px;
-  padding: .65rem .85rem;
-  margin-bottom: 4px;
+  padding: .5rem .75rem;
+  margin-bottom: 2px;
   position: relative;
   font-weight: 500;
+  font-size: 0.9rem;
   transition: all 0.3s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 #sidebar .nav-link:hover {
@@ -439,7 +461,8 @@ body[data-brand="ikas"] {
   padding: 24px;
   width: calc(100% - 260px);
   min-height: 100vh;
-  transition: margin 0.3s ease;
+  position: relative;
+  transition: all 0.3s ease;
 }
 
 .page-header {

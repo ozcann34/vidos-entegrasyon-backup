@@ -284,9 +284,14 @@
         <!-- Footer -->
         <footer class="footer">
             <div class="footer-container">
-                <!-- Column 1: Logo & Info -->
-                <div class="footer-col footer-info">
-                    <a href="#" class="footer-logo">Vidos</a>
+                <!-- Column 1: Logo & App -->
+                <div class="footer-col">
+                    <div class="footer-brand-wrap">
+                        <img src="{{ url_for('static', filename='logo.png') }}" alt="Vidos" class="footer-brand-logo">
+                        <a href="#" class="footer-logo">Vidos</a>
+                    </div>
+                    <p class="footer-about">Tüm pazar yerlerine tek noktadan entegrasyon çözümü. Hız, verimlilik ve
+                        güven.</p>
                     <div class="footer-hours">
                         <p><strong>Haftaiçi:</strong> 09:00 - 18:00</p>
                         <p><strong>Cumartesi:</strong> 10:00 - 15:00</p>
@@ -344,7 +349,7 @@
                     </div>
                     <div class="contact-item">
                         <span class="icon">✉️</span>
-                        <p>info@vidos.com.tr</p>
+                        <p>destek@vidos.com.tr</p>
                     </div>
                     <div class="contact-item">
                         <span class="icon">📍</span>

@@ -1251,7 +1251,34 @@ def api_trendyol_send_all():
 
 @api_bp.route('/api/hepsiburada/send_all', methods=['POST'])
 def api_hepsiburada_send_all():
-    return jsonify({'success': False, 'message': 'Hepsiburada toplu gönderim henüz aktif değil.'}), 501
+    try:
+        payload = request.get_json(force=True) or {}
+        xml_source_id = payload.get('source_id')
+        
+        send_options = {
+            'price_multiplier': payload.get('price_multiplier', 1.0),
+            'default_price': payload.get('default_price', 0.0),
+            'skip_no_barcode': payload.get('skip_no_barcode', False),
+            'skip_no_image': payload.get('skip_no_image', False),
+            'zero_stock_as_one': payload.get('zero_stock_as_one', False),
+            'title_prefix': payload.get('title_prefix', ''),
+            'match_by': payload.get('match_by', 'barcode')
+        }
+        
+        if not xml_source_id:
+            return jsonify({'success': False, 'message': 'Kaynak ID zorunludur.'}), 400
+
+        from app.services.hepsiburada_service import perform_hepsiburada_send_all
+        
+        job_id = submit_mp_job(
+            'hepsiburada_send_all',
+            'hepsiburada',
+            lambda job_id: perform_hepsiburada_send_all(job_id, xml_source_id, **send_options),
+            params={'xml_source_id': xml_source_id, **send_options},
+        )
+        return jsonify({'success': True, 'job_id': job_id, 'batch_id': job_id}), 202
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 @api_bp.route('/api/n11/send_all', methods=['POST'])
 def api_n11_send_all():
