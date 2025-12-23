@@ -226,6 +226,17 @@
                     <i class="bi bi-robot me-2 text-warning"></i> Vidos Asistan
                 </a>
             </li>
+            <!-- PWA Install Button (Hidden by default) -->
+            <li class="nav-item mt-3" id="pwa-install-item" style="display: none;">
+                <a href="#" id="pwa-install-btn"
+                    class="nav-link bg-gradient-indigo text-white rounded-3 shadow-sm mx-2 py-2 text-center"
+                    style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);">
+                    <i class="bi bi-download me-2 animate__animated animate__bounceIn"></i> Uygulamayı Yükle
+                </a>
+            </li>
+            <li class="nav-item mt-2 text-center" id="pwa-ios-msg" style="display: none;">
+                <small class="text-white-50" style="font-size: 0.65rem;">iOS: Paylaş > Ana Ekrana Ekle</small>
+            </li>
         </ul>
     </div>
 
@@ -769,8 +780,39 @@
             }
         }
     </script>
-    <!-- PWA Service Worker Registration -->
     <script>
+        // PWA Install Logic
+        let deferredPrompt;
+        const installBtn = document.getElementById('pwa-install-btn');
+        const installItem = document.getElementById('pwa-install-item');
+        const iosMsg = document.getElementById('pwa-ios-msg');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installItem.style.display = 'block';
+        });
+
+        if (installBtn) {
+            installBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                if (!deferredPrompt) return;
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    installItem.style.display = 'none';
+                }
+                deferredPrompt = null;
+            });
+        }
+
+        // Show iOS instructions if on Safari iOS and not standalone
+        const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+        if (isIos && !isStandalone) {
+            iosMsg.style.display = 'block';
+        }
+
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/static/sw.js')
