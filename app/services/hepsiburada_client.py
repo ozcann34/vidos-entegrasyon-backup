@@ -145,19 +145,8 @@ class HepsiburadaClient:
         m_id = self.merchant_id.strip()
         s_key = self.service_key.strip()
         
-        # Manual Basic Auth
-        import base64
-        auth_str = f"{m_id}:{s_key}"
-        encoded_auth = base64.b64encode(auth_str.encode('utf-8')).decode('utf-8')
-        
-        headers = {
-            "Authorization": f"Basic {encoded_auth}",
-            "User-Agent": f"{m_id}", # New Integrator Auth requires User-Agent to be the 'username' (merchant_id)
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-        }
-        
-        logging.info(f"HB Listing Upload URL: {url} | UA: {m_id}")
+        headers = self._get_auth_headers()
+        logging.info(f"HB Listing Upload URL: {url}")
         
         try:
             resp = self.session.post(url, json=products, headers=headers, timeout=60)
@@ -360,7 +349,7 @@ class HepsiburadaClient:
         
         return {
             "Authorization": f"Basic {encoded}",
-            "User-Agent": m_id,  # User-Agent MUST be merchant ID
+            "User-Agent": "VidosEntegrasyon/1.0",
             "Accept": "application/json",
             "Content-Type": "application/json"
         }

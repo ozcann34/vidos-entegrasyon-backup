@@ -620,7 +620,7 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
             "quantity": item['quantity'],
             "stockCode": target_code, # Mandatory
             "barcode": target_code, # Optional but good
-            "productMainId": p.get('parent_barcode') or target_code, # Mandatory for grouping variants, unique for single
+            "productMainId": p.get('modelCode') or p.get('productCode') or p.get('parent_barcode') or target_code, # Mandatory for grouping variants, unique for single
             "shipmentTemplate": shipment_template,
             "preparingDay": 3,
             "maxPurchaseQuantity": 50, # Optional

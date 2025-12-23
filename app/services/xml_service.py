@@ -168,9 +168,12 @@ def load_xml_source_index(xml_source_id: Any) -> Dict[str, Dict[str, Any]]:
     for row in items:
         if not isinstance(row, dict):
             continue
+        product_code = _g(row, 'productCode', 'ProductCode', 'product_code', 'Product_Code', 'code', 'Code')
+        model_code = _g(row, 'modelCode', 'ModelCode', 'model_code', 'Model_Code', 'groupCode', 'GroupCode')
+        
         barcode = _g(row, 'barcode', 'barcod', 'Barkod', 'BARKOD', 'productBarcode', 'ProductBarcode', 'Barcode')
         if not barcode:
-            barcode = _g(row, 'stockCode', 'StockCode', 'sku', 'SKU', 'productCode', 'ProductCode')
+            barcode = product_code or _g(row, 'stockCode', 'StockCode', 'sku', 'SKU')
         if not barcode:
             continue
         title = _g(row, 'name', 'Name', 'productName', 'ProductName', 'title', 'Title')
@@ -248,6 +251,8 @@ def load_xml_source_index(xml_source_id: Any) -> Dict[str, Dict[str, Any]]:
             'category': _g(row, 'category', 'Category', 'top_category', 'TopCategory'),
             'images': images,
             'barcode': barcode,
+            'productCode': product_code,
+            'modelCode': model_code,
             'title_normalized': title.lower(),
         }
         
@@ -271,6 +276,8 @@ def load_xml_source_index(xml_source_id: Any) -> Dict[str, Dict[str, Any]]:
                 v_record = copy.deepcopy(record)
                 v_record['barcode'] = v_barcode
                 v_record['parent_barcode'] = barcode
+                v_record['productCode'] = product_code # Carry model level productCode
+                v_record['modelCode'] = model_code # Carry model level modelCode
                 v_record['quantity'] = to_int(_g(v, 'stock', 'Stock', 'quantity', 'Quantity') or '0')
                 v_record['price'] = to_float(_g(v, 'price', 'Price') or str(price))
                 

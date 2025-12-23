@@ -1460,15 +1460,20 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
         # Build minimal required attributes
         attributes_payload = build_simple_attributes(category_id, variant_attributes=product.get('variant_attributes'))
 
+        # Determine Product Main ID / Model Code (Crucial for variant grouping on Trendyol)
+        # Priority: XML modelCode > XML productCode > parent_barcode > current barcode
+        pm_id = product.get('modelCode') or product.get('productCode') or product.get('parent_barcode') or barcode
+        
         # Build V2 Payload Item
         item = {
             "barcode": barcode,
             "title": title[:100],
-            "productMainId": product.get('parent_barcode') or barcode,
+            "productMainId": pm_id,
             "brandId": brand_id,
             "categoryId": category_id,
             "quantity": stock,
             "stockCode": product.get('stock_code') or barcode,
+            "modelCode": pm_id, # Added modelCode explicitly
             "dimensionalWeight": 2,
             "description": desc,
             "currencyType": "TRY",

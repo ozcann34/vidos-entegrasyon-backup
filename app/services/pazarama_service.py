@@ -1138,7 +1138,7 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
                 'brandId': brand_id,
                 'desi': DEFAULT_DESI,
                 'code': barcode,
-                'groupCode': (product.get('parent_barcode') or product.get('stock_code') or barcode)[:100],
+                'groupCode': (product.get('modelCode') or product.get('productCode') or product.get('parent_barcode') or product.get('stock_code') or barcode)[:100],
                 'stockCode': (product.get('stock_code') or barcode)[:100],
                 'stockCount': stock,
                 'listPrice': list_price,
