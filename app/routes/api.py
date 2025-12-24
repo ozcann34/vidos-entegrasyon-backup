@@ -25,6 +25,9 @@ from app.services.n11_service import (
     perform_n11_send_products, perform_n11_send_all,
     perform_n11_sync_stock, perform_n11_sync_prices, perform_n11_sync_all
 )
+from app.services.hepsiburada_service import (
+    perform_hepsiburada_send_products, perform_hepsiburada_send_all
+)
 from app.utils.helpers import to_int, to_float
 
 api_bp = Blueprint('api', __name__)
@@ -1552,10 +1555,19 @@ def api_send_selected(marketplace):
                 params={'barcodes': barcodes, 'xml_source_id': xml_source_id, 'requested_marketplace': marketplace, **send_options}
             )
 
+        elif marketplace == 'hepsiburada':
+            job_id = submit_mp_job(
+                'hepsiburada_send_products',
+                'hepsiburada',
+                lambda job_id: perform_hepsiburada_send_products(job_id, barcodes, xml_source_id, **send_options),
+                params={'barcodes': barcodes, 'xml_source_id': xml_source_id, 'requested_marketplace': marketplace, **send_options}
+            )
+
         else:
             job_id = submit_mp_job(
                 f'{marketplace}_send_selected',
                 marketplace,
+                # Fallback to placeholder for unsupported
                 lambda job_id: _placeholder_send_job(job_id, marketplace, barcodes, xml_source_id, auto_match=False),
                 params={'barcodes': barcodes, 'xml_source_id': xml_source_id, 'requested_marketplace': marketplace}
             )
@@ -1628,6 +1640,11 @@ def api_send_all():
              else:
                  job_id = submit_mp_job('pazarama_sync_all', 'pazarama', 
                     lambda jid: perform_pazarama_sync_all(jid, xml_source_id))
+
+        # HEPSIBURADA
+        elif marketplace == 'hepsiburada':
+             job_id = submit_mp_job('hepsiburada_send_all', 'hepsiburada', 
+                lambda jid: perform_hepsiburada_send_all(jid, xml_source_id))
 
         else:
             return jsonify({'success': False, 'message': 'Pazaryeri desteklenmiyor.'}), 400

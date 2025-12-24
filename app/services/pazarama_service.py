@@ -1073,12 +1073,10 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
             try:
                 full_cat_data = client.get_category_with_attributes(category_id)
                 for attr_def in full_cat_data.get('data', {}).get('attributes', []):
-                    if not attr_def.get('isRequired'):
-                        continue
-                    
                     at_id = attr_def.get('id')
                     at_name = attr_def.get('name', '')
                     at_values = attr_def.get('attributeValues') or []
+                    is_required = attr_def.get('isRequired', False)
                     
                     val_from_xml = get_variant_value(at_name)
                     matched_val_id = None
@@ -1091,23 +1089,33 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
                                 break
                     
                     if matched_val_id:
+                        # Found a match (Required or Optional) -> Add it
                         attributes.append({
                             'attributeId': at_id,
                             'attributeValueId': matched_val_id
                         })
-                    elif at_values:
-                        # Fallback: AUTOMATICALLY pick the first allowed value (Fix for "Ürün Tipi" error)
-                        # Log this fallback for transparency
-                        fallback_val = at_values[0]
-                        fallback_id = fallback_val.get('id')
-                        fallback_name = fallback_val.get('name')
-                        if idx <= 5: # Only log for first few items
-                            append_mp_job_log(job_id, f"[{barcode}] Oznitelik '{at_name}' icin tam eslesme bulunamadi. Varsayilan secildi: {fallback_name}", level='warning')
-                        
-                        attributes.append({
-                            'attributeId': at_id,
-                            'attributeValueId': fallback_id
-                        })
+                    elif is_required:
+                        # Required but no match -> Try fallback
+                        if at_values:
+                            # Fallback: AUTOMATICALLY pick the first allowed value
+                            fallback_val = at_values[0]
+                            fallback_id = fallback_val.get('id')
+                            fallback_name = fallback_val.get('name')
+                            if idx <= 5: 
+                                append_mp_job_log(job_id, f"[{barcode}] Oznitelik '{at_name}' icin tam eslesme bulunamadi. Varsayilan secildi: {fallback_name}", level='warning')
+                            
+                            attributes.append({
+                                'attributeId': at_id,
+                                'attributeValueId': fallback_id
+                            })
+                        else:
+                            # Required but no values -> Try custom value logic
+                            fallback_text = val_from_xml or "Standart"
+                            attributes.append({
+                                'attributeId': at_id,
+                                'customAttributeValue': fallback_text
+                            })
+                            append_mp_job_log(job_id, f"[{barcode}] Oznitelik '{at_name}' (Zorunlu) liste boş. Özel değer denendi: {fallback_text}", level='warning')
                     else:
                         # Fix for "Renk" bug: Value list is empty but attribute is required.
                         # Likely a custom text field or dynamic attribute.
