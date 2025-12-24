@@ -1075,14 +1075,31 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
                 # DEBUG LOGGING FOR ATTRIBUTES
                 all_attrs = full_cat_data.get('data', {}).get('attributes', [])
                 
-                # FIX: Check for multiple hidden attributes that API requires but doesn't list
                 # Renk ID: 08b2020b-e519-405f-85e2-1fd712104097
-                # Beden/Yas ID: caf725ef-9c25-4b87-8a81-97c7fab17855
+                # We inject KNOWN valid values from documentation because API returns empty list for some cats.
+                RENK_VALUES = [
+                    {"id": "2ddb5aeb-3c25-4fb1-975d-031b436f3319", "name": "Siyah"},
+                    {"id": "aef8fe0b-4f80-4dc3-91f3-b902e6fc4c4c", "name": "Beyaz"},
+                    {"id": "75d0b61d-e6bd-4250-946d-40e9e262e497", "name": "Gri"},
+                    {"id": "a804b5e8-93b5-48e1-8b63-8096a8e83ad8", "name": "Lacivert"},
+                    {"id": "57ecdb59-f9ff-4775-814f-c7a98cfc066e", "name": "Kırmızı"},
+                    {"id": "c7e562e1-ae2e-4a59-b656-81723601bdbf", "name": "Mavi"},
+                    {"id": "6faa548f-7f02-42c7-80ba-6b73b84fbbef", "name": "Sarı"},
+                    {"id": "96bc3661-77b6-4a6d-8745-574c9adb4a03", "name": "Yeşil"},
+                    {"id": "544e1e86-678c-4e19-a7a4-230f180b2ed2", "name": "Mor"},
+                    {"id": "6e4deed0-2555-4ecd-ae1b-051aa30b774a", "name": "Kahverengi"},
+                    {"id": "ec98860d-668c-4c4f-824c-b918e47f1abf", "name": "Pembe"},
+                    {"id": "52a2e275-c6c0-4603-96a4-c3511432e210", "name": "Turuncu"},
+                    {"id": "e45bd93e-2244-4824-bf72-46c59265f242", "name": "Bej"},
+                    {"id": "04c2111d-231a-42c6-b998-25f002f23166", "name": "Haki"},
+                    {"id": "0e561638-4251-469b-9c71-0a6723223963", "name": "Çok Renkli"}
+                ]
+
                 existing_ids = [a.get('id') for a in all_attrs]
                 
                 HIDDEN_REQUIRED_ATTRS = [
-                    {"id": "08b2020b-e519-405f-85e2-1fd712104097", "name": "Renk"},
-                    {"id": "caf725ef-9c25-4b87-8a81-97c7fab17855", "name": "Beden/Yaş"}
+                    {"id": "08b2020b-e519-405f-85e2-1fd712104097", "name": "Renk", "values": RENK_VALUES},
+                    {"id": "caf725ef-9c25-4b87-8a81-97c7fab17855", "name": "Beden/Yaş", "values": []} # No known values for Beden yet
                 ]
                 
                 for hattr in HIDDEN_REQUIRED_ATTRS:
@@ -1092,9 +1109,9 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
                             'id': hattr["id"],
                             'name': hattr["name"],
                             'isRequired': True,
-                            'attributeValues': [] 
+                            'attributeValues': hattr["values"] 
                          })
-                         append_mp_job_log(job_id, f"UYARI: '{hattr['name']}' özelliği API'den gelmedi, manuel eklendi.", level='warning')
+                         append_mp_job_log(job_id, f"UYARI: '{hattr['name']}' özelliği API'den gelmedi, manuel eklendi ({len(hattr['values'])} deger ile).", level='warning')
 
                 debug_attr_names = [f"{a.get('name')} (Req:{a.get('isRequired')})" for a in all_attrs]
                 append_mp_job_log(job_id, f"DEBUG: Kategori ({category_id}) ozellikleri: {', '.join(debug_attr_names)}", level='info')
