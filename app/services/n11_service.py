@@ -31,9 +31,9 @@ _N11_CAT_TFIDF = {
     "matrix": None,
 }
 
-def load_n11_categories_from_db() -> bool:
+def load_n11_categories_from_db(user_id: int = None) -> bool:
     try:
-        data = Setting.get("N11_CATEGORY_CACHE", "")
+        data = Setting.get("N11_CATEGORY_CACHE", "", user_id=user_id)
         if data:
             import json
             j = json.loads(data)
@@ -46,14 +46,14 @@ def load_n11_categories_from_db() -> bool:
         logging.warning(f"Failed to load N11 categories from DB: {e}")
     return False
 
-def save_n11_categories_to_db():
+def save_n11_categories_to_db(user_id: int = None):
     try:
         payload = {
             "by_id": _N11_CATEGORY_CACHE["by_id"],
             "list": _N11_CATEGORY_CACHE["list"],
             "timestamp": time.time()
         }
-        Setting.set("N11_CATEGORY_CACHE", json.dumps(payload))
+        Setting.set("N11_CATEGORY_CACHE", json.dumps(payload), user_id=user_id)
     except Exception as e:
         logging.error(f"Failed to save N11 categories to DB: {e}")
 
@@ -62,7 +62,7 @@ def fetch_and_cache_n11_categories(force=False, user_id: int = None):
     if not force and _N11_CATEGORY_CACHE["loaded"]:
         return True
     
-    if not force and load_n11_categories_from_db():
+    if not force and load_n11_categories_from_db(user_id=user_id):
         if not _N11_CAT_TFIDF["vectorizer"]:
             _build_n11_tfidf()
         return True
@@ -110,7 +110,7 @@ def fetch_and_cache_n11_categories(force=False, user_id: int = None):
         _N11_CATEGORY_CACHE["list"] = flat_list
         _N11_CATEGORY_CACHE["loaded"] = True
         
-        save_n11_categories_to_db()
+        save_n11_categories_to_db(user_id=user_id)
         _build_n11_tfidf()
         logging.info(f"N11 Categories cached: {len(flat_list)} leaf categories.")
         return True
@@ -139,11 +139,11 @@ def _build_n11_tfidf():
     except Exception as e:
         logging.error(f"N11 TF-IDF build error: {e}")
 
-def find_matching_n11_category(query: str) -> Optional[Dict[str, Any]]:
+def find_matching_n11_category(query: str, user_id: int = None) -> Optional[Dict[str, Any]]:
     """Find best matching N11 category for a given query string (product name/category)."""
     # Ensure loaded
     if not _N11_CATEGORY_CACHE["loaded"]:
-        fetch_and_cache_n11_categories()
+        fetch_and_cache_n11_categories(user_id=user_id)
         
     # Ensure vectorizer built (even if loaded from DB)
     if not _N11_CAT_TFIDF["vectorizer"] and _N11_CATEGORY_CACHE["list"]:
@@ -177,12 +177,12 @@ def find_matching_n11_category(query: str) -> Optional[Dict[str, Any]]:
 # ---------------------------------------------------
 _N11_ATTR_CACHE = {} # cat_id -> [attributes] with values
 
-def get_n11_category_attributes(category_id: int):
+def get_n11_category_attributes(category_id: int, user_id: int = None):
     """Fetch attributes for a category (Cached in memory)."""
     if category_id in _N11_ATTR_CACHE:
         return _N11_ATTR_CACHE[category_id]
         
-    client = get_n11_client()
+    client = get_n11_client(user_id=user_id)
     if not client: return []
     
     # Need to implement get_category_attributes in N11Client if not exists
@@ -217,7 +217,7 @@ def get_n11_category_attributes(category_id: int):
         return []
 
 
-def search_n11_brand(name: str) -> Optional[Dict[str, Any]]:
+def search_n11_brand(name: str, user_id: int = None) -> Optional[Dict[str, Any]]:
     """
     Search for a brand in N11 via Category Attributes (Attribute ID 1).
     Since N11 doesn't have a global brand search, we look into a common category
@@ -235,11 +235,11 @@ def search_n11_brand(name: str) -> Optional[Dict[str, Any]]:
     # 1000482 = Screen Protector, 1000476 = Mobile Phone, 1000273 = General Electronics
     target_cats = [1000476, 1000482, 1000273, 1002571] # Added Mobile Phone (1000476) and Makeup (1002571) for broader range
     
-    client = get_n11_client()
+    client = get_n11_client(user_id=user_id)
     if not client: return None
     
     for cat_id in target_cats:
-        attrs = get_n11_category_attributes(cat_id)
+        attrs = get_n11_category_attributes(cat_id, user_id=user_id)
         for attr in attrs:
              if str(attr.get('id')) == '1': # Brand Attribute
                   # Check values
@@ -259,8 +259,8 @@ def search_n11_brand(name: str) -> Optional[Dict[str, Any]]:
 # Product Operations
 # ---------------------------------------------------
 
-def fetch_all_n11_products(job_id: Optional[str] = None) -> List[Dict[str, Any]]:
-    client = get_n11_client()
+def fetch_all_n11_products(job_id: Optional[str] = None, user_id: int = None) -> List[Dict[str, Any]]:
+    client = get_n11_client(user_id=user_id)
     if not client:
         return []
 
@@ -284,17 +284,17 @@ def fetch_all_n11_products(job_id: Optional[str] = None) -> List[Dict[str, Any]]
             
     return all_products
 
-def refresh_n11_cache(job_id: Optional[str] = None) -> Dict[str, Any]:
+def refresh_n11_cache(job_id: Optional[str] = None, user_id: int = None) -> Dict[str, Any]:
     try:
         if job_id: append_mp_job_log(job_id, "N11 ürünleri çekiliyor (Snapshot)...")
-        items = fetch_all_n11_products(job_id)
+        items = fetch_all_n11_products(job_id, user_id=user_id)
         
         payload = {
             'items': items,
             'total': len(items),
             'saved_at': time.time()
         }
-        Setting.set('N11_EXPORT_SNAPSHOT', json.dumps(payload))
+        Setting.set('N11_EXPORT_SNAPSHOT', json.dumps(payload), user_id=user_id)
         
         if job_id: append_mp_job_log(job_id, f"Toplam {len(items)} N11 ürünü önbelleğe alındı.")
         return {'success': True, 'count': len(items), 'total': len(items)}
@@ -351,20 +351,13 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
     
     # Use price_multiplier directly
     multiplier = price_multiplier
-    shipment_template = Setting.get("N11_DEFAULT_SHIPMENT_TEMPLATE", "Standart")
+    shipment_template = Setting.get("N11_DEFAULT_SHIPMENT_TEMPLATE", "Standart", user_id=user_id)
+    default_brand = Setting.get("N11_DEFAULT_BRAND", None, user_id=user_id)
+    default_brand_id = Setting.get("N11_DEFAULT_BRAND_ID", None, user_id=user_id)
+    if default_brand_id: default_brand_id = int(default_brand_id)
 
     items_to_send = []
     skipped = []
-    
-    # Load global settings for N11
-    shipment_template_setting = Setting.query.filter_by(key="N11_DEFAULT_SHIPMENT_TEMPLATE").first()
-    shipment_template = shipment_template_setting.value if shipment_template_setting and shipment_template_setting.value else "Standart"
-    
-    default_brand_setting = Setting.query.filter_by(key="N11_DEFAULT_BRAND").first()
-    default_brand = default_brand_setting.value if default_brand_setting and default_brand_setting.value else None
-    
-    default_brand_id_setting = Setting.query.filter_by(key="N11_DEFAULT_BRAND_ID").first()
-    default_brand_id = int(default_brand_id_setting.value) if default_brand_id_setting and default_brand_id_setting.value else None
 
     # 2. Match Categories First (Collect IDs to fetch attributes)
     matched_products = [] # list of (barcode, product_data, cat_id)
@@ -454,7 +447,7 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
         # Match Category
         cat_id = None
         if auto_match:
-            match = find_matching_n11_category(f"{title} {category_path}")
+            match = find_matching_n11_category(f"{title} {category_path}", user_id=user_id)
             if match: cat_id = match['id']
             
         if not cat_id:
@@ -514,7 +507,7 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
         try:
              # Fetch attributes for this category
              # using the client method we validated
-             cat_attrs = client.get_category_attributes(item['cat_id'])
+             cat_attrs = get_n11_category_attributes(item['cat_id'], user_id=user_id)
              
              for cat_attr in cat_attrs:
                  # FIX: N11 CDN fields are different (attributeId, attributeName, isMandatory)
@@ -1007,11 +1000,11 @@ def perform_n11_sync_all(job_id: str, xml_source_id: Any, match_by: str = 'barco
     return perform_n11_batch_update(job_id, items_to_update, user_id=user_id)
 
 
-def perform_n11_product_update(barcode: str, data: Dict[str, Any]) -> Dict[str, Any]:
+def perform_n11_product_update(barcode: str, data: Dict[str, Any], user_id: int = None) -> Dict[str, Any]:
     """
     Update details for N11 product.
     """
-    client = get_n11_client()
+    client = get_n11_client(user_id=user_id)
     messages = []
     success = True
     
@@ -1088,7 +1081,7 @@ def sync_n11_products(user_id: int, job_id: Optional[str] = None) -> Dict[str, A
         append_mp_job_log(job_id, f"N11 ürün senkronizasyonu başlatıldı (User ID: {user_id})")
 
     try:
-        products = fetch_all_n11_products(job_id=job_id)
+        products = fetch_all_n11_products(job_id=job_id, user_id=user_id)
         if not products:
             msg = "N11'den hiç ürün dönmedi veya bir hata oluştu."
             logger.warning(f"[N11] {msg}")
