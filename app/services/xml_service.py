@@ -278,6 +278,7 @@ def load_xml_source_index(xml_source_id: Any) -> Dict[str, Dict[str, Any]]:
                 v_record['parent_barcode'] = barcode
                 v_record['productCode'] = product_code # Carry model level productCode
                 v_record['modelCode'] = model_code # Carry model level modelCode
+                v_record['details'] = record.get('details') # Carry HTML description
                 v_record['quantity'] = to_int(_g(v, 'stock', 'Stock', 'quantity', 'Quantity') or '0')
                 v_record['price'] = to_float(_g(v, 'price', 'Price') or str(price))
                 

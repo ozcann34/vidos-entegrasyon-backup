@@ -609,7 +609,7 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
         payload_item = {
             # "integrator": "Vidos", # Handled by client wrapper
             "title": item['title'][:200],
-            "description": item['description'],
+            "description": p.get('details') or item['description'],
             "categoryId": int(item['cat_id']), # FLAT ID
             # "price": float(f"{item['price']:.2f}"), # Removed as it's redundant/wrong if salePrice exists
             "salePrice": float(f"{item['price']:.2f}"),
@@ -620,7 +620,7 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
             "quantity": item['quantity'],
             "stockCode": target_code, # Mandatory
             "barcode": target_code, # Optional but good
-            "productMainId": p.get('modelCode') or p.get('productCode') or p.get('parent_barcode') or target_code, # Mandatory for grouping variants, unique for single
+            "productMainId": p.get('parent_barcode') or p.get('modelCode') or p.get('productCode') or target_code, # Fixed priority for variant grouping
             "shipmentTemplate": shipment_template,
             "preparingDay": 3,
             "maxPurchaseQuantity": 50, # Optional

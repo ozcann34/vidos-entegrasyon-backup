@@ -1355,8 +1355,8 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
         raw_vat = int(item.get('vatRate', 20))
         idefix_vat = raw_vat if raw_vat in (0, 1, 10, 20) else 20  # Default to 20 if not valid
         
-        # Determine grouping ID
-        pm_id = rec.get('modelCode') or rec.get('productCode') or rec.get('parent_barcode') or item.get('vendorStockCode', item['barcode'])
+        # Determine grouping ID - Fixed priority: parent_barcode > modelCode > productCode
+        pm_id = rec.get('parent_barcode') or rec.get('modelCode') or rec.get('productCode') or item.get('vendorStockCode', item['barcode'])
         
         new_prod = {
             "barcode": item['barcode'],
@@ -1367,7 +1367,7 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
             "inventoryQuantity": int(item.get('inventoryQuantity', 0)),
             "vendorStockCode": pm_id, # Idefix often uses vendorStockCode as grouping anchor in some flows
             "desi": item.get('desi', 1),
-            "description": item.get('description') or item.get('title', ''),
+            "description": rec.get('details') or item.get('description') or item.get('title', ''),
             "price": float(item.get('price', 0)),
             "comparePrice": float(item.get('comparePrice', item.get('price', 0))),
             "vatRate": idefix_vat,

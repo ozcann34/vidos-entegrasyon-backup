@@ -1244,20 +1244,37 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
         "Web Color": "Belirtilmemiş"
     }
 
-    def build_simple_attributes(category_id: int, variant_attributes: List[dict] = None) -> List[dict]:
+    def build_simple_attributes(category_id: int, variant_attributes: List[dict] = None, product_title: str = "") -> List[dict]:
         """Build minimal required attributes for a category, integrating variant attributes if provided"""
         try:
             attrs = client.get_category_attributes(category_id)
             payload = []
             
+            # Synonym mapping for attribute names
+            SYNONYMS = {
+                "beden": ["numara", "size", "ölçü", "ebat"],
+                "renk": ["color", "colour"],
+                "numara": ["beden", "size"]
+            }
+            
             # Helper to find a value for an attribute in variant_attributes
             def get_variant_value(attr_name):
                 if not variant_attributes: return None
                 attr_name_lower = attr_name.lower()
+                
+                # Direct match
                 for va in variant_attributes:
                     v_name = va['name'].lower()
                     if v_name in attr_name_lower or attr_name_lower in v_name:
                         return va['value']
+                
+                # Synonym match
+                for standard_name, variants in SYNONYMS.items():
+                    if standard_name in attr_name_lower:
+                        for syn in variants:
+                            for va in variant_attributes:
+                                if syn in va['name'].lower():
+                                    return va['value']
                 return None
 
             for attr_def in attrs.get("categoryAttributes", []):
@@ -1298,7 +1315,7 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
                 elif attr_values:
                     # Fallback: check if we can match from title if not in variant_attributes
                     for v in attr_values:
-                        if v['name'].lower() in title.lower():
+                        if v['name'].lower() in product_title.lower():
                             matched_val_id = v['id']
                             break
                     
@@ -1458,12 +1475,20 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
             product_images = ["https://via.placeholder.com/500"]
 
         # Build minimal required attributes
-        attributes_payload = build_simple_attributes(category_id, variant_attributes=product.get('variant_attributes'))
+        attributes_payload = build_simple_attributes(category_id, variant_attributes=product.get('variant_attributes'), product_title=title)
 
-        # Determine Product Main ID / Model Code (Crucial for variant grouping on Trendyol)
-        # Priority: XML modelCode > XML productCode > parent_barcode > current barcode
-        pm_id = product.get('modelCode') or product.get('productCode') or product.get('parent_barcode') or barcode
+        # Determine Product Main ID (Crucial for variant grouping on Trendyol)
+        # Fixed priority: modelCode > parent_barcode > productCode > current barcode
+        # parent_barcode is preferred over productCode as productCode often includes size (SKU)
+        pm_id = product.get('modelCode') or product.get('parent_barcode') or product.get('productCode') or barcode
         
+        # Determine Description (Prefer HTML 'details' if available)
+        final_desc = clean_forbidden_words(product.get('details') or product.get('description') or title)
+        
+        # VAT Rate (0, 1, 10, 20)
+        raw_vat = int(product.get('vatRate', 20))
+        item_vat = raw_vat if raw_vat in (0, 1, 10, 20) else 20
+
         # Build V2 Payload Item
         item = {
             "barcode": barcode,
@@ -1473,13 +1498,12 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
             "categoryId": category_id,
             "quantity": stock,
             "stockCode": product.get('stock_code') or barcode,
-            "modelCode": pm_id, # Added modelCode explicitly
             "dimensionalWeight": 2,
-            "description": desc,
+            "description": final_desc,
             "currencyType": "TRY",
             "listPrice": listPrice,
             "salePrice": salePrice,
-            "vatRate": 20,
+            "vatRate": item_vat,
             "cargoCompanyId": 10,
             "images": [{"url": url} for url in product_images],
             "attributes": attributes_payload
