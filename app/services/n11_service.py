@@ -59,7 +59,7 @@ def save_n11_categories_to_db(user_id: int = None):
 
 def fetch_and_cache_n11_categories(force=False, user_id: int = None):
     """Fetch all N11 categories and build cache."""
-    if not force and _N11_CATEGORY_CACHE["loaded"]:
+    if not force and _N11_CATEGORY_CACHE["loaded"] and _N11_CATEGORY_CACHE["list"]:
         return True
     
     if not force and load_n11_categories_from_db(user_id=user_id):
@@ -139,10 +139,13 @@ def _build_n11_tfidf():
     except Exception as e:
         logging.error(f"N11 TF-IDF build error: {e}")
 
-def find_matching_n11_category(query: str, user_id: int = None) -> Optional[Dict[str, Any]]:
+def find_matching_n11_category(query: str, user_id: int = None, job_id: str = None) -> Optional[Dict[str, Any]]:
     """Find best matching N11 category for a given query string (product name/category)."""
+    # Cleanup query: Remove redundant symbols often found in XML paths
+    query_clean = query.replace('>>>', ' ').replace('>', ' ').strip()
+    
     # Ensure loaded
-    if not _N11_CATEGORY_CACHE["loaded"]:
+    if not _N11_CATEGORY_CACHE["loaded"] or not _N11_CATEGORY_CACHE["list"]:
         fetch_and_cache_n11_categories(user_id=user_id)
         
     # Ensure vectorizer built (even if loaded from DB)
@@ -150,23 +153,36 @@ def find_matching_n11_category(query: str, user_id: int = None) -> Optional[Dict
         _build_n11_tfidf()
     
     if not _N11_CAT_TFIDF["vectorizer"]:
+        if job_id: append_mp_job_log(job_id, "Kategori listesi boş veya yüklenemedi, eşleşme yapılamıyor.", level='warning')
         return None
 
     try:
         vec = _N11_CAT_TFIDF["vectorizer"]
         mat = _N11_CAT_TFIDF["matrix"]
         
-        q_vec = vec.transform([query])
+        q_vec = vec.transform([query_clean])
         sims = cosine_similarity(q_vec, mat).flatten()
         
         best_idx = sims.argmax()
         score = sims[best_idx]
         
+        # Log match attempt if job context exists
+        if job_id and score > 0.05:
+             match_path = _N11_CAT_TFIDF["leaf"][best_idx]['path']
+             # append_mp_job_log(job_id, f"Kategori Analizi: '{query_clean[:50]}...' -> En yakın: '{match_path}' (Puan: {score:.2f})")
+
         # Increased threshold to avoid bad matches like Phone Case -> Pillow Case
-        if score > 0.4: 
+        # Adjusting slightly to 0.3 for better coverage, but logging warning for weak matches.
+        if score > 0.3: 
             match = _N11_CAT_TFIDF["leaf"][best_idx]
-            # logging.info(f"Match: '{query}' -> '{match['name']}' ({score:.2f})")
+            if score < 0.4 and job_id:
+                append_mp_job_log(job_id, f"Düşük puanlı kategori eşleşmesi ({score:.2f}): {match['path']}", level='info')
             return match
+        else:
+            if job_id:
+                match_path = _N11_CAT_TFIDF["leaf"][best_idx]['path'] if score > 0 else "Hiçbiri"
+                append_mp_job_log(job_id, f"Eşleşme yetersiz ({score:.2f}). En yakın aday: {match_path}", level='warning')
+                
     except Exception as e:
         logging.error(f"Match error: {e}")
     
@@ -344,7 +360,7 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
     # 1. Load Categories if needed
     if auto_match:
         append_mp_job_log(job_id, "Kategoriler yükleniyor ve kontrol ediliyor...")
-        fetch_and_cache_n11_categories()
+        fetch_and_cache_n11_categories(user_id=user_id)
 
     xml_index = load_xml_source_index(xml_source_id)
     mp_map = xml_index.get('by_barcode') or {}
@@ -447,7 +463,7 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
         # Match Category
         cat_id = None
         if auto_match:
-            match = find_matching_n11_category(f"{title} {category_path}", user_id=user_id)
+            match = find_matching_n11_category(f"{title} {category_path}", user_id=user_id, job_id=job_id)
             if match: cat_id = match['id']
             
         if not cat_id:
