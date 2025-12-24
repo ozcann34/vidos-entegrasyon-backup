@@ -1078,6 +1078,10 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
                     at_values = attr_def.get('attributeValues') or []
                     is_required = attr_def.get('isRequired', False)
                     
+                    # Force required for known critical variant attributes if metadata is wrong
+                    if 'renk' in at_name.lower() or 'beden' in at_name.lower() or 'ebat' in at_name.lower():
+                        is_required = True
+                    
                     val_from_xml = get_variant_value(at_name)
                     matched_val_id = None
                     
