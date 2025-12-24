@@ -681,30 +681,62 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
                 if not main_task_id: main_task_id = task_id
                 append_mp_job_log(job_id, f"Part {idx+1} Başarılı. Task ID: {task_id}")
                 
-                # --- STATUS CHECK LOOP ---
-                append_mp_job_log(job_id, f"Task {task_id} onay durumu kontrol ediliyor (maks 30sn)...", level='info')
-                for _check in range(10): # 10 * 3s = 30s
+                # --- STATUS CHECK LOOP (IMPROVED) ---
+                append_mp_job_log(job_id, f"Task {task_id} onay durumu kontrol ediliyor (maks 45sn)...", level='info')
+                
+                final_results_received = False
+                for _check in range(15): # 15 * 3s = 45s
                     time.sleep(3)
                     try:
                         t_status = client.check_task_status(task_id)
-                        # data structure: {"pageable":..., "content": [{"taskId":..., "status": "Done"}]}
-                        # actually check_task_status docs/client wrap might return just query result
-                        # Client wrapper returns: response.json() from /product/task-details/page-query
                         content = t_status.get('content', [])
-                        if content:
-                            task_info = content[0]
-                            status_enum = task_info.get('status')
-                            if status_enum == 'DONE':
-                                # Check stats if available
-                                append_mp_job_log(job_id, f"Task {task_id} tamamlandı: {status_enum}")
-                                break
-                            elif status_enum == 'ERROR':
-                                append_mp_job_log(job_id, f"Task {task_id} HATA aldı!", level='error')
-                                break
-                            # If WAITING or DOING, continue
+                        
+                        if not content:
+                            continue
+                            
+                        # Check if any item is still non-final
+                        # Statuses: WAITING, DOING, DONE, ERROR, REJECTED
+                        pending_count = 0
+                        done_count = 0
+                        error_count = 0
+                        error_messages = set()
+                        
+                        for task_info in content:
+                            st = task_info.get('status', '').upper()
+                            if st in ['WAITING', 'DOING']:
+                                pending_count += 1
+                            elif st == 'DONE':
+                                done_count += 1
+                            else:
+                                error_count += 1
+                                # Collect error message
+                                msg = task_info.get('statusDescription') or task_info.get('message') or ""
+                                if not msg and task_info.get('reasons'):
+                                    msg = ", ".join(task_info['reasons'])
+                                if msg:
+                                    error_messages.add(msg)
+                        
+                        if pending_count == 0:
+                            # All items reached a final state
+                            if error_count == 0:
+                                append_mp_job_log(job_id, f"✅ Task {task_id}: Tüm ürünler ({done_count}) başarıyla işlendi.", level='info')
+                            else:
+                                append_mp_job_log(job_id, f"⚠️ Task {task_id}: {done_count} başarılı, {error_count} HATALI ürün.", level='warning')
+                                for e_msg in list(error_messages)[:10]: # Log first 10 unique errors
+                                    append_mp_job_log(job_id, f"   ❌ Hata: {e_msg}", level='error')
+                            
+                            final_results_received = True
+                            break
+                        else:
+                            if _check % 3 == 0:
+                                append_mp_job_log(job_id, f"⏳ Task {task_id}: {pending_count} ürün hala işleniyor...", level='info')
+                                
                     except Exception as chk_err:
                         append_mp_job_log(job_id, f"Task durum kontrol hatası: {chk_err}", level='warning')
                         break
+                
+                if not final_results_received:
+                    append_mp_job_log(job_id, f"🕒 Task {task_id}: İşlem henüz tamamlanmadı, kontrol zaman aşımına uğradı.", level='warning')
                 # -------------------------
 
                 total_sent += len(chunk)
