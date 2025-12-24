@@ -15,7 +15,7 @@ import logging
 logger = logging.getLogger(__name__)
 _XML_SOURCE_CACHE_LOCK = threading.Lock()
 _XML_PARSING_LOCK = threading.Lock() # Prevent concurrent heavy parsing
-XML_SOURCE_CACHE_TTL_SECONDS = 600
+XML_SOURCE_CACHE_TTL_SECONDS = 0  # Cache geçici olarak kapalı
 XML_SOURCE_CACHE_MAX = 5
 CACHE_DIR = os.path.join(os.getcwd(), 'cache')
 os.makedirs(CACHE_DIR, exist_ok=True)
@@ -123,20 +123,10 @@ def load_xml_source_index(xml_source_id: Any, force: bool = False) -> Dict[str, 
                     return data
                 _XML_SOURCE_CACHE.pop(cache_key, None)
 
-    # Check Disk Cache
-    cache_path = os.path.join(CACHE_DIR, f'xml_index_{xml_source_id}.json')
-    if not force and os.path.exists(cache_path):
-        mtime = os.path.getmtime(cache_path)
-        if (now - mtime) < XML_SOURCE_CACHE_TTL_SECONDS:
-            try:
-                with open(cache_path, 'r', encoding='utf-8') as f:
-                    index = json.load(f)
-                    if cache_key is not None:
-                        with _XML_SOURCE_CACHE_LOCK:
-                            _XML_SOURCE_CACHE[cache_key] = (now, index)
-                    return index
-            except Exception:
-                pass
+    # Disk Cache devre dışı (geçici)
+    # cache_path = os.path.join(CACHE_DIR, f'xml_index_{xml_source_id}.json')
+    # if not force and os.path.exists(cache_path):
+    #     ...
 
     with _XML_PARSING_LOCK:
         # Re-verify cache inside lock to avoid redundant work
@@ -401,12 +391,12 @@ def load_xml_source_index(xml_source_id: Any, force: bool = False) -> Dict[str, 
                 _XML_SOURCE_CACHE.pop(oldest_key, None)
             _XML_SOURCE_CACHE[cache_key] = (now, index)
 
-    # Save to Disk Cache
-    try:
-        with open(cache_path, 'w', encoding='utf-8') as f:
-            json.dump(index, f)
-    except Exception:
-        pass
+    # Disk Cache kaydetme devre dışı (geçici)
+    # try:
+    #     with open(cache_path, 'w', encoding='utf-8') as f:
+    #         json.dump(index, f)
+    # except Exception:
+    #     pass
 
     return index
 
