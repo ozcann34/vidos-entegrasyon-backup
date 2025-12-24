@@ -217,11 +217,20 @@ def load_xml_source_index(xml_source_id: Any) -> Dict[str, Dict[str, Any]]:
         if i < 3:
             logger.info(f"Item #{i} IDs - Barcode: {barcode}, PCode: {product_code}, MCode: {model_code}")
 
-        if not barcode:
-            barcode = product_code or _g(row, 'stockCode', 'StockCode', 'sku', 'SKU')
-        if not barcode:
-            if i < 3: logger.info(f"Item #{i} skipped: No barcode found")
+        # Logic to handle generic/bad barcodes (Fix for "Bgz" issue)
+        unique_id = barcode
+        if product_code:
+             # Check if barcode is missing, too short, or known generic
+             # Using list of common bad values seen in faulty XMLs
+             bad_values = ['bgz', 'barkodsuz', 'yok', 'null', 'nan', 'undefined', 'boş']
+             if not barcode or len(str(barcode)) < 3 or str(barcode).lower() in bad_values:
+                 unique_id = product_code
+        
+        if not unique_id:
+            if i < 3: logger.info(f"Item #{i} skipped: No valid ID found (uniq={unique_id}, bar={barcode}, pc={product_code})")
             continue
+
+        barcode = unique_id # Use the chosen ID as the effective barcode for indexing
         title = _g(row, 'name', 'Name', 'productName', 'ProductName', 'title', 'Title')
         description = _g(row, 'detail', 'Detail', 'description', 'Description')
         stock_code = _g(row, 'stockCode', 'StockCode', 'productCode', 'ProductCode') or barcode
