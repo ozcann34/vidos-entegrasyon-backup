@@ -1118,6 +1118,13 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
                         # Or checking if "Renk" (Color) needs specific handling.
                         
                         fallback_text = val_from_xml or "Standart"
+                        
+                        # Attempt to send custom value
+                        attributes.append({
+                            'attributeId': at_id,
+                            'customAttributeValue': fallback_text
+                        })
+                        append_mp_job_log(job_id, f"[{barcode}] Oznitelik '{at_name}' (Zorunlu) liste boş. Özel değer denendi: {fallback_text}", level='warning')
                         # We don't have a clean way to set 'customValue' in Pazarama integration usually, 
                         # but some endpoints accept 'attributeValue' string instead of Id?
                         # Without exact API docs for this specific "Renk" case, we will try to skip it but LOG ERROR to user to fill it manually or map it.
