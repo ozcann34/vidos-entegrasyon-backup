@@ -1096,10 +1096,17 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
                             'attributeValueId': matched_val_id
                         })
                     elif at_values:
-                        # Fallback to first value
+                        # Fallback: AUTOMATICALLY pick the first allowed value (Fix for "Ürün Tipi" error)
+                        # Log this fallback for transparency
+                        fallback_val = at_values[0]
+                        fallback_id = fallback_val.get('id')
+                        fallback_name = fallback_val.get('name')
+                        if idx <= 5: # Only log for first few items
+                            append_mp_job_log(job_id, f"[{barcode}] Oznitelik '{at_name}' icin tam eslesme bulunamadi. Varsayilan secildi: {fallback_name}", level='warning')
+                        
                         attributes.append({
                             'attributeId': at_id,
-                            'attributeValueId': at_values[0].get('id')
+                            'attributeValueId': fallback_id
                         })
             except Exception as attr_err:
                 # Fallback to simple cached attributes if detailed fetch fails

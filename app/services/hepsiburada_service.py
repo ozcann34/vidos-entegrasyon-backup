@@ -170,6 +170,46 @@ def perform_hepsiburada_send_products(job_id: str, barcodes: List[str], xml_sour
         track_id = result.get('id') or result.get('trackingId')
         
         append_mp_job_log(job_id, f"Gönderim başarılı. Takip ID: {track_id}")
+
+        # --- STATUS CHECK LOOP ---
+        if track_id:
+            append_mp_job_log(job_id, f"Takip ID {track_id} durumu kontrol ediliyor (maks 30sn)...", level='info')
+            imported_cnt = 0
+            failed_cnt = 0
+            
+            for _chk in range(10): # 10 * 3s = 30s
+                time.sleep(3)
+                try:
+                    status_res = client.check_upload_status(track_id)
+                    # Expected response based on listing api:
+                    # { "id": "...", "status": "COMPLETED", "totalCount": 1, "successCount": 1, "failedCount": 0, "result": [...] }
+                    status_enum = status_res.get('status')
+                    
+                    if status_enum in ('COMPLETED', 'DONE', 'FINISHED'):
+                        s_cnt = status_res.get('successCount', 0)
+                        f_cnt = status_res.get('failedCount', 0)
+                        imported_cnt = s_cnt
+                        failed_cnt = f_cnt
+                        
+                        append_mp_job_log(job_id, f"İşlem Tamamlandı. Başarılı: {s_cnt}, Hatalı: {f_cnt}")
+                        
+                        # Log failures
+                        if f_cnt > 0:
+                            results_list = status_res.get('result', []) or status_res.get('results', [])
+                            for res_item in results_list:
+                                if res_item.get('status') == 'FAILED':
+                                    merchant_sku = res_item.get('merchantSku')
+                                    err_msg = res_item.get('message') or res_item.get('explanation')
+                                    append_mp_job_log(job_id, f"   ❌ {merchant_sku}: {err_msg}", level='error')
+                        break
+                    elif status_enum == 'FAILED':
+                        append_mp_job_log(job_id, f"İşlem tamamen BAŞARISIZ oldu: {status_res.get('message')}", level='error')
+                        break
+                    # If QUEUED or PROCESSING, continue
+                except Exception as poll_err:
+                     append_mp_job_log(job_id, f"Durum kontrol hatası: {poll_err}", level='warning')
+                     break
+        # -------------------------
         
         return {
             'success': True,

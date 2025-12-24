@@ -680,6 +680,33 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
             if task_id:
                 if not main_task_id: main_task_id = task_id
                 append_mp_job_log(job_id, f"Part {idx+1} Başarılı. Task ID: {task_id}")
+                
+                # --- STATUS CHECK LOOP ---
+                append_mp_job_log(job_id, f"Task {task_id} onay durumu kontrol ediliyor (maks 30sn)...", level='info')
+                for _check in range(10): # 10 * 3s = 30s
+                    time.sleep(3)
+                    try:
+                        t_status = client.check_task_status(task_id)
+                        # data structure: {"pageable":..., "content": [{"taskId":..., "status": "Done"}]}
+                        # actually check_task_status docs/client wrap might return just query result
+                        # Client wrapper returns: response.json() from /product/task-details/page-query
+                        content = t_status.get('content', [])
+                        if content:
+                            task_info = content[0]
+                            status_enum = task_info.get('status')
+                            if status_enum == 'DONE':
+                                # Check stats if available
+                                append_mp_job_log(job_id, f"Task {task_id} tamamlandı: {status_enum}")
+                                break
+                            elif status_enum == 'ERROR':
+                                append_mp_job_log(job_id, f"Task {task_id} HATA aldı!", level='error')
+                                break
+                            # If WAITING or DOING, continue
+                    except Exception as chk_err:
+                        append_mp_job_log(job_id, f"Task durum kontrol hatası: {chk_err}", level='warning')
+                        break
+                # -------------------------
+
                 total_sent += len(chunk)
             else:
                  # Check for immediate errors

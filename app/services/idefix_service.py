@@ -1427,35 +1427,44 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
                 batch_request_ids.append(batch_request_id)
                 append_mp_job_log(job_id, f"✅ Batch {batch_num} gönderildi! ID: {batch_request_id}")
                 
-                # Wait and check batch result
+                # Wait and check batch result with loop
                 import time
-                append_mp_job_log(job_id, f"⏳ Batch sonucu bekleniyor (5 sn)...")
-                time.sleep(5)
+                append_mp_job_log(job_id, f"⏳ Batch sonucu bekleniyor (maks 30sn)...")
                 
-                try:
-                    result = client.query_pool_batch_status(batch_request_id)
-                    
-                    # Log batch status
-                    batch_status = result.get('status', 'UNKNOWN')
-                    append_mp_job_log(job_id, f"📊 Batch durumu: {batch_status}")
-                    
-                    # Check products in result
-                    products = result.get('products', []) or result.get('items', [])
-                    for prod in products:
-                        prod_barcode = prod.get('barcode', 'N/A')
-                        prod_status = prod.get('status', prod.get('poolState', 'unknown'))
-                        failure_reasons = prod.get('failureReasons', {})
+                for _poll in range(10): # 10 * 3s = 30s
+                    time.sleep(3)
+                    try:
+                        result = client.query_pool_batch_status(batch_request_id)
+                        batch_status = result.get('status', 'UNKNOWN')
                         
-                        if failure_reasons:
-                            reason_msg = failure_reasons.get('message', str(failure_reasons))
-                            append_mp_job_log(job_id, f"   ❌ {prod_barcode}: {prod_status} - {reason_msg}", level='error')
-                        else:
-                            append_mp_job_log(job_id, f"   ✓ {prod_barcode}: {prod_status}")
+                        # If still processing, continue waiting
+                        if batch_status in ('QUEUED', 'PROCESSING', 'IN_PROGRESS'):
+                             if _poll == 9: 
+                                 append_mp_job_log(job_id, f"⚠️ Batch hala işlemde: {batch_status} (Zaman aşımı)")
+                             continue
+                        
+                        # Log final status
+                        append_mp_job_log(job_id, f"📊 Batch bitti: {batch_status}")
+                        
+                        # Check products in result
+                        products = result.get('products', []) or result.get('items', [])
+                        for prod in products:
+                            prod_barcode = prod.get('barcode', 'N/A')
+                            prod_status = prod.get('status', prod.get('poolState', 'unknown'))
+                            failure_reasons = prod.get('failureReasons', {})
                             
-                    success_count += len(batch)
-                except Exception as poll_err:
-                    append_mp_job_log(job_id, f"⚠️ Batch sonuç sorgulaması hatası: {poll_err}", level='warning')
-                    success_count += len(batch)  # Still count as sent
+                            if failure_reasons:
+                                reason_msg = failure_reasons.get('message', str(failure_reasons))
+                                append_mp_job_log(job_id, f"   ❌ {prod_barcode}: {prod_status} - {reason_msg}", level='error')
+                            else:
+                                append_mp_job_log(job_id, f"   ✓ {prod_barcode}: {prod_status}")
+                                
+                        success_count += len(batch)
+                        break # Done with this batch
+                        
+                    except Exception as poll_err:
+                        append_mp_job_log(job_id, f"⚠️ Batch durum kontrol hatası (Deneme {_poll}): {poll_err}", level='warning')
+                        if _poll == 9: success_count += len(batch) # Assume sent if polling fails
             else:
                 fail_count += len(batch)
                 append_mp_job_log(job_id, f"❌ Batch {batch_num}: ID alınamadı", level='error')
