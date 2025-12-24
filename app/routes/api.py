@@ -422,6 +422,9 @@ def api_xml_source_products():
     max_price = request.args.get('max_price', type=float)
     category = (request.args.get('category') or '').strip().lower()
     has_image = request.args.get('has_image') == 'true'
+    
+    # NEW: Group variants option (default True for backward compat display)
+    group_variants = request.args.get('group_variants', 'true').lower() == 'true'
 
     if not source_id:
         return jsonify({'total': 0, 'items': []})
@@ -457,6 +460,49 @@ def api_xml_source_products():
         return True
 
     filtered = [rec for rec in all_records if _match(rec)]
+    
+    # NEW: Group variants by parent_barcode
+    if group_variants:
+        # Separate main products and variants
+        main_products = {}  # barcode -> product
+        variants_map = {}   # parent_barcode -> [variants]
+        
+        for rec in filtered:
+            parent = rec.get('parent_barcode')
+            barcode = rec.get('barcode')
+            
+            if parent:
+                # This is a variant
+                if parent not in variants_map:
+                    variants_map[parent] = []
+                variants_map[parent].append(rec)
+            else:
+                # This is a main product
+                main_products[barcode] = rec
+        
+        # Build grouped list
+        grouped = []
+        for barcode, product in main_products.items():
+            product_copy = dict(product)
+            product_copy['variants'] = variants_map.get(barcode, [])
+            product_copy['variant_count'] = len(product_copy['variants'])
+            # Calculate total stock from variants
+            if product_copy['variants']:
+                total_stock = sum(to_int(v.get('quantity', 0)) for v in product_copy['variants'])
+                product_copy['total_stock'] = total_stock
+            grouped.append(product_copy)
+        
+        # Also add orphan variants (variants whose parent is not in filtered results)
+        for parent_barcode, variants in variants_map.items():
+            if parent_barcode not in main_products:
+                # Parent not found, show first variant as main
+                first = dict(variants[0])
+                first['variants'] = variants[1:] if len(variants) > 1 else []
+                first['variant_count'] = len(variants)
+                first['_orphan'] = True
+                grouped.append(first)
+        
+        filtered = grouped
     
     total = len(filtered)
     start = max(0, (page-1)*per_page)

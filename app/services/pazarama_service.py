@@ -1282,6 +1282,20 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
                                                 if idx >= 3: break # Only check first few
                                                 # Log the keys to understand structure
                                                 append_mp_job_log(job_id, f"  -> Item {idx} keys: {list(item.keys())}", level='debug')
+                                                
+                                                # Check for 'failureReasons' key (Pazarama specific)
+                                                if 'failureReasons' in item:
+                                                    failure_reasons = item.get('failureReasons', {})
+                                                    if isinstance(failure_reasons, dict):
+                                                        for field, reasons in failure_reasons.items():
+                                                            reason_text = ', '.join(reasons) if isinstance(reasons, list) else str(reasons)
+                                                            append_mp_job_log(job_id, f"  -> {field}: {reason_text}", level='error')
+                                                            error_details.append(f"{field}: {reason_text}")
+                                                    elif isinstance(failure_reasons, list):
+                                                        for reason in failure_reasons:
+                                                            append_mp_job_log(job_id, f"  -> Hata: {reason}", level='error')
+                                                            error_details.append(str(reason))
+                                                
                                                 if 'validationErrors' in item:
                                                     append_mp_job_log(job_id, f"  -> Validation Err: {item['validationErrors']}", level='error')
 

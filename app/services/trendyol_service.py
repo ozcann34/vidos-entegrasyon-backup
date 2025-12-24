@@ -1331,6 +1331,10 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
                 
                 payload.append(item)
             
+            # Debug log for first few products
+            if variant_attributes:
+                append_mp_job_log(job_id, f"VARYANT ATTR: {variant_attributes} -> {len(payload)} attr gönderilecek", level='debug')
+            
             return payload
         except Exception as e:
             append_mp_job_log(job_id, f"Öznitelik hatası (Cat: {category_id}): {e}", level='warning')
@@ -1509,6 +1513,10 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
             "attributes": attributes_payload
         }
         items_to_send.append(item)
+        
+        # Debug log for first few products to verify variant grouping
+        if processed <= 5:
+            append_mp_job_log(job_id, f"DEBUG [{barcode}]: productMainId={pm_id}, parent_barcode={product.get('parent_barcode')}, variant_attrs={product.get('variant_attributes')}", level='debug')
         
         if processed % 10 == 0:
              append_mp_job_log(job_id, f"{processed}/{total_items} ürün işlendi...")

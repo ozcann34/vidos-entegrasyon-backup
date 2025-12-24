@@ -1462,8 +1462,19 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
                 
         except Exception as e:
             fail_count += len(batch)
-            append_mp_job_log(job_id, f"❌ Batch {batch_num} hatası: {e}", level='error')
-            failures.append(str(e))
+            error_msg = str(e)
+            
+            # Try to extract response body for detailed error info
+            if hasattr(e, 'response') and e.response is not None:
+                try:
+                    resp_text = e.response.text[:500] if e.response.text else 'No response body'
+                    error_msg = f"{e} - Response: {resp_text}"
+                    append_mp_job_log(job_id, f"❌ Batch {batch_num} API yanıtı: {resp_text}", level='error')
+                except:
+                    pass
+            
+            append_mp_job_log(job_id, f"❌ Batch {batch_num} hatası: {error_msg}", level='error')
+            failures.append(error_msg)
     
     # Final summary
     append_mp_job_log(job_id, "")

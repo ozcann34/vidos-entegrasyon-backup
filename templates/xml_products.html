@@ -349,26 +349,82 @@
           return;
         }
 
-        products.forEach(product => {
+        products.forEach((product, idx) => {
           const checked = selectedBarcodes.has(product.barcode) ? 'checked' : '';
           const imgUrl = (product.images && product.images[0] && (product.images[0].url || product.images[0])) || 'https://via.placeholder.com/120x120?text=IMG';
+          const variantCount = product.variant_count || 0;
+          const totalStock = product.total_stock || product.quantity || 0;
+
+          // Variant badge
+          const variantBadge = variantCount > 0
+            ? `<span class="badge bg-primary bg-opacity-75 ms-2 cursor-pointer variant-toggle" data-idx="${idx}" title="Varyantlar"><i class="bi bi-layers"></i> ${variantCount}</span>`
+            : '';
+
           const row = `
-              <tr class="animate-fade-in">
+              <tr class="animate-fade-in main-product-row" data-idx="${idx}">
                   <td class="ps-3"><input type="checkbox" class="form-check-input row-check" data-barcode="${product.barcode}" ${checked}></td>
                   <td><img src="${imgUrl}" alt="${product.title}" class="img-thumbnail border-0 shadow-sm" style="width: 50px; height: 50px; object-fit: cover;"></td>
-                  <td class="text-truncate" style="max-width: 250px;" title="${product.title}">${product.title}</td>
+                  <td class="text-truncate" style="max-width: 250px;" title="${product.title}">${product.title}${variantBadge}</td>
                   <td><span class="badge bg-secondary font-monospace">${product.barcode}</span></td>
                   <td style="font-size: 0.85rem;" class="text-muted text-truncate" style="max-width: 150px;">${product.category || '---'}</td>
                   <td>
                     <div class="d-flex flex-column">
                       <span class="fw-bold">${Number(product.price || 0).toFixed(2)} TL</span>
-                      <span class="small text-success fw-bold">Stok: ${parseInt(product.quantity || 0)}</span>
+                      <span class="small text-success fw-bold">Stok: ${variantCount > 0 ? totalStock : parseInt(product.quantity || 0)}</span>
                     </div>
                   </td>
                   <td><span class="badge bg-info bg-opacity-10 text-info border border-info">Hazır</span></td>
               </tr>
           `;
           productListBody.insertAdjacentHTML('beforeend', row);
+
+          // Add variant rows (hidden by default)
+          if (variantCount > 0 && product.variants) {
+            product.variants.forEach(variant => {
+              const vChecked = selectedBarcodes.has(variant.barcode) ? 'checked' : '';
+              const vImgUrl = (variant.images && variant.images[0] && (variant.images[0].url || variant.images[0])) || imgUrl;
+              const variantAttrs = variant.variant_attributes || [];
+              const attrText = variantAttrs.map(a => `${a.name}: ${a.value}`).join(', ') || '';
+
+              const vRow = `
+                <tr class="animate-fade-in variant-row d-none" data-parent-idx="${idx}" style="background: rgba(var(--bs-primary-rgb), 0.03);">
+                    <td class="ps-4"><input type="checkbox" class="form-check-input row-check" data-barcode="${variant.barcode}" ${vChecked}></td>
+                    <td><img src="${vImgUrl}" alt="${variant.title}" class="img-thumbnail border-0" style="width: 40px; height: 40px; object-fit: cover; opacity: 0.8;"></td>
+                    <td class="text-truncate ps-4" style="max-width: 230px; font-size: 0.9rem;" title="${variant.title}">
+                      <i class="bi bi-arrow-return-right text-muted me-1"></i>${attrText || variant.title}
+                    </td>
+                    <td><span class="badge bg-light text-dark font-monospace" style="font-size: 0.75rem;">${variant.barcode}</span></td>
+                    <td style="font-size: 0.8rem;" class="text-muted">-</td>
+                    <td>
+                      <div class="d-flex flex-column">
+                        <span class="fw-semibold" style="font-size: 0.9rem;">${Number(variant.price || 0).toFixed(2)} TL</span>
+                        <span class="small text-success">Stok: ${parseInt(variant.quantity || 0)}</span>
+                      </div>
+                    </td>
+                    <td><span class="badge bg-secondary bg-opacity-25 text-secondary" style="font-size: 0.7rem;">Varyant</span></td>
+                </tr>
+              `;
+              productListBody.insertAdjacentHTML('beforeend', vRow);
+            });
+          }
+        });
+
+        // Add variant toggle event listeners
+        document.querySelectorAll('.variant-toggle').forEach(badge => {
+          badge.style.cursor = 'pointer';
+          badge.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const idx = e.currentTarget.dataset.idx;
+            const variantRows = document.querySelectorAll(`.variant-row[data-parent-idx="${idx}"]`);
+            variantRows.forEach(row => row.classList.toggle('d-none'));
+
+            // Update badge icon
+            const icon = e.currentTarget.querySelector('i');
+            if (icon) {
+              icon.classList.toggle('bi-layers');
+              icon.classList.toggle('bi-layers-half');
+            }
+          });
         });
 
       } else {
@@ -385,9 +441,17 @@
         products.forEach(product => {
           const checked = selectedBarcodes.has(product.barcode) ? 'checked' : '';
           const imgUrl = (product.images && product.images[0] && (product.images[0].url || product.images[0])) || 'https://via.placeholder.com/300x200?text=IMG';
+          const variantCount = product.variant_count || 0;
+          const totalStock = product.total_stock || product.quantity || 0;
+
+          const variantBadge = variantCount > 0
+            ? `<span class="badge bg-primary position-absolute top-0 end-0 m-2"><i class="bi bi-layers"></i> ${variantCount}</span>`
+            : '';
+
           const card = `
               <div class="col-12 col-sm-6 col-md-4 col-lg-3 animate-fade-in">
-                <div class="card h-100 border-0 shadow-sm product-card">
+                <div class="card h-100 border-0 shadow-sm product-card position-relative">
+                  ${variantBadge}
                   <div class="card-body p-2 d-flex flex-column">
                     <div class="d-flex align-items-start justify-content-between mb-2">
                       <div class="form-check">
@@ -402,7 +466,7 @@
                     <div class="text-muted small mb-2 text-truncate">${product.category_path || '---'}</div>
                     <div class="mt-auto d-flex justify-content-between align-items-center pt-2 border-top">
                       <div class="fw-bold fs-5 text-primary">${Number(product.price || 0).toFixed(2)} TL</div>
-                      <div class="badge bg-success bg-opacity-10 text-success">Stok: ${parseInt(product.quantity || 0)}</div>
+                      <div class="badge bg-success bg-opacity-10 text-success">Stok: ${variantCount > 0 ? totalStock : parseInt(product.quantity || 0)}</div>
                     </div>
                   </div>
                 </div>
