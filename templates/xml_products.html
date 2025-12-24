@@ -199,11 +199,12 @@
       <tr>
         <th style="width: 40px;" class="ps-3"><input id="selectAll" type="checkbox" class="form-check-input"></th>
         <th style="width: 70px;">Görsel</th>
-        <th style="width: 30%;">Ürün Adı</th>
+        <th style="width: 25%;">Ürün Adı</th>
         <th>Barkod</th>
         <th>Kategori Yolu</th>
         <th>Fiyat / Stok</th>
         <th>Durum</th>
+        <th style="width: 80px;">İşlem</th>
       </tr>
     </thead>
     <tbody id="productListBody"></tbody>
@@ -217,6 +218,25 @@
 <nav class="pb-4">
   <ul class="pagination justify-content-center shadow-sm" id="pagination"></ul>
 </nav>
+
+<!-- Product Detail Modal -->
+<div class="modal fade" id="productDetailModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-light">
+        <h5 class="modal-title" id="productDetailTitle">Ürün Detayı</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+      </div>
+      <div class="modal-body p-4" id="productDetailBody">
+        <!-- Content will be injected via JS -->
+      </div>
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 </div>
 {% endblock %}
 
@@ -230,6 +250,7 @@
   let selectedSourceId = localStorage.getItem('vidos_xml_source_id') || null;
   const selectedBarcodes = new Set();
   let viewMode = localStorage.getItem('vidos_view_mode') || 'list';
+  let allCurrentProducts = []; // Global list for modal access
 
   // DOM Elements
   const productListBody = document.getElementById('productListBody');
@@ -339,6 +360,9 @@
 
       if (!listContainer || !gridContainer || !productListBody) return;
 
+      // Update global list for modal access
+      allCurrentProducts = products || [];
+
       if (viewMode === 'list') {
         listContainer.classList.remove('d-none');
         gridContainer.classList.add('d-none');
@@ -374,6 +398,11 @@
                     </div>
                   </td>
                   <td><span class="badge bg-info bg-opacity-10 text-info border border-info">Hazır</span></td>
+                  <td class="text-end pe-3">
+                    <button class="btn btn-sm btn-outline-primary shadow-sm" onclick="showProductDetail(${idx})" title="Ürün Detayı">
+                      <i class="bi bi-eye"></i>
+                    </button>
+                  </td>
               </tr>
           `;
           productListBody.insertAdjacentHTML('beforeend', row);
@@ -459,8 +488,11 @@
                       </div>
                       <span class="badge bg-secondary font-monospace small">${product.barcode}</span>
                     </div>
-                    <div class="text-center mb-2" style="height: 160px; overflow: hidden; border-radius: 8px; background: #f8f9fa;">
+                    <div class="text-center mb-2" style="height: 160px; overflow: hidden; border-radius: 8px; background: #f8f9fa; position: relative;">
                       <img src="${imgUrl}" class="h-100 w-100" style="object-fit: contain;">
+                      <button class="btn btn-sm btn-light position-absolute bottom-0 end-0 m-2 shadow-sm rounded-circle" onclick="showProductDetail(${idx})" title="Detay">
+                        <i class="bi bi-eye text-primary"></i>
+                      </button>
                     </div>
                     <div class="fw-semibold text-truncate mb-1" title="${product.title}">${product.title}</div>
                     <div class="text-muted small mb-2 text-truncate">${product.category_path || '---'}</div>
@@ -808,6 +840,98 @@
         } catch (error) { Swal.fire('Hata', error.message, 'error'); }
       }
     });
+  }
+
+  // --- Product Detail Modal ---
+  function showProductDetail(idx) {
+    const product = allCurrentProducts[idx];
+    if (!product) return;
+
+    const modalBody = document.getElementById('productDetailBody');
+    const modalTitle = document.getElementById('productDetailTitle');
+
+    modalTitle.textContent = product.title;
+
+    // Main Product Info
+    let html = `
+      <div class="row mb-4">
+        <div class="col-md-4 text-center">
+          <img src="${(product.images && product.images[0] && (product.images[0].url || product.images[0])) || 'https://via.placeholder.com/300'}" class="img-fluid rounded shadow-sm" style="max-height: 250px;">
+        </div>
+        <div class="col-md-8">
+          <h5 class="fw-bold text-primary mb-3">${product.title}</h5>
+          <div class="row g-2 small">
+            <div class="col-6"><span class="text-muted">Barkod:</span> <span class="font-monospace fw-bold">${product.barcode}</span></div>
+            <div class="col-6"><span class="text-muted">Stok Kodu:</span> <span>${product.stock_code || '-'}</span></div>
+            <div class="col-6"><span class="text-muted">Fiyat:</span> <span class="fw-bold fs-5 text-dark">${Number(product.price).toFixed(2)} TL</span></div>
+            <div class="col-6"><span class="text-muted">Stok:</span> <span class="badge bg-success">${product.total_stock || product.quantity}</span></div>
+            <div class="col-6"><span class="text-muted">Desi:</span> <span>${product.desi || '-'}</span></div>
+            <div class="col-12"><span class="text-muted">Kategori:</span> <span>${product.category || '-'}</span></div>
+            <div class="col-12 border-top pt-2 mt-2">
+              <span class="text-muted d-block mb-1">Açıklama Özeti:</span>
+              <div class="bg-light p-2 rounded text-muted" style="max-height: 100px; overflow-y: auto; font-size: 0.8rem;">
+                ${product.description ? product.description.replace(/<[^>]*>?/gm, '').substring(0, 300) + '...' : 'Açıklama yok'}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Variants Section
+    if (product.variants && product.variants.length > 0) {
+      html += `
+        <h6 class="fw-bold border-bottom pb-2 mb-3"><i class="bi bi-layers me-2"></i>Varyantlar (${product.variants.length})</h6>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle small">
+            <thead class="table-light">
+              <tr>
+                <th>Görsel</th>
+                <th>Özellikler</th>
+                <th>Barkod</th>
+                <th>Stok Kodu</th>
+                <th>Fiyat</th>
+                <th>Stok</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+
+      product.variants.forEach(v => {
+        const vImg = (v.images && v.images[0] && (v.images[0].url || v.images[0])) || '';
+        const attrs = v.variant_attributes ? v.variant_attributes.map(a => `<span class="badge bg-secondary bg-opacity-10 text-secondary me-1">${a.name}: ${a.value}</span>`).join('') : '-';
+
+        html += `
+          <tr>
+            <td><img src="${vImg}" style="width: 30px; height: 30px; object-fit: cover;" class="rounded"></td>
+            <td>${attrs}</td>
+            <td class="font-monospace">${v.barcode}</td>
+            <td>${v.stock_code || '-'}</td>
+            <td class="fw-bold">${Number(v.price).toFixed(2)} TL</td>
+            <td>${v.quantity > 0 ? `<span class="text-success fw-bold">${v.quantity}</span>` : '<span class="text-danger">0</span>'}</td>
+          </tr>
+        `;
+      });
+
+      html += `</tbody></table></div>`;
+    } else {
+      html += `<div class="alert alert-light text-center text-muted"><i class="bi bi-info-circle me-2"></i>Bu ürünün varyantı bulunmuyor.</div>`;
+    }
+
+    // Raw JSON Data (Collapsible)
+    html += `
+      <div class="mt-4">
+        <button class="btn btn-sm btn-link text-decoration-none text-muted p-0" type="button" data-bs-toggle="collapse" data-bs-target="#rawJsonCollapse">
+          <i class="bi bi-code-slash me-1"></i>Ham Veriyi Göster
+        </button>
+        <div class="collapse mt-2" id="rawJsonCollapse">
+          <pre class="bg-dark text-light p-3 rounded" style="font-size: 0.75rem; max-height: 200px; overflow: auto;"><code>${JSON.stringify(product, null, 2)}</code></pre>
+        </div>
+      </div>
+    `;
+
+    modalBody.innerHTML = html;
+    new bootstrap.Modal(document.getElementById('productDetailModal')).show();
   }
 
   // Initial Load
