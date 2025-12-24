@@ -40,7 +40,7 @@ def sync_hepsiburada_orders(days_back: int = 30, user_id: int = None) -> Dict[st
     """
     Fetch orders from Hepsiburada
     """
-    client = get_hepsiburada_client()
+    client = get_hepsiburada_client(user_id=user_id)
     total_synced = 0
     errors = []
     
@@ -148,7 +148,7 @@ def sync_idefix_orders(days_back: int = 30, user_id: int = None) -> Dict[str, An
     """
     Fetch orders from Idefix
     """
-    client = get_idefix_client()
+    client = get_idefix_client(user_id=user_id)
     total_synced = 0
     errors = []
     
@@ -246,7 +246,7 @@ def sync_n11_orders(days_back: int = 30, user_id: int = None) -> Dict[str, Any]:
     
     try:
         logging.info("Syncing N11 orders...")
-        client = get_n11_client()
+        client = get_n11_client(user_id=user_id)
         if not client:
              return {'success': False, 'message': 'N11 API client oluşturulamadı (Ayarlar eksik).'}
         
@@ -410,7 +410,7 @@ def sync_trendyol_orders(days_back: int = 30, user_id: int = None) -> Dict[str, 
     
     try:
         logging.info("Syncing Trendyol orders...")
-        client = get_trendyol_client()
+        client = get_trendyol_client(user_id=user_id)
         if not client:
              return {'success': False, 'message': 'Trendyol API client oluşturulamadı.'}
         
@@ -578,15 +578,12 @@ def sync_pazarama_orders(days_back: int = 30, user_id: int = None) -> Dict[str, 
         except:
              user_id = None
              
-        # Need API Key from settings, not client_id/secret? Check Settings keys used.
-        # Main.py used: PAZARAMA_API_KEY, PAZARAMA_API_SECRET
-        api_key = Setting.get('PAZARAMA_API_KEY', user_id=user_id)
-        api_secret = Setting.get('PAZARAMA_API_SECRET', user_id=user_id)
+        from app.services.pazarama_service import get_pazarama_client
         
-        if not api_key or not api_secret:
-             return {'success': False, 'message': 'Pazarama API bilgileri eksik (API Key/Secret).'}
-             
-        client = PazaramaClient(api_key, api_secret) # Updated constructor usage if needed
+        client = get_pazarama_client(user_id=user_id)
+        
+        if not client:
+             return {'success': False, 'message': 'Pazarama API bilgileri eksik veya istemci oluşturulamadı.'}
         
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days_back)
@@ -761,7 +758,7 @@ def sync_all_products(user_id: int = None):
     # Trendyol
     try:
         from app.services.trendyol_service import refresh_trendyol_cache
-        results['trendyol'] = refresh_trendyol_cache()
+        results['trendyol'] = refresh_trendyol_cache(user_id=user_id)
     except Exception as e:
         results['trendyol'] = {"error": str(e)}
         
