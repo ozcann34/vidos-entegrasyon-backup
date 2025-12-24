@@ -15,7 +15,7 @@ import logging
 logger = logging.getLogger(__name__)
 _XML_SOURCE_CACHE_LOCK = threading.Lock()
 _XML_PARSING_LOCK = threading.Lock() # Prevent concurrent heavy parsing
-XML_SOURCE_CACHE_TTL_SECONDS = 3600
+XML_SOURCE_CACHE_TTL_SECONDS = 5
 XML_SOURCE_CACHE_MAX = 5
 CACHE_DIR = os.path.join(os.getcwd(), 'cache')
 os.makedirs(CACHE_DIR, exist_ok=True)
