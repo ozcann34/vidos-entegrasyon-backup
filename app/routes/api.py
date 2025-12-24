@@ -1159,21 +1159,37 @@ def api_product_bulk_update(marketplace):
 
 # ---------------- Order Sync API Endpoints ----------------
 @api_bp.route('/api/orders/sync/<marketplace>', methods=['POST'])
+@login_required
 def api_sync_orders(marketplace: str):
     """Sync orders from a marketplace"""
     try:
+        user_id = current_user.id
         if marketplace == 'trendyol':
             from app.services.order_service import sync_trendyol_orders
-            result = sync_trendyol_orders()
+            result = sync_trendyol_orders(user_id=user_id)
         elif marketplace == 'pazarama':
             from app.services.order_service import sync_pazarama_orders
-            result = sync_pazarama_orders()
+            result = sync_pazarama_orders(user_id=user_id)
+        elif marketplace == 'n11':
+            from app.services.order_service import sync_n11_orders
+            result = sync_n11_orders(user_id=user_id)
+        elif marketplace == 'idefix':
+            from app.services.order_service import sync_idefix_orders
+            result = sync_idefix_orders(user_id=user_id)
+        elif marketplace == 'hepsiburada':
+            from app.services.order_service import sync_hepsiburada_orders
+            result = sync_hepsiburada_orders(user_id=user_id)
+        elif marketplace == 'all':
+            from app.services.order_service import sync_all_orders
+            result_map = sync_all_orders(user_id=user_id)
+            total_synced = sum([r.get('synced', 0) if isinstance(r, dict) else r.get('count', 0) if isinstance(r, dict) else 0 for r in result_map.values()])
+            return jsonify({'success': True, 'synced': total_synced})
         else:
             return jsonify({'success': False, 'message': f'Desteklenmeyen pazaryeri: {marketplace}'}), 400
         
         return jsonify({
             'success': True,
-            'synced': result.get('synced', 0),
+            'synced': result.get('synced', result.get('count', 0)),
             'errors': result.get('errors', [])
         })
     except Exception as e:

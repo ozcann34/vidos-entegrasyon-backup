@@ -788,8 +788,8 @@ def sync_all_products(user_id: int = None):
         
     return results
 
-def get_orders(page: int = 1, per_page: int = 20, marketplace: Optional[str] = None, status: Optional[str] = None, search: Optional[str] = None, sort_by: Optional[str] = None, order: Optional[str] = 'desc'):
-    query = Order.query
+def get_orders(user_id: int, page: int = 1, per_page: int = 20, marketplace: Optional[str] = None, status: Optional[str] = None, search: Optional[str] = None, sort_by: Optional[str] = None, order: Optional[str] = 'desc'):
+    query = Order.query.filter_by(user_id=user_id)
 
     if marketplace:
         query = query.filter(Order.marketplace == marketplace)

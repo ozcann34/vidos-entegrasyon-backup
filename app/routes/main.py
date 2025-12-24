@@ -760,7 +760,7 @@ def instagram_tools():
     scheduled_jobs = get_scheduled_instagram_jobs()
     
     # Fetch Products (Limit 50 for performance, maybe add search later)
-    products = Product.query.order_by(Product.id.desc()).limit(50).all()
+    products = Product.query.filter_by(user_id=current_user.id).order_by(Product.id.desc()).limit(50).all()
     xml_sources = SupplierXML.query.filter_by(user_id=current_user.id).all()
     
     return render_template("instagram.html", scheduled_jobs=scheduled_jobs, products=products, xml_sources=xml_sources)
@@ -901,8 +901,16 @@ def orders_page():
     # Limit per_page to reasonable values
     per_page = min(max(per_page, 5), 100)
     
-    orders = get_orders(page=page, per_page=per_page, marketplace=marketplace, status=status, search=search, sort_by=sort_by, order=order)
+    orders = get_orders(user_id=current_user.id, page=page, per_page=per_page, marketplace=marketplace, status=status, search=search, sort_by=sort_by, order=order)
     return render_template("orders.html", orders=orders)
+
+@main_bp.route("/orders/sync-all")
+@login_required
+def sync_all_orders_route():
+    from app.services.order_service import sync_all_orders
+    sync_all_orders(user_id=current_user.id)
+    flash("Sipariş senkronizasyonu başlatıldı.", "success")
+    return redirect(url_for('main.orders_page'))
 
 @main_bp.route('/order/<int:order_id>')
 @login_required

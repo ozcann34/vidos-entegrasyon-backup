@@ -12,6 +12,9 @@
             <p class="text-muted small mb-0">Tüm pazaryerlerinden gelen siparişleri görüntüleyin</p>
         </div>
         <div class="d-flex gap-2 align-items-center justify-content-between-mobile">
+            <button class="btn btn-primary btn-sm w-100-mobile" onclick="syncOrders('all')">
+                <i class="bi bi-arrow-repeat me-1"></i> Tüm Siparişleri Çek
+            </button>
             <select class="form-select form-select-sm w-100-mobile" id="perPageSelect" style="width: auto;">
                 <option value="5">5 sipariş</option>
                 <option value="10">10 sipariş</option>
