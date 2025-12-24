@@ -1131,7 +1131,7 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
                         # BUT user wants it fixed.
                         # Let's try to find if there is a 'Standart' value ID from a global list? No.
                         # Log explicit error.
-                         append_mp_job_log(job_id, f"[{barcode}] Oznitelik '{at_name}' (Zorunlu) için değer listesi boş ve eşleşme yok. Lütfen Pazarama panelinden kontrol edin.", level='error')
+                        append_mp_job_log(job_id, f"[{barcode}] Oznitelik '{at_name}' (Zorunlu) için değer listesi boş ve eşleşme yok. Lütfen Pazarama panelinden kontrol edin.", level='error')
 
             except Exception as attr_err:
                 # Fallback to simple cached attributes if detailed fetch fails
