@@ -1074,6 +1074,22 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
                 full_cat_data = client.get_category_with_attributes(category_id)
                 # DEBUG LOGGING FOR ATTRIBUTES
                 all_attrs = full_cat_data.get('data', {}).get('attributes', [])
+                
+                # FIX: If 'Renk' is missing but usually required (common Pazarama issue), INJECT it manually.
+                # using ID from error log: 08b2020b-e519-405f-85e2-1fd712104097
+                existing_ids = [a.get('id') for a in all_attrs]
+                KNOWN_RENK_ID = "08b2020b-e519-405f-85e2-1fd712104097"
+                
+                if KNOWN_RENK_ID not in existing_ids:
+                     # Inject Renk manually as required
+                     all_attrs.append({
+                        'id': KNOWN_RENK_ID,
+                        'name': 'Renk',
+                        'isRequired': True,
+                        'attributeValues': [] # Empty values, will force custom value or default
+                     })
+                     append_mp_job_log(job_id, f"UYARI: 'Renk' özelliği API'den gelmedi, manuel eklendi.", level='warning')
+
                 debug_attr_names = [f"{a.get('name')} (Req:{a.get('isRequired')})" for a in all_attrs]
                 append_mp_job_log(job_id, f"DEBUG: Kategori ({category_id}) ozellikleri: {', '.join(debug_attr_names)}", level='info')
 
