@@ -11,8 +11,11 @@ _XML_SOURCE_CACHE_LOCK = None # Will be initialized if needed, or just use dict 
 # Actually app.py used threading.Lock. Let's import it.
 import threading
 _XML_SOURCE_CACHE_LOCK = threading.Lock()
-XML_SOURCE_CACHE_TTL_SECONDS = 300
-XML_SOURCE_CACHE_MAX = 10
+_XML_PARSING_LOCK = threading.Lock() # Prevent concurrent heavy parsing
+XML_SOURCE_CACHE_TTL_SECONDS = 3600
+XML_SOURCE_CACHE_MAX = 5
+CACHE_DIR = os.path.join(os.getcwd(), 'cache')
+os.makedirs(CACHE_DIR, exist_ok=True)
 
 def load_supplier_xml_map():
     url = (Setting.get('SUPPLIER_XML_URL', '') or '').strip()
@@ -117,17 +120,46 @@ def load_xml_source_index(xml_source_id: Any) -> Dict[str, Dict[str, Any]]:
                     return data
                 _XML_SOURCE_CACHE.pop(cache_key, None)
 
-    try:
-        src = SupplierXML.query.filter_by(id=int(xml_source_id)).first()
-    except Exception:
-        return index
-    if not src or not src.url:
-        return index
-    try:
-        raw_xml = fetch_xml_from_url(src.url)
-        xml_obj = xmltodict.parse(raw_xml)
-    except Exception:
-        return index
+    # Check Disk Cache
+    cache_path = os.path.join(CACHE_DIR, f'xml_index_{xml_source_id}.json')
+    if not force and os.path.exists(cache_path):
+        mtime = os.path.getmtime(cache_path)
+        if (now - mtime) < XML_SOURCE_CACHE_TTL_SECONDS:
+            try:
+                with open(cache_path, 'r', encoding='utf-8') as f:
+                    index = json.load(f)
+                    if cache_key is not None:
+                        with _XML_SOURCE_CACHE_LOCK:
+                            _XML_SOURCE_CACHE[cache_key] = (now, index)
+                    return index
+            except Exception:
+                pass
+
+    with _XML_PARSING_LOCK:
+        # Re-verify cache inside lock to avoid redundant work
+        if cache_key is not None:
+            with _XML_SOURCE_CACHE_LOCK:
+                cached = _XML_SOURCE_CACHE.get(cache_key)
+                if cached:
+                    ts, data = cached
+                    if (now - ts) <= ttl: return data
+
+        try:
+            src = SupplierXML.query.filter_by(id=int(xml_source_id)).first()
+        except Exception:
+            return index
+        if not src or not src.url:
+            return index
+
+        try:
+            logger.info(f"XML Source {xml_source_id}: Downloading from {src.url}...")
+            raw_xml = fetch_xml_from_url(src.url)
+            logger.info(f"XML Source {xml_source_id}: Downloaded {len(raw_xml)} bytes. Parsing with xmltodict...")
+            xml_obj = xmltodict.parse(raw_xml)
+            logger.info(f"XML Source {xml_source_id}: Parse complete.")
+        except Exception as e:
+            logger.error(f"XML Source {xml_source_id}: Error downloading or parsing: {e}")
+            return index
 
     def find_product_list(data):
         # 1. Direct match for User's known structure (root -> product)
@@ -331,7 +363,8 @@ def load_xml_source_index(xml_source_id: Any) -> Dict[str, Dict[str, Any]]:
                     continue
 
                 # Ana urun bilgilerini kopyala ve varyant ozellikleri ile guncelle
-                v_record = copy.deepcopy(record)
+                v_record = record.copy()
+                # Images listesini paylasabiliriz (cunku icerigini degistirmiyoruz)
                 v_record['barcode'] = v_barcode
                 v_record['parent_barcode'] = barcode
                 v_record['productCode'] = product_code # Carry model level productCode
@@ -375,6 +408,13 @@ def load_xml_source_index(xml_source_id: Any) -> Dict[str, Dict[str, Any]]:
                 oldest_key = min(_XML_SOURCE_CACHE.items(), key=lambda item: item[1][0])[0]
                 _XML_SOURCE_CACHE.pop(oldest_key, None)
             _XML_SOURCE_CACHE[cache_key] = (now, index)
+
+    # Save to Disk Cache
+    try:
+        with open(cache_path, 'w', encoding='utf-8') as f:
+            json.dump(index, f)
+    except Exception:
+        pass
 
     return index
 

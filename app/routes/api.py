@@ -462,14 +462,15 @@ def api_xml_source_products():
     
     # Optimized filtering for large datasets
     def _match(rec):
-        if query and query not in rec.get('title_normalized', '') and query not in str(rec.get('barcode', '')).lower():
-            return False
+        if query:
+            if query not in rec.get('title_normalized', '') and query not in rec.get('barcode', '').lower():
+                return False
         
-        stock = to_int(rec.get('quantity', 0))
+        stock = rec.get('quantity', 0)
         if min_stock is not None and stock < min_stock: return False
         if max_stock is not None and stock > max_stock: return False
         
-        price = to_float(rec.get('price', 0))
+        price = rec.get('price', 0)
         if min_price is not None and price < min_price: return False
         if max_price is not None and price > max_price: return False
         

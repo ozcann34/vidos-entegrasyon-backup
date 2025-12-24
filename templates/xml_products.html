@@ -645,6 +645,7 @@
 
     try {
       const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`Sunucu hatası: ${resp.status}`);
       const data = await resp.json();
       currentTotal = data.total || 0;
       const countInfo = document.getElementById('productCountInfo');
