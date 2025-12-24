@@ -141,12 +141,11 @@ def perform_hepsiburada_send_products(job_id: str, barcodes: List[str], xml_sour
             
         # Switch back to Listing API (Inventory Uploads) as Import API gives 403
         # Payload for Inventory Uploads (Listing API)
-        # reference: https://developers.hepsiburada.com/hepsiburada/reference/inventory-uploads
         
         item = {
             "merchantSku": barcode,
             "productName": title[:200], # Added title if needed
-            "VaryantGroupID": product.get('parent_barcode') or product.get('modelCode') or product.get('productCode') or barcode, # Fixed priority for variant grouping
+            "VaryantGroupID": product.get('parent_barcode') or product.get('modelCode') or product.get('productCode') or barcode, 
             "price": {
                 "amount": final_price,
                 "currency": "TRY"
@@ -159,7 +158,11 @@ def perform_hepsiburada_send_products(job_id: str, barcodes: List[str], xml_sour
         products_to_send.append(item)
         
     if not products_to_send:
-        return {'success': False, 'message': 'Gönderilecek geçerli ürün yok.', 'skipped': skipped}
+        msg = 'Gönderilecek geçerli ürün yok.'
+        if skipped:
+             msg += f" (Atlanan: {len(skipped)}). İlk sebep: {skipped[0]['reason']}"
+        append_mp_job_log(job_id, msg, level='warning')
+        return {'success': False, 'message': msg, 'skipped': skipped}
         
     append_mp_job_log(job_id, f"{len(products_to_send)} ürün hazırlanarak Hepsiburada'ya gönderiliyor (Listing API)...")
     

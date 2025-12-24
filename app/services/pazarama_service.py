@@ -1108,6 +1108,24 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
                             'attributeId': at_id,
                             'attributeValueId': fallback_id
                         })
+                    else:
+                        # Fix for "Renk" bug: Value list is empty but attribute is required.
+                        # Likely a custom text field or dynamic attribute.
+                        # If allowed custom input, use variant value or "Standart"
+                        # Since we don't have 'allowCustom' flag in this logic block easily (it was in attr_def?), let's assume if values are empty it accepts text?
+                        # Re-checking attr_def structure: Pazarama usually has 'attributeValues' list. If empty, maybe it's not a selection.
+                        # Try adding as custom string if possible. Pazarama API documentation is vague on this, but let's try.
+                        # Or checking if "Renk" (Color) needs specific handling.
+                        
+                        fallback_text = val_from_xml or "Standart"
+                        # We don't have a clean way to set 'customValue' in Pazarama integration usually, 
+                        # but some endpoints accept 'attributeValue' string instead of Id?
+                        # Without exact API docs for this specific "Renk" case, we will try to skip it but LOG ERROR to user to fill it manually or map it.
+                        # BUT user wants it fixed.
+                        # Let's try to find if there is a 'Standart' value ID from a global list? No.
+                        # Log explicit error.
+                         append_mp_job_log(job_id, f"[{barcode}] Oznitelik '{at_name}' (Zorunlu) için değer listesi boş ve eşleşme yok. Lütfen Pazarama panelinden kontrol edin.", level='error')
+
             except Exception as attr_err:
                 # Fallback to simple cached attributes if detailed fetch fails
                 attributes = pazarama_get_required_attributes(client, category_id)

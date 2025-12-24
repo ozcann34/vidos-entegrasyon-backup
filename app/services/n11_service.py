@@ -459,7 +459,8 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
             if match: cat_id = match['id']
             
         if not cat_id:
-             skipped.append({'barcode': barcode, 'reason': 'Kategori eşleştirilemedi (ID yok)'})
+             # Try fallback to global category setting if implemented or prompt user clearly
+             skipped.append({'barcode': barcode, 'reason': f"Kategori Eşleşmedi ({category_path}). N11 Kategori Eşleştirme ayarlarını yapınız."})
              continue
              
         matched_products.append({
