@@ -1337,131 +1337,98 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
                     batch_ids.append(batch_req_id)
                     append_mp_job_log(job_id, f"Batch {current_batch_num}/{total_batches} gonderildi. ID: {batch_req_id}")
                     
-                    # Wait a bit for Pazarama to process
-                    time.sleep(3)
-                    
-                    # Check batch status
+                    # Wait and Poll for Pazarama to process (Max 12 attempts * 15s = 3 mins)
                     try:
-                        batch_status = client.check_batch(batch_req_id)
-                        status = batch_status.get('status')
-                        status_code = batch_status.get('status_code')
-                        batch_total = batch_status.get('total', 0)
-                        success_cnt = batch_status.get('success', 0)
-                        failed_cnt = batch_status.get('failed', 0)
+                        max_attempts = 12
+                        attempt = 0
+                        finished = False
                         
-                        # Handle different status values
-                        if status == 'IN_PROGRESS' or status_code == 1:
-                            # Still processing - count sent products as pending success
-                            append_mp_job_log(job_id, f"Batch {current_batch_num}: Isleniyor ({len(batch)} urun)", level='info')
-                            success_count += len(batch)
-                        elif status == 'DONE' or status_code == 2:
-                            # Completed - use actual counts or batch size
-                            if success_cnt > 0 or failed_cnt > 0:
-                                success_count += success_cnt
-                                fail_count += failed_cnt
-                                append_mp_job_log(job_id, f"Batch {current_batch_num}: {success_cnt} basarili, {failed_cnt} basarisiz", level='info')
-                                if batch_result:
-                                    for res_item in batch_result[:10]: # Check first 10 items
-                                        bcode = res_item.get('barcode') or res_item.get('code') or '?'
-                                        msg = res_item.get('message') or res_item.get('description') or res_item.get('error') or 'İşlem Başarılı'
-                                        state_txt = res_item.get('operationStatusText') or res_item.get('statusName') or ''
-                                        wait_msg = res_item.get('waitingApproveExp') or ''
-                                        item_full_msg = f"[{bcode}] Durum: {state_txt} | Mesaj: {msg}"
-                                        if wait_msg: item_full_msg += f" | Onay Notu: {wait_msg}"
-                                        append_mp_job_log(job_id, f"  -> Item Durumu: {item_full_msg}", level='info')
-
-                                if failed_cnt > 0:
-                                    # Extract error details from batchResult
-                                    batch_result = batch_status.get('batch_result', [])
-                                    error_details = []
-                                    for item in batch_result:
-                                        if isinstance(item, dict):
-                                            item_error = item.get('error') or item.get('message') or item.get('errorMessage')
-                                            item_code = item.get('code') or item.get('barcode') or item.get('productCode')
-                                            if item_error:
-                                                error_details.append(f"{item_code}: {item_error}")
+                        while attempt < max_attempts and not finished:
+                            attempt += 1
+                            if attempt > 1:
+                                time.sleep(15)
+                                
+                            batch_status = client.check_batch(batch_req_id)
+                            status = batch_status.get('status')
+                            status_code = batch_status.get('status_code')
+                            batch_total = batch_status.get('total', 0)
+                            success_cnt = batch_status.get('success', 0)
+                            failed_cnt = batch_status.get('failed', 0)
+                            batch_result = batch_status.get('batch_result', [])
+                            
+                            if status == 'DONE' or status_code == 2:
+                                finished = True
+                                if success_cnt > 0 or failed_cnt > 0:
+                                    success_count += success_cnt
+                                    fail_count += failed_cnt
+                                    append_mp_job_log(job_id, f"Batch {current_batch_num}: {success_cnt} basarili, {failed_cnt} basarisiz", level='info')
                                     
-                                    # Also check raw response for errors
-                                    raw_data = batch_status.get('raw', {}).get('data', {})
-                                    if not error_details and raw_data.get('batchResult'):
-                                        for item in raw_data['batchResult']:
-                                            if isinstance(item, dict):
-                                                item_error = item.get('error') or item.get('message') or item.get('errorMessage') or item.get('description')
-                                                item_code = item.get('code') or item.get('barcode') or ''
-                                                if item_error:
-                                                    error_details.append(f"{item_code}: {item_error}")
-                                    
-                                    if error_details:
-                                        append_mp_job_log(job_id, f"Batch {current_batch_num}: {success_cnt} basarili, {failed_cnt} basarisiz", level='warning')
-                                        for err in error_details[:10]:  # Show first 10 errors
-                                            append_mp_job_log(job_id, f"  -> Hata: {err}", level='error')
-                                        failures.extend([{'error': e} for e in error_details[:20]])
-                                    else:
-                                        # No detailed errors found with standard keys, log the structure to understand why
-                                        append_mp_job_log(job_id, f"Batch {current_batch_num}: {success_cnt} basarili, {failed_cnt} basarisiz", level='warning')
-                                        
-                                        # Try to extract 'validationErrors' or similar from the items
-                                        if raw_data.get('batchResult'):
-                                            for idx, item in enumerate(raw_data['batchResult']):
-                                                if idx >= 3: break # Only check first few
-                                                # Log the keys to understand structure
-                                                append_mp_job_log(job_id, f"  -> Item {idx} keys: {list(item.keys())}", level='debug')
-                                                
-                                                # Check for 'failureReasons' key (Pazarama specific)
-                                                if 'failureReasons' in item:
-                                                    failure_reasons = item.get('failureReasons', {})
-                                                    if isinstance(failure_reasons, dict):
-                                                        for field, reasons in failure_reasons.items():
-                                                            reason_text = ', '.join(reasons) if isinstance(reasons, list) else str(reasons)
-                                                            append_mp_job_log(job_id, f"  -> {field}: {reason_text}", level='error')
-                                                            error_details.append(f"{field}: {reason_text}")
-                                                    elif isinstance(failure_reasons, list):
-                                                        for reason in failure_reasons:
-                                                            append_mp_job_log(job_id, f"  -> Hata: {reason}", level='error')
-                                                            error_details.append(str(reason))
-                                                
-                                                if 'validationErrors' in item:
-                                                    append_mp_job_log(job_id, f"  -> Validation Err: {item['validationErrors']}", level='error')
+                                    # Detailed item status
+                                    if batch_result:
+                                        for res_item in batch_result[:15]:
+                                            bcode = res_item.get('barcode') or res_item.get('code') or '?'
+                                            msg = res_item.get('message') or res_item.get('description') or res_item.get('error') or 'İşlem Başarılı'
+                                            state_txt = res_item.get('operationStatusText') or res_item.get('statusName') or ''
+                                            wait_msg = res_item.get('waitingApproveExp') or ''
+                                            item_full_msg = f"[{bcode}] Durum: {state_txt} | Mesaj: {msg}"
+                                            if wait_msg: item_full_msg += f" | Onay Notu: {wait_msg}"
+                                            append_mp_job_log(job_id, f"  -> Item Durumu: {item_full_msg}", level='info')
 
-                                        # Log full raw response for deep inspection
-                                        import json
-                                        try:
-                                            raw_dump = json.dumps(batch_status.get('raw', {}), ensure_ascii=False, default=str)
-                                            # Write to a debug file for the user to share if needed, or just log a larger chunk
-                                            append_mp_job_log(job_id, f"  -> Raw Full: {raw_dump[:2000]}", level='warning') 
-                                        except:
-                                            raw_str = str(batch_status.get('raw', {}))[:2000]
-                                            append_mp_job_log(job_id, f"  -> Raw: {raw_str}", level='warning')
+                                    if failed_cnt > 0:
+                                        failures.extend([{'error': 'Pazarama Hatası (Detay loglarda)'}] * failed_cnt)
                                 else:
-                                    append_mp_job_log(job_id, f"Batch {current_batch_num}: {success_cnt} urun basarili", level='info')
-                            else:
-                                # DONE but no success/fail counts - could mean they were all rejected silently or already exists
-                                actual_count = batch_total if batch_total > 0 else 0
-                                if actual_count == 0:
-                                    append_mp_job_log(job_id, f"Batch {current_batch_num}: Pazarama 0 urun islendi bildirdi (Hata listesi bos).", level='warning')
-                                else:
+                                    # DONE but maybe no counts yet or silent skip
+                                    actual_count = batch_total if batch_total > 0 else 0
                                     success_count += actual_count
-                                    append_mp_job_log(job_id, f"Batch {current_batch_num}: {actual_count} urun islendi (Success/Fail detayi yok)", level='info')
+                                    append_mp_job_log(job_id, f"Batch {current_batch_num}: Islem tamamlandi ({actual_count} urun)", level='info')
+                                    
+                            elif status == 'ERROR' or status_code == 3:
+                                finished = True
+                                fail_count += len(batch)
+                                error_msg = batch_status.get('error') or 'Islem hatasi'
+                                append_mp_job_log(job_id, f"Batch {current_batch_num}: Hata - {error_msg}", level='error')
+                                failures.append({'batch': current_batch_num, 'reason': error_msg})
+                            else:
+                                # Still IN_PROGRESS or unknown
+                                if attempt == 1:
+                                    append_mp_job_log(job_id, f"Batch {current_batch_num}: Pazarama tarafindan isleniyor...", level='info')
+                                elif attempt % 3 == 0:
+                                    append_mp_job_log(job_id, f"Batch {current_batch_num}: Hala bekleniyor ({attempt}/{max_attempts})...", level='info')
 
-                            # ALWAYS log raw results for debugging - ELEVATED TO INFO
-                            try:
-                                raw_dump = json.dumps(batch_status.get('raw', {}), ensure_ascii=False, default=str)
-                                append_mp_job_log(job_id, f"  -> API Detay (Raw): {raw_dump[:3000]}", level='info')
-                            except:
-                                pass
-                        elif status == 'ERROR' or status_code == 3:
-                            fail_count += len(batch)
-                            error_msg = batch_status.get('error') or 'Islem hatasi'
-                            append_mp_job_log(job_id, f"Batch {current_batch_num}: Hata - {error_msg}", level='error')
-                            failures.append({'batch': current_batch_num, 'reason': error_msg})
-                        else:
-                            # Unknown status - assume success
-                            success_count += len(batch)
-                            append_mp_job_log(job_id, f"Batch {current_batch_num}: {len(batch)} urun gonderildi", level='info')
-                        
+                            # ALWAYS log raw results for debugging at the end or on last attempt
+                            if finished or attempt == max_attempts:
+                                try:
+                                    import json
+                                    raw_dump = json.dumps(batch_status.get('raw', {}), ensure_ascii=False, default=str)
+                                    append_mp_job_log(job_id, f"  -> API Detay (Raw): {raw_dump[:3000]}", level='info')
+                                except:
+                                    pass
+
+                        if not finished:
+                            append_mp_job_log(job_id, f"Batch {current_batch_num}: 3 dakika icinde tamamlanmadi, sonraki gruba geciliyor.", level='warning')
+                            success_count += len(batch) # Assume success to continue progress
+                            
                     except Exception as e:
                         append_mp_job_log(job_id, f"Batch durum sorgulanamadi: {e}", level='warning')
-                        success_count += len(batch)  # Assume success if check fails
+                        success_count += len(batch)
+                    
+
+                        
+
+
+
+
+                                        
+
+
+                                                
+
+
+
+
+
+
+
                 else:
                     success_count += len(batch)
                     append_mp_job_log(job_id, f"Batch {current_batch_num}: Gonderildi", level='info')
@@ -1470,6 +1437,7 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
                 error_msg = resp.get('message') or resp.get('userMessage') or 'Bilinmeyen hata'
                 failures.append({'batch': current_batch_num, 'reason': error_msg})
                 append_mp_job_log(job_id, f"Batch {current_batch_num} gonderim hatasi: {error_msg}", level='error')
+
                 
         except Exception as e:
             fail_count += len(batch)
