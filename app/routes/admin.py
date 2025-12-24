@@ -1192,4 +1192,23 @@ def api_live_logs():
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
+@admin_bp.route('/debug/xml-log')
+@admin_required
+def debug_xml_log():
+    """Temporary route to view XML debug log."""
+    try:
+        import os
+        log_path = os.path.join(os.getcwd(), 'xml_debug.log')
+        if not os.path.exists(log_path):
+            return "Log dosyası bulunamadı. XML'i tekrar yükleyip deneyin. (Sunucu ana dizininde xml_debug.log dosyası yok)", 404
+        
+        with open(log_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+            # Escape HTML characters for safety if needed, but simple XML dump is usually fine
+            import html
+            content = html.escape(content)
+        return f"<html><body style='font-family: monospace; background: #f4f4f4; padding: 20px;'><h3>XML Debug Log</h3><pre style='background: white; padding: 15px; border-radius: 5px; overflow: auto;'>{content}</pre></body></html>"
+    except Exception as e:
+        return f"Hata: {e}", 500
+
 

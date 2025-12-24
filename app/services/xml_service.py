@@ -129,33 +129,100 @@ def load_xml_source_index(xml_source_id: Any) -> Dict[str, Dict[str, Any]]:
     except Exception:
         return index
 
-    def find_product_list(data):
-        # 1. Direct list
-        if isinstance(data, list):
-            return data
-            
-        # 2. Known container keys
-        candidates = ['products', 'Products', 'items', 'Items', 'urunler', 'Urunler', 'catalog', 'Catalog', 'root', 'Root']
-        if isinstance(data, dict):
-            for key in candidates:
-                if key in data:
-                    val = data[key]
-                    # Check if this container has a sub-list (e.g. products -> product)
-                    if isinstance(val, dict):
-                        for sub in ['product', 'Product', 'item', 'Item', 'urun', 'Urun', 'product_item']:
-                            if sub in val:
-                                return val[sub] # Found the list (or single dict)
-                    elif isinstance(val, list):
-                        return val
-                        
-            # 3. Last ditch: look for any key that contains a list or 'product'-like dict
-            for sub in ['product', 'Product', 'item', 'Item', 'urun', 'Urun']:
-                if sub in data:
-                    return data[sub]
-                    
-        return data
+    # Heuristic: Score a dictionary to see if it looks like a product
+    def score_product_item(item):
+        if not isinstance(item, dict): return 0
+        score = 0
+        keys = [k.lower() for k in item.keys()]
+        # Strong indicators
+        if any(k in keys for k in ['barcode', 'barkod', 'productcode', 'product_code', 'stockcode', 'stock_code', 'sku']): score += 3
+        if any(k in keys for k in ['price', 'fiyat', 'saleprice', 'satis_fiyati']): score += 2
+        if any(k in keys for k in ['quantity', 'stock', 'stok', 'qty', 'onhand']): score += 2
+        if any(k in keys for k in ['variants', 'varyantlar', 'options', 'secenekler']): score += 2
+        # Weak indicators
+        if 'id' in keys: score += 1
+        if any(k in keys for k in ['name', 'title', 'ad', 'baslik']): score += 1
+        if any(k in keys for k in ['image', 'resim', 'picture']): score += 1
+        return score
 
-    node = find_product_list(xml_obj)
+    def find_best_product_list(data):
+        candidates = [] # (score, list_item)
+
+        def traverse(node):
+            if isinstance(node, dict):
+                # Is this dict itself a product (single item list)?
+                if score_product_item(node) >= 4: # Threshold
+                    candidates.append((1 * score_product_item(node), [node]))
+                
+                # Check children
+                for key, val in node.items():
+                    # If child is a list, check its contents
+                    if isinstance(val, list):
+                        if not val: continue
+                        # Check first few items to see if they are products
+                        sample_score = 0
+                        checks = val[:3]
+                        valid_items = 0
+                        for x in checks:
+                            s = score_product_item(x)
+                            if s > 0:
+                                sample_score += s
+                                valid_items += 1
+                        
+                        if valid_items > 0:
+                            avg_score = sample_score / valid_items
+                            # Weight by log of length to favor longer meaningful lists but not infinite
+                            import math
+                            score = avg_score * (math.log(len(val)) + 1)
+                            
+                            if avg_score >= 3: 
+                                candidates.append((score, val))
+                    
+                    traverse(val)
+            
+            elif isinstance(node, list):
+                # Should have been caught by parent dict loop, but for root list or list of lists:
+                if not node: return
+                sample_score = 0
+                checks = node[:3]
+                valid_items = 0
+                for x in checks:
+                    s = score_product_item(x)
+                    if s > 0:
+                        sample_score += s
+                        valid_items += 1
+                if valid_items > 0:
+                    avg_score = sample_score / valid_items
+                    if avg_score >= 3:
+                        import math
+                        score = avg_score * (math.log(len(node)) + 1)
+                        candidates.append((score, node))
+                    
+                for item in node:
+                    traverse(item)
+
+        traverse(data)
+        
+        if not candidates:
+            return None
+            
+        # Sort by total score descending
+        candidates.sort(key=lambda x: x[0], reverse=True)
+        return candidates[0][1]
+
+    node = find_best_product_list(xml_obj)
+    
+    # Fallback if heuristic fails: try standard keys
+    if node is None:
+        def simple_find(d):
+            if isinstance(d, list): return d
+            if isinstance(d, dict):
+                for k in ['products', 'Items', 'runler', 'catalog']:
+                    if k in d: return simple_find(d[k])
+                for k in ['product', 'item', 'urun']:
+                    if k in d: return [d[k]] if isinstance(d[k], dict) else d[k]
+            return None
+        node = simple_find(xml_obj)
     
     if isinstance(node, list):
         logger.info(f"XML Source {xml_source_id}: Found LIST of {len(node)} items")
