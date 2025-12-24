@@ -388,8 +388,8 @@
               <tr class="animate-fade-in main-product-row" data-idx="${idx}">
                   <td class="ps-3"><input type="checkbox" class="form-check-input row-check" data-barcode="${product.barcode}" ${checked}></td>
                   <td><img src="${imgUrl}" alt="${product.title}" class="img-thumbnail border-0 shadow-sm" style="width: 50px; height: 50px; object-fit: cover;"></td>
-                  <td class="text-truncate" style="max-width: 250px;" title="${product.title}">${product.title}${variantBadge}</td>
-                  <td><span class="badge bg-secondary font-monospace">${product.barcode}</span></td>
+                  <td class="text-truncate" style="max-width: 250px;" title="${product.title}">${product.title}</td>
+                  <td><span class="badge bg-secondary font-monospace">${product.barcode}</span>${variantBadge}</td>
                   <td style="font-size: 0.85rem;" class="text-muted text-truncate" style="max-width: 150px;">${product.category || '---'}</td>
                   <td>
                     <div class="d-flex flex-column">
