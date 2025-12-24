@@ -15,7 +15,7 @@ import logging
 logger = logging.getLogger(__name__)
 _XML_SOURCE_CACHE_LOCK = threading.Lock()
 _XML_PARSING_LOCK = threading.Lock() # Prevent concurrent heavy parsing
-XML_SOURCE_CACHE_TTL_SECONDS = 5
+XML_SOURCE_CACHE_TTL_SECONDS = 600
 XML_SOURCE_CACHE_MAX = 5
 CACHE_DIR = os.path.join(os.getcwd(), 'cache')
 os.makedirs(CACHE_DIR, exist_ok=True)
@@ -197,19 +197,7 @@ def load_xml_source_index(xml_source_id: Any, force: bool = False) -> Dict[str, 
         index['_error'] = "XML formatı tanınamadı (Ürün listesi bulunamadı). Lütfen XML yapısını kontrol edin."
         return index
 
-    import logging
-    logger = logging.getLogger(__name__)
-
-    # Keep file logging for debugging if needed
-    try:
-        log_path = os.path.join(os.getcwd(), 'xml_debug.log')
-        fh = logging.FileHandler(log_path, mode='w', encoding='utf-8')
-        fh.setLevel(logging.INFO)
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        fh.setFormatter(formatter)
-        if not any(isinstance(h, logging.FileHandler) for h in logger.handlers):
-            logger.addHandler(fh)
-    except Exception: pass
+    
     
     start_time = time.time()
     items = node if isinstance(node, list) else [node]
