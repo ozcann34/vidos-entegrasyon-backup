@@ -263,12 +263,22 @@ class PazaramaClient:
         status_map = {1: "IN_PROGRESS", 2: "DONE", 3: "ERROR"}
         status_str = status_map.get(status_num, str(status_num) if status_num else "UNKNOWN")
         
+        total = data.get("totalCount") or data.get("totalProductCount") or data.get("total") or 0
+        failed = data.get("failedCount") or data.get("failed") or 0
+        success = data.get("successCount") or data.get("success")
+        
+        # If success field is missing but total and failed are there, calculate it
+        if success is None and total > 0:
+            success = max(0, total - failed)
+        elif success is None:
+            success = 0
+
         result: Dict[str, Any] = {
             "status": status_str,
             "status_code": status_num,
-            "total": data.get("totalCount") or data.get("totalProductCount") or data.get("total") or 0,
-            "success": data.get("successCount") or data.get("success") or 0,
-            "failed": data.get("failedCount") or data.get("failed") or 0,
+            "total": total,
+            "success": success,
+            "failed": failed,
             "batch_result": data.get("batchResult") or [],
             "creation_date": data.get("creationDate"),
             "error": error_block,

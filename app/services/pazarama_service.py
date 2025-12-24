@@ -1359,6 +1359,7 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
                             if success_cnt > 0 or failed_cnt > 0:
                                 success_count += success_cnt
                                 fail_count += failed_cnt
+                                append_mp_job_log(job_id, f"Batch {current_batch_num}: {success_cnt} basarili, {failed_cnt} basarisiz", level='info')
                                 if failed_cnt > 0:
                                     # Extract error details from batchResult
                                     batch_result = batch_status.get('batch_result', [])
@@ -1424,10 +1425,29 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
                                 else:
                                     append_mp_job_log(job_id, f"Batch {current_batch_num}: {success_cnt} urun basarili", level='info')
                             else:
-                                # DONE but no counts - use batch_total or sent count
-                                actual_count = batch_total if batch_total > 0 else len(batch)
-                                success_count += actual_count
-                                append_mp_job_log(job_id, f"Batch {current_batch_num}: {actual_count} urun islendi", level='info')
+                                # DONE but no success/fail counts - could mean they were all rejected silently or already exists
+                                actual_count = batch_total if batch_total > 0 else 0
+                                if actual_count == 0:
+                                    append_mp_job_log(job_id, f"Batch {current_batch_num}: Pazarama 0 urun islendi bildirdi (Hata listesi bos).", level='warning')
+                                else:
+                                    success_count += actual_count
+                                    append_mp_job_log(job_id, f"Batch {current_batch_num}: {actual_count} urun islendi (Success/Fail detayi yok)", level='info')
+
+                            # ALWAYS log raw results for debugging if success is 0 or if there are any batch results
+                            raw_data = batch_status.get('raw', {}).get('data', {})
+                            batch_res = raw_data.get('batchResult', [])
+                            if success_cnt == 0 or batch_res:
+                                try:
+                                    # Specifically look for item-level messages if counts are 0
+                                    if success_cnt == 0 and batch_res:
+                                        for res_item in batch_res[:5]:
+                                            msg = res_item.get('message') or res_item.get('description') or 'Mesaj yok'
+                                            append_mp_job_log(job_id, f"  -> Item Mesaji: {msg}", level='warning')
+                                    
+                                    raw_dump = json.dumps(batch_status.get('raw', {}), ensure_ascii=False, default=str)
+                                    append_mp_job_log(job_id, f"  -> API Detay (Raw): {raw_dump[:1500]}", level='debug')
+                                except:
+                                    pass
                         elif status == 'ERROR' or status_code == 3:
                             fail_count += len(batch)
                             error_msg = batch_status.get('error') or 'Islem hatasi'
