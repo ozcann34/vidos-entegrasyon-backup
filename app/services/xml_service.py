@@ -134,34 +134,46 @@ def load_xml_source_index(xml_source_id: Any) -> Dict[str, Dict[str, Any]]:
         if not isinstance(item, dict): return 0
         score = 0
         keys = [k.lower() for k in item.keys()]
-        # Strong indicators
-        if any(k in keys for k in ['barcode', 'barkod', 'productcode', 'product_code', 'stockcode', 'stock_code', 'sku']): score += 3
+        # Indicators
+        if any(k in keys for k in ['barcode', 'barkod', 'productcode', 'product_code', 'stockcode', 'stock_code', 'sku', 'id', 'urunid']): score += 3
         if any(k in keys for k in ['price', 'fiyat', 'saleprice', 'satis_fiyati']): score += 2
-        if any(k in keys for k in ['quantity', 'stock', 'stok', 'qty', 'onhand']): score += 2
+        if any(k in keys for k in ['quantity', 'stock', 'stok', 'qty', 'onhand', 'amount']): score += 2
         if any(k in keys for k in ['variants', 'varyantlar', 'options', 'secenekler']): score += 2
-        # Weak indicators
-        if 'id' in keys: score += 1
+        
         if any(k in keys for k in ['name', 'title', 'ad', 'baslik']): score += 1
-        if any(k in keys for k in ['image', 'resim', 'picture']): score += 1
+        if any(k in keys for k in ['image', 'resim', 'picture', 'images', 'resimler']): score += 1
         return score
 
     def find_best_product_list(data):
-        candidates = [] # (score, list_item)
+        candidates = [] # (score, list_item, path_description)
+        
+        # Fallback: keep track of the longest list of dicts found, just in case
+        longest_list = []
+        longest_list_path = "None"
 
-        def traverse(node):
+        def traverse(node, path="root"):
+            nonlocal longest_list, longest_list_path
+
             if isinstance(node, dict):
                 # Is this dict itself a product (single item list)?
-                if score_product_item(node) >= 4: # Threshold
-                    candidates.append((1 * score_product_item(node), [node]))
+                s = score_product_item(node)
+                if s >= 3: # Lowered threshold
+                    candidates.append((s, [node], path))
                 
                 # Check children
                 for key, val in node.items():
                     # If child is a list, check its contents
                     if isinstance(val, list):
                         if not val: continue
-                        # Check first few items to see if they are products
+                        
+                        # Track longest list of dicts
+                        if len(val) > len(longest_list) and len(val) > 0 and isinstance(val[0], dict):
+                            longest_list = val
+                            longest_list_path = f"{path} -> {key}"
+                        
+                        # Score the list
                         sample_score = 0
-                        checks = val[:3]
+                        checks = val[:5] # Check a few more
                         valid_items = 0
                         for x in checks:
                             s = score_product_item(x)
@@ -171,20 +183,26 @@ def load_xml_source_index(xml_source_id: Any) -> Dict[str, Dict[str, Any]]:
                         
                         if valid_items > 0:
                             avg_score = sample_score / valid_items
-                            # Weight by log of length to favor longer meaningful lists but not infinite
+                            # Weight by log of length
                             import math
+                            # Boost deeply nested lists slightly? No, stick to content score.
                             score = avg_score * (math.log(len(val)) + 1)
                             
-                            if avg_score >= 3: 
-                                candidates.append((score, val))
+                            if avg_score >= 1: # Much lower threshold. Even basic items should pass.
+                                candidates.append((score, val, f"{path} -> {key}"))
                     
-                    traverse(val)
+                    traverse(val, f"{path} -> {key}")
             
             elif isinstance(node, list):
-                # Should have been caught by parent dict loop, but for root list or list of lists:
+                # Check root list
                 if not node: return
+                
+                if len(node) > len(longest_list) and isinstance(node[0], dict):
+                    longest_list = node
+                    longest_list_path = path
+
                 sample_score = 0
-                checks = node[:3]
+                checks = node[:5]
                 valid_items = 0
                 for x in checks:
                     s = score_product_item(x)
@@ -193,22 +211,29 @@ def load_xml_source_index(xml_source_id: Any) -> Dict[str, Dict[str, Any]]:
                         valid_items += 1
                 if valid_items > 0:
                     avg_score = sample_score / valid_items
-                    if avg_score >= 3:
+                    if avg_score >= 1:
                         import math
                         score = avg_score * (math.log(len(node)) + 1)
-                        candidates.append((score, node))
+                        candidates.append((score, node, path))
                     
-                for item in node:
-                    traverse(item)
+                for i, item in enumerate(node):
+                    traverse(item, f"{path}[{i}]")
 
         traverse(data)
         
+        logger.info(f"XML Source {xml_source_id}: Found {len(candidates)} candidate lists.")
+        for score, lst, p in candidates:
+             logger.info(f"Candidate: Score={score:.2f}, Len={len(lst)}, Path={p}")
+
         if not candidates:
-            return None
+            logger.warning(f"XML Source {xml_source_id}: No product candidates found by score. Using longest list path: {longest_list_path}")
+            return longest_list if longest_list else None
             
         # Sort by total score descending
         candidates.sort(key=lambda x: x[0], reverse=True)
-        return candidates[0][1]
+        best_candidate = candidates[0]
+        logger.info(f"XML Source {xml_source_id}: Selected Best Candidate: Path={best_candidate[2]}, Score={best_candidate[0]:.2f}, Len={len(best_candidate[1])}")
+        return best_candidate[1]
 
     node = find_best_product_list(xml_obj)
     
