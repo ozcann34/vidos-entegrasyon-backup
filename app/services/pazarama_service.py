@@ -305,6 +305,16 @@ def resolve_pazarama_category(client: PazaramaClient, product_title: str, top_ca
             if log_callback:
                 log_callback(f"Kategori eslesti (mapping): {key} -> {mapped}")
             return mapped
+            
+    # FIXED: Hint for 'Çorap' to prevent mis-mapping to 'Termal İçlik'
+    is_corap = any('çorap' in str(x).lower() for x in (xml_category, top_category, product_title))
+    if is_corap and ensure_pazarama_tfidf_ready():
+        # Try finding a category that contains 'çorap'
+        for cat in _PAZARAMA_CAT_TFIDF.get('leaf', []):
+            if 'çorap' in cat.get('name', '').lower():
+                if log_callback:
+                    log_callback(f"Kategori eslesti (corap hint): {product_title[:20]}... -> {cat.get('name')}")
+                return str(cat.get('id'))
 
     # Try TF-IDF matching if available (like Trendyol)
     if ensure_pazarama_tfidf_ready():
@@ -1089,17 +1099,19 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
                     {"id": "544e1e86-678c-4e19-a7a4-230f180b2ed2", "name": "Mor"},
                     {"id": "6e4deed0-2555-4ecd-ae1b-051aa30b774a", "name": "Kahverengi"},
                     {"id": "ec98860d-668c-4c4f-824c-b918e47f1abf", "name": "Pembe"},
-                    {"id": "52a2e275-c6c0-4603-96a4-c3511432e210", "name": "Turuncu"},
-                    {"id": "e45bd93e-2244-4824-bf72-46c59265f242", "name": "Bej"},
-                    {"id": "04c2111d-231a-42c6-b998-25f002f23166", "name": "Haki"},
-                    {"id": "0e561638-4251-469b-9c71-0a6723223963", "name": "Çok Renkli"}
+                    {"id": "52a2e275-c6c0-4603-96a4-c3511432e210", "name": "Turuncu"}
+                ]
+                
+                # Beden/Yaş ID: caf725ef-9c25-4b87-8a81-97c7fab17855
+                BEDEN_VALUES = [
+                    {"id": "7efc6c85-57b6-490e-b8dc-e352c5e47dd1", "name": "Standart"}
                 ]
 
                 existing_ids = [a.get('id') for a in all_attrs]
                 
                 HIDDEN_REQUIRED_ATTRS = [
                     {"id": "08b2020b-e519-405f-85e2-1fd712104097", "name": "Renk", "values": RENK_VALUES},
-                    {"id": "caf725ef-9c25-4b87-8a81-97c7fab17855", "name": "Beden/Yaş", "values": []} # No known values for Beden yet
+                    {"id": "caf725ef-9c25-4b87-8a81-97c7fab17855", "name": "Beden/Yaş", "values": BEDEN_VALUES}
                 ]
                 
                 for hattr in HIDDEN_REQUIRED_ATTRS:
@@ -1131,10 +1143,23 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
                     
                     if val_from_xml and at_values:
                         val_from_xml_l = val_from_xml.lower()
+                        # Exact match first
                         for v_opt in at_values:
                             if v_opt.get('name', '').lower() == val_from_xml_l:
                                 matched_val_id = v_opt.get('id')
                                 break
+                        
+                        # Fuzzy match if no exact match
+                        if not matched_val_id:
+                            from difflib import get_close_matches
+                            v_names = [v.get('name', '') for v in at_values]
+                            v_names_lower = [n.lower() for n in v_names]
+                            close = get_close_matches(val_from_xml_l, v_names_lower, n=1, cutoff=0.5)
+                            if close:
+                                for v_opt in at_values:
+                                    if v_opt.get('name', '').lower() == close[0]:
+                                        matched_val_id = v_opt.get('id')
+                                        break
                     
                     if matched_val_id:
                         # Found a match (Required or Optional) -> Add it
