@@ -202,7 +202,6 @@ def load_xml_source_index(xml_source_id: Any, force: bool = False) -> Dict[str, 
 
     # Keep file logging for debugging if needed
     try:
-        import os
         log_path = os.path.join(os.getcwd(), 'xml_debug.log')
         fh = logging.FileHandler(log_path, mode='w', encoding='utf-8')
         fh.setLevel(logging.INFO)
