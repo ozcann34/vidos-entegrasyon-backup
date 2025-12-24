@@ -1,52 +1,115 @@
 {% extends "admin/_base.html" %}
 
-{% block title %}Yeni Yönetici Oluştur{% endblock %}
+{% block title %}Yeni Kullanıcı / Yönetici Ekle{% endblock %}
 
 {% block content %}
-<div class="container pb-5">
+<div class="container pb-5 animate__animated animate__fadeIn">
     <div class="d-flex align-items-center mb-4">
-        <a href="{{ url_for('admin.users') }}" class="btn btn-outline-secondary me-3">
+        <a href="{{ url_for('admin.users') }}" class="btn btn-outline-secondary rounded-pill me-3 shadow-sm">
             <i class="bi bi-arrow-left"></i>
         </a>
-        <h1 class="h3 mb-0">Yeni Yönetici Oluştur</h1>
+        <h1 class="h3 mb-0 fw-bold">Yeni Kullanıcı Ekle</h1>
     </div>
 
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="admin-card">
-                <div class="card-body p-4">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+                <div class="card-header bg-dark text-white p-3 border-0">
+                    <h5 class="mb-0 small fw-bold"><i class="bi bi-person-plus-fill me-2"></i>Kullanıcı Kayıt Formu</h5>
+                </div>
+                <div class="card-body p-4 p-md-5">
                     <form method="POST">
-                        <div class="mb-3">
-                            <label class="form-label">Ad Soyad</label>
-                            <input type="text" class="form-control" name="full_name" required>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Email Adresi</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="bi bi-envelope"></i></span>
-                                <input type="email" class="form-control" name="email" required>
+                        <div class="row g-4">
+                            <!-- Temel Bilgiler -->
+                            <div class="col-12">
+                                <h6 class="text-primary border-bottom pb-2 mb-1 small fw-bold text-uppercase">
+                                    <i class="bi bi-shield-lock me-2"></i>Hesap Erişimi
+                                </h6>
                             </div>
-                            <div class="form-text">Giriş için kullanılacak email adresi.</div>
-                        </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">E-posta Adresi <span
+                                        class="text-danger">*</span></label>
+                                <input type="email" name="email" class="form-control rounded-pill" required
+                                    placeholder="ornek@mail.com">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Şifre <span class="text-danger">*</span></label>
+                                <input type="password" name="password" class="form-control rounded-pill" required
+                                    placeholder="******">
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label small fw-bold">Ad Soyad</label>
+                                <input type="text" name="full_name" class="form-control rounded-pill"
+                                    placeholder="Kullanıcının tam adı">
+                            </div>
 
-                        <div class="mb-4">
-                            <label class="form-label">Şifre</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="bi bi-key"></i></span>
-                                <input type="password" class="form-control" name="password" required>
+                            <!-- Ticari Bilgiler -->
+                            <div class="col-12 mt-5">
+                                <h6 class="text-primary border-bottom pb-2 mb-1 small fw-bold text-uppercase">
+                                    <i class="bi bi-building me-2"></i>Ticari & Vergi Bilgileri
+                                </h6>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Firma Ünvanı</label>
+                                <input type="text" name="company_title" class="form-control rounded-pill"
+                                    placeholder="Şirket Tam Ünvanı">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">TC Kimlik / Vergi No</label>
+                                <input type="text" name="tax_no" class="form-control rounded-pill"
+                                    placeholder="Vergi Numarası">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Vergi Dairesi</label>
+                                <input type="text" name="tax_office" class="form-control rounded-pill"
+                                    placeholder="Vergi Dairesi">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">İletişim Telefonu</label>
+                                <input type="text" name="phone" class="form-control rounded-pill"
+                                    placeholder="05XX XXX XX XX">
+                            </div>
+
+                            <!-- Adres Bilgileri -->
+                            <div class="col-12 mt-5">
+                                <h6 class="text-primary border-bottom pb-2 mb-3 small fw-bold text-uppercase">
+                                    <i class="bi bi-geo-alt me-2"></i>Adres Bilgileri
+                                </h6>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Şehir</label>
+                                <input type="text" name="city" class="form-control rounded-pill" placeholder="İl">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">İlçe</label>
+                                <input type="text" name="district" class="form-control rounded-pill" placeholder="İlçe">
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label small fw-bold">Açık Adres</label>
+                                <textarea name="address" class="form-control" rows="3" style="border-radius: 15px;"
+                                    placeholder="Mahalle, Sokak, No, Bina..."></textarea>
+                            </div>
+
+                            <div class="col-md-12 mt-5">
+                                <div
+                                    class="p-3 bg-light rounded-4 border d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <h6 class="mb-0 fw-bold">Yönetici (Admin) Yetkisi</h6>
+                                        <p class="text-muted small mb-0">Bu kullanıcı admin paneline erişim sağlasın mı?
+                                        </p>
+                                    </div>
+                                    <div class="form-check form-switch fs-4">
+                                        <input class="form-check-input" type="checkbox" name="is_admin"
+                                            id="isAdminCheck">
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="alert alert-info">
-                            <i class="bi bi-info-circle me-2"></i>
-                            Yeni oluşturulan yönetici hesabı otomatik olarak <strong>Kurumsal Paket
-                                (Enterprise)</strong> ve <strong>Admin Yetkisi</strong> ile açılacaktır.
-                        </div>
-
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-check-lg me-2"></i>Yöneticiyi Oluştur
+                        <div class="mt-5 d-flex justify-content-end gap-3">
+                            <a href="{{ url_for('admin.users') }}" class="btn btn-light rounded-pill px-5">Vazgeç</a>
+                            <button type="submit" class="btn btn-primary rounded-pill px-5 shadow">
+                                <i class="bi bi-person-plus-fill me-2"></i>Hesabı Oluştur
                             </button>
                         </div>
                     </form>

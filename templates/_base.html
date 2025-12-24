@@ -245,6 +245,15 @@
             <!-- GRUP: DESTEK & AYARLAR -->
             <li class="nav-section-title px-3 mb-2 mt-4 small text-uppercase text-white-50 fw-bold"
                 style="font-size: 0.7rem; letter-spacing: 1px;">Sistem</li>
+            {% if current_user.is_admin %}
+            <li class="nav-item">
+                <a href="{{ url_for('admin.global_settings') }}"
+                    class="nav-link {% if request.endpoint == 'admin.global_settings' %}active{% endif %}"
+                    style="background: rgba(220, 53, 69, 0.1); color: #ff4d4d !important;">
+                    <i class="bi bi-gear-wide-connected me-2"></i> Küresel Ayarlar
+                </a>
+            </li>
+            {% endif %}
             {% if current_user.is_admin or current_user.has_permission('settings') %}
             <li class="nav-item">
                 <a href="{{ url_for('main.settings_page') }}"
@@ -259,11 +268,13 @@
                     <i class="bi bi-life-preserver me-2"></i> Destek Taleplerim
                 </a>
             </li>
+            {% if current_user.has_permission('assistant') %}
             <li class="nav-item">
                 <a href="#" onclick="toggleChatbot(); return false;" class="nav-link text-white">
                     <i class="bi bi-robot me-2 text-warning"></i> Vidos Asistan
                 </a>
             </li>
+            {% endif %}
             <!-- PWA Install Button (Hidden by default) -->
             <li class="nav-item mt-3" id="pwa-install-item" style="display: none;">
                 <a href="#" id="pwa-install-btn"

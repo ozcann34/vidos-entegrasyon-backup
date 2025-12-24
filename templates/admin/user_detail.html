@@ -52,6 +52,32 @@
                 <p class="mb-0 text-danger">{{ user.ban_reason }}</p>
             </div>
             {% endif %}
+
+            <!-- Ticari Bilgiler -->
+            <div class="mt-4 pt-3 border-top">
+                <h6 class="small fw-bold text-primary text-uppercase mb-3">Ticari Bilgiler</h6>
+                <div class="mb-2">
+                    <small class="text-muted d-block">Firma Ünvanı</small>
+                    <span class="small">{{ user.company_title or '-' }}</span>
+                </div>
+                <div class="mb-2">
+                    <small class="text-muted d-block">Vergi No / TC</small>
+                    <span class="small">{{ user.tax_no or '-' }}</span>
+                </div>
+                <div class="mb-2">
+                    <small class="text-muted d-block">Vergi Dairesi</small>
+                    <span class="small">{{ user.tax_office or '-' }}</span>
+                </div>
+                <div class="mb-2">
+                    <small class="text-muted d-block">Telefon</small>
+                    <span class="small">{{ user.phone or '-' }}</span>
+                </div>
+                <div>
+                    <small class="text-muted d-block">Adres</small>
+                    <span class="small">{{ user.city or '' }} {{ user.district or '' }} / {{ user.address or '-'
+                        }}</span>
+                </div>
+            </div>
         </div>
 
         <!-- Actions -->
@@ -74,6 +100,7 @@
                 <i class="bi bi-key me-2"></i>İzinleri Düzenle
             </a>
 
+            {% if current_user.is_super_admin %}
             {% if user.is_banned %}
             <form action="{{ url_for('admin.unban_user_route', user_id=user.id) }}" method="POST">
                 <button type="submit" class="btn btn-success w-100 mb-2">
@@ -98,6 +125,12 @@
                 data-bs-target="#deleteModal">
                 <i class="bi bi-trash me-2"></i>Hesabı Sil
             </button>
+            {% else %}
+            <div class="alert alert-info py-2 px-3 small border-0 mb-0">
+                <i class="bi bi-info-circle me-2"></i>Kritik işlemler (Silme, Banlama) sadece Ana Yönetici tarafından
+                yapılabilir.
+            </div>
+            {% endif %}
             {% else %}
             <p class="text-muted text-center mb-0">
                 <i class="bi bi-shield-lock me-2"></i>Admin hesabı
@@ -222,11 +255,19 @@
                     </div>
                 </div>
 
+                {% if current_user.is_super_admin %}
                 <div class="col-12 mt-4">
-                    <button type="submit" class="btn btn-admin w-100 py-2">
+                    <button type="submit" class="btn btn-admin w-100 py-2 shadow-sm">
                         <i class="bi bi-save me-2"></i>Aboneliği ve Limitleri Güncelle
                     </button>
                 </div>
+                {% else %}
+                <div class="col-12 mt-4">
+                    <div class="alert alert-light border small text-muted mb-0">
+                        <i class="bi bi-lock me-2"></i>Abonelik paketlerini sadece Ana Yönetici güncelleyebilir.
+                    </div>
+                </div>
+                {% endif %}
             </form>
             {% else %}
             <p class="text-muted">Abonelik bilgisi bulunamadı.</p>

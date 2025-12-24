@@ -17,10 +17,8 @@ class Setting(db.Model):
     @staticmethod
     def get(k, default=None, user_id=None):
         try:
-            query = Setting.query.filter_by(key=k)
-            if user_id is not None:
-                query = query.filter_by(user_id=user_id)
-            s = query.first()
+            s = Setting.query.filter_by(key=k, user_id=user_id).first()
+            return s.value if s else default
             return s.value if s else default
         except Exception as e:
             print(f"Error getting setting {k}: {str(e)}")
@@ -34,10 +32,7 @@ class Setting(db.Model):
             else:
                 v = str(v)
             
-            query = Setting.query.filter_by(key=k)
-            if user_id is not None:
-                query = query.filter_by(user_id=user_id)
-            s = query.first()
+            s = Setting.query.filter_by(key=k, user_id=user_id).first()
             
             if s:
                 s.value = v

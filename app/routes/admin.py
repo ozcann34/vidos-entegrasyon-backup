@@ -48,6 +48,21 @@ def admin_required(f):
     return decorated_function
 
 
+def super_admin_required(f):
+    """Decorator to require super admin access."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return redirect(url_for('auth.login'))
+        
+        if not current_user.is_super_admin:
+            flash('Bu işlem için ana yönetici yetkisi gereklidir.', 'danger')
+            return redirect(url_for('admin.dashboard'))
+            
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 
 
 
@@ -192,9 +207,7 @@ def user_detail(user_id):
 
 
 @admin_bp.route('/users/<int:user_id>/ban', methods=['POST'])
-
-@admin_required
-
+@super_admin_required
 def ban_user_route(user_id):
 
     """Ban a user."""
@@ -252,8 +265,8 @@ def verify_user_route(user_id):
     flash(f'{user.email} başarıyla doğrulandı.', 'success')
     return redirect(url_for('admin.user_detail', user_id=user_id))
 
-@admin_required
-
+@admin_bp.route('/users/<int:user_id>/unban', methods=['POST'])
+@super_admin_required
 def unban_user_route(user_id):
 
     """Unban a user."""
@@ -289,9 +302,7 @@ def unban_user_route(user_id):
 
 
 @admin_bp.route('/users/<int:user_id>/delete', methods=['POST'])
-
-@admin_required
-
+@super_admin_required
 def delete_user_route(user_id):
 
     """Delete a user and all their data."""
@@ -387,7 +398,7 @@ def delete_user_route(user_id):
 
 
 @admin_bp.route('/users/<int:user_id>/toggle_admin', methods=['POST'])
-@admin_required
+@super_admin_required
 def toggle_admin(user_id):
     """Toggle admin status for a user."""
     # Prevent self-demotion
@@ -416,13 +427,14 @@ def toggle_admin(user_id):
 
 
 @admin_bp.route('/users/create_admin', methods=['GET', 'POST'])
-@admin_required
+@super_admin_required
 def create_admin_view():
-    """Create a new admin user."""
+    """Create a new user or admin with full details."""
     if request.method == 'POST':
-        email = request.form.get('email')
+        email = request.form.get('email', '').strip().lower()
         password = request.form.get('password')
-        full_name = request.form.get('full_name')
+        full_name = request.form.get('full_name', '').strip()
+        is_admin_check = request.form.get('is_admin') == 'on'
         
         if not email or not password:
             flash('Email ve şifre zorunludur.', 'danger')
@@ -434,48 +446,47 @@ def create_admin_view():
             return render_template('admin/create_admin.html')
             
         try:
-            # Create user
-            user = User(
-                email=email,
-                full_name=full_name,
-                is_admin=True,
-                is_active=True
-            )
-            user.set_password(password)
+            # Prepare user data
+            user_data = {
+                'first_name': full_name.split(' ')[0] if ' ' in full_name else full_name,
+                'last_name': ' '.join(full_name.split(' ')[1:]) if ' ' in full_name else '',
+                'company_title': request.form.get('company_title'),
+                'tax_no': request.form.get('tax_no'),
+                'tax_office': request.form.get('tax_office'),
+                'phone': request.form.get('phone'),
+                'city': request.form.get('city'),
+                'district': request.form.get('district'),
+                'address': request.form.get('address'),
+                'is_admin': is_admin_check,
+                'plan': 'enterprise' if is_admin_check else 'free'
+            }
             
-            # Create free subscription by default
-            from app.models.subscription import Subscription
-            sub = Subscription(user_id=None, plan='enterprise', status='active') # Admins get enterprise goodies
+            from app.services.user_service import create_user
+            user = create_user(email, password, **user_data)
             
-            db.session.add(user)
-            db.session.flush() # get ID
-            
-            sub.user_id = user.id
-            db.session.add(sub)
-            
-            AdminLog.log_action(
-                admin_id=current_user.id,
-                action='create_admin',
-                target_user_id=user.id,
-                details=f'Created new admin: {email}',
-                ip_address=request.remote_addr
-            )
-            
-            db.session.commit()
-            flash('Yeni yönetici başarıyla oluşturuldu.', 'success')
-            return redirect(url_for('admin.users'))
+            if user:
+                AdminLog.log_action(
+                    admin_id=current_user.id,
+                    action='create_user_admin',
+                    target_user_id=user.id,
+                    details=f'Created new user (Admin: {is_admin_check}): {email}',
+                    ip_address=request.remote_addr
+                )
+                
+                flash(f'{"Yönetici" if is_admin_check else "Kullanıcı"} başarıyla oluşturuldu.', 'success')
+                return redirect(url_for('admin.users'))
+            else:
+                flash('Kullanıcı oluşturulamadı.', 'danger')
             
         except Exception as e:
             db.session.rollback()
-            flash(f'Hata: {str(e)}', 'danger')
+            flash(f'Sistem Hatası: {str(e)}', 'danger')
             
     return render_template('admin/create_admin.html')
 
 
 @admin_bp.route('/users/<int:user_id>/subscription', methods=['POST'])
-
-@admin_required
-
+@super_admin_required
 def update_subscription_route(user_id):
 
     """Update user subscription."""
@@ -610,6 +621,41 @@ def subscriptions():
     
 
     return render_template('admin/subscriptions.html', subscriptions=subscriptions, plan_filter=plan_filter)
+
+
+@admin_bp.route('/global-settings', methods=['GET', 'POST'])
+@super_admin_required
+def global_settings():
+    """Manage global system-wide settings (Kill-Switches)."""
+    from app.models.settings import Setting
+    
+    # Define features that can be globally disabled
+    features = {
+        'assistant': 'Vidos Asistan',
+        'trendyol': 'Trendyol Entegrasyonu',
+        'pazarama': 'Pazarama Entegrasyonu',
+        'hepsiburada': 'Hepsiburada Entegrasyonu',
+        'idefix': 'İdefix Entegrasyonu',
+        'n11': 'N11 Entegrasyonu',
+        'order_sync': 'Sipariş Senkronizasyonu',
+        'stock_update': 'Stok Güncelleme',
+        'price_update': 'Fiyat Güncelleme'
+    }
+    
+    if request.method == 'POST':
+        for key in features.keys():
+            value = 'true' if request.form.get(f'global_{key}_enabled') == 'on' else 'false'
+            Setting.set(f'global_{key}_enabled', value, user_id=None)
+            
+        flash('Küresel ayarlar başarıyla güncellendi.', 'success')
+        return redirect(url_for('admin.global_settings'))
+    
+    # Get current values
+    current_values = {}
+    for key in features.keys():
+        current_values[key] = Setting.get(f'global_{key}_enabled', 'true', user_id=None) == 'true'
+        
+    return render_template('admin/global_settings.html', features=features, current_values=current_values)
 
 
 

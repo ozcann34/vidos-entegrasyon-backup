@@ -20,6 +20,10 @@ DEFAULT_PERMISSIONS = {
     'auto_sync': True,
     'reports': True,
     'settings': True,
+    'assistant': True,
+    'product_edit': True,
+    'product_delete': True,
+    'order_sync': True,
 }
 
 
@@ -110,7 +114,15 @@ class User(db.Model, UserMixin):
     
     def has_permission(self, permission: str) -> bool:
         """Check if user has a specific permission."""
-        # Admins have all permissions
+        # 1. Check Global Kill-Switches (Global settings)
+        # If a feature is disabled globally, even admins can't use it in UI (optional logic)
+        # But here we follow the request: "if global permission is off, it's off for everyone"
+        from app.models.settings import Setting
+        global_enabled = Setting.get(f'global_{permission}_enabled', 'true', user_id=None)
+        if global_enabled == 'false':
+            return False
+
+        # 2. Admins have all personal permissions
         if self.is_admin:
             return True
         return self.permissions.get(permission, True)
@@ -129,6 +141,11 @@ class User(db.Model, UserMixin):
                 restricted.append(page)
         return restricted
     
+
+    @property
+    def is_super_admin(self) -> bool:
+        """Check if user is the main super admin."""
+        return self.email == "bugraerkaradeniz34@gmail.com"
 
     def __repr__(self):
         return f'<User {self.email}>'

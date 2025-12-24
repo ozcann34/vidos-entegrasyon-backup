@@ -60,16 +60,15 @@ def migrate_existing_data_to_user(user_id: int):
     print(f"📦 Mevcut veriler kullanıcı ID {user_id}'ye aktarıldı")
 
 
-def create_user(email: str, password: str, first_name: str = None, last_name: str = None, 
-                tc_no: str = None, company_title: str = None, tax_office: str = None, 
-                tax_no: str = None, phone: str = None,
-                city: str = None, district: str = None, address: str = None) -> Optional[User]:
-    """Create a new user with free subscription."""
+def create_user(email: str, password: str, **kwargs) -> Optional[User]:
+    """Create a new user with free subscription and full profile."""
     # Check if email exists
     if User.query.filter_by(email=email.lower()).first():
         return None
     
     # Create user
+    first_name = kwargs.get('first_name')
+    last_name = kwargs.get('last_name')
     full_name = f"{first_name} {last_name}".strip() if first_name or last_name else None
     
     user = User(
@@ -77,30 +76,31 @@ def create_user(email: str, password: str, first_name: str = None, last_name: st
         first_name=first_name,
         last_name=last_name,
         full_name=full_name,
-        tc_no=tc_no,
-        company_title=company_title,
-        tax_office=tax_office,
-        tax_no=tax_no,
-        phone=phone,
-        city=city,
-        district=district,
-        address=address,
-        is_admin=False,
+        tc_no=kwargs.get('tc_no'),
+        company_title=kwargs.get('company_title'),
+        tax_office=kwargs.get('tax_office'),
+        tax_no=kwargs.get('tax_no'),
+        phone=kwargs.get('phone'),
+        city=kwargs.get('city'),
+        district=kwargs.get('district'),
+        address=kwargs.get('address'),
+        is_admin=kwargs.get('is_admin', False),
         is_active=True
     )
     user.set_password(password)
     db.session.add(user)
     db.session.flush()
     
-    # Create free subscription
+    # Create default subscription
+    plan = kwargs.get('plan', 'free')
     subscription = Subscription(
         user_id=user.id,
-        plan='free',
+        plan=plan,
         status='active',
         start_date=datetime.utcnow(),
-        end_date=None,  # Will be set when upgrading
-        max_products=100,
-        max_xml_sources=3
+        end_date=None,
+        max_products=100 if plan == 'free' else 1000 if plan == 'pro' else -1,
+        max_xml_sources=3 if plan == 'free' else 10 if plan == 'pro' else -1
     )
     db.session.add(subscription)
     db.session.commit()
