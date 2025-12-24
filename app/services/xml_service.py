@@ -156,10 +156,35 @@ def load_xml_source_index(xml_source_id: Any) -> Dict[str, Dict[str, Any]]:
         return data
 
     node = find_product_list(xml_obj)
+    
+    if isinstance(node, list):
+        logger.info(f"XML Source {xml_source_id}: Found LIST of {len(node)} items")
+        if len(node) > 0:
+            logger.info(f"First item type: {type(node[0])}")
+            logger.info(f"First item keys: {list(node[0].keys()) if isinstance(node[0], dict) else 'Not a dict'}")
+    elif isinstance(node, dict):
+        logger.info(f"XML Source {xml_source_id}: Found DICT (Single item or container). Keys: {list(node.keys())}")
+    else:
+        logger.info(f"XML Source {xml_source_id}: Found {type(node)}")
+
     if node is None:
         return index
     import logging
+    import logging
     logger = logging.getLogger(__name__)
+    
+    # DEBUG: Add FileHandler to capture logs
+    try:
+        import os
+        log_path = os.path.join(os.getcwd(), 'xml_debug.log')
+        fh = logging.FileHandler(log_path, mode='w', encoding='utf-8')
+        fh.setLevel(logging.INFO)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        fh.setFormatter(formatter)
+        if not any(isinstance(h, logging.FileHandler) for h in logger.handlers):
+            logger.addHandler(fh)
+    except Exception as e:
+        print(f"Failed to setup file logging: {e}")
     
     start_time = time.time()
     items = node if isinstance(node, list) else [node]
@@ -186,16 +211,27 @@ def load_xml_source_index(xml_source_id: Any) -> Dict[str, Dict[str, Any]]:
             brand_mapping = {k.lower(): v for k, v in brand_mapping.items()}
         except Exception: pass
 
-    for row in items:
+    for i, row in enumerate(items):
         if not isinstance(row, dict):
             continue
+        
+        # DEBUG: Log first few items
+        if i < 3:
+            logger.info(f"Processing XML Item #{i}. Keys: {list(row.keys())[:10]}")
+
         product_code = _g(row, 'productCode', 'ProductCode', 'product_code', 'Product_Code', 'code', 'Code')
         model_code = _g(row, 'modelCode', 'ModelCode', 'model_code', 'Model_Code', 'groupCode', 'GroupCode')
         
         barcode = _g(row, 'barcode', 'barcod', 'Barkod', 'BARKOD', 'productBarcode', 'ProductBarcode', 'Barcode')
+
+        # DEBUG: Log extracted identifiers
+        if i < 3:
+            logger.info(f"Item #{i} IDs - Barcode: {barcode}, PCode: {product_code}, MCode: {model_code}")
+
         if not barcode:
             barcode = product_code or _g(row, 'stockCode', 'StockCode', 'sku', 'SKU')
         if not barcode:
+            if i < 3: logger.info(f"Item #{i} skipped: No barcode found")
             continue
         title = _g(row, 'name', 'Name', 'productName', 'ProductName', 'title', 'Title')
         description = _g(row, 'detail', 'Detail', 'description', 'Description')
