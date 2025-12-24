@@ -79,7 +79,7 @@ def fetch_xml_from_url(url: str):
                 return f.read()
 
         headers = {'User-Agent': 'SOPYO-Integration-Client/1.0'}
-        response = requests.get(url, headers=headers, timeout=60)
+        response = requests.get(url, headers=headers, timeout=120)
         
         # HTTP Hata kontrolü
         response.raise_for_status()

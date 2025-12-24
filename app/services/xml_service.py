@@ -162,6 +162,7 @@ def load_xml_source_index(xml_source_id: Any, force: bool = False) -> Dict[str, 
             logger.info(f"XML Source {xml_source_id}: Parse complete.")
         except Exception as e:
             logger.error(f"XML Source {xml_source_id}: Error downloading or parsing: {e}")
+            index['_error'] = f"İndirme/Parse Hatası: {str(e)}"
             return index
 
     def find_product_list(data):
@@ -193,6 +194,7 @@ def load_xml_source_index(xml_source_id: Any, force: bool = False) -> Dict[str, 
     node = find_product_list(xml_obj)
     
     if node is None:
+        index['_error'] = "XML formatı tanınamadı (Ürün listesi bulunamadı). Lütfen XML yapısını kontrol edin."
         return index
 
     import logging

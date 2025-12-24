@@ -456,9 +456,12 @@ def api_xml_source_products():
     # Use service to load index (cached)
     try:
         index = load_xml_source_index(source_id)
+        if '_error' in index:
+            return jsonify({'total': 0, 'items': [], 'error': index['_error']})
+            
         all_records = index.get('__records__') or []
-    except Exception:
-        return jsonify({'total': 0, 'items': []})
+    except Exception as e:
+        return jsonify({'total': 0, 'items': [], 'error': str(e)})
     
     # Optimized filtering for large datasets
     def _match(rec):

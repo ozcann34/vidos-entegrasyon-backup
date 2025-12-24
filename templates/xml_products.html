@@ -646,7 +646,10 @@
     try {
       const resp = await fetch(url);
       if (!resp.ok) throw new Error(`Sunucu hatası: ${resp.status}`);
-      const data = await resp.json();
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
       currentTotal = data.total || 0;
       const countInfo = document.getElementById('productCountInfo');
       if (countInfo) countInfo.innerText = `${currentTotal.toLocaleString('tr-TR')} Ürün`;
@@ -655,11 +658,11 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (e) {
       console.error("Fetch error:", e);
-      const errorMsg = '<tr><td colspan="7" class="text-center p-5 text-danger">Ürünler yüklenemedi. Lütfen sayfayı yenileyin.</td></tr>';
+      const errorMsg = `<tr><td colspan="7" class="text-center p-5 text-danger"><h5>Ürünler yüklenemedi.</h5><p class="mb-0 text-muted small">${e.message}</p></td></tr>`;
       if (viewMode === 'list') productListBody.innerHTML = errorMsg;
       else {
         const grid = document.getElementById('productGrid');
-        if (grid) grid.innerHTML = '<div class="col-12 text-center p-5 text-danger">Ürünler yüklenemedi.</div>';
+        if (grid) grid.innerHTML = `<div class="col-12 text-center p-5 text-danger"><h5>Ürünler yüklenemedi.</h5><p class="mb-0 text-muted small">${e.message}</p></div>`;
       }
     }
   }
