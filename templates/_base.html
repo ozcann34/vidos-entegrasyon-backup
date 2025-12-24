@@ -346,6 +346,13 @@
                 <i class="bi bi-arrow-repeat me-1"></i> Stokları Güncelle
             </a>
 
+            <!-- Devam Eden İşlemler Butonu (Sadece aktif job varsa göster) -->
+            <button id="resumeJobBtn"
+                class="btn btn-sm btn-success rounded-pill px-3 shadow-sm animate__animated animate__pulse animate__infinite"
+                style="display: none;" onclick="resumeActiveJob()">
+                <i class="bi bi-play-circle-fill me-1"></i> Devam Eden İşlem
+            </button>
+
             {% if current_user.is_admin %}
             <a href="{{ url_for('main.batch_logs') }}"
                 class="btn btn-sm btn-white bg-white text-dark border rounded-pill px-3 shadow-sm">
@@ -755,6 +762,44 @@
                     }
                 });
             }
+
+            // Resume Active Job Function
+            window.resumeActiveJob = function () {
+                const jobId = localStorage.getItem('activeJobId');
+                if (jobId) {
+                    showJobWidget(jobId);
+                } else {
+                    alert('Devam eden işlem bulunamadı.');
+                }
+            };
+
+            // Show resume button if there's an active job
+            function checkAndShowResumeButton() {
+                const resumeBtn = document.getElementById('resumeJobBtn');
+                if (resumeBtn) {
+                    const activeJobId = localStorage.getItem('activeJobId');
+                    if (activeJobId) {
+                        // Önce job'un gerçekten aktif olup olmadığını kontrol et
+                        fetch(`/api/mp_jobs/${activeJobId}`)
+                            .then(res => res.ok ? res.json() : null)
+                            .then(data => {
+                                if (data && !data.error) {
+                                    const status = data.status;
+                                    if (status === 'running' || status === 'queued' || status === 'pausing') {
+                                        resumeBtn.style.display = 'block';
+                                    }
+                                }
+                            })
+                            .catch(() => {
+                                // Job bulunamazsa localStorage'ı temizle
+                                localStorage.removeItem('activeJobId');
+                            });
+                    }
+                }
+            }
+
+            // Sayfa yüklendiğinde kontrol et
+            checkAndShowResumeButton();
         })();
     </script>
 
