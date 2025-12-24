@@ -1540,6 +1540,15 @@ def fetch_all_idefix_products(user_id: Optional[int] = None, job_id: Optional[st
     # Idefix has different pools for different statuses
     POOL_STATES = ["APPROVED", "WAITING_APPROVAL", "REJECTED", "WAITING_CONTENT", "DELETED"]
     
+    # Status Mapping & Colors
+    STATUS_MAP = {
+        "APPROVED": ("Satışta", "success"),
+        "WAITING_APPROVAL": ("Onay Bekliyor", "warning"),
+        "REJECTED": ("Reddedildi", "danger"),
+        "WAITING_CONTENT": ("İçerik Bekleniyor", "info"),
+        "DELETED": ("Silindi", "secondary")
+    }
+    
     if job_id:
         append_mp_job_log(job_id, "İdefix'ten tüm statülerdeki ürünler çekiliyor...")
         
@@ -1559,6 +1568,13 @@ def fetch_all_idefix_products(user_id: Optional[int] = None, job_id: Optional[st
                 
                 if not items:
                     break
+                
+                # Enrich items with status info
+                label, color = STATUS_MAP.get(state, (state, "secondary"))
+                for item in items:
+                    item['status_label'] = label
+                    item['status_color'] = color
+                    item['original_status'] = state
                     
                 all_items.extend(items)
                 state_item_count += len(items)
@@ -1578,8 +1594,11 @@ def fetch_all_idefix_products(user_id: Optional[int] = None, job_id: Optional[st
                 if page > 500: break # Safety
                 
             except Exception as e:
+                # Log error but continue to next state
+                error_msg = f"Statü {state} Sayfa {page} hatası: {e}"
+                logging.error(error_msg)
                 if job_id:
-                    append_mp_job_log(job_id, f"Statü {state} Sayfa {page} hatası: {e}", level='error')
+                    append_mp_job_log(job_id, error_msg, level='error')
                 break
             
     return all_items

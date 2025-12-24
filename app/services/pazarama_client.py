@@ -339,13 +339,33 @@ class PazaramaClient:
             params["Code"] = str(code).strip()
 
         url = f"{BASE_URL}/product/products"
+        
+        # Log request details
+        logging.info(f"[PAZARAMA] Listing products - Page: {params['Page']}, Size: {params['Size']}, Approved: {params.get('Approved', 'all')}")
+        
         resp = self._request(
             "GET",
             url,
             params=params,
             headers={"Accept": "application/json"},
         )
-        return resp.json()
+        
+        result = resp.json()
+        
+        # Log response details
+        data_count = len(result.get('data', []))
+        total_count = result.get('totalCount', result.get('total', 0))
+        success = result.get('success', False)
+        
+        logging.info(f"[PAZARAMA] Response - Success: {success}, Data Count: {data_count}, Total: {total_count}")
+        
+        if not success:
+            logging.warning(f"[PAZARAMA] API returned success=False. Message: {result.get('message', 'N/A')}")
+        
+        if data_count == 0:
+            logging.warning(f"[PAZARAMA] No products returned for params: {params}")
+        
+        return result
 
     def get_product_detail(self, code: str) -> Dict[str, Any]:
         if not code:
