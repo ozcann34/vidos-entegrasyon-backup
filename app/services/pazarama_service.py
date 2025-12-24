@@ -1072,7 +1072,12 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
             attributes = []
             try:
                 full_cat_data = client.get_category_with_attributes(category_id)
-                for attr_def in full_cat_data.get('data', {}).get('attributes', []):
+                # DEBUG LOGGING FOR ATTRIBUTES
+                all_attrs = full_cat_data.get('data', {}).get('attributes', [])
+                debug_attr_names = [f"{a.get('name')} (Req:{a.get('isRequired')})" for a in all_attrs]
+                append_mp_job_log(job_id, f"DEBUG: Kategori ({category_id}) ozellikleri: {', '.join(debug_attr_names)}", level='info')
+
+                for attr_def in all_attrs:
                     at_id = attr_def.get('id')
                     at_name = attr_def.get('name', '')
                     at_values = attr_def.get('attributeValues') or []
