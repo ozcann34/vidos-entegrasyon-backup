@@ -62,7 +62,7 @@ def prepare_idefix_tfidf(categories: List[Dict[str, Any]]):
     _IDEFIX_CAT_TFIDF.update({"leaf": leaf_categories, "names": names, "vectorizer": vec, "matrix": mat})
     logger.info(f"Idefix TF-IDF matrisi hazır: {len(names)} yaprak kategori")
 
-def ensure_idefix_tfidf_ready() -> bool:
+def ensure_idefix_tfidf_ready(user_id: int = None) -> bool:
     """
     Load Idefix categories from settings and prepare TF-IDF if not already done.
     If cache is empty, automatically fetch from API.
@@ -73,7 +73,7 @@ def ensure_idefix_tfidf_ready() -> bool:
         return True
     
     # Try loading from saved settings first
-    raw = Setting.get("IDEFIX_CATEGORY_TREE", "")
+    raw = Setting.get("IDEFIX_CATEGORY_TREE", "", user_id=user_id)
     if raw:
         try:
             categories = json.loads(raw)
@@ -86,10 +86,10 @@ def ensure_idefix_tfidf_ready() -> bool:
     # If cache is empty, automatically fetch from API
     logger.info("[IDEFIX] Kategori önbelleği boş, API'den otomatik çekiliyor...")
     try:
-        result = fetch_and_cache_categories()
+        result = fetch_and_cache_categories(user_id=user_id)
         if result.get('success'):
             # Now try to load again
-            raw = Setting.get("IDEFIX_CATEGORY_TREE", "")
+            raw = Setting.get("IDEFIX_CATEGORY_TREE", "", user_id=user_id)
             if raw:
                 categories = json.loads(raw)
                 prepare_idefix_tfidf(categories)
@@ -134,7 +134,7 @@ def match_idefix_category_tfidf(query: str, min_score: float = 0.15) -> Optional
         logger.error(f"[IDEFIX] TF-IDF eşleştirme hatası: {e}")
         return None
 
-def resolve_idefix_category(product_title: str, excel_category: str, log_callback=None) -> Optional[int]:
+def resolve_idefix_category(product_title: str, excel_category: str, log_callback=None, user_id: int = None) -> Optional[int]:
     """
     Resolve Idefix category ID from product info.
     
@@ -142,11 +142,12 @@ def resolve_idefix_category(product_title: str, excel_category: str, log_callbac
         product_title: Product title
         excel_category: Category from Excel
         log_callback: Optional callback function for logging
+        user_id: User ID for setting context
         
     Returns:
         Category ID if found, None otherwise
     """
-    if not ensure_idefix_tfidf_ready():
+    if not ensure_idefix_tfidf_ready(user_id=user_id):
         if log_callback:
             log_callback("Idefix kategori listesi boş! Ayarlardan 'Kategorileri Çek' yapın.", level='warning')
         return None
@@ -955,7 +956,7 @@ items: List[Dict[str, Any]],
             return {'content': [], 'totalElements': 0}
 
 
-def fetch_and_cache_categories() -> Dict[str, Any]:
+def fetch_and_cache_categories(user_id: int = None) -> Dict[str, Any]:
     """
     Fetch all categories from Idefix (Tree Structure) and cache flattened version.
     """
@@ -963,10 +964,11 @@ def fetch_and_cache_categories() -> Dict[str, Any]:
     from flask_login import current_user
     import json
     
-    user_id = current_user.id if current_user and current_user.is_authenticated else None
+    if user_id is None:
+        user_id = current_user.id if current_user and current_user.is_authenticated else None
     
     try:
-        client = get_idefix_client()
+        client = get_idefix_client(user_id=user_id)
         logger.info("[IDEFIX] Fetching entire category tree...")
         
         # 1. Fetch Tree
@@ -1044,7 +1046,7 @@ def get_idefix_client(user_id: Optional[int] = None) -> IdefixClient:
     
     return IdefixClient(api_key, api_secret, vendor_id)
 
-def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id: Optional[int] = None, title_prefix: str = None, **kwargs) -> Dict[str, Any]:
+def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id: Optional[int] = None, title_prefix: str = None, user_id: int = None, **kwargs) -> Dict[str, Any]:
     from app.services.job_queue import append_mp_job_log, get_mp_job, update_mp_job
     from app.services.xml_service import load_xml_source_index
     from app.utils.helpers import to_float, to_int
@@ -1062,7 +1064,17 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
     append_mp_job_log(job_id, f"İdefix gönderim işlemi başlatılıyor... Seçenekler: Çarpan={price_multiplier}, Barkodsuz Atla={skip_no_barcode}")
     
     try:
-        client = get_idefix_client()
+        if not user_id and xml_source_id:
+            try:
+                from app.models import SupplierXML
+                s_id = str(xml_source_id)
+                if s_id.isdigit():
+                    src = SupplierXML.query.get(int(s_id))
+                    if src: user_id = src.user_id
+            except Exception as e:
+                logging.warning(f"Failed to resolve user_id in idefix send: {e}")
+
+        client = get_idefix_client(user_id=user_id)
     except Exception as e:
         error_msg = f"İdefix client hatası: {str(e)}"
         append_mp_job_log(job_id, error_msg, level='error')
@@ -1183,7 +1195,7 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
         # Resolve category via TF-IDF
         excel_category = rec.get('category') or rec.get('top_category') or ''
         product_title = rec.get('title') or ''
-        resolved_cat_id = resolve_idefix_category(product_title, excel_category)
+        resolved_cat_id = resolve_idefix_category(product_title, excel_category, user_id=user_id)
         
         # Use resolved category ID, fallback to default from settings
         final_cat_id = resolved_cat_id
@@ -1503,7 +1515,7 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
         "skipped": skipped_list
     }
 
-def perform_idefix_send_all(job_id: str, xml_source_id: Any, **kwargs) -> Dict[str, Any]:
+def perform_idefix_send_all(job_id: str, xml_source_id: Any, user_id: int = None, **kwargs) -> Dict[str, Any]:
     """Send ALL products from XML source to Idefix"""
     from app.services.job_queue import append_mp_job_log
     from app.services.xml_service import load_xml_source_index
@@ -1517,7 +1529,7 @@ def perform_idefix_send_all(job_id: str, xml_source_id: Any, **kwargs) -> Dict[s
     
     append_mp_job_log(job_id, f"Toplam {len(all_barcodes)} ürün bulundu. Gönderim başlıyor...")
     
-    return perform_idefix_send_products(job_id, all_barcodes, xml_source_id, **kwargs)
+    return perform_idefix_send_products(job_id, all_barcodes, xml_source_id, user_id=user_id, **kwargs)
 
 def fetch_all_idefix_products(user_id: Optional[int] = None, job_id: Optional[str] = None) -> List[Dict[str, Any]]:
     """Fetch all products from Idefix API across all status pools."""
@@ -1788,7 +1800,7 @@ def perform_idefix_product_update(barcode: str, data: Dict[str, Any]) -> Dict[st
     return {'success': success, 'message': ' | '.join(messages)}
 
 
-def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id: Any, title_prefix: str = None, **kwargs) -> Dict[str, Any]:
+def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id: Any, title_prefix: str = None, user_id: int = None, **kwargs) -> Dict[str, Any]:
     """
     Send products to Idefix from XML source
     
@@ -1804,23 +1816,22 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
     from app.services.xml_service import load_xml_source_index
     from app.utils.helpers import clean_forbidden_words
     
-    client = get_idefix_client()
-    append_mp_job_log(job_id, "Idefix istemcisi hazır")
-    
-    # Debug: Log barcode count
-    append_mp_job_log(job_id, f"Gelen barkod sayısı: {len(barcodes) if barcodes else 0}")
-    
-    # Resolve User ID from XML Source
-    user_id = None
-    if xml_source_id:
-        try:
-            from app.models import SupplierXML
-            s_id = str(xml_source_id)
-            if s_id.isdigit():
-                src = SupplierXML.query.get(int(s_id))
-                if src: user_id = src.user_id
-        except Exception as e:
-            logging.warning(f"Failed to resolve user_id: {e}")
+    try:
+        if not user_id and xml_source_id:
+            try:
+                from app.models import SupplierXML
+                s_id = str(xml_source_id)
+                if s_id.isdigit():
+                    src = SupplierXML.query.get(int(s_id))
+                    if src: user_id = src.user_id
+            except Exception as e:
+                logging.warning(f"Failed to resolve user_id: {e}")
+
+        client = get_idefix_client(user_id=user_id)
+    except Exception as e:
+        return {'success': False, 'message': f'Idefix client hatası: {e}'}
+
+    append_mp_job_log(job_id, f"Idefix istemcisi hazır (User ID: {user_id})")
     
     xml_index = load_xml_source_index(xml_source_id)
     mp_map = xml_index.get('by_barcode') or {}

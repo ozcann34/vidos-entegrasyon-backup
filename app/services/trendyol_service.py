@@ -78,10 +78,14 @@ def save_brand_cache_to_db() -> bool:
         logging.exception(f"Failed to save brand cache: {e}")
         return False
 
-def fetch_and_cache_brands() -> Dict[str, Any]:
+def fetch_and_cache_brands(user_id: int = None) -> Dict[str, Any]:
     """Fetch all brands from Trendyol API and cache them."""
     try:
-        client = get_trendyol_client()
+        from flask_login import current_user
+        if user_id is None:
+            user_id = current_user.id if current_user and current_user.is_authenticated else None
+            
+        client = get_trendyol_client(user_id=user_id)
         result = {"success": False, "count": 0, "message": ""}
         
         page = 0
@@ -184,10 +188,14 @@ def load_category_cache_from_db() -> bool:
     return False
 
 
-def fetch_and_cache_categories() -> Dict[str, Any]:
+def fetch_and_cache_categories(user_id: int = None) -> Dict[str, Any]:
     """Fetch all categories from Trendyol API and cache them."""
     try:
-        client = get_trendyol_client()
+        from flask_login import current_user
+        if user_id is None:
+            user_id = current_user.id if current_user and current_user.is_authenticated else None
+            
+        client = get_trendyol_client(user_id=user_id)
         result = {"success": False, "count": 0, "message": ""}
         
         # Get category tree
@@ -655,11 +663,11 @@ def load_trendyol_snapshot() -> Dict[str, Any]:
     except Exception:
         return {}
 
-def fetch_all_trendyol_products(job_id: Optional[str] = None) -> List[Dict[str, Any]]:
+def fetch_all_trendyol_products(user_id: int = None, job_id: Optional[str] = None) -> List[Dict[str, Any]]:
     """Fetch ALL products from Trendyol API with pagination."""
     from app.services.job_queue import update_mp_job, get_mp_job
     
-    client = get_trendyol_client()
+    client = get_trendyol_client(user_id=user_id)
     all_items = []
     page = 0
     size = 100 # Safe batch size
@@ -728,14 +736,16 @@ def fetch_all_trendyol_products(job_id: Optional[str] = None) -> List[Dict[str, 
         
     return all_items
 
-def refresh_trendyol_cache(job_id: Optional[str] = None) -> Dict[str, Any]:
+def refresh_trendyol_cache(job_id: Optional[str] = None, user_id: int = None) -> Dict[str, Any]:
     """Fetch all products and sync to MarketplaceProduct table."""
     try:
         from app.models import MarketplaceProduct
         from app import db
         from flask_login import current_user
         
-        user_id = current_user.id if current_user and current_user.is_authenticated else None
+        if user_id is None:
+            user_id = current_user.id if current_user and current_user.is_authenticated else None
+            
         # If running from job, we might need a way to know the user. 
         # For now, if no user, we might fail or default to 1? 
         # But this function is usually called from UI (with user) or job (triggered by user).
@@ -748,7 +758,7 @@ def refresh_trendyol_cache(job_id: Optional[str] = None) -> Dict[str, Any]:
              # Or we skip user_id check and get_trendyol_client handles it.
              pass
 
-        items = fetch_all_trendyol_products(job_id)
+        items = fetch_all_trendyol_products(user_id=user_id, job_id=job_id)
         
         if not user_id and items:
              # Fallback: if we have items but no user_id, 
@@ -874,8 +884,8 @@ def refresh_trendyol_cache(job_id: Optional[str] = None) -> Dict[str, Any]:
         return {'success': False, 'error': str(e)}
 
 
-def perform_trendyol_sync_stock(job_id: str, xml_source_id: Any) -> Dict[str, Any]:
-    client = get_trendyol_client()
+def perform_trendyol_sync_stock(job_id: str, xml_source_id: Any, user_id: int = None) -> Dict[str, Any]:
+    client = get_trendyol_client(user_id=user_id)
     append_mp_job_log(job_id, "Trendyol istemcisi hazır")
     xml_index = load_xml_source_index(xml_source_id)
     mp_map = xml_index.get('by_barcode') or {}
@@ -940,8 +950,8 @@ def perform_trendyol_sync_stock(job_id: str, xml_source_id: Any) -> Dict[str, An
     })
     return summary
 
-def perform_trendyol_sync_prices(job_id: str, xml_source_id: Any, match_by: str = 'barcode') -> Dict[str, Any]:
-    client = get_trendyol_client()
+def perform_trendyol_sync_prices(job_id: str, xml_source_id: Any, match_by: str = 'barcode', user_id: int = None) -> Dict[str, Any]:
+    client = get_trendyol_client(user_id=user_id)
     append_mp_job_log(job_id, "Trendyol istemcisi hazır")
     xml_index = load_xml_source_index(xml_source_id)
     # If match_by is stock_code, we rely on lookup_xml_record, not direct map iteration?
@@ -1050,7 +1060,7 @@ def perform_trendyol_sync_prices(job_id: str, xml_source_id: Any, match_by: str 
     return summary
 
 
-def perform_trendyol_sync_all(job_id: str, xml_source_id: Any, match_by: str = 'barcode') -> Dict[str, Any]:
+def perform_trendyol_sync_all(job_id: str, xml_source_id: Any, match_by: str = 'barcode', user_id: int = None) -> Dict[str, Any]:
     """
     Trendyol için hem stok hem fiyat eşitleme (birleşik)
     Trendyol'da aslında update_price_inventory tek çağrıda hem stok hem fiyat günceller,
@@ -1063,7 +1073,7 @@ def perform_trendyol_sync_all(job_id: str, xml_source_id: Any, match_by: str = '
     append_mp_job_log(job_id, ">>> STOK VE FİYAT EŞITLEME BAŞLADI <<<")
     result = {}
     try:
-        result = perform_trendyol_sync_prices(job_id, xml_source_id, match_by=match_by)
+        result = perform_trendyol_sync_prices(job_id, xml_source_id, match_by=match_by, user_id=user_id)
         append_mp_job_log(job_id, f"Eşitleme tamamlandı: {result.get('updated_count', 0)} güncellendi")
     except Exception as e:
         append_mp_job_log(job_id, f"Eşitleme hatası: {str(e)}", level='error')
@@ -1104,13 +1114,9 @@ def ensure_tfidf_ready():
         except Exception as e:
             logging.error(f"Error preparing TF-IDF: {e}")
 
-def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_id: Any, auto_match: bool = False, match_by: str = 'barcode', title_prefix: str = None, **kwargs) -> Dict[str, Any]:
-    client = get_trendyol_client()
-    append_mp_job_log(job_id, "Trendyol istemcisi başlatıldı.")
-    
-    # Resolve User ID from XML Source
-    user_id = None
-    if xml_source_id:
+def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_id: Any, auto_match: bool = False, match_by: str = 'barcode', title_prefix: str = None, user_id: int = None, **kwargs) -> Dict[str, Any]:
+    # Resolve User ID from XML Source if not provided
+    if not user_id and xml_source_id:
         try:
              s_id = str(xml_source_id)
              if s_id.isdigit():
@@ -1118,6 +1124,9 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
                  if src: user_id = src.user_id
         except Exception as e:
              logging.warning(f"Failed to resolve user_id: {e}")
+
+    client = get_trendyol_client(user_id=user_id)
+    append_mp_job_log(job_id, f"Trendyol istemcisi başlatıldı (User ID: {user_id}).")
 
     # Extract options from kwargs or defaults
     zero_stock_as_one = kwargs.get('zero_stock_as_one', False)
@@ -1631,7 +1640,7 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
         }
     }
 
-def perform_trendyol_send_all(job_id: str, xml_source_id: Any, auto_match: bool = False, **kwargs) -> Dict[str, Any]:
+def perform_trendyol_send_all(job_id: str, xml_source_id: Any, auto_match: bool = False, user_id: int = None, **kwargs) -> Dict[str, Any]:
     """Send ALL products from XML source to Trendyol"""
     append_mp_job_log(job_id, "Tüm ürünler hazırlanıyor...")
     
@@ -1644,7 +1653,7 @@ def perform_trendyol_send_all(job_id: str, xml_source_id: Any, auto_match: bool 
     
     append_mp_job_log(job_id, f"Toplam {len(all_barcodes)} ürün bulundu. Gönderim başlıyor...")
     
-    return perform_trendyol_send_products(job_id, all_barcodes, xml_source_id, auto_match=auto_match, **kwargs)
+    return perform_trendyol_send_products(job_id, all_barcodes, xml_source_id, auto_match=auto_match, user_id=user_id, **kwargs)
 
 
 def perform_trendyol_batch_update(job_id: str, items: List[Dict[str, Any]]) -> Dict[str, Any]:

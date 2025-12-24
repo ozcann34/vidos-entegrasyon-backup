@@ -198,8 +198,10 @@ def api_job_control():
 
 
 @api_bp.route('/api/pazarama/sync_stock', methods=['POST'])
+@login_required
 def api_pazarama_sync_stock():
     try:
+        user_id = current_user.id
         payload = request.get_json(force=True) or {}
         xml_source_id = payload.get('xml_source_id')
         if not xml_source_id:
@@ -208,8 +210,8 @@ def api_pazarama_sync_stock():
         job_id = submit_mp_job(
             'pazarama_sync_stock',
             'pazarama',
-            lambda job_id: perform_pazarama_sync_stock(job_id, xml_source_id),
-            params={'xml_source_id': xml_source_id},
+            lambda job_id: perform_pazarama_sync_stock(job_id, xml_source_id, user_id=user_id),
+            params={'xml_source_id': xml_source_id, 'user_id': user_id},
         )
         return jsonify({'success': True, 'job_id': job_id, 'message': 'Stok eşitleme kuyruğa alındı.'}), 202
     except Exception as e:
@@ -217,8 +219,10 @@ def api_pazarama_sync_stock():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @api_bp.route('/api/pazarama/sync_prices', methods=['POST'])
+@login_required
 def api_pazarama_sync_prices():
     try:
+        user_id = current_user.id
         payload = request.get_json(force=True) or {}
         xml_source_id = payload.get('xml_source_id')
         if not xml_source_id:
@@ -227,8 +231,8 @@ def api_pazarama_sync_prices():
         job_id = submit_mp_job(
             'pazarama_sync_prices',
             'pazarama',
-            lambda job_id: perform_pazarama_sync_prices(job_id, xml_source_id),
-            params={'xml_source_id': xml_source_id},
+            lambda job_id: perform_pazarama_sync_prices(job_id, xml_source_id, user_id=user_id),
+            params={'xml_source_id': xml_source_id, 'user_id': user_id},
         )
         return jsonify({'success': True, 'job_id': job_id, 'message': 'Fiyat eşitleme kuyruğa alındı.'}), 202
     except Exception as e:
@@ -236,9 +240,11 @@ def api_pazarama_sync_prices():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @api_bp.route('/api/pazarama/sync_all', methods=['POST'])
+@login_required
 def api_pazarama_sync_all():
     """Pazarama için hem stok hem fiyat eşitleme (birleşik)"""
     try:
+        user_id = current_user.id
         payload = request.get_json(force=True) or {}
         xml_source_id = payload.get('xml_source_id')
         if not xml_source_id:
@@ -249,8 +255,8 @@ def api_pazarama_sync_all():
         job_id = submit_mp_job(
             'pazarama_sync_all',
             'pazarama',
-            lambda job_id: perform_pazarama_sync_all(job_id, xml_source_id),
-            params={'xml_source_id': xml_source_id},
+            lambda job_id: perform_pazarama_sync_all(job_id, xml_source_id, user_id=user_id),
+            params={'xml_source_id': xml_source_id, 'user_id': user_id},
         )
         return jsonify({'success': True, 'job_id': job_id, 'message': 'Stok ve fiyat eşitleme kuyruğa alındı.'}), 202
     except Exception as e:
@@ -272,8 +278,10 @@ def api_pazarama_clear_cache():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @api_bp.route('/api/trendyol/sync_stock', methods=['POST'])
+@login_required
 def api_trendyol_sync_stock():
     try:
+        user_id = current_user.id
         payload = request.get_json(force=True) or {}
         xml_source_id = payload.get('xml_source_id')
         if not xml_source_id:
@@ -282,8 +290,8 @@ def api_trendyol_sync_stock():
         job_id = submit_mp_job(
             'trendyol_sync_stock',
             'trendyol',
-            lambda job_id: perform_trendyol_sync_stock(job_id, xml_source_id),
-            params={'xml_source_id': xml_source_id},
+            lambda job_id: perform_trendyol_sync_stock(job_id, xml_source_id, user_id=user_id),
+            params={'xml_source_id': xml_source_id, 'user_id': user_id},
         )
         return jsonify({'success': True, 'job_id': job_id, 'message': 'Trendyol stok eşitleme kuyruğa alındı.'}), 202
     except Exception as e:
@@ -291,8 +299,10 @@ def api_trendyol_sync_stock():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @api_bp.route('/api/trendyol/sync_prices', methods=['POST'])
+@login_required
 def api_trendyol_sync_prices():
     try:
+        user_id = current_user.id
         payload = request.get_json(force=True) or {}
         xml_source_id = payload.get('xml_source_id')
         if not xml_source_id:
@@ -301,8 +311,8 @@ def api_trendyol_sync_prices():
         job_id = submit_mp_job(
             'trendyol_sync_prices',
             'trendyol',
-            lambda job_id: perform_trendyol_sync_prices(job_id, xml_source_id),
-            params={'xml_source_id': xml_source_id},
+            lambda job_id: perform_trendyol_sync_prices(job_id, xml_source_id, user_id=user_id),
+            params={'xml_source_id': xml_source_id, 'user_id': user_id},
         )
         return jsonify({'success': True, 'job_id': job_id, 'message': 'Trendyol fiyat eşitleme kuyruğa alındı.'}), 202
     except Exception as e:
@@ -336,9 +346,11 @@ def api_trendyol_fetch_brands():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @api_bp.route('/api/trendyol/sync_all', methods=['POST'])
+@login_required
 def api_trendyol_sync_all():
     """Trendyol için hem stok hem fiyat eşitleme (birleşik)"""
     try:
+        user_id = current_user.id
         payload = request.get_json(force=True) or {}
         xml_source_id = payload.get('xml_source_id')
         if not xml_source_id:
@@ -349,8 +361,8 @@ def api_trendyol_sync_all():
         job_id = submit_mp_job(
             'trendyol_sync_all',
             'trendyol',
-            lambda job_id: perform_trendyol_sync_all(job_id, xml_source_id),
-            params={'xml_source_id': xml_source_id},
+            lambda job_id: perform_trendyol_sync_all(job_id, xml_source_id, user_id=user_id),
+            params={'xml_source_id': xml_source_id, 'user_id': user_id},
         )
         return jsonify({'success': True, 'job_id': job_id, 'message': 'Stok ve fiyat eşitleme kuyruğa alındı.'}), 202
     except Exception as e:
@@ -362,12 +374,14 @@ def api_trendyol_sync_all():
 
 
 @api_bp.route('/api/n11/fetch_categories', methods=['POST'])
+@login_required
 def api_n11_fetch_categories():
     """N11 Kategorilerini çek ve önbelleğe al"""
     try:
+        user_id = current_user.id
         from app.services.n11_service import fetch_and_cache_n11_categories
         # force=True to ensure fresh fetch
-        success = fetch_and_cache_n11_categories(force=True)
+        success = fetch_and_cache_n11_categories(force=True, user_id=user_id)
         if success:
              from app.services.n11_service import _N11_CATEGORY_CACHE
              count = len(_N11_CATEGORY_CACHE.get('list', []))
@@ -1198,21 +1212,24 @@ def api_sync_orders(marketplace: str):
 
 
 @api_bp.route('/api/trendyol/refresh_cache', methods=['POST'])
+@login_required
 def api_trendyol_refresh_cache():
     """Trendyol ürünlerini API'den çekip önbelleği yeniler"""
     try:
+        user_id = current_user.id
         from app.services.trendyol_service import refresh_trendyol_cache
         
         # Arka planda çalıştır
         def refresh_task(job_id):
             from flask import current_app
             with current_app.app_context():
-                return refresh_trendyol_cache(job_id)
+                return refresh_trendyol_cache(job_id, user_id=user_id)
         
         job_id = submit_mp_job(
             'trendyol_refresh_cache',
             'trendyol',
-            refresh_task
+            refresh_task,
+            params={'user_id': user_id}
         )
         
         return jsonify({
@@ -1226,19 +1243,22 @@ def api_trendyol_refresh_cache():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @api_bp.route('/api/idefix/refresh_cache', methods=['POST'])
+@login_required
 def api_idefix_refresh_cache():
     """Idefix ürünlerini API'den çekip veritabanını yeniler"""
     try:
+        user_id = current_user.id
         from app.services.idefix_service import sync_idefix_products
         
         # Arka planda çalıştır
         def refresh_task(job_id):
-            return sync_idefix_products(user_id=current_user.id, job_id=job_id)
+            return sync_idefix_products(user_id=user_id, job_id=job_id)
         
         job_id = submit_mp_job(
             'idefix_refresh_cache',
             'idefix',
-            refresh_task
+            refresh_task,
+            params={'user_id': user_id}
         )
         
         return jsonify({
@@ -1253,8 +1273,10 @@ def api_idefix_refresh_cache():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @api_bp.route('/api/trendyol/send_auto', methods=['POST'])
+@login_required
 def api_trendyol_send_auto():
     try:
+        user_id = current_user.id
         payload = request.get_json(force=True) or {}
         barcodes = payload.get('barcodes', [])
         xml_source_id = payload.get('xml_source_id')
@@ -1267,8 +1289,8 @@ def api_trendyol_send_auto():
         job_id = submit_mp_job(
             'trendyol_send_auto',
             'trendyol',
-            lambda job_id: perform_trendyol_send_products(job_id, barcodes, xml_source_id, auto_match=True),
-            params={'barcodes': barcodes, 'xml_source_id': xml_source_id}
+            lambda job_id: perform_trendyol_send_products(job_id, barcodes, xml_source_id, auto_match=True, user_id=user_id),
+            params={'barcodes': barcodes, 'xml_source_id': xml_source_id, 'user_id': user_id}
         )
         
         return jsonify({
@@ -1281,8 +1303,10 @@ def api_trendyol_send_auto():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @api_bp.route('/api/trendyol/send_all', methods=['POST'])
+@login_required
 def api_trendyol_send_all():
     try:
+        user_id = current_user.id
         payload = request.get_json(force=True) or {}
         xml_source_id = payload.get('source_id')
         auto_match = payload.get('auto_match', True)
@@ -1307,16 +1331,18 @@ def api_trendyol_send_all():
         job_id = submit_mp_job(
             'trendyol_send_all',
             'trendyol',
-            lambda job_id: perform_trendyol_send_all(job_id, xml_source_id, auto_match=auto_match, **send_options),
-            params={'xml_source_id': xml_source_id, 'auto_match': auto_match, **send_options},
+            lambda job_id: perform_trendyol_send_all(job_id, xml_source_id, auto_match=auto_match, user_id=user_id, **send_options),
+            params={'xml_source_id': xml_source_id, 'auto_match': auto_match, 'user_id': user_id, **send_options},
         )
         return jsonify({'success': True, 'job_id': job_id, 'batch_id': job_id}), 202
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @api_bp.route('/api/hepsiburada/send_all', methods=['POST'])
+@login_required
 def api_hepsiburada_send_all():
     try:
+        user_id = current_user.id
         payload = request.get_json(force=True) or {}
         xml_source_id = payload.get('source_id')
         
@@ -1338,16 +1364,18 @@ def api_hepsiburada_send_all():
         job_id = submit_mp_job(
             'hepsiburada_send_all',
             'hepsiburada',
-            lambda job_id: perform_hepsiburada_send_all(job_id, xml_source_id, **send_options),
-            params={'xml_source_id': xml_source_id, **send_options},
+            lambda job_id: perform_hepsiburada_send_all(job_id, xml_source_id, user_id=user_id, **send_options),
+            params={'xml_source_id': xml_source_id, 'user_id': user_id, **send_options},
         )
         return jsonify({'success': True, 'job_id': job_id, 'batch_id': job_id}), 202
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @api_bp.route('/api/n11/send_all', methods=['POST'])
+@login_required
 def api_n11_send_all():
     try:
+        user_id = current_user.id
         payload = request.get_json(force=True) or {}
         xml_source_id = payload.get('source_id')
         auto_match = payload.get('auto_match', True)
@@ -1372,8 +1400,8 @@ def api_n11_send_all():
         job_id = submit_mp_job(
             'n11_send_all',
             'n11',
-            lambda job_id: perform_n11_send_all(job_id, xml_source_id, auto_match=auto_match, **send_options),
-            params={'xml_source_id': xml_source_id, 'auto_match': auto_match, **send_options},
+            lambda job_id: perform_n11_send_all(job_id, xml_source_id, auto_match=auto_match, user_id=user_id, **send_options),
+            params={'xml_source_id': xml_source_id, 'auto_match': auto_match, 'user_id': user_id, **send_options},
         )
         return jsonify({'success': True, 'job_id': job_id, 'batch_id': job_id}), 202
     except Exception as e:
@@ -1401,9 +1429,11 @@ def api_n11_search_brand():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @api_bp.route('/api/pazarama/send_all', methods=['POST'])
+@login_required
 def api_pazarama_send_all():
     """Pazarama için XML'deki tüm ürünleri gönder"""
     try:
+        user_id = current_user.id
         payload = request.get_json(force=True) or {}
         xml_source_id = payload.get('source_id')
         
@@ -1426,8 +1456,8 @@ def api_pazarama_send_all():
         job_id = submit_mp_job(
             'pazarama_send_all',
             'pazarama',
-            lambda job_id: perform_pazarama_send_all(job_id, xml_source_id, **send_options),
-            params={'xml_source_id': xml_source_id, **send_options},
+            lambda job_id: perform_pazarama_send_all(job_id, xml_source_id, user_id=user_id, **send_options),
+            params={'xml_source_id': xml_source_id, 'user_id': user_id, **send_options},
         )
         return jsonify({'success': True, 'job_id': job_id, 'batch_id': job_id}), 202
     except Exception as e:
@@ -1507,13 +1537,15 @@ def api_job_status(job_id):
     })
 
 @api_bp.route('/api/send_selected/<marketplace>', methods=['POST'])
+@login_required
 def api_send_selected(marketplace):
     try:
+        user_id = current_user.id
         marketplace = (marketplace or '').strip()
         # Handle Turkish chars for robust matching
         marketplace = marketplace.replace('İ', 'i').replace('I', 'i').lower()
         
-        logging.info(f"API Send Selected: {marketplace}")
+        logging.info(f"API Send Selected: {marketplace} (User ID: {user_id})")
         
         if marketplace not in MARKETPLACES:
             return jsonify({'success': False, 'message': 'Geçersiz pazar yeri'}), 400
@@ -1543,40 +1575,41 @@ def api_send_selected(marketplace):
             job_id = submit_mp_job(
                 'idefix_send_selected',
                 'idefix',
-                lambda job_id: perform_idefix_send_products(job_id, barcodes, xml_source_id, **send_options),
-                params={'barcodes': barcodes, 'xml_source_id': xml_source_id, 'requested_marketplace': marketplace, **send_options}
+                lambda job_id: perform_idefix_send_products(job_id, barcodes, xml_source_id, user_id=user_id, **send_options),
+                params={'barcodes': barcodes, 'xml_source_id': xml_source_id, 'requested_marketplace': marketplace, 'user_id': user_id, **send_options}
             )
         elif marketplace == 'trendyol':
             from app.services.trendyol_service import perform_trendyol_send_products
             job_id = submit_mp_job(
                 'trendyol_send_selected',
                 'trendyol',
-                lambda job_id: perform_trendyol_send_products(job_id, barcodes, xml_source_id, auto_match=True, **send_options),
-                params={'barcodes': barcodes, 'xml_source_id': xml_source_id, 'requested_marketplace': marketplace, **send_options}
+                lambda job_id: perform_trendyol_send_products(job_id, barcodes, xml_source_id, auto_match=True, user_id=user_id, **send_options),
+                params={'barcodes': barcodes, 'xml_source_id': xml_source_id, 'requested_marketplace': marketplace, 'user_id': user_id, **send_options}
             )
         elif marketplace == 'pazarama':
             from app.services.pazarama_service import perform_pazarama_send_products
             job_id = submit_mp_job(
                 'pazarama_send_selected',
                 'pazarama',
-                lambda job_id: perform_pazarama_send_products(job_id, barcodes, xml_source_id, **send_options),
-                params={'barcodes': barcodes, 'xml_source_id': xml_source_id, 'requested_marketplace': marketplace, **send_options}
+                lambda job_id: perform_pazarama_send_products(job_id, barcodes, xml_source_id, user_id=user_id, **send_options),
+                params={'barcodes': barcodes, 'xml_source_id': xml_source_id, 'requested_marketplace': marketplace, 'user_id': user_id, **send_options}
             )
         elif marketplace == 'n11':
             from app.services.n11_service import perform_n11_send_products
             job_id = submit_mp_job(
                 'n11_send_selected',
                 'n11',
-                lambda job_id: perform_n11_send_products(job_id, barcodes, xml_source_id, auto_match=True, **send_options),
-                params={'barcodes': barcodes, 'xml_source_id': xml_source_id, 'requested_marketplace': marketplace, **send_options}
+                lambda job_id: perform_n11_send_products(job_id, barcodes, xml_source_id, auto_match=True, user_id=user_id, **send_options),
+                params={'barcodes': barcodes, 'xml_source_id': xml_source_id, 'requested_marketplace': marketplace, 'user_id': user_id, **send_options}
             )
 
         elif marketplace == 'hepsiburada':
-            job_id = submit_mp_job(
+             from app.services.hepsiburada_service import perform_hepsiburada_send_products
+             job_id = submit_mp_job(
                 'hepsiburada_send_products',
                 'hepsiburada',
-                lambda job_id: perform_hepsiburada_send_products(job_id, barcodes, xml_source_id, **send_options),
-                params={'barcodes': barcodes, 'xml_source_id': xml_source_id, 'requested_marketplace': marketplace, **send_options}
+                lambda job_id: perform_hepsiburada_send_products(job_id, barcodes, xml_source_id, user_id=user_id, **send_options),
+                params={'barcodes': barcodes, 'xml_source_id': xml_source_id, 'requested_marketplace': marketplace, 'user_id': user_id, **send_options}
             )
 
         else:
@@ -1599,8 +1632,10 @@ def api_send_selected(marketplace):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @api_bp.route('/api/send_all', methods=['POST'])
+@login_required
 def api_send_all():
     try:
+        user_id = current_user.id
         payload = request.get_json(force=True) or {}
         marketplace = payload.get('marketplace')
         xml_source_id = payload.get('xml_source_id')
@@ -1619,13 +1654,16 @@ def api_send_all():
             )
             if mode == 'stock':
                 job_id = submit_mp_job('trendyol_sync_stock', 'trendyol', 
-                    lambda jid: perform_trendyol_sync_stock(jid, xml_source_id))
+                    lambda jid: perform_trendyol_sync_stock(jid, xml_source_id, user_id=user_id),
+                    params={'xml_source_id': xml_source_id, 'user_id': user_id})
             elif mode == 'price':
                 job_id = submit_mp_job('trendyol_sync_prices', 'trendyol', 
-                    lambda jid: perform_trendyol_sync_prices(jid, xml_source_id, match_by=match_by))
+                    lambda jid: perform_trendyol_sync_prices(jid, xml_source_id, match_by=match_by, user_id=user_id),
+                    params={'xml_source_id': xml_source_id, 'match_by': match_by, 'user_id': user_id})
             else:
                  job_id = submit_mp_job('trendyol_sync_all', 'trendyol', 
-                    lambda jid: perform_trendyol_sync_all(jid, xml_source_id, match_by=match_by))
+                    lambda jid: perform_trendyol_sync_all(jid, xml_source_id, match_by=match_by, user_id=user_id),
+                    params={'xml_source_id': xml_source_id, 'match_by': match_by, 'user_id': user_id})
         
         # N11
         elif marketplace == 'n11':
@@ -1634,13 +1672,16 @@ def api_send_all():
             )
             if mode == 'stock':
                  job_id = submit_mp_job('n11_sync_stock', 'n11', 
-                    lambda jid: perform_n11_sync_stock(jid, xml_source_id))
+                    lambda jid: perform_n11_sync_stock(jid, xml_source_id, user_id=user_id),
+                    params={'xml_source_id': xml_source_id, 'user_id': user_id})
             elif mode == 'price':
                  job_id = submit_mp_job('n11_sync_prices', 'n11', 
-                    lambda jid: perform_n11_sync_prices(jid, xml_source_id))
+                    lambda jid: perform_n11_sync_prices(jid, xml_source_id, user_id=user_id),
+                    params={'xml_source_id': xml_source_id, 'user_id': user_id})
             else:
                  job_id = submit_mp_job('n11_sync_all', 'n11', 
-                    lambda jid: perform_n11_sync_all(jid, xml_source_id, match_by=match_by))
+                    lambda jid: perform_n11_sync_all(jid, xml_source_id, match_by=match_by, user_id=user_id),
+                    params={'xml_source_id': xml_source_id, 'match_by': match_by, 'user_id': user_id})
 
         # PAZARAMA
         elif marketplace == 'pazarama':
@@ -1649,18 +1690,23 @@ def api_send_all():
              )
              if mode == 'stock':
                  job_id = submit_mp_job('pazarama_sync_stock', 'pazarama', 
-                    lambda jid: perform_pazarama_sync_stock(jid, xml_source_id))
+                    lambda jid: perform_pazarama_sync_stock(jid, xml_source_id, user_id=user_id),
+                    params={'xml_source_id': xml_source_id, 'user_id': user_id})
              elif mode == 'price':
                  job_id = submit_mp_job('pazarama_sync_prices', 'pazarama', 
-                    lambda jid: perform_pazarama_sync_prices(jid, xml_source_id))
+                    lambda jid: perform_pazarama_sync_prices(jid, xml_source_id, user_id=user_id),
+                    params={'xml_source_id': xml_source_id, 'user_id': user_id})
              else:
                  job_id = submit_mp_job('pazarama_sync_all', 'pazarama', 
-                    lambda jid: perform_pazarama_sync_all(jid, xml_source_id))
+                    lambda jid: perform_pazarama_sync_all(jid, xml_source_id, user_id=user_id),
+                    params={'xml_source_id': xml_source_id, 'user_id': user_id})
 
         # HEPSIBURADA
         elif marketplace == 'hepsiburada':
+             from app.services.hepsiburada_service import perform_hepsiburada_send_all
              job_id = submit_mp_job('hepsiburada_send_all', 'hepsiburada', 
-                lambda jid: perform_hepsiburada_send_all(jid, xml_source_id))
+                lambda jid: perform_hepsiburada_send_all(jid, xml_source_id, user_id=user_id),
+                params={'xml_source_id': xml_source_id, 'user_id': user_id})
 
         else:
             return jsonify({'success': False, 'message': 'Pazaryeri desteklenmiyor.'}), 400

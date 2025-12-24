@@ -57,7 +57,7 @@ def save_n11_categories_to_db():
     except Exception as e:
         logging.error(f"Failed to save N11 categories to DB: {e}")
 
-def fetch_and_cache_n11_categories(force=False):
+def fetch_and_cache_n11_categories(force=False, user_id: int = None):
     """Fetch all N11 categories and build cache."""
     if not force and _N11_CATEGORY_CACHE["loaded"]:
         return True
@@ -67,7 +67,7 @@ def fetch_and_cache_n11_categories(force=False):
             _build_n11_tfidf()
         return True
 
-    client = get_n11_client()
+    client = get_n11_client(user_id=user_id)
     if not client:
         return False
 
@@ -313,7 +313,7 @@ def load_n11_snapshot() -> Dict[str, Any]:
 # Sending Logic
 # ---------------------------------------------------
 
-def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: Any, auto_match: bool = False, match_by: str = 'barcode', title_prefix: str = None, **kwargs) -> Dict[str, Any]:
+def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: Any, auto_match: bool = False, match_by: str = 'barcode', title_prefix: str = None, user_id: int = None, **kwargs) -> Dict[str, Any]:
     from app.services.xml_service import load_xml_source_index
     from app.utils.helpers import get_marketplace_multiplier
     
@@ -324,15 +324,8 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
     skip_no_image = kwargs.get('skip_no_image', False)
     zero_stock_as_one = kwargs.get('zero_stock_as_one', False)
     
-    client = get_n11_client()
-    if not client:
-        return {'success': False, 'message': 'N11 API bilgileri eksik.'}
-        
-    append_mp_job_log(job_id, f"N11 gönderimi başlatılıyor... Seçenekler: Çarpan={price_multiplier}, Barkodsuz Atla={skip_no_barcode}")
-    
-    # Resolve User ID from XML Source
-    user_id = None
-    if xml_source_id:
+    # Resolve User ID from XML Source if not provided
+    if not user_id and xml_source_id:
         try:
             from app.models import SupplierXML
             s_id = str(xml_source_id)
@@ -341,6 +334,12 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
                 if src: user_id = src.user_id
         except Exception as e:
             logging.warning(f"Failed to resolve user_id: {e}")
+
+    client = get_n11_client(user_id=user_id)
+    if not client:
+        return {'success': False, 'message': 'N11 API bilgileri eksik.'}
+        
+    append_mp_job_log(job_id, f"N11 gönderimi başlatılıyor... (User ID: {user_id}) Seçenekler: Çarpan={price_multiplier}, Barkodsuz Atla={skip_no_barcode}")
     
     # 1. Load Categories if needed
     if auto_match:
@@ -726,7 +725,7 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
         'message': f"{total_sent} ürün N11'e iletildi."
     }
 
-def perform_n11_send_all(job_id: str, xml_source_id: Any, auto_match: bool = False, **kwargs) -> Dict[str, Any]:
+def perform_n11_send_all(job_id: str, xml_source_id: Any, auto_match: bool = False, user_id: int = None, **kwargs) -> Dict[str, Any]:
     from app.services.xml_service import load_xml_source_index
     
     append_mp_job_log(job_id, "Tüm ürünler hazırlanıyor...")
@@ -736,7 +735,7 @@ def perform_n11_send_all(job_id: str, xml_source_id: Any, auto_match: bool = Fal
     if not all_barcodes:
         return {'success': False, 'message': 'XML kaynağında ürün bulunamadı.'}
         
-    return perform_n11_send_products(job_id, all_barcodes, xml_source_id, auto_match, **kwargs)
+    return perform_n11_send_products(job_id, all_barcodes, xml_source_id, auto_match, user_id=user_id, **kwargs)
 
 def delete_n11_product(barcode: str) -> Dict[str, Any]:
     try:
@@ -815,7 +814,7 @@ def bulk_update_n11_stock_price(items: List[Dict[str, Any]]) -> Dict[str, Any]:
     except Exception as e:
         return {'success': False, 'message': str(e)}
 
-def perform_n11_batch_update(job_id: str, items: List[Dict[str, Any]]) -> Dict[str, Any]:
+def perform_n11_batch_update(job_id: str, items: List[Dict[str, Any]], user_id: int = None) -> Dict[str, Any]:
     """
     Batch update N11 stock/price.
     items: [{'barcode': '...', 'stock': 10, 'price': 100.0}, ...]
@@ -826,7 +825,7 @@ def perform_n11_batch_update(job_id: str, items: List[Dict[str, Any]]) -> Dict[s
         for i in range(0, len(lst), n):
             yield lst[i:i + n]
 
-    client = get_n11_client()
+    client = get_n11_client(user_id=user_id)
     append_mp_job_log(job_id, f"N11 toplu güncelleme başlatıldı. {len(items)} ürün.")
     
     # Map to N11 format
@@ -869,10 +868,11 @@ def perform_n11_batch_update(job_id: str, items: List[Dict[str, Any]]) -> Dict[s
     append_mp_job_log(job_id, "İşlem tamamlandı.")
     return result
 
-def perform_n11_sync_stock(job_id: str, xml_source_id: Any) -> Dict[str, Any]:
+def perform_n11_sync_stock(job_id: str, xml_source_id: Any, user_id: int = None) -> Dict[str, Any]:
     """
     Sync ONLY stock quantities from XML to N11.
     """
+    client = get_n11_client(user_id=user_id)
     from app.services.xml_service import load_xml_source_index
     from app.utils.helpers import to_int, get_marketplace_multiplier
     
@@ -899,10 +899,11 @@ def perform_n11_sync_stock(job_id: str, xml_source_id: Any) -> Dict[str, Any]:
     append_mp_job_log(job_id, f"{len(items_to_update)} ürün için stok güncellemeleri hazırlanıyor...")
     return perform_n11_batch_update(job_id, items_to_update)
 
-def perform_n11_sync_prices(job_id: str, xml_source_id: Any) -> Dict[str, Any]:
+def perform_n11_sync_prices(job_id: str, xml_source_id: Any, user_id: int = None) -> Dict[str, Any]:
     """
     Sync ONLY prices from XML to N11 (using multiplier).
     """
+    client = get_n11_client(user_id=user_id)
     from app.services.xml_service import load_xml_source_index
     from app.utils.helpers import to_float, get_marketplace_multiplier
     
@@ -933,7 +934,7 @@ def perform_n11_sync_prices(job_id: str, xml_source_id: Any) -> Dict[str, Any]:
     append_mp_job_log(job_id, f"{len(items_to_update)} ürün için fiyat güncellemeleri hazırlanıyor (Çarpan: {multiplier})...")
     return perform_n11_batch_update(job_id, items_to_update)
 
-def perform_n11_sync_all(job_id: str, xml_source_id: Any, match_by: str = 'barcode') -> Dict[str, Any]:
+def perform_n11_sync_all(job_id: str, xml_source_id: Any, match_by: str = 'barcode', user_id: int = None) -> Dict[str, Any]:
     """
     Sync BOTH stock and prices from XML to N11.
     """
@@ -971,7 +972,7 @@ def perform_n11_sync_all(job_id: str, xml_source_id: Any, match_by: str = 'barco
         return {'success': False, 'message': 'Güncellenecek ürün bulunamadı.', 'updated_count': 0}
         
     append_mp_job_log(job_id, f"{len(items_to_update)} ürün için güncellemeler hazırlanıyor...")
-    return perform_n11_batch_update(job_id, items_to_update)
+    return perform_n11_batch_update(job_id, items_to_update, user_id=user_id)
 
 
 def perform_n11_product_update(barcode: str, data: Dict[str, Any]) -> Dict[str, Any]:

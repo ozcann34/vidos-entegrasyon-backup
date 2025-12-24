@@ -128,14 +128,14 @@ def prepare_pazarama_tfidf(leaf_categories: List[Dict[str, Any]]):
     logging.info(f"Pazarama TF-IDF matrisi hazir: {len(names)} kategori")
 
 
-def ensure_pazarama_tfidf_ready():
+def ensure_pazarama_tfidf_ready(user_id: int = None):
     """
     Load Pazarama categories from settings and prepare TF-IDF if not already done.
     """
     if _PAZARAMA_CAT_TFIDF.get('vectorizer'):
         return True
     
-    raw = Setting.get("PAZARAMA_CATEGORY_TREE", "")
+    raw = Setting.get("PAZARAMA_CATEGORY_TREE", "", user_id=user_id)
     if raw:
         try:
             leafs = json.loads(raw)
@@ -279,7 +279,7 @@ def ensure_pazarama_categories(client: PazaramaClient) -> None:
     ids = [str(c.get('id') or '') for c in cats]
     _PAZARAMA_CATEGORY_CACHE.update({"list": cats, "names": names, "ids": ids})
 
-def resolve_pazarama_category(client: PazaramaClient, product_title: str, top_category: str, xml_category: str, log_callback=None) -> Optional[str]:
+def resolve_pazarama_category(client: PazaramaClient, product_title: str, top_category: str, xml_category: str, log_callback=None, user_id: int = None) -> Optional[str]:
     """
     Resolve Pazarama category ID from product info.
     Uses TF-IDF matching for better accuracy.
@@ -290,6 +290,7 @@ def resolve_pazarama_category(client: PazaramaClient, product_title: str, top_ca
         top_category: Top-level category from XML
         xml_category: Full category path from XML
         log_callback: Optional callback function for logging (e.g., append_mp_job_log)
+        user_id: User ID for setting context
     """
     category_map = get_pazarama_category_map()
     
@@ -308,7 +309,7 @@ def resolve_pazarama_category(client: PazaramaClient, product_title: str, top_ca
             
     # FIXED: Hint for 'Çorap' to prevent mis-mapping to 'Termal İçlik'
     is_corap = any('çorap' in str(x).lower() for x in (xml_category, top_category, product_title))
-    if is_corap and ensure_pazarama_tfidf_ready():
+    if is_corap and ensure_pazarama_tfidf_ready(user_id=user_id):
         # Try finding a category that contains 'çorap'
         for cat in _PAZARAMA_CAT_TFIDF.get('leaf', []):
             if 'çorap' in cat.get('name', '').lower():
@@ -317,7 +318,7 @@ def resolve_pazarama_category(client: PazaramaClient, product_title: str, top_ca
                 return str(cat.get('id'))
 
     # Try TF-IDF matching if available (like Trendyol)
-    if ensure_pazarama_tfidf_ready():
+    if ensure_pazarama_tfidf_ready(user_id=user_id):
         # Try with xml_category first, then top_category, then title
         best_match_id = None
         best_match_score = 0
@@ -592,8 +593,8 @@ def pazarama_build_product_index(client: PazaramaClient, force_refresh: bool = F
             by_stock[stock_code] = row
     return {'items': items, 'by_code': by_code, 'by_stock': by_stock}
 
-def perform_pazarama_sync_stock(job_id: str, xml_source_id: Any) -> Dict[str, Any]:
-    client = get_pazarama_client()
+def perform_pazarama_sync_stock(job_id: str, xml_source_id: Any, user_id: int = None) -> Dict[str, Any]:
+    client = get_pazarama_client(user_id=user_id)
     append_mp_job_log(job_id, "Pazarama istemcisi hazir")
     xml_index = load_xml_source_index(xml_source_id)
     if not xml_index:
@@ -714,8 +715,8 @@ def perform_pazarama_sync_stock(job_id: str, xml_source_id: Any) -> Dict[str, An
     })
     return summary
 
-def perform_pazarama_sync_prices(job_id: str, xml_source_id: Any) -> Dict[str, Any]:
-    client = get_pazarama_client()
+def perform_pazarama_sync_prices(job_id: str, xml_source_id: Any, user_id: int = None) -> Dict[str, Any]:
+    client = get_pazarama_client(user_id=user_id)
     append_mp_job_log(job_id, "Pazarama istemcisi hazir")
     xml_index = load_xml_source_index(xml_source_id)
     if not xml_index:
@@ -848,7 +849,7 @@ def perform_pazarama_sync_prices(job_id: str, xml_source_id: Any) -> Dict[str, A
     return summary
 
 
-def perform_pazarama_sync_all(job_id: str, xml_source_id: Any) -> Dict[str, Any]:
+def perform_pazarama_sync_all(job_id: str, xml_source_id: Any, user_id: int = None) -> Dict[str, Any]:
     """
     Pazarama için hem stok hem fiyat eşitleme (birleşik)
     """
@@ -866,7 +867,7 @@ def perform_pazarama_sync_all(job_id: str, xml_source_id: Any) -> Dict[str, Any]
     append_mp_job_log(job_id, ">>> STOK EŞITLEME BAŞLADI <<<")
     stock_result = {}
     try:
-        stock_result = perform_pazarama_sync_stock(job_id, xml_source_id)
+        stock_result = perform_pazarama_sync_stock(job_id, xml_source_id, user_id=user_id)
         append_mp_job_log(job_id, f"Stok eşitleme tamamlandı: {stock_result.get('updated_count', 0)} güncellendi")
     except Exception as e:
         append_mp_job_log(job_id, f"Stok eşitleme hatası: {str(e)}", level='error')
@@ -892,7 +893,7 @@ def perform_pazarama_sync_all(job_id: str, xml_source_id: Any) -> Dict[str, Any]
     append_mp_job_log(job_id, ">>> FİYAT EŞITLEME BAŞLADI <<<")
     price_result = {}
     try:
-        price_result = perform_pazarama_sync_prices(job_id, xml_source_id)
+        price_result = perform_pazarama_sync_prices(job_id, xml_source_id, user_id=user_id)
         append_mp_job_log(job_id, f"Fiyat eşitleme tamamlandı: {price_result.get('updated_count', 0)} güncellendi")
     except Exception as e:
         append_mp_job_log(job_id, f"Fiyat eşitleme hatası: {str(e)}", level='error')
@@ -918,7 +919,7 @@ def perform_pazarama_sync_all(job_id: str, xml_source_id: Any) -> Dict[str, Any]
 
 # Pazarama urun gonderme fonksiyonu
 
-def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_id: Any, title_prefix: str = None, **kwargs) -> Dict[str, Any]:
+def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_id: Any, title_prefix: str = None, user_id: int = None, **kwargs) -> Dict[str, Any]:
     """
     Send products to Pazarama from XML source
     
@@ -933,12 +934,8 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
     from app.services.job_queue import update_mp_job, get_mp_job
     from app.services.xml_service import load_xml_source_index
     
-    client = get_pazarama_client()
-    append_mp_job_log(job_id, "Pazarama istemcisi hazir")
-
-    # Resolve User ID from XML Source
-    user_id = None
-    if xml_source_id:
+    # Resolve User ID from XML Source if not provided
+    if not user_id and xml_source_id:
         try:
             from app.models import SupplierXML
             s_id = str(xml_source_id)
@@ -947,6 +944,9 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
                 if src: user_id = src.user_id
         except Exception as e:
             logging.warning(f"Failed to resolve user_id: {e}")
+
+    client = get_pazarama_client(user_id=user_id)
+    append_mp_job_log(job_id, f"Pazarama istemcisi hazir (User ID: {user_id})")
 
     
     # Extract options
@@ -1063,7 +1063,7 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
                 brand_id = resolve_pazarama_brand(client, brand_name, log_callback=category_log if idx <= 5 else None)
 
             # Resolve category with logging callback
-            category_id = resolve_pazarama_category(client, title, top_category, xml_category, log_callback=category_log if idx <= 3 else None)
+            category_id = resolve_pazarama_category(client, title, top_category, xml_category, log_callback=category_log if idx <= 3 else None, user_id=user_id)
             if not category_id:
                 skipped.append({'barcode': barcode, 'reason': 'Kategori eslesmedi', 'top_cat': top_category, 'xml_cat': xml_category})
                 continue
@@ -1463,7 +1463,7 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
         }
     }
 
-def perform_pazarama_send_all(job_id: str, xml_source_id: Any, **kwargs) -> Dict[str, Any]:
+def perform_pazarama_send_all(job_id: str, xml_source_id: Any, user_id: int = None, **kwargs) -> Dict[str, Any]:
     """Send ALL products from XML source to Pazarama"""
     append_mp_job_log(job_id, "Tüm ürünler hazırlanıyor...")
     
@@ -1477,7 +1477,7 @@ def perform_pazarama_send_all(job_id: str, xml_source_id: Any, **kwargs) -> Dict
     
     append_mp_job_log(job_id, f"Toplam {len(all_barcodes)} ürün bulundu. Gönderim başlıyor...")
     
-    return perform_pazarama_send_products(job_id, all_barcodes, xml_source_id, **kwargs)
+    return perform_pazarama_send_products(job_id, all_barcodes, xml_source_id, user_id=user_id, **kwargs)
 
 def perform_pazarama_batch_update(job_id: str, items: List[Dict[str, Any]]) -> Dict[str, Any]:
     """

@@ -24,25 +24,23 @@ def get_hepsiburada_client(user_id: int = None) -> HepsiburadaClient:
         
     return HepsiburadaClient(merchant_id.strip(), service_key.strip())
 
-def perform_hepsiburada_send_products(job_id: str, barcodes: List[str], xml_source_id: Any, **kwargs) -> Dict[str, Any]:
+def perform_hepsiburada_send_products(job_id: str, barcodes: List[str], xml_source_id: Any, user_id: int = None, **kwargs) -> Dict[str, Any]:
     """
     Send selected products from XML to Hepsiburada.
     """
     append_mp_job_log(job_id, "Hepsiburada gönderim işlemi başlatılıyor...")
     
-    # Resolve User ID from XML Source
-    user_id = None
-    if xml_source_id:
-        try:
-            s_id = str(xml_source_id)
-            if s_id.isdigit():
-                src = SupplierXML.query.get(int(s_id))
-                if src: user_id = src.user_id
-        except Exception as e:
-            logging.warning(f"Failed to resolve user_id: {e}")
-    
     try:
-        client = get_hepsiburada_client()
+        if not user_id and xml_source_id:
+            try:
+                s_id = str(xml_source_id)
+                if s_id.isdigit():
+                    src = SupplierXML.query.get(int(s_id))
+                    if src: user_id = src.user_id
+            except Exception as e:
+                logging.warning(f"Failed to resolve user_id: {e}")
+
+        client = get_hepsiburada_client(user_id=user_id)
     except Exception as e:
         return {'success': False, 'message': str(e)}
 
@@ -227,7 +225,7 @@ def perform_hepsiburada_send_products(job_id: str, barcodes: List[str], xml_sour
         append_mp_job_log(job_id, msg, level='error')
         return {'success': False, 'message': msg}
 
-def perform_hepsiburada_send_all(job_id: str, xml_source_id: Any, **kwargs) -> Dict[str, Any]:
+def perform_hepsiburada_send_all(job_id: str, xml_source_id: Any, user_id: int = None, **kwargs) -> Dict[str, Any]:
     """Send ALL products from XML source to Hepsiburada"""
     append_mp_job_log(job_id, "Tüm ürünler hazırlanıyor...")
     
@@ -240,4 +238,4 @@ def perform_hepsiburada_send_all(job_id: str, xml_source_id: Any, **kwargs) -> D
     
     append_mp_job_log(job_id, f"Toplam {len(all_barcodes)} ürün bulundu. Gönderim başlıyor...")
     
-    return perform_hepsiburada_send_products(job_id, all_barcodes, xml_source_id, **kwargs)
+    return perform_hepsiburada_send_products(job_id, all_barcodes, xml_source_id, user_id=user_id, **kwargs)
