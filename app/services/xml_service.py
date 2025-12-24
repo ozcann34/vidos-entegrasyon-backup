@@ -76,7 +76,7 @@ def load_supplier_xml_map():
         mp[str(barcode)] = { 'quantity': qty, 'price': price }
     return mp
 
-def load_xml_source_index(xml_source_id: Any) -> Dict[str, Dict[str, Any]]:
+def load_xml_source_index(xml_source_id: Any, force: bool = False) -> Dict[str, Dict[str, Any]]:
     """Build a lightweight index from SupplierXML source for quick overrides."""
     index: Dict[str, Dict[str, Any]] = {}
     if not xml_source_id:
