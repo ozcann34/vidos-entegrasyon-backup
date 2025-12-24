@@ -108,8 +108,24 @@
         <input type="number" id="maxPriceInput" class="form-control form-control-sm" placeholder="100000.00">
       </div>
       <div class="col-md-2">
+        <label class="form-label small fw-bold mb-1">Barkod</label>
+        <input type="text" id="filterBarcode" class="form-control form-control-sm" placeholder="Barkod...">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-bold mb-1">Stok Kodu</label>
+        <input type="text" id="filterStockCode" class="form-control form-control-sm" placeholder="Stok kodu...">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-bold mb-1">Model Kodu</label>
+        <input type="text" id="filterModelCode" class="form-control form-control-sm" placeholder="Model kodu...">
+      </div>
+      <div class="col-md-2">
         <label class="form-label small fw-bold mb-1">Kategori</label>
         <input type="text" id="categoryInput" class="form-control form-control-sm" placeholder="Kategori ara...">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-bold mb-1">Marka</label>
+        <input type="text" id="brandInput" class="form-control form-control-sm" placeholder="Marka ara...">
       </div>
       <div class="col-md-2 d-flex align-items-end">
         <div class="form-check form-switch mb-1">
@@ -193,6 +209,12 @@
   </div>
 </div>
 
+</div>
+
+<nav class="mb-3">
+  <ul class="pagination pagination-sm justify-content-center shadow-sm" id="paginationTop"></ul>
+</nav>
+
 <div class="table-responsive shadow-sm card border-0 mb-4" id="listContainer">
   <table class="table table-hover align-middle mb-0">
     <thead class="bg-light">
@@ -255,6 +277,7 @@
   // DOM Elements
   const productListBody = document.getElementById('productListBody');
   const pagination = document.getElementById('pagination');
+  const paginationTop = document.getElementById('paginationTop');
   const searchInput = document.getElementById('searchInput');
   const selectAll = document.getElementById('selectAll');
   const changeSourceBtn = document.getElementById('changeSourceBtn');
@@ -389,7 +412,13 @@
                   <td class="ps-3"><input type="checkbox" class="form-check-input row-check" data-barcode="${product.barcode}" ${checked}></td>
                   <td><img src="${imgUrl}" alt="${product.title}" class="img-thumbnail border-0 shadow-sm" style="width: 50px; height: 50px; object-fit: cover;"></td>
                   <td class="text-truncate" style="max-width: 250px;" title="${product.title}">${product.title}</td>
-                  <td><span class="badge bg-secondary font-monospace">${product.barcode}</span>${variantBadge}</td>
+                  <td>
+                    <div class="d-flex flex-column">
+                      <span class="badge bg-secondary font-monospace">${product.barcode}</span>
+                      <span class="small text-muted font-monospace" style="font-size: 0.75rem;">${product.stockCode || ''}</span>
+                    </div>
+                    ${variantBadge}
+                  </td>
                   <td style="font-size: 0.85rem;" class="text-muted text-truncate" style="max-width: 150px;">${product.category || '---'}</td>
                   <td>
                     <div class="d-flex flex-column">
@@ -519,10 +548,39 @@
     }
   }
 
+  function renderPagination(total, current) {
+    const totalPages = Math.ceil(total / itemsPerPage) || 1;
+    pagination.innerHTML = '';
+    paginationTop.innerHTML = '';
+
+    const prevBtn = addPageItem(Math.max(1, current - 1), false, current === 1, '«');
+
+    const windowSize = 2;
+    const pages = [];
+    for (let i = 1; i <= totalPages; i++) {
+      if (i === 1 || i === totalPages || (i >= current - windowSize && i <= current + windowSize)) pages.push(i);
+    }
+
+    let last = 0;
+    pages.forEach(p => {
+      if (p - last > 1) {
+        const dot = document.createElement('li'); dot.className = 'page-item disabled'; dot.innerHTML = '<span class="page-link">…</span>';
+        pagination.appendChild(dot.cloneNode(true));
+        paginationTop.appendChild(dot.cloneNode(true));
+      }
+      addPageItem(p, p === current);
+      last = p;
+    });
+
+    addPageItem(Math.min(totalPages, current + 1), false, current === totalPages, '»');
+  }
+
   function addPageItem(num, active = false, disabled = false, text = null) {
+    const label = text || num;
+
+    // Bottom Pagination
     const li = document.createElement('li');
     li.className = `page-item ${active ? 'active' : ''} ${disabled ? 'disabled' : ''}`;
-    const label = text || num;
     li.innerHTML = `<a class="page-link" href="#" data-page="${num}">${label}</a>`;
     if (!disabled) {
       li.addEventListener('click', (e) => {
@@ -532,26 +590,19 @@
       });
     }
     pagination.appendChild(li);
-  }
 
-  function renderPagination(total, current) {
-    const totalPages = Math.ceil(total / itemsPerPage) || 1;
-    pagination.innerHTML = '';
-    addPageItem(Math.max(1, current - 1), false, current === 1, '«');
-    const windowSize = 2;
-    const pages = [];
-    for (let i = 1; i <= totalPages; i++) {
-      if (i === 1 || i === totalPages || (i >= current - windowSize && i <= current + windowSize)) pages.push(i);
+    // Top Pagination (Clone)
+    const liTop = li.cloneNode(true);
+    if (!disabled) {
+      liTop.addEventListener('click', (e) => {
+        e.preventDefault();
+        currentPage = parseInt(e.target.dataset.page);
+        fetchProducts(currentPage);
+      });
     }
-    let last = 0;
-    pages.forEach(p => {
-      if (p - last > 1) {
-        const li = document.createElement('li'); li.className = 'page-item disabled'; li.innerHTML = '<span class="page-link">…</span>'; pagination.appendChild(li);
-      }
-      addPageItem(p, p === current);
-      last = p;
-    });
-    addPageItem(Math.min(totalPages, current + 1), false, current === totalPages, '»');
+    paginationTop.appendChild(liTop);
+
+    return li;
   }
 
   async function fetchProducts(page = 1) {
@@ -567,7 +618,12 @@
     const minPrice = document.getElementById('minPriceInput')?.value;
     const maxPrice = document.getElementById('maxPriceInput')?.value;
     const category = document.getElementById('categoryInput')?.value;
+    const brand = document.getElementById('brandInput')?.value;
     const hasImage = document.getElementById('hasImageFilter')?.checked;
+
+    const filterBarcode = document.getElementById('filterBarcode')?.value;
+    const filterStockCode = document.getElementById('filterStockCode')?.value;
+    const filterModelCode = document.getElementById('filterModelCode')?.value;
 
     if (viewMode === 'list') {
       productListBody.innerHTML = '<tr><td colspan="7" class="text-center p-5 text-primary"><div class="spinner-border spinner-border-sm me-2"></div> Ürünler yükleniyor...</td></tr>';
@@ -583,7 +639,11 @@
     if (minPrice) url += `&min_price=${minPrice}`;
     if (maxPrice) url += `&max_price=${maxPrice}`;
     if (category) url += `&category=${encodeURIComponent(category)}`;
+    if (brand) url += `&brand=${encodeURIComponent(brand)}`;
     if (hasImage) url += `&has_image=true`;
+    if (filterBarcode) url += `&barcode=${encodeURIComponent(filterBarcode)}`;
+    if (filterStockCode) url += `&stock_code=${encodeURIComponent(filterStockCode)}`;
+    if (filterModelCode) url += `&model_code=${encodeURIComponent(filterModelCode)}`;
 
     try {
       const resp = await fetch(url);
@@ -611,6 +671,10 @@
     document.getElementById('minPriceInput').value = '';
     document.getElementById('maxPriceInput').value = '';
     document.getElementById('categoryInput').value = '';
+    document.getElementById('brandInput').value = '';
+    document.getElementById('filterBarcode').value = '';
+    document.getElementById('filterStockCode').value = '';
+    document.getElementById('filterModelCode').value = '';
     document.getElementById('hasImageFilter').checked = false;
     searchInput.value = '';
     fetchProducts(1);

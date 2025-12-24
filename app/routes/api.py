@@ -438,7 +438,14 @@ def api_xml_source_products():
     min_price = request.args.get('min_price', type=float)
     max_price = request.args.get('max_price', type=float)
     category = (request.args.get('category') or '').strip().lower()
+    brand = (request.args.get('brand') or '').strip().lower()
     has_image = request.args.get('has_image') == 'true'
+    
+    # Specific ID Filters
+    f_barcode = (request.args.get('barcode') or '').strip().lower()
+    f_title = (request.args.get('title') or '').strip().lower()
+    f_model_code = (request.args.get('model_code') or '').strip().lower()
+    f_stock_code = (request.args.get('stock_code') or '').strip().lower()
     
     # NEW: Group variants option (default True for backward compat display)
     group_variants = request.args.get('group_variants', 'true').lower() == 'true'
@@ -467,6 +474,21 @@ def api_xml_source_products():
         if max_price is not None and price > max_price: return False
         
         if category and category not in str(rec.get('category', '')).lower():
+            return False
+            
+        if brand and brand not in str(rec.get('brand', '')).lower():
+            return False
+            
+        if f_barcode and f_barcode not in str(rec.get('barcode', '')).lower():
+            return False
+            
+        if f_title and f_title not in str(rec.get('title', '')).lower():
+            return False
+            
+        if f_model_code and f_model_code not in str(rec.get('modelCode', '')).lower():
+            return False
+            
+        if f_stock_code and f_stock_code not in str(rec.get('stockCode', '')).lower():
             return False
             
         if has_image:
