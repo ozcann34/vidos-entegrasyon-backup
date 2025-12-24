@@ -129,12 +129,33 @@ def load_xml_source_index(xml_source_id: Any) -> Dict[str, Dict[str, Any]]:
     except Exception:
         return index
 
-    node = xml_obj.get('products') or xml_obj.get('Items') or xml_obj
-    if isinstance(node, dict):
-        for key in ['product', 'item', 'urun']:
-            if key in node:
-                node = node.get(key)
-                break
+    def find_product_list(data):
+        # 1. Direct list
+        if isinstance(data, list):
+            return data
+            
+        # 2. Known container keys
+        candidates = ['products', 'Products', 'items', 'Items', 'urunler', 'Urunler', 'catalog', 'Catalog', 'root', 'Root']
+        if isinstance(data, dict):
+            for key in candidates:
+                if key in data:
+                    val = data[key]
+                    # Check if this container has a sub-list (e.g. products -> product)
+                    if isinstance(val, dict):
+                        for sub in ['product', 'Product', 'item', 'Item', 'urun', 'Urun', 'product_item']:
+                            if sub in val:
+                                return val[sub] # Found the list (or single dict)
+                    elif isinstance(val, list):
+                        return val
+                        
+            # 3. Last ditch: look for any key that contains a list or 'product'-like dict
+            for sub in ['product', 'Product', 'item', 'Item', 'urun', 'Urun']:
+                if sub in data:
+                    return data[sub]
+                    
+        return data
+
+    node = find_product_list(xml_obj)
     if node is None:
         return index
     import logging
@@ -238,8 +259,11 @@ def load_xml_source_index(xml_source_id: Any) -> Dict[str, Dict[str, Any]]:
              if img_val:
                  images.append({'url': img_val})
 
+        link = _g(row, 'link', 'Link', 'url', 'Url', 'LİNK', 'Linkler', 'web', 'Web', 'productUrl', 'ProductUrl')
+        
         record = {
             'title': title,
+            'link': link,
             'description': description,
             # detail etiketi - HTML aciklama (ornek XML'deki gibi)
             'details': _g(row, 'detail', 'Detail', 'details', 'Details', 'detay', 'Detay', 'uzunaciklama', 'UzunAciklama'),
