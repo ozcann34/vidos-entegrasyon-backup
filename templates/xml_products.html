@@ -646,6 +646,7 @@
     try {
       const resp = await fetch(url);
       if (!resp.ok) throw new Error(`Sunucu hatası: ${resp.status}`);
+      const data = await resp.json();
       if (data.error) {
         throw new Error(data.error);
       }
