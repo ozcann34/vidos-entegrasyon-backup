@@ -11,6 +11,8 @@ _XML_SOURCE_CACHE: Dict[int, Any] = {}
 _XML_SOURCE_CACHE_LOCK = None # Will be initialized if needed, or just use dict (assuming single worker for now or handled by GIL)
 # Actually app.py used threading.Lock. Let's import it.
 import threading
+import logging
+logger = logging.getLogger(__name__)
 _XML_SOURCE_CACHE_LOCK = threading.Lock()
 _XML_PARSING_LOCK = threading.Lock() # Prevent concurrent heavy parsing
 XML_SOURCE_CACHE_TTL_SECONDS = 3600
