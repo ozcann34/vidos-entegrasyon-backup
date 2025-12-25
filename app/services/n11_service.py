@@ -144,6 +144,37 @@ def find_matching_n11_category(query: str, user_id: int = None, job_id: str = No
     # Cleanup query: Remove redundant symbols often found in XML paths
     query_clean = query.replace('>>>', ' ').replace('>', ' ').strip()
     
+    # 1. PRIORITY: Check manual mapping first
+    if user_id:
+        try:
+            mapping_json = Setting.get('N11_CATEGORY_MAPPING', user_id=user_id)
+            if mapping_json:
+                mapping = json.loads(mapping_json)
+                # Try exact match first
+                if query in mapping:
+                    category_id = mapping[query]
+                    if job_id:
+                        append_mp_job_log(job_id, f"Manuel eşleşme bulundu: '{query}' -> ID={category_id}", level='info')
+                    # Return category dict
+                    if category_id in _N11_CATEGORY_CACHE["by_id"]:
+                        return _N11_CATEGORY_CACHE["by_id"][category_id]
+                    else:
+                        # ID var ama cache'de yok, sadece ID döndür
+                        return {'id': category_id, 'name': 'Manuel Eşleşme', 'path': query}
+                        
+                # Try cleaned query match
+                if query_clean in mapping:
+                    category_id = mapping[query_clean]
+                    if job_id:
+                        append_mp_job_log(job_id, f"Manuel eşleşme bulundu (clean): '{query_clean}' -> ID={category_id}", level='info')
+                    if category_id in _N11_CATEGORY_CACHE["by_id"]:
+                        return _N11_CATEGORY_CACHE["by_id"][category_id]
+                    else:
+                        return {'id': category_id, 'name': 'Manuel Eşleşme', 'path': query_clean}
+        except Exception as e:
+            logging.warning(f"Manuel mapping kontrolü başarısız: {e}")
+    
+    # 2. Fallback to TF-IDF auto-matching
     # Ensure loaded
     if not _N11_CATEGORY_CACHE["loaded"] or not _N11_CATEGORY_CACHE["list"]:
         fetch_and_cache_n11_categories(user_id=user_id)
@@ -171,11 +202,10 @@ def find_matching_n11_category(query: str, user_id: int = None, job_id: str = No
              match_path = _N11_CAT_TFIDF["leaf"][best_idx]['path']
              # append_mp_job_log(job_id, f"Kategori Analizi: '{query_clean[:50]}...' -> En yakın: '{match_path}' (Puan: {score:.2f})")
 
-        # Increased threshold to avoid bad matches like Phone Case -> Pillow Case
-        # Adjusting slightly to 0.3 for better coverage, but logging warning for weak matches.
-        if score > 0.3: 
+        # Threshold lowered to 0.20 for better category match coverage
+        if score > 0.20: 
             match = _N11_CAT_TFIDF["leaf"][best_idx]
-            if score < 0.4 and job_id:
+            if score < 0.30 and job_id:
                 append_mp_job_log(job_id, f"Düşük puanlı kategori eşleşmesi ({score:.2f}): {match['path']}", level='info')
             return match
         else:
