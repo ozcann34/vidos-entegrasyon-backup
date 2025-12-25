@@ -13,3 +13,4 @@ from .user_activity_log import UserActivityLog
 from .payment import Payment
 from .support import SupportTicket, SupportMessage
 from .expense import Expense
+from .notification import Notification, PushSubscription
