@@ -188,274 +188,243 @@ def contact():
 @main_bp.route("/dashboard")
 @login_required
 def dashboard():
-    user_id = current_user.id
-    
-    # Check email verification
-    if not current_user.is_email_verified and not current_user.is_admin:
-        return redirect(url_for('auth.verify_email'))
-    
-    user_id = current_user.id
-    
-    # Calculate stats for current month
-    now = datetime.now()
-    start_of_month = datetime(now.year, now.month, 1)
-
-    # Marketplace Stats
-    trendyol_total = get_mp_count('trendyol', user_id)
-    pazarama_total = get_mp_count('pazarama', user_id)
-    hepsiburada_total = get_mp_count('hepsiburada', user_id)
-    idefix_total = get_mp_count('idefix', user_id)
-    n11_total = get_mp_count('n11', user_id)
-
-    # Sync products and orders asynchronously
     try:
-        from app.services.order_service import sync_all_orders, sync_all_products
-        if user_id:
-            force_sync = request.args.get('force_sync') == 'true'
-            
-            # Cooldown logic: 15 minutes
-            last_sync = Setting.get('LAST_DASHBOARD_SYNC', user_id=user_id)
-            should_sync = force_sync
-            
-            if not should_sync:
-                if not last_sync:
-                    should_sync = True
-                else:
-                    try:
-                        last_sync_dt = datetime.fromisoformat(last_sync)
-                        if datetime.now() - last_sync_dt > timedelta(minutes=15):
-                            should_sync = True
-                    except:
-                        should_sync = True
-            
-            if should_sync:
-                logging.info(f"DEBUG: Background sync triggered for user {user_id}...")
-                # Start background thread to avoid blocking dashboard load
-                thread = threading.Thread(target=background_dashboard_sync, args=(current_app._get_current_object(), user_id))
-                thread.daemon = True
-                thread.start()
-            else:
-                logging.info(f"DEBUG: Skipping sync (Cooldown active). Last sync: {last_sync}")
-            
-            # Re-calculate counts (uses whatever is currently in DB, background sync is separate)
-            trendyol_total = get_mp_count('trendyol', user_id)
-            pazarama_total = get_mp_count('pazarama', user_id)
-            hepsiburada_total = get_mp_count('hepsiburada', user_id)
-            idefix_total = get_mp_count('idefix', user_id)
-            n11_total = get_mp_count('n11', user_id)
-    except Exception as e:
-        logging.error(f"Sync error: {e}")
+        user_id = current_user.id
+        
+        # Check email verification
+        if not current_user.is_email_verified and not current_user.is_admin:
+            return redirect(url_for('auth.verify_email'))
+        
+        user_id = current_user.id
+        
+        # Calculate stats for current month
+        now = datetime.now()
+        start_of_month = datetime(now.year, now.month, 1)
 
-    # Refetch last sync time for template display
-    last_sync_display = Setting.get('LAST_DASHBOARD_SYNC', user_id=user_id)
-    if last_sync_display:
+        # Marketplace Stats
+        trendyol_total = get_mp_count('trendyol', user_id)
+        pazarama_total = get_mp_count('pazarama', user_id)
+        hepsiburada_total = get_mp_count('hepsiburada', user_id)
+        idefix_total = get_mp_count('idefix', user_id)
+        n11_total = get_mp_count('n11', user_id)
+
+        # Sync products and orders asynchronously
         try:
-            last_sync_display = datetime.fromisoformat(last_sync_display).strftime('%H:%M:%S')
-        except:
-            pass
+            from app.services.order_service import sync_all_orders, sync_all_products
+            if user_id:
+                force_sync = request.args.get('force_sync') == 'true'
+                
+                # Cooldown logic: 15 minutes
+                last_sync = Setting.get('LAST_DASHBOARD_SYNC', user_id=user_id)
+                should_sync = force_sync
+                
+                if not should_sync:
+                    if not last_sync:
+                        should_sync = True
+                    else:
+                        try:
+                            last_sync_dt = datetime.fromisoformat(last_sync)
+                            if datetime.now() - last_sync_dt > timedelta(minutes=15):
+                                should_sync = True
+                        except:
+                            should_sync = True
+                
+                if should_sync:
+                    logging.info(f"DEBUG: Background sync triggered for user {user_id}...")
+                    # Start background thread to avoid blocking dashboard load
+                    thread = threading.Thread(target=background_dashboard_sync, args=(current_app._get_current_object(), user_id))
+                    thread.daemon = True
+                    thread.start()
+                else:
+                    logging.info(f"DEBUG: Skipping sync (Cooldown active). Last sync: {last_sync}")
+                
+                # Re-calculate counts (uses whatever is currently in DB, background sync is separate)
+                trendyol_total = get_mp_count('trendyol', user_id)
+                pazarama_total = get_mp_count('pazarama', user_id)
+                hepsiburada_total = get_mp_count('hepsiburada', user_id)
+                idefix_total = get_mp_count('idefix', user_id)
+                n11_total = get_mp_count('n11', user_id)
+        except Exception as e:
+            logging.error(f"Sync error: {e}")
 
-    marketplaces_stats = [
-        {"name": "Trendyol", "key": "trendyol", "icon": "bag-check-fill", "color": "success", "count": trendyol_total, "sent": trendyol_total, "failed": 0},
-        {"name": "Pazarama", "key": "pazarama", "icon": "shop", "color": "primary", "count": pazarama_total, "sent": pazarama_total, "failed": 0},
-        {"name": "Hepsiburada", "key": "hepsiburada", "icon": "cart", "color": "warning", "count": hepsiburada_total, "sent": hepsiburada_total, "failed": 0},
-        {"name": "İdefix", "key": "idefix", "icon": "box-fill", "color": "info", "count": idefix_total, "sent": idefix_total, "failed": 0},
-        {"name": "N11", "key": "n11", "icon": "tag-fill", "color": "danger", "count": n11_total, "sent": n11_total, "failed": 0},
-    ]
+        # Refetch last sync time for template display
+        last_sync_display = Setting.get('LAST_DASHBOARD_SYNC', user_id=user_id)
+        if last_sync_display:
+            try:
+                last_sync_display = datetime.fromisoformat(last_sync_display).strftime('%H:%M:%S')
+            except:
+                pass
 
-    total_sent = trendyol_total + pazarama_total + hepsiburada_total + idefix_total + n11_total
+        marketplaces_stats = [
+            {"name": "Trendyol", "key": "trendyol", "icon": "bag-check-fill", "color": "success", "count": trendyol_total, "sent": trendyol_total, "failed": 0},
+            {"name": "Pazarama", "key": "pazarama", "icon": "shop", "color": "primary", "count": pazarama_total, "sent": pazarama_total, "failed": 0},
+            {"name": "Hepsiburada", "key": "hepsiburada", "icon": "cart", "color": "warning", "count": hepsiburada_total, "sent": hepsiburada_total, "failed": 0},
+            {"name": "İdefix", "key": "idefix", "icon": "box-fill", "color": "info", "count": idefix_total, "sent": idefix_total, "failed": 0},
+            {"name": "N11", "key": "n11", "icon": "tag-fill", "color": "danger", "count": n11_total, "sent": n11_total, "failed": 0},
+        ]
 
-    # 1. Total Revenue (This Month)
-    # Statuses that count as revenue: Delivered, Shipped, Invoiced, Completed, etc.
-    # Exclude: Cancelled, Returned
-    revenue_query = db.session.query(db.func.sum(Order.total_price)).filter(
-        Order.created_at >= start_of_month,
-        ~Order.status.ilike('%iptal%'), # Cancelled
-        ~Order.status.ilike('%iade%'),  # Returned
-        ~Order.status.ilike('%cancel%'), 
-        ~Order.status.ilike('%return%')
-    )
-    # Check if we need to filter by user? 
-    # Order model has user_id, let's use it if available or assume single user dev mode.
-    # Original dashboard used user_id filter for products.
-    # Order model definition: user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
-    if user_id:
-        revenue_query = revenue_query.filter(Order.user_id == user_id)
-    
-    monthly_revenue = revenue_query.scalar() or 0.0
+        total_sent = trendyol_total + pazarama_total + hepsiburada_total + idefix_total + n11_total
 
-    # 2. Total Orders (This Month)
-    orders_query = Order.query.filter(Order.created_at >= start_of_month)
-    if user_id:
-        orders_query = orders_query.filter_by(user_id=user_id)
-    monthly_orders = orders_query.count()
-
-    # 3. Returns (This Month)
-    # Search for status containing "iade" or "return"
-    returns_query = Order.query.filter(
-        Order.created_at >= start_of_month,
-        db.or_(Order.status.ilike('%iade%'), Order.status.ilike('%return%'))
-    )
-    if user_id:
-        returns_query = returns_query.filter_by(user_id=user_id)
-    monthly_returns = returns_query.count()
-
-    # 4. Cancels (This Month)
-    # Search for status containing "iptal" or "cancel"
-    cancels_query = Order.query.filter(
-        Order.created_at >= start_of_month,
-        db.or_(Order.status.ilike('%iptal%'), Order.status.ilike('%cancel%'))
-    )
-    if user_id:
-        cancels_query = cancels_query.filter_by(user_id=user_id)
-    monthly_cancels = cancels_query.count()
-    
-    # --- YENİ EKLENEN HESAPLAMALAR ---
-    
-    # 5. Estimated Net Profit (This Month)
-    # Profit = (Order Price - Cost) 
-    # Not: This is a rough estimation. We need cost info from products.
-    # Since Order items don't store cost snapshot (ideally they should), we will join with Products
-    # However, Products might change. For now, let's try to do a best-effort join or simple margin
-    # Improved: Fetch all orders this month (non-cancelled) and sum up (Item Price - Item Cost)
-    # But we don't have OrderItem model handy in this view easily without join.
-    # Order model has total_price. We don't have line items cost.
-    # Alternative: Use a flat margin assumption if cost is 0, else use cost.
-    # Let's try to get order items if possible.
-    # If not, we will stick to the simplified %20 or 0 margin for now, or improve Order model later.
-    # BUT, the user explicitly asked for "Maliyet Fiyatı" to be used.
-    # So we should probably iterate orders and their items.
-    # Assuming Order table doesn't have Items as separate rows but maybe in a JSON or separate table? 
-    # Let's check Order model. If it doesn't have items table relation, we can't do exact cost calc.
-    # Checked Order model in step 10: It calculates total_price but structure of items is not clear in view.
-    # Let's assume for this MVP we use a "Global Profit" based on total revenue * margin 
-    # OR fetch all products and see average margin? No that's slow.
-    # Let's stick to the visual %20 for now OR if we can, query the items.
-    # Wait, the prompt says "Sistem ... maliyeti çıkararak ... diyebilir".
-    # I will assume standard calculating for now: Total Revenue - (Total Revenue * 0.20 approx cost/expenses) - (Estimated Product Cost)
-    # Since we can't map sold items to product costs without an OrderItem table, I will use a placeholder calculation 
-    # that is slightly more "dynamic" but still estimated:
-    estimated_profit = monthly_revenue * 0.25 # Mock: %25 profit margin for now until OrderItem is fully mapped
-    
-    # 6. Critical Stock
-    # Determine limit from settings (default 10)
-    critical_limit = int(Setting.get('CRITICAL_STOCK_LIMIT', 10, user_id=user_id) or 10)
-    
-    critical_stock_query = Product.query.filter(Product.quantity <= critical_limit)
-    if user_id:
-        critical_stock_query = critical_stock_query.filter_by(user_id=user_id)
-    # User requested to see ALL products below limit
-    critical_stock_products = critical_stock_query.all()
-    
-    # 7. Recent Orders
-    recent_orders_query = Order.query.order_by(Order.created_at.desc())
-    if user_id:
-        recent_orders_query = recent_orders_query.filter_by(user_id=user_id)
-    recent_orders = recent_orders_query.limit(5).all()
-
-    # 4. Top 5 Bestsellers
-    from sqlalchemy import func, desc
-    
-    bestsellers_query = db.session.query(
-        OrderItem.product_name,
-        OrderItem.barcode,
-        func.sum(OrderItem.quantity).label('total_qty'),
-        func.sum(OrderItem.price).label('total_rev')
-    ).join(Order).filter(Order.created_at >= start_of_month)
-    
-    if user_id:
-        bestsellers_query = bestsellers_query.filter(Order.user_id == user_id)
+        # 1. Total Revenue (This Month)
+        revenue_query = db.session.query(db.func.sum(Order.total_price)).filter(
+            Order.created_at >= start_of_month,
+            ~Order.status.ilike('%iptal%'), # Cancelled
+            ~Order.status.ilike('%iade%'),  # Returned
+            ~Order.status.ilike('%cancel%'), 
+            ~Order.status.ilike('%return%')
+        )
+        if user_id:
+            revenue_query = revenue_query.filter(Order.user_id == user_id)
         
-    bestsellers = bestsellers_query.group_by(OrderItem.product_name, OrderItem.barcode).order_by(desc('total_qty')).limit(5).all()
-    
-    # Critical Limit
-    critical_limit = int(Setting.get('CRITICAL_STOCK_LIMIT', 10, user_id=user_id) or 10)
+        monthly_revenue = revenue_query.scalar() or 0.0
 
-    # --- CHART DATA CALCULATIONS ---
-    
-    # A. Weekly Sales Chart
-    dates = []
-    counts = []
-    revenues = []
-    
-    today = datetime.now()
-    for i in range(6, -1, -1):
-        date = today - timedelta(days=i)
-        dates.append(date.strftime('%d.%m'))
+        # 2. Total Orders (This Month)
+        orders_query = Order.query.filter(Order.created_at >= start_of_month)
+        if user_id:
+            orders_query = orders_query.filter_by(user_id=user_id)
+        monthly_orders = orders_query.count()
+
+        # 3. Returns (This Month)
+        returns_query = Order.query.filter(
+            Order.created_at >= start_of_month,
+            db.or_(Order.status.ilike('%iade%'), Order.status.ilike('%return%'))
+        )
+        if user_id:
+            returns_query = returns_query.filter_by(user_id=user_id)
+        monthly_returns = returns_query.count()
+
+        # 4. Cancels (This Month)
+        cancels_query = Order.query.filter(
+            Order.created_at >= start_of_month,
+            db.or_(Order.status.ilike('%iptal%'), Order.status.ilike('%cancel%'))
+        )
+        if user_id:
+            cancels_query = cancels_query.filter_by(user_id=user_id)
+        monthly_cancels = cancels_query.count()
         
-        day_start = date.replace(hour=0, minute=0, second=0, microsecond=0)
-        day_end = date.replace(hour=23, minute=59, second=59, microsecond=999999)
+        # 5. Estimated Net Profit
+        estimated_profit = monthly_revenue * 0.25 
         
-        q = db.session.query(
-            db.func.count(Order.id),
-            db.func.sum(Order.total_price)
-        ).filter(Order.created_at >= day_start, Order.created_at <= day_end)
+        # 6. Critical Stock
+        critical_limit = int(Setting.get('CRITICAL_STOCK_LIMIT', 10, user_id=user_id) or 10)
+        
+        critical_stock_query = Product.query.filter(Product.quantity <= critical_limit)
+        if user_id:
+            critical_stock_query = critical_stock_query.filter_by(user_id=user_id)
+        critical_stock_products = critical_stock_query.all()
+        
+        # 7. Recent Orders
+        recent_orders_query = Order.query.order_by(Order.created_at.desc())
+        if user_id:
+            recent_orders_query = recent_orders_query.filter_by(user_id=user_id)
+        recent_orders = recent_orders_query.limit(5).all()
+
+        # 4. Top 5 Bestsellers
+        from sqlalchemy import func, desc
+        
+        bestsellers_query = db.session.query(
+            OrderItem.product_name,
+            OrderItem.barcode,
+            func.sum(OrderItem.quantity).label('total_qty'),
+            func.sum(OrderItem.price).label('total_rev')
+        ).join(Order).filter(Order.created_at >= start_of_month)
         
         if user_id:
-            q = q.filter(Order.user_id == user_id)
+            bestsellers_query = bestsellers_query.filter(Order.user_id == user_id)
             
-        day_count, day_rev = q.first()
-        counts.append(day_count or 0)
-        revenues.append(str(day_rev or 0)) 
-
-    # B. Marketplace Distribution
-    mp_query = db.session.query(
-        Order.marketplace, db.func.count(Order.id)
-    ).group_by(Order.marketplace)
-    
-    if user_id:
-        mp_query = mp_query.filter(Order.user_id == user_id)
+        bestsellers = bestsellers_query.group_by(OrderItem.product_name, OrderItem.barcode).order_by(desc('total_qty')).limit(5).all()
         
-    mp_results = mp_query.all()
-    mp_labels = [r[0] for r in mp_results]
-    mp_data = [r[1] for r in mp_results]
+        # Chart Data
+        dates = []
+        counts = []
+        revenues = []
+        
+        today = datetime.now()
+        for i in range(6, -1, -1):
+            date = today - timedelta(days=i)
+            dates.append(date.strftime('%d.%m'))
+            
+            day_start = date.replace(hour=0, minute=0, second=0, microsecond=0)
+            day_end = date.replace(hour=23, minute=59, second=59, microsecond=999999)
+            
+            q = db.session.query(
+                db.func.count(Order.id),
+                db.func.sum(Order.total_price)
+            ).filter(Order.created_at >= day_start, Order.created_at <= day_end)
+            
+            if user_id:
+                q = q.filter(Order.user_id == user_id)
+                
+            day_count, day_rev = q.first()
+            counts.append(day_count or 0)
+            revenues.append(str(day_rev or 0)) 
 
-    # Announcements (Fix: Enable fetching)
-    announcements = Announcement.query.filter_by(is_active=True).order_by(Announcement.priority.desc(), Announcement.created_at.desc()).all()
+        # B. Marketplace Distribution
+        mp_query = db.session.query(
+            Order.marketplace, db.func.count(Order.id)
+        ).group_by(Order.marketplace)
+        
+        if user_id:
+            mp_query = mp_query.filter(Order.user_id == user_id)
+            
+        mp_results = mp_query.all()
+        mp_labels = [r[0] for r in mp_results]
+        mp_data = [r[1] for r in mp_results]
 
-    # User Notifications
-    from app.models.notification import Notification
-    user_notifications = Notification.query.filter_by(user_id=user_id, is_read=False).order_by(Notification.created_at.desc()).all()
+        # Announcements
+        announcements = Announcement.query.filter_by(is_active=True).order_by(Announcement.priority.desc(), Announcement.created_at.desc()).all()
 
-    # Financial Service Integration
-    from app.services.subscription_service import get_usage_stats, check_expiring_subscriptions
-    from app.services.finance_service import get_financial_summary
-    
-    # Run a quick check for expiring subs (In a real app, this would be a daily cron job)
-    # But for this dev session, we can trigger it or assume it runs.
-    # check_expiring_subscriptions() # Don't run every load, but maybe once per session
-    
-    usage_stats = get_usage_stats(user_id)
-    financial_stats = get_financial_summary(user_id)
+        # User Notifications
+        from app.models.notification import Notification
+        user_notifications = Notification.query.filter_by(user_id=user_id, is_read=False).order_by(Notification.created_at.desc()).all()
 
-    stats = {
-        'marketplaces': marketplaces_stats,
-        'announcements': announcements,
-        'user_notifications': user_notifications,
-        'monthly_revenue': financial_stats.get('revenue', 0), # Fallback usage in legacy parts
-        'revenue_growth': 0, 
-        'monthly_orders': financial_stats.get('order_count', 0),
-        'orders_growth': 0,
-        'returns_count': monthly_returns, # Keep legacy returns logic for now if finance service doesn't have it fully detailed
-        'returns_growth': 0,
-        'cancel_count': monthly_cancels,
-        'estimated_profit': financial_stats.get('gross_profit', 0),
-        'critical_stock': critical_stock_products,
-        'recent_orders': recent_orders,
-        'bestsellers': bestsellers,
-        'critical_stock_limit': critical_limit,
-        'financial': financial_stats, # KEY ADDITION
-        'usage': usage_stats,         # KEY ADDITION
-        'charts': {
-            'dates': dates,
-            'sales_counts': counts,
-            'sales_revenues': revenues,
-            'mp_labels': mp_labels,
-            'mp_data': mp_data
+        # Financial & Usage
+        from app.services.subscription_service import get_usage_stats, check_expiring_subscriptions
+        from app.services.finance_service import get_financial_summary
+        
+        usage_stats = get_usage_stats(user_id)
+        financial_stats = get_financial_summary(user_id)
+
+        stats = {
+            'marketplaces': marketplaces_stats,
+            'announcements': announcements,
+            'user_notifications': user_notifications,
+            'monthly_revenue': financial_stats.get('revenue', 0), 
+            'revenue_growth': 0, 
+            'monthly_orders': financial_stats.get('order_count', 0),
+            'orders_growth': 0,
+            'returns_count': monthly_returns,
+            'returns_growth': 0,
+            'cancel_count': monthly_cancels,
+            'estimated_profit': financial_stats.get('gross_profit', 0),
+            'critical_stock': critical_stock_products,
+            'recent_orders': recent_orders,
+            'bestsellers': bestsellers,
+            'critical_stock_limit': critical_limit,
+            'financial': financial_stats,
+            'usage': usage_stats,
+            'charts': {
+                'dates': dates,
+                'sales_counts': counts,
+                'sales_revenues': revenues,
+                'mp_labels': mp_labels,
+                'mp_data': mp_data
+            }
         }
-    }
 
-    
-    return render_template("dashboard.html", stats=stats, last_sync=last_sync_display)
+        return render_template("dashboard.html", stats=stats, last_sync=last_sync_display)
+        
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Dashboard Error: {str(e)}")
+        try:
+            import os
+            with open('dashboard_error.log', 'a') as f:
+                f.write(f"\\n[{datetime.utcnow()}] Error in dashboard:\\n{error_details}\\n")
+        except: pass
+        flash(f'Dashboard yüklenirken bir hata oluştu: {str(e)}', 'danger')
+        return render_template('dashboard.html', stats=None, error=str(e))
 
 @main_bp.route("/questions")
 @login_required
