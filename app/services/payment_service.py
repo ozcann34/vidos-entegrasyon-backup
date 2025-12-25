@@ -3,7 +3,7 @@ import hashlib
 import base64
 import random
 from app.models.payment import Payment
-from app.models.settings import Setting  # Admin panelinden ayarları çekmek için
+from app.models.settings import Setting  # Updated for correctness (settings.py)
 from flask import url_for
 
 # Sabit Plan Tanımları (Veritabanında tutulmuyor, kodda sabit)
@@ -38,8 +38,9 @@ def generate_transaction_id():
 class ShopierAdapter:
     def __init__(self):
         # API bilgilerini veritabanından (Admin Ayarları) çekiyoruz
-        self.api_key = Setting.get_value('SHOPIER_API_KEY')
-        self.api_secret = Setting.get_value('SHOPIER_API_SECRET')
+        # KULLANICI ISTEGI UZERINE HARDCODED OLARAK EKLENDI
+        self.api_key = "93d990d318d7429b720d52d394681ac3"
+        self.api_secret = "3980f311a4dd2438ecccaf4237a9ae73"
         self.base_url = "https://www.shopier.com/ShowProduct/api/pay4post"
 
     def initiate_payment(self, payment: Payment, callback_url: str = None) -> dict:
@@ -56,8 +57,11 @@ class ShopierAdapter:
         user = payment.user
         plan_name = SUBSCRIPTION_PLANS.get(payment.plan, {}).get('name', 'Abonelik')
         
-        # Fiyat kontrolü (Güvenlik için her zaman payment kaydındaki fiyatı kullan)
-        price = float(payment.amount)
+        # Fiyat kontrolü
+        try:
+            price = float(payment.amount)
+        except:
+            price = 0.0
         
         # Shopier'in istediği zorunlu parametreler
         args = {
@@ -112,9 +116,6 @@ class ShopierAdapter:
         ]
         
         # Veriyi birleştir ve imzala
-        # Not: Shopier bazı durumlarda price'ı imza dizisine dahil edip etmeme konusunda farklılık gösterebilir.
-        # Standart entegrasyonda price imzaya DAHİL EDİLMEZ, posta ayrıca eklenir.
-        
         signature_data = "".join([str(x) for x in data_to_sign])
         signature = hmac.new(
             self.api_secret.encode('utf-8'),
@@ -124,7 +125,7 @@ class ShopierAdapter:
         
         args['signature'] = base64.b64encode(signature).decode()
         
-        # Fiyat parametresini sonradan ekliyoruz (İmzanın bozulmaması için sırası önemlidir ama POST içinde sıra fark etmez)
+        # Fiyat parametresini sonradan ekliyoruz
         args['price'] = str(price)
 
         # Başarılı dönüş: Post URL ve Parametreleri ver

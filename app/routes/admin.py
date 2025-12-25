@@ -678,14 +678,14 @@ def global_settings():
             Setting.set(f'global_{key}_enabled', value, user_id=None)
         
         # Save Shopier API settings (super admin only)
-        shopier_username = request.form.get('shopier_api_username', '').strip()
-        shopier_password = request.form.get('shopier_api_password', '').strip()
+        shopier_key = request.form.get('shopier_api_key', '').strip()
+        shopier_secret = request.form.get('shopier_api_secret', '').strip()
         shopier_callback = request.form.get('shopier_callback_url', '').strip()
         
-        if shopier_username:
-            Setting.set('SHOPIER_API_USERNAME', shopier_username, user_id=None)
-        if shopier_password:
-            Setting.set('SHOPIER_API_PASSWORD', shopier_password, user_id=None)
+        if shopier_key:
+            Setting.set('SHOPIER_API_KEY', shopier_key, user_id=None)
+        if shopier_secret:
+            Setting.set('SHOPIER_API_SECRET', shopier_secret, user_id=None)
         if shopier_callback:
             Setting.set('SHOPIER_CALLBACK_URL', shopier_callback, user_id=None)
             
@@ -699,8 +699,8 @@ def global_settings():
     
     # Get Shopier settings
     shopier_settings = {
-        'username': Setting.get('SHOPIER_API_USERNAME', '', user_id=None),
-        'password': Setting.get('SHOPIER_API_PASSWORD', '', user_id=None),
+        'api_key': Setting.get('SHOPIER_API_KEY', '', user_id=None),
+        'api_secret': Setting.get('SHOPIER_API_SECRET', '', user_id=None),
         'callback_url': Setting.get('SHOPIER_CALLBACK_URL', '', user_id=None)
     }
         

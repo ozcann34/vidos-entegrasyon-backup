@@ -70,21 +70,20 @@
 
                             <div class="row g-3">
                                 <div class="col-md-6">
-                                    <label for="shopier_api_username" class="form-label fw-bold">
-                                        <i class="bi bi-person-badge me-1"></i> API Kullanıcı Adı
+                                    <label for="shopier_api_key" class="form-label fw-bold">
+                                        <i class="bi bi-key me-1"></i> API Key
                                     </label>
-                                    <input type="text" class="form-control" id="shopier_api_username"
-                                        name="shopier_api_username" value="{{ shopier_settings.username }}"
-                                        placeholder="93d990d318d7429b720d52d394681ac3">
+                                    <input type="text" class="form-control" id="shopier_api_key" name="shopier_api_key"
+                                        value="{{ shopier_settings.api_key }}" placeholder="API Anahtarınız">
                                     <small class="text-muted">Shopier panel → Ayarlar → API Bilgileri</small>
                                 </div>
                                 <div class="col-md-6">
-                                    <label for="shopier_api_password" class="form-label fw-bold">
-                                        <i class="bi bi-key me-1"></i> API Şifre
+                                    <label for="shopier_api_secret" class="form-label fw-bold">
+                                        <i class="bi bi-shield-lock me-1"></i> API Secret
                                     </label>
-                                    <input type="text" class="form-control" id="shopier_api_password"
-                                        name="shopier_api_password" value="{{ shopier_settings.password }}"
-                                        placeholder="3980f311a4dd2438cccca4237a9ae73">
+                                    <input type="text" class="form-control" id="shopier_api_secret"
+                                        name="shopier_api_secret" value="{{ shopier_settings.api_secret }}"
+                                        placeholder="Gizli Anahtarınız">
                                     <small class="text-muted">API Secret Key</small>
                                 </div>
                                 <div class="col-12">

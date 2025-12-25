@@ -19,10 +19,14 @@ class Setting(db.Model):
         try:
             s = Setting.query.filter_by(key=k, user_id=user_id).first()
             return s.value if s else default
-            return s.value if s else default
         except Exception as e:
             print(f"Error getting setting {k}: {str(e)}")
             return default
+
+    @staticmethod
+    def get_value(k, default=None):
+        """Helper for global settings (ignoring user_id) or backward compatibility"""
+        return Setting.get(k, default)
 
     @staticmethod
     def set(k, v, user_id=None):
