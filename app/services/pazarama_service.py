@@ -450,6 +450,7 @@ def resolve_pazarama_brand(client: PazaramaClient, brand_name: str, log_callback
     return fallback
 
 def pazarama_fetch_all_products(client: PazaramaClient, page_size: int = 250, force_refresh: bool = False) -> List[Dict[str, Any]]:
+    logging.info(f"[Pazarama] Fetching all products: page_size={page_size}, force_refresh={force_refresh}")
     snapshot_items: Optional[List[Dict[str, Any]]] = None
     snapshot_meta: Optional[Dict[str, Any]] = None
     if not force_refresh:
@@ -553,9 +554,26 @@ def pazarama_fetch_all_products(client: PazaramaClient, page_size: int = 250, fo
         return False
 
     fetched_any = False
+    approved_count = 0
+    unapproved_count = 0
+    
     for approved_flag in (None, True, False):
+        before_count = len(aggregated_map)
         success = _fetch_for_status(approved_flag)
+        after_count = len(aggregated_map)
+        added = after_count - before_count
+        
+        status_label = 'all' if approved_flag is None else ('approved' if approved_flag else 'unapproved')
+        logging.info(f"[Pazarama] Fetched {status_label}: +{added} products (total so far: {after_count})")
+        
+        if approved_flag is True:
+            approved_count = added
+        elif approved_flag is False:
+            unapproved_count = added
+            
         fetched_any = fetched_any or success
+
+    logging.info(f"[Pazarama] Final counts - Approved: {approved_count}, Unapproved: {unapproved_count}, Total: {len(aggregated_map)}")
 
     if fetched_any and aggregated_map:
         items = list(aggregated_map.values())

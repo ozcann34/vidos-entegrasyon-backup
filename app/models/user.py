@@ -24,6 +24,7 @@ DEFAULT_PERMISSIONS = {
     'product_edit': True,
     'product_delete': True,
     'order_sync': True,
+    'ikas': True,
 }
 
 

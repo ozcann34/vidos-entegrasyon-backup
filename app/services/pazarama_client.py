@@ -498,10 +498,10 @@ class PazaramaClient:
 
     def get_product_questions(self, page: int = 1, size: int = 50) -> Dict[str, Any]:
         """
-        GET /product/questions
+        GET /question/getQuestions
         Fetch questions asked by customers about products.
         """
-        url = f"{BASE_URL}/product/questions"
+        url = f"{BASE_URL}/question/getQuestions"
         params = {"page": page, "size": size}
         
         try:
@@ -513,10 +513,10 @@ class PazaramaClient:
 
     def answer_product_question(self, question_id: str, answer: str) -> Dict[str, Any]:
         """
-        POST /product/answerQuestion
+        POST /question/answerQuestion
         Answer a customer question.
         """
-        url = f"{BASE_URL}/product/answerQuestion"
+        url = f"{BASE_URL}/question/answerQuestion"
         
         payload = {
             "questionId": question_id,
@@ -528,4 +528,49 @@ class PazaramaClient:
             return resp.json()
         except Exception as e:
             logging.error(f"Pazarama answer question error: {e}")
+            raise
+    def get_returns(self, page: int = 1, size: int = 100, status: int = None, start_date: str = None, end_date: str = None) -> Dict[str, Any]:
+        """
+        POST /order/getRefund
+        Fetch return requests.
+        """
+        url = f"{BASE_URL}/order/getRefund"
+        payload = {
+            "pageNumber": page,
+            "pageSize": size
+        }
+        if status is not None:
+            payload["refundStatus"] = status
+        if start_date:
+            payload["requestStartDate"] = start_date
+        if end_date:
+            payload["requestEndDate"] = end_date
+            
+        try:
+            resp = self._request("POST", url, json=payload)
+            return resp.json()
+        except Exception as e:
+            logging.error(f"Pazarama get_returns error: {e}")
+            raise
+
+    def update_return(self, refund_id: str, status: int, reject_type: int = None) -> Dict[str, Any]:
+        """
+        POST /order/updateRefund
+        Approve or reject a return request.
+        status: 2 (Approve), 3 (Reject)
+        reject_type: Required if status=3 (1: Ürün bana ait değil, 2: Defolu, 3: Eksik, 4: Yanlış)
+        """
+        url = f"{BASE_URL}/order/updateRefund"
+        payload = {
+            "refundId": refund_id,
+            "status": status
+        }
+        if reject_type is not None:
+            payload["RefundRejectTypeStatus"] = reject_type
+            
+        try:
+            resp = self._request("POST", url, json=payload)
+            return resp.json()
+        except Exception as e:
+            logging.error(f"Pazarama update_return error: {e}")
             raise

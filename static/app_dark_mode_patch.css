@@ -1,0 +1,93 @@
+/* =========================================
+   DARK MODE REFINEMENTS (Sprint 1C)
+   ========================================= */
+
+/* 1. Form Select & Combobox Polishing */
+[data-theme="dark"] .form-select {
+    color: #ffffff !important;
+    /* Ensure white text */
+    background-color: var(--card) !important;
+}
+
+[data-theme="dark"] .form-select:disabled {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* 2. Button Visibility */
+[data-theme="dark"] .btn:disabled,
+[data-theme="dark"] .btn.disabled {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    color: rgba(255, 255, 255, 0.4) !important;
+    opacity: 1 !important;
+    /* Reset opacity to handle via color */
+}
+
+/* 3. Search Arguments */
+[data-theme="dark"] input[type="search"]::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    height: 1em;
+    width: 1em;
+    border-radius: 50em;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' fill='%23fff'%3E%3Cpath d='M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM175 175c9.4-9.4 24.6-9.4 33.9 0l47 47 47-47c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9l-47 47 47 47c9.4 9.4 9.4 24.6 0 33.9s-24.6 9.4-33.9 0l-47-47-47 47c-9.4 9.4-24.6 9.4-33.9 0s-9.4-24.6 0-33.9l47-47-47-47c-9.4-9.4-9.4-24.6 0-33.9z'/%3E%3C/svg%3E") no-repeat 50% 50%;
+    background-size: contain;
+    cursor: pointer;
+}
+
+[data-theme="dark"] input::placeholder {
+    color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* 4. Global Scrollbar Refinement */
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+/* 5. Autosuggest / Autocomplete dropdowns */
+[data-theme="dark"] .autocomplete-items {
+    background-color: var(--card) !important;
+    border-color: var(--border) !important;
+}
+
+[data-theme="dark"] .autocomplete-items div {
+    color: var(--text) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .autocomplete-items div:hover {
+    background-color: rgba(99, 102, 241, 0.15) !important;
+}
+
+/* 6. Alerts Refined */
+[data-theme="dark"] .alert-success {
+    background-color: rgba(22, 163, 74, 0.1) !important;
+    border-color: rgba(22, 163, 74, 0.2) !important;
+    color: #4ade80 !important;
+}
+
+[data-theme="dark"] .alert-warning {
+    background-color: rgba(245, 158, 11, 0.1) !important;
+    border-color: rgba(245, 158, 11, 0.2) !important;
+    color: #fbbf24 !important;
+}
+
+[data-theme="dark"] .alert-danger {
+    background-color: rgba(220, 38, 38, 0.1) !important;
+    border-color: rgba(220, 38, 38, 0.2) !important;
+    color: #f87171 !important;
+}
+
+[data-theme="dark"] .alert-info {
+    background-color: rgba(13, 110, 253, 0.1) !important;
+    border-color: rgba(13, 110, 253, 0.2) !important;
+    color: #60a5fa !important;
+}

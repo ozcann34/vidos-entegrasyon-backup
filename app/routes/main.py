@@ -76,6 +76,10 @@ def get_mp_count(mp_name, u_id):
                 client = get_n11_client() # uses current_user internally
                 if client:
                     return client.get_product_count()
+            elif mp_name == 'ikas':
+                from app.services.ikas_service import get_ikas_service
+                service = get_ikas_service(user_id=u_id)
+                return service.get_product_count()
         except Exception as api_err:
             logging.warning(f"Fallback API count failed for {mp_name}: {api_err}")
             
@@ -442,6 +446,18 @@ def dashboard():
     }
     
     return render_template("dashboard.html", stats=stats, last_sync=last_sync_display)
+
+@main_bp.route("/questions")
+@login_required
+def questions_page():
+    """Customer Questions Page"""
+    return render_template("questions.html")
+
+@main_bp.route("/returns")
+@login_required
+def returns_page():
+    """Customer Returns/Claims Page"""
+    return render_template("returns.html")
 
 @main_bp.route("/excel_products")
 @login_required

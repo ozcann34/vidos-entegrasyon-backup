@@ -284,6 +284,13 @@
             </li>
             {% endif %}
 
+            {% if limit >= 6 or current_user.is_admin %}
+            <li class="nav-item">
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#ikas-pane"
+                style="color: #000; font-weight: bold;">İkas</button>
+            </li>
+            {% endif %}
+
             <li class="nav-item">
               <button class="nav-link" data-bs-toggle="tab" data-bs-target="#instagram-pane"
                 style="color: #E1306C; font-weight: bold;">
@@ -586,6 +593,30 @@
                     </button>
                     <button type="button" class="btn btn-outline-danger ms-2" id="clearN11CacheBtn">
                       <i class="bi bi-trash me-1"></i> Önbellek Temizle
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+
+            <!-- Ikas -->
+            <div class="tab-pane fade" id="ikas-pane">
+              <form method="POST" action="{{ url_for('main.settings_page') }}">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label fw-bold">Ikas Shop URL</label>
+                    <input class="form-control" name="IKAS_SHOP_URL" value="{{ settings.IKAS_SHOP_URL }}"
+                      placeholder="https://myshop.ikas.com">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-bold">API Token (Bearer)</label>
+                    <input class="form-control" name="IKAS_API_TOKEN" value="{{ settings.IKAS_API_TOKEN }}"
+                      placeholder="API Token">
+                  </div>
+                  <div class="col-12 mt-3">
+                    <button type="submit" class="btn btn-success"><i class="bi bi-save me-2"></i> Kaydet</button>
+                    <button type="button" class="btn btn-outline-primary ms-2" onclick="testConnection('ikas')">
+                      <i class="bi bi-wifi me-1"></i> Bağlantı Testi
                     </button>
                   </div>
                 </div>

@@ -154,7 +154,7 @@
                 style="font-size: 0.7rem; letter-spacing: 1px;">Pazar Yerleri</li>
             <li class="nav-item">
                 {% set pm_list = {'trendyol': 'Trendyol', 'hepsiburada': 'Hepsiburada', 'n11': 'N11', 'pazarama':
-                'Pazarama', 'idefix': 'İdefix'} %}
+                'Pazarama', 'idefix': 'İdefix', 'ikas': 'İkas'} %}
                 {% set mp_active = request.view_args and request.view_args.get('marketplace') in pm_list.keys() %}
                 <a href="#marketplaceSubmenu" data-bs-toggle="collapse"
                     aria-expanded="{{ 'true' if mp_active else 'false' }}"
@@ -175,12 +175,7 @@
                     {% endfor %}
                 </ul>
             </li>
-            <li class="nav-item">
-                <a href="{{ url_for('main.trendyol_claims_page') }}"
-                    class="nav-link {% if request.endpoint == 'main.trendyol_claims_page' %}active{% endif %}">
-                    <i class="bi bi-arrow-return-left me-2"></i> İade Talepleri
-                </a>
-            </li>
+
 
             <!-- GRUP: İŞLEMLER -->
             <li class="nav-section-title px-3 mb-2 mt-4 small text-uppercase text-white-50 fw-bold"
@@ -188,7 +183,7 @@
             <li class="nav-item">
                 {% set ops_active = (request.endpoint in ['main.orders_page', 'main.order_detail', 'main.batch_logs',
                 'main.batch_detail', 'main.auto_sync_page', 'main.xml_updates', 'products.bulk_update',
-                'report.error_history', 'report.profit_loss_report']) %}
+                'report.error_history', 'report.profit_loss_report', 'main.questions_page', 'main.returns_page']) %}
                 <a href="#opsSubmenu" data-bs-toggle="collapse" aria-expanded="{{ 'true' if ops_active else 'false' }}"
                     class="nav-link dropdown-toggle text-white {% if not ops_active %}collapsed{% endif %}">
                     <i class="bi bi-gear-wide-connected me-2"></i> İşlemler
@@ -199,6 +194,18 @@
                         <a href="{{ url_for('main.orders_page') }}"
                             class="nav-link py-2 fs-6 {% if request.endpoint == 'main.orders_page' or request.endpoint == 'main.order_detail' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
                             <i class="bi bi-caret-right-fill me-1 small"></i> Siparişler
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('main.questions_page') }}"
+                            class="nav-link py-2 fs-6 {% if request.endpoint == 'main.questions_page' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
+                            <i class="bi bi-caret-right-fill me-1 small"></i> Müşteri Soruları
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('main.returns_page') }}"
+                            class="nav-link py-2 fs-6 {% if request.endpoint == 'main.returns_page' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
+                            <i class="bi bi-caret-right-fill me-1 small"></i> İade Talepleri
                         </a>
                     </li>
                     {% if current_user.is_admin %}
@@ -359,7 +366,7 @@
                 <i class="bi bi-list-task me-1"></i> Loglar
             </a>
             {% endif %}
-            <a href="{{ url_for('main.trendyol_questions_page') }}"
+            <a href="{{ url_for('main.questions_page') }}"
                 class="btn btn-sm btn-white bg-white text-dark border rounded-pill px-3 shadow-sm">
                 <i class="bi bi-chat-dots me-1"></i> Sorular
             </a>

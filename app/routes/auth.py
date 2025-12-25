@@ -64,8 +64,9 @@ def register():
     if current_user.is_authenticated:
         return redirect(url_for('main.dashboard'))
     
-    # Get selected plan from URL parameter
+    # Get selected plan and billing from URL parameters
     selected_plan = request.args.get('plan', 'basic')
+    billing = request.args.get('billing', 'monthly')
     
     if request.method == 'POST':
         email = request.form.get('email', '').strip()
@@ -82,19 +83,20 @@ def register():
         district = request.form.get('district', '').strip()
         address = request.form.get('address', '').strip()
         plan = request.form.get('plan', 'basic')  # Get plan from form
+        billing = request.form.get('billing', 'monthly') # Get billing from form
         
         # Validation
         if not email or not password:
             flash('Email ve şifre gereklidir.', 'danger')
-            return render_template('auth/register.html', selected_plan=plan)
+            return render_template('auth/register.html', selected_plan=plan, billing=billing)
         
         if password != password_confirm:
             flash('Şifreler eşleşmiyor.', 'danger')
-            return render_template('auth/register.html', selected_plan=plan)
+            return render_template('auth/register.html', selected_plan=plan, billing=billing)
         
         if len(password) < 6:
             flash('Şifre en az 6 karakter olmalıdır.', 'danger')
-            return render_template('auth/register.html', selected_plan=plan)
+            return render_template('auth/register.html', selected_plan=plan, billing=billing)
         
         # Create user
         user = create_user(email, password, 
@@ -120,8 +122,9 @@ def register():
             if not send_otp_email(user):
                 flash('Kayıt başarılı ancak doğrulama e-postası gönderilemedi. Lütfen teknik ekibe ulaşın veya daha sonra tekrar deneyin.', 'warning')
             
-            # Store selected plan in session
+            # Store selected plan and billing in session
             session['selected_plan'] = plan
+            session['selected_billing'] = billing
             
             return redirect(url_for('auth.verify_email'))
         else:
@@ -131,7 +134,7 @@ def register():
     from app.services.payment_service import get_plan_details
     plan_details = get_plan_details(selected_plan)
     
-    return render_template('auth/register.html', selected_plan=selected_plan, plan_details=plan_details)
+    return render_template('auth/register.html', selected_plan=selected_plan, plan_details=plan_details, billing=billing)
 
 
 @auth_bp.route('/logout')

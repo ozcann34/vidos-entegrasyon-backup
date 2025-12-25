@@ -154,13 +154,18 @@
                         <i class="bi bi-box-seam me-2"></i>
                         <strong>{{ plan_details.name }}</strong> planı seçildi
                     </div>
-                    <span class="badge bg-primary">₺{{ plan_details.price }}/ay</span>
+                    <span class="badge bg-primary">
+                        ₺{% if billing == 'yearly' %}{{ plan_details.yearly_price_monthly }}{% else %}{{
+                        plan_details.price }}{% endif %}/ay
+                        {% if billing == 'yearly' %}(Yıllık Ödeme){% endif %}
+                    </span>
                 </div>
             </div>
             {% endif %}
 
             <form method="POST" action="{{ url_for('auth.register') }}">
                 <input type="hidden" name="plan" value="{{ selected_plan }}">
+                <input type="hidden" name="billing" value="{{ billing }}">
 
                 <div class="row g-4">
                     <!-- Sol Kolon: Kişisel ve Giriş Bilgileri -->

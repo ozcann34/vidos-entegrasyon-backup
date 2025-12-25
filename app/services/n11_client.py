@@ -297,6 +297,123 @@ class N11Client:
             logging.error(f"N11 delete product error: {e}")
             raise
 
+    def get_questions(self, page: int = 0, size: int = 100) -> Dict[str, Any]:
+        """
+        Fetch product questions from N11 (SOAP).
+        Service: ProductQuestionService
+        Method: GetProductQuestionList
+        """
+        url = "https://api.n11.com/ws/ProductQuestionService.wsdl"
+        
+        xml = f"""<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:n11="http://www.n11.com/ws/schemas">
+           <soapenv:Header/>
+           <soapenv:Body>
+              <n11:GetProductQuestionListRequest>
+                 <auth>
+                    <appKey>{self.api_key}</appKey>
+                    <appSecret>{self.api_secret}</appSecret>
+                 </auth>
+                 <pagingData>
+                    <currentPage>{page}</currentPage>
+                    <pageSize>{size}</pageSize>
+                 </pagingData>
+              </n11:GetProductQuestionListRequest>
+           </soapenv:Body>
+        </soapenv:Envelope>"""
+        
+        headers = {
+            "Content-Type": "text/xml; charset=utf-8",
+            "SOAPAction": "GetProductQuestionList"
+        }
+        
+        try:
+            response = self.session.post(url, data=xml, headers=headers, timeout=30)
+            response.raise_for_status()
+            
+            # Simple XML parsing (avoiding lxml/elementtree dependency if possible, but safe to use minidom or simple mapping)
+            # For now returning raw text or trying to parse if simple
+            # Better to use a parser helper if available.
+            # We will return the XML text or convert to dict if we had a helper.
+            # Assuming the caller (API route) might handle XML parsing or we do it here.
+            # Let's try to return a simplified structure by hacking it or just return raw for now.
+            # Actually, let's use a simple regex or minidom to extract questions.
+            import xml.etree.ElementTree as ET
+            root = ET.fromstring(response.content)
+            
+            # Namespaces
+            ns = {'n11': 'http://www.n11.com/ws/schemas'}
+            
+            questions = []
+            # Find productQuestionList ...
+            # The structure is usually Body -> GetProductQuestionListResponse -> productQuestionList -> productQuestion
+            
+            # Strip namespaces for easier parsing
+            for elem in root.iter():
+                if '}' in elem.tag:
+                    elem.tag = elem.tag.split('}', 1)[1]
+            
+            q_list = root.find(".//productQuestionList")
+            if q_list is not None:
+                for q in q_list.findall("productQuestion"):
+                    questions.append({
+                        "id": q.findtext("id"),
+                        "text": q.findtext("content"),
+                        "createdDate": q.findtext("createdDate"), # Format: 2023-10-25T...
+                        "user": q.findtext("user/username") or "Misafir",
+                        "public": q.findtext("isPublic"),
+                        "answered": q.findtext("status") == "ANSWERED",
+                        "product": {
+                             "title": q.findtext("product/title"),
+                             "n11Id": q.findtext("product/id")
+                        }
+                    })
+                    
+            return {"questions": questions, "total": len(questions)} # Paging info might be missing in simple parse
+            
+        except Exception as e:
+            logging.error(f"N11 get_questions error: {e}")
+            return {"questions": []}
+
+    def answer_question(self, question_id: str, answer: str) -> Dict[str, Any]:
+        """
+        Answer a question on N11 (SOAP).
+        Service: ProductQuestionService
+        Method: SaveProductAnswer
+        """
+        url = "https://api.n11.com/ws/ProductQuestionService.wsdl"
+        
+        xml = f"""<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:n11="http://www.n11.com/ws/schemas">
+           <soapenv:Header/>
+           <soapenv:Body>
+              <n11:SaveProductAnswerRequest>
+                 <auth>
+                    <appKey>{self.api_key}</appKey>
+                    <appSecret>{self.api_secret}</appSecret>
+                 </auth>
+                 <productQuestionId>{question_id}</productQuestionId>
+                 <content>{answer}</content>
+              </n11:SaveProductAnswerRequest>
+           </soapenv:Body>
+        </soapenv:Envelope>"""
+        
+        headers = {
+            "Content-Type": "text/xml; charset=utf-8",
+            "SOAPAction": "SaveProductAnswer"
+        }
+        
+        try:
+            response = self.session.post(url, data=xml.encode('utf-8'), headers=headers, timeout=30)
+            response.raise_for_status()
+            
+            # Success check
+            if "status>SUCCESS</" in response.text or "status>OK</" in response.text:
+                return {"success": True}
+            return {"success": False, "raw": response.text}
+            
+        except Exception as e:
+            logging.error(f"N11 answer_question error: {e}")
+            return {"success": False, "error": str(e)}
+
     def update_products(self, products: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Update products (General Update - Status, Description etc.)
@@ -375,6 +492,129 @@ class N11Client:
             logging.error(f"N11 update_products_price_and_stock error: {e}")
             raise
 
+
+    def approve_claim(self, claim_id: str) -> Dict[str, Any]:
+        """
+        Approve a claim on N11 (SOAP).
+        Service: ClaimService
+        Method: ApproveClaim
+        """
+        url = "https://api.n11.com/ws/ClaimService.wsdl"
+        xml = f"""<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:n11="http://www.n11.com/ws/schemas">
+           <soapenv:Header/>
+           <soapenv:Body>
+              <n11:ApproveClaimRequest>
+                 <auth>
+                    <appKey>{self.api_key}</appKey>
+                    <appSecret>{self.api_secret}</appSecret>
+                 </auth>
+                 <claimId>{claim_id}</claimId>
+              </n11:ApproveClaimRequest>
+           </soapenv:Body>
+        </soapenv:Envelope>"""
+        headers = {"Content-Type": "text/xml; charset=utf-8", "SOAPAction": "ApproveClaim"}
+        try:
+            response = self.session.post(url, data=xml, headers=headers, timeout=30)
+            response.raise_for_status()
+            if "status>SUCCESS</" in response.text or "status>OK</" in response.text:
+                return {"success": True}
+            return {"success": False, "raw": response.text}
+        except Exception as e:
+            logging.error(f"N11 approve_claim error: {e}")
+            return {"success": False, "error": str(e)}
+
+    def reject_claim(self, claim_id: str, reason_id: str, reason_text: str = None) -> Dict[str, Any]:
+        """
+        Reject a claim on N11 (SOAP).
+        Service: ClaimService
+        Method: RejectClaim
+        """
+        url = "https://api.n11.com/ws/ClaimService.wsdl"
+        xml = f"""<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:n11="http://www.n11.com/ws/schemas">
+           <soapenv:Header/>
+           <soapenv:Body>
+              <n11:RejectClaimRequest>
+                 <auth>
+                    <appKey>{self.api_key}</appKey>
+                    <appSecret>{self.api_secret}</appSecret>
+                 </auth>
+                 <claimId>{claim_id}</claimId>
+                 <rejectReasonId>{reason_id}</rejectReasonId>
+                 <rejectDescription>{reason_text or ''}</rejectDescription>
+              </n11:RejectClaimRequest>
+           </soapenv:Body>
+        </soapenv:Envelope>"""
+        headers = {"Content-Type": "text/xml; charset=utf-8", "SOAPAction": "RejectClaim"}
+        try:
+            response = self.session.post(url, data=xml, headers=headers, timeout=30)
+            response.raise_for_status()
+            if "status>SUCCESS</" in response.text or "status>OK</" in response.text:
+                return {"success": True}
+            return {"success": False, "raw": response.text}
+        except Exception as e:
+            logging.error(f"N11 reject_claim error: {e}")
+            return {"success": False, "error": str(e)}
+
+    def get_claims(self, page: int = 0, size: int = 50) -> Dict[str, Any]:
+        """
+        Fetch claims from N11 (SOAP).
+        Service: ClaimService
+        Method: GetClaimList
+        """
+        url = "https://api.n11.com/ws/ClaimService.wsdl"
+        xml = f"""<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:n11="http://www.n11.com/ws/schemas">
+           <soapenv:Header/>
+           <soapenv:Body>
+              <n11:GetClaimListRequest>
+                 <auth>
+                    <appKey>{self.api_key}</appKey>
+                    <appSecret>{self.api_secret}</appSecret>
+                 </auth>
+                 <pagingData>
+                    <currentPage>{page}</currentPage>
+                    <pageSize>{size}</pageSize>
+                 </pagingData>
+              </n11:GetClaimListRequest>
+           </soapenv:Body>
+        </soapenv:Envelope>"""
+        
+        headers = {
+            "Content-Type": "text/xml; charset=utf-8",
+            "SOAPAction": "GetClaimList"
+        }
+        
+        try:
+            response = self.session.post(url, data=xml, headers=headers, timeout=30)
+            response.raise_for_status()
+            
+            import xml.etree.ElementTree as ET
+            root = ET.fromstring(response.content)
+            
+            # Strip namespaces
+            for elem in root.iter():
+                if '}' in elem.tag:
+                    elem.tag = elem.tag.split('}', 1)[1]
+            
+            claims = []
+            claim_list = root.find(".//claimList")
+            if claim_list is not None:
+                for c in claim_list.findall("claim"):
+                    claims.append({
+                        "id": c.findtext("id"),
+                        "orderId": c.findtext("order/id"),
+                        "orderNumber": c.findtext("order/orderNumber"),
+                        "productName": c.findtext("orderItem/productName"),
+                        "quantity": c.findtext("orderItem/quantity"),
+                        "status": c.findtext("claimStatus"),
+                        "reason": c.findtext("claimReason"),
+                        "customerName": c.findtext("order/buyer/fullName"),
+                        "amount": c.findtext("orderItem/price"),
+                        "date": c.findtext("createDate")
+                    })
+            return {"claims": claims, "total": len(claims)}
+        except Exception as e:
+            logging.error(f"N11 get_claims error: {e}")
+            return {"claims": []}
 
 def get_n11_client(user_id: int = None):
     from app.models import Setting

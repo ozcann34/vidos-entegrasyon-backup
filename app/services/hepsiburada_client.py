@@ -13,9 +13,29 @@ class HepsiburadaClient:
         self.base_api_url = "https://mpop.hepsiburada.com"
         
         self.session = requests.Session()
+        
+        # Retry mechanism for DNS/Connection issues
+        from urllib3.util.retry import Retry
+        from requests.adapters import HTTPAdapter
+        
+        retries = Retry(
+            total=3,
+            backoff_factor=1,
+            status_forcelist=[500, 502, 503, 504],
+            allowed_methods=frozenset(['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']),
+            raise_on_status=False
+        )
+        adapter = HTTPAdapter(max_retries=retries)
+        self.session.mount("https://", adapter)
+        self.session.mount("http://", adapter)
+
         # Patch session.request
         original_request = self.session.request
         def rate_limited_request(method, url, *args, **kwargs):
+            # Default timeout for all requests if not specified
+            if 'timeout' not in kwargs:
+                kwargs['timeout'] = 30
+                
             hepsiburada_limiter.wait()
             return original_request(method, url, *args, **kwargs)
         self.session.request = rate_limited_request
@@ -335,6 +355,67 @@ class HepsiburadaClient:
             return resp.json() if resp.text else {"success": True}
         except Exception as e:
             logging.error(f"Hepsiburada send_invoice error: {e}")
+            raise
+
+    def get_claims(self, status: str = 'NewRequest', offset: int = 0, limit: int = 100) -> List[Dict[str, Any]]:
+        """
+        Fetch claims (returns) from Hepsiburada.
+        GET https://oms-external.hepsiburada.com/claims/merchantId/{merchantId}/status/{status}
+        """
+        oms_url = "https://oms-external.hepsiburada.com"
+        url = f"{oms_url}/claims/merchantId/{self.merchant_id}/status/{status}"
+        
+        params = {
+            "offset": offset,
+            "limit": limit
+        }
+        
+        try:
+            headers = self._get_auth_headers()
+            resp = self.session.get(url, headers=headers, params=params, timeout=30)
+            resp.raise_for_status()
+            return resp.json() # Returns a list of claims
+        except Exception as e:
+            logging.error(f"Hepsiburada get_claims error: {e}")
+            return []
+
+    def approve_claim(self, claim_number: str) -> Dict[str, Any]:
+        """
+        Approve/Accept a claim.
+        POST https://oms-external.hepsiburada.com/claims/number/{claimNumber}/approve
+        """
+        oms_url = "https://oms-external.hepsiburada.com"
+        url = f"{oms_url}/claims/number/{claim_number}/approve"
+        
+        try:
+            headers = self._get_auth_headers()
+            resp = self.session.post(url, headers=headers, timeout=30)
+            resp.raise_for_status()
+            return resp.json() if resp.text else {"success": True}
+        except Exception as e:
+            logging.error(f"Hepsiburada approve_claim error: {e}")
+            raise
+
+    def reject_claim(self, claim_number: str, reason_code: str, explanation: str = '') -> Dict[str, Any]:
+        """
+        Reject a claim.
+        POST https://oms-external.hepsiburada.com/claims/number/{claimNumber}/reject
+        """
+        oms_url = "https://oms-external.hepsiburada.com"
+        url = f"{oms_url}/claims/number/{claim_number}/reject"
+        
+        payload = {
+            "reasonCode": reason_code,
+            "explanation": explanation
+        }
+        
+        try:
+            headers = self._get_auth_headers()
+            resp = self.session.post(url, headers=headers, json=payload, timeout=30)
+            resp.raise_for_status()
+            return resp.json() if resp.text else {"success": True}
+        except Exception as e:
+            logging.error(f"Hepsiburada reject_claim error: {e}")
             raise
 
     def _get_auth_headers(self) -> Dict[str, str]:

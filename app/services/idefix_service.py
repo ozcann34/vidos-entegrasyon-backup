@@ -1655,7 +1655,7 @@ def sync_idefix_products(user_id: Optional[int] = None, job_id: Optional[str] = 
                 qty = int(qty)
                 
                 # Status mapping for better UI
-                pool_state = item.get('poolState') or item.get('productStatus') or 'UNKNOWN'
+                pool_state = item.get('poolState') or item.get('productStatus') or item.get('original_status') or 'UNKNOWN'
                 pool_state_up = str(pool_state).upper()
                 
                 if pool_state_up == "APPROVED":
@@ -1669,7 +1669,11 @@ def sync_idefix_products(user_id: Optional[int] = None, job_id: Optional[str] = 
                 elif pool_state_up == "DELETED":
                     status_str = "Silindi"
                 else:
-                    status_str = pool_state
+                    # If we have a friendly label from fetch_all, use it
+                    if item.get('status_label'):
+                        status_str = item.get('status_label')
+                    else:
+                        status_str = pool_state
 
                 approval_str = status_str
                 

@@ -3,23 +3,6 @@
 {% block page_title %}{{ marketplace_name or marketplace|capitalize }} Ürünleri{% endblock %}
 
 {% block content %}
-<ul class="nav nav-tabs-mobile mb-3" id="innerTabs">
-  <li class="nav-item">
-    <a href="#" class="nav-link active" data-tab="mp">
-      <i class="bi bi-shop me-2"></i>
-      <span class="d-none d-sm-inline">{{ marketplace_name or marketplace|capitalize }} Ürünleri</span>
-      <span class="d-sm-none">{{ marketplace|capitalize }}</span>
-    </a>
-  </li>
-  <li class="nav-item">
-    <a href="#" class="nav-link" data-tab="xml">
-      <i class="bi bi-file-earmark-code me-2"></i>
-      <span class="d-none d-sm-inline">XML Listesi & Eşleştirme</span>
-      <span class="d-sm-none">XML</span>
-    </a>
-  </li>
-</ul>
-
 <div id="tabMarketplace">
   <!-- Modern Toolbar & Filter System -->
   <div class="card border-0 shadow-sm mb-4" style="background: var(--card);">
@@ -178,68 +161,7 @@
 </nav>
 </div>
 
-<div id="tabXML" class="d-none">
-  <!-- XML Toolbar -->
-  <!-- XML Toolbar -->
-  <div class="card border-0 shadow-sm mb-4" style="background: var(--card);">
-    <div class="card-body p-2">
-      <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
-        <div class="d-flex gap-2 flex-grow-1" style="min-width: 300px;">
-          <select id="mpXmlSourceSelect" class="form-select" style="max-width: 200px;">
-            <option value="">Kaynak Seç...</option>
-          </select>
-          <div class="input-group flex-grow-1">
-            <span class="input-group-text border-end-0"
-              style="background: var(--input-bg); border-color: var(--input-border); color: var(--muted);"><i
-                class="bi bi-search"></i></span>
-            <input type="text" id="xmlSearchInput" class="form-control border-start-0 ps-0"
-              style="background: var(--input-bg); border-color: var(--input-border); color: var(--text);"
-              placeholder="XML içinde ara...">
-          </div>
-        </div>
-        <div>
-          <button id="btnGenerateRandomCodes" class="btn btn-outline-secondary"
-            title="Barkodu olmayanlar için rastgele kod üret">
-            <i class="bi bi-magic me-1"></i> Rastgele Kod
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <!-- XML List -->
-  <div class="table-responsive shadow" id="xmlListWrapper">
-    <table class="table table-hover align-middle mb-0">
-      <thead class="table-light">
-        <tr>
-          <th style="width:40px;"><input type="checkbox" id="xmlSelectAll"></th>
-          <th>Görsel</th>
-          <th>XML Ürün Adı</th>
-          <th>Barkod / Stok Kodu</th>
-          <th>Fiyat / Stok</th>
-          <th>Eşleşme</th>
-        </tr>
-      </thead>
-      <tbody id="xmlListBody"></tbody>
-    </table>
-  </div>
-
-  <!-- XML Pagination -->
-  <nav class="mt-4">
-    <ul class="pagination justify-content-center" id="xmlPagination"></ul>
-  </nav>
-  <div class="text-center text-muted small mt-2" id="xmlCountSpan"></div>
-
-  <div class="fixed-bottom p-3 bg-white border-top shadow-lg d-flex justify-content-between align-items-center"
-    id="xmlBatchActionPanel" style="display:none !important; z-index: 1040;">
-    <div>
-      <span class="fw-bold text-primary" id="xmlSelectedCount">0</span> ürün seçildi.
-    </div>
-    <button id="btnSendSelectedXml" class="btn btn-primary">
-      <i class="bi bi-cloud-upload me-1"></i> Seçilileri Gönder
-    </button>
-  </div>
-</div>
 
 <!-- Floating Job Monitor Panel -->
 <div id="jobMonitorPanel" class="job-monitor-panel d-none">
@@ -496,7 +418,7 @@
   // Define mpXmlSourceSelect
   const mpXmlSourceSelect = document.getElementById('mpXmlSourceSelect');
 
-  const innerTabs = document.getElementById('innerTabs');
+
   const tabMarketplace = document.getElementById('tabMarketplace');
 
   // XML Elements - Updated
@@ -1865,12 +1787,7 @@
     updateFilterButtonStates();
     ensureViewRendered(currentView);
 
-    // Restore Tab State
-    const savedTab = localStorage.getItem(TAB_STORAGE_KEY);
-    if (savedTab) {
-      const tabLink = innerTabs.querySelector(`a[data-tab="${savedTab}"]`);
-      if (tabLink) tabLink.click();
-    }
+    /* Restore Tab State removed */
 
     // Restore Filter Panel State
     const savedPanelState = localStorage.getItem(FILTER_PANEL_STORAGE_KEY);
@@ -1886,24 +1803,7 @@
     advPanel.addEventListener('shown.bs.collapse', () => localStorage.setItem(FILTER_PANEL_STORAGE_KEY, 'open'));
     advPanel.addEventListener('hidden.bs.collapse', () => localStorage.setItem(FILTER_PANEL_STORAGE_KEY, 'closed'));
   }
-  // Tabs
-  innerTabs.addEventListener('click', (e) => {
-    const a = e.target.closest('a[data-tab]'); if (!a) { return; }
-    e.preventDefault();
-    innerTabs.querySelectorAll('.nav-link').forEach(x => x.classList.remove('active'));
-    a.classList.add('active');
-    const t = a.dataset.tab;
-    localStorage.setItem(TAB_STORAGE_KEY, t); // Save State
-
-    if (t === 'mp') {
-      tabMarketplace.classList.remove('d-none');
-      tabXML.classList.add('d-none');
-    } else {
-      tabMarketplace.classList.add('d-none');
-      tabXML.classList.remove('d-none');
-      if (!xmlSourceSelect.dataset.loaded) { loadXmlSources(); xmlSourceSelect.dataset.loaded = '1'; }
-    }
-  });
+  /* Tabs listener removed */
 
   xmlSourceSelect && xmlSourceSelect.addEventListener('change', (e) => { xmlSourceId = e.target.value; localStorage.setItem('vidos_xml_source_id', String(xmlSourceId || '')); xmlPage = 1; fetchXmlProducts(); });
   mpXmlSourceSelect && mpXmlSourceSelect.addEventListener('change', (e) => { mpXmlSourceId = e.target.value; localStorage.setItem(`vidos_${CURRENT_MARKETPLACE}_xml_source_id`, String(mpXmlSourceId || '')); updateMarketplaceXmlButtons(); });

@@ -2042,6 +2042,17 @@ def api_test_connection(marketplace):
             except Exception as e:
                  message = f"İdefix hatası: {str(e)}"
 
+        elif marketplace == 'ikas':
+            from app.services.ikas_service import get_ikas_service
+            service = get_ikas_service(user_id=current_user.id)
+            try:
+                # Ikas check
+                cnt = service.get_product_count()
+                success = True
+                message = f"İkas bağlantısı başarılı. (Ürün: {cnt})"
+            except Exception as e:
+                message = f"İkas hatası: {str(e)}"
+
         return jsonify({'success': success, 'message': message})
 
     except Exception as e:
