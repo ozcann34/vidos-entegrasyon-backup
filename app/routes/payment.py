@@ -21,14 +21,27 @@ def payment_page():
     # Get selected plan from session or query parameter
     plan = session.get('selected_plan') or request.args.get('plan', 'basic')
     
-    # Validate plan
-    plan_details = get_plan_details(plan)
-    
-    if not plan_details:
-        flash('Geçersiz plan seçimi.', 'danger')
+    try:
+        # Validate plan
+        plan_details = get_plan_details(plan)
+        
+        if not plan_details:
+            flash('Geçersiz plan seçimi.', 'danger')
+            return redirect(url_for('auth.landing'))
+        
+        return render_template('payment.html', plan=plan, plan_details=plan_details)
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Payment Page Error: {str(e)}")
+        try:
+            import os
+            from datetime import datetime
+            with open('payment_error.log', 'a') as f:
+                f.write(f"\\n[{datetime.utcnow()}] Error in payment_page:\\n{error_details}\\n")
+        except: pass
+        flash(f'Ödeme sayfası yüklenirken bir hata oluştu: {str(e)}', 'danger')
         return redirect(url_for('auth.landing'))
-    
-    return render_template('payment.html', plan=plan, plan_details=plan_details)
 
 
 @payment_bp.route('/initiate', methods=['POST'])
