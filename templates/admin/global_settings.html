@@ -86,9 +86,19 @@
                                         placeholder="Gizli Anahtarınız">
                                     <small class="text-muted">API Secret Key</small>
                                 </div>
-                                <div class="col-12">
+                                <div class="col-md-6">
+                                    <label for="shopier_website_index" class="form-label fw-bold">
+                                        <i class="bi bi-hash me-1"></i> Website Index
+                                    </label>
+                                    <input type="number" class="form-control" id="shopier_website_index"
+                                        name="shopier_website_index" value="{{ shopier_settings.website_index }}"
+                                        placeholder="1">
+                                    <small class="text-muted">Shopier panelinde birden fazla siteniz varsa kontrol edin
+                                        (Genellikle 1)</small>
+                                </div>
+                                <div class="col-md-6">
                                     <label for="shopier_callback_url" class="form-label fw-bold">
-                                        <i class="bi bi-arrow-return-left me-1"></i> Geri Dönüş URL
+                                        <i class="bi bi-arrow-return-left me-1"></i> Geri Dönüş URL (Callback)
                                     </label>
                                     <div class="input-group">
                                         <span class="input-group-text">https://</span>
@@ -96,8 +106,6 @@
                                             name="shopier_callback_url" value="{{ shopier_settings.callback_url }}"
                                             placeholder="yourdomain.com/payment/callback">
                                     </div>
-                                    <small class="text-muted">Ödeme tamamlandığında Shopier'in yönlendireceği
-                                        URL</small>
                                 </div>
                             </div>
                         </div>

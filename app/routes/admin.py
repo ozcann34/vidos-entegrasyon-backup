@@ -681,6 +681,7 @@ def global_settings():
         shopier_key = request.form.get('shopier_api_key', '').strip()
         shopier_secret = request.form.get('shopier_api_secret', '').strip()
         shopier_callback = request.form.get('shopier_callback_url', '').strip()
+        shopier_index = request.form.get('shopier_website_index', '1').strip()
         
         if shopier_key:
             Setting.set('SHOPIER_API_KEY', shopier_key, user_id=None)
@@ -688,6 +689,8 @@ def global_settings():
             Setting.set('SHOPIER_API_SECRET', shopier_secret, user_id=None)
         if shopier_callback:
             Setting.set('SHOPIER_CALLBACK_URL', shopier_callback, user_id=None)
+        if shopier_index:
+            Setting.set('SHOPIER_WEBSITE_INDEX', shopier_index, user_id=None)
             
         flash('Küresel ayarlar başarıyla güncellendi.', 'success')
         return redirect(url_for('admin.global_settings'))
@@ -701,7 +704,8 @@ def global_settings():
     shopier_settings = {
         'api_key': Setting.get('SHOPIER_API_KEY', '', user_id=None),
         'api_secret': Setting.get('SHOPIER_API_SECRET', '', user_id=None),
-        'callback_url': Setting.get('SHOPIER_CALLBACK_URL', '', user_id=None)
+        'callback_url': Setting.get('SHOPIER_CALLBACK_URL', '', user_id=None),
+        'website_index': Setting.get('SHOPIER_WEBSITE_INDEX', '1', user_id=None)
     }
         
     return render_template('admin/global_settings.html', 

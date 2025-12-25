@@ -57,37 +57,46 @@ class ShopierAdapter:
         user = payment.user
         plan_name = SUBSCRIPTION_PLANS.get(payment.plan, {}).get('name', 'Abonelik')
         
-        # Fiyat (Shopier genellikle .00 seklinde 2 basamakli string ister)
+        # Website Index (Admin panelinden cekiliyor)
+        website_index = Setting.get_value('SHOPIER_WEBSITE_INDEX', '1')
+        try:
+            website_index = int(website_index)
+        except:
+            website_index = 1
+            
+        # Fiyat Formatlama (Strict X.XX)
         try:
             price = float(payment.amount)
         except:
             price = 0.0
-        
-        # Fiyat formatini kesinlestir (Orn: 499.00)
         price_str = f"{price:.2f}"
             
-        # Karakter Temizligi (ASCII)
-        def clean_text(text):
+        # Karakter Temizligi (Strict ASCII - Sadece Harf, Rakam ve Bosluk)
+        import re
+        def clean_text_strict(text):
             if not text: return ""
-            return str(text).replace('ı', 'i').replace('ğ', 'g').replace('ü', 'u').replace('ş', 's').replace('ö', 'o').replace('ç', 'c').replace('İ', 'I').replace('Ğ', 'G').replace('Ü', 'U').replace('Ş', 'S').replace('Ö', 'O').replace('Ç', 'C')
+            # Turkce karakter donusumu
+            text = str(text).replace('ı', 'i').replace('ğ', 'g').replace('ü', 'u').replace('ş', 's').replace('ö', 'o').replace('ç', 'c').replace('İ', 'I').replace('Ğ', 'G').replace('Ü', 'U').replace('Ş', 'S').replace('Ö', 'O').replace('Ç', 'C')
+            # Sadece Alfanumerik ve Bosluk birak
+            text = re.sub(r'[^a-zA-Z0-9 ]', '', text)
+            return text.strip()
 
-        product_name = clean_text(f"Vidos - {plan_name} Paketi")
-        buyer_name = clean_text(user.first_name if user.first_name else 'Misafir')
-        buyer_surname = clean_text(user.last_name if user.last_name else 'Kullanici')
+        product_name = clean_text_strict(f"Vidos {plan_name} Paketi")[:50]
+        buyer_name = clean_text_strict(user.first_name if user.first_name else 'Misafir')
+        buyer_surname = clean_text_strict(user.last_name if user.last_name else 'Kullanici')
         
-        # Telefon numarasi (Basinda 0 olmadan 10 hane)
-        phone = str(user.phone) if user.phone else '5555555555'
-        phone = "".join(filter(str.isdigit, phone))
+        # Telefon numarasi (10 Hane Kesin)
+        phone = "".join(filter(str.isdigit, str(user.phone or '5555555555')))
         if phone.startswith('0'): phone = phone[1:]
-        if len(phone) > 10: phone = phone[-10:]
+        phone = phone[:10].ljust(10, '0')
 
         # Shopier'in istedigi zorunlu parametreler
         args = {
             'API_key': self.api_key,
-            'website_index': 1,
-            'platform_order_id': str(payment.payment_reference),
+            'website_index': website_index,
+            'platform_order_id': f"VID_{payment.payment_reference}", # Prefix eklendi
             'product_name': product_name,
-            'product_type': 1, # 1: Dijital/Fiziksel (Genel kabul goren tip)
+            'product_type': 1, # 1: Market/Dijital
             'price': price_str,
             'currency': 0, # 0: TL
             'buyer_name': buyer_name,
@@ -96,11 +105,11 @@ class ShopierAdapter:
             'buyer_account_age': 0,
             'buyer_id_nr': 0,
             'buyer_phone': phone,
-            'billing_address': "Turkiye Online Hizmetler", 
+            'billing_address': "Turkiye Online", 
             'city': "Istanbul", 
             'country': "Turkiye", 
             'zip_code': "34000", 
-            'shipping_address': "Turkiye Online Hizmetler",
+            'shipping_address': "Turkiye Online",
             'shipping_city': "Istanbul",
             'shipping_country': "Turkiye",
             'shipping_zip_code': "34000",
@@ -108,8 +117,7 @@ class ShopierAdapter:
             'random_nr': generate_transaction_id()
         }
 
-        # İmza oluşturma (Shopier Pay4Post Sıralaması)
-        # SİRA: API_key + website_index + platform_order_id + product_name + product_type + price + currency + buyer_name + buyer_surname + buyer_email + buyer_account_age + buyer_id_nr + buyer_phone + billing_address + city + country + zip_code + shipping_address + shipping_city + shipping_country + shipping_zip_code + modul_version + random_nr
+        # İmza Sıralaması (Pay4Post)
         data_to_sign = [
             args['API_key'],
             args['website_index'],
@@ -138,10 +146,12 @@ class ShopierAdapter:
         
         signature_data = "".join([str(x) for x in data_to_sign])
         
-        # DEBUG: Log raw data for verification (Sunucuda kontrol etmek icin)
+        # DEBUG: Log raw data
         try:
             with open('shopier_debug.log', 'a') as f:
-                f.write(f"\n--- NEW PAYMENT ATTEMPT ---\n")
+                f.write(f"\n[{datetime.now()}] --- PAYMENT ATTEMPT ---\n")
+                f.write(f"Website Index: {args['website_index']}\n")
+                f.write(f"Order ID: {args['platform_order_id']}\n")
                 f.write(f"Signature String: {signature_data}\n")
                 f.write(f"Price: {args['price']}\n")
         except: pass

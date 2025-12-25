@@ -105,18 +105,22 @@
 
 ---
 ## 🔄 SPRINT 5.5: SHOPIER ALTYAPI YENİLEME (REBUILD) (P0)
-**Durum**: [/] Başlandı
-*Kritik: Hata giderilemediği için altyapı "Backend-First" mimarisiyle sıfırdan yazılıyor.*
+**Durum**: [/] Devam Ediyor
+*Kritik: Hata giderilemediği için altyapı "Backend-First" mimarisiyle sıfırdan yazıldı. REDIRECT_NOTFOUND hatası debug ediliyor.*
 
 ### A. Temizlik & Hazırlık 🧹
-- [ ] Eski ödeme dosyalarının ve logiklerin temizlenmesi (`payment.html`, `payment.py`, `service`)
-- [ ] `shopier_redirect.html` template'inin oluşturulması (Auto-submit form)
+- [x] Eski ödeme dosyalarının ve logiklerin temizlenmesi
+- [x] `shopier_redirect.html` template'inin oluşturulması (Auto-submit form)
 
 ### B. "Backend-First" Implementasyonu ⚙️
-- [ ] `payment_service.py`: Adapter'ın sadeleştirilmesi (Sadece imza ve parametre üretimi)
-- [ ] `payment.py`: Route'ların request/response yapısının değiştirilmesi
-- [ ] `payment.html`: JS bağımlılığının kaldırılması, saf HTML forma dönüştürülmesi
-- [ ] Sunucu tarafında manuel dosya overwrite işlemi (Deployment)
+- [x] `payment_service.py`: Adapter'ın sadeleştirilmesi (İmza ve parametre üretimi)
+- [x] `payment.py`: Route'ların request/response yapısının değiştirilmesi
+- [x] `payment.html`: JS bağımlılığının kaldırılması, saf HTML forma dönüştürülmesi
+- [x] Sunucu tarafında manuel dosya overwrite işlemi (Deployment)
+- [/] REDIRECT_NOTFOUND hatası tespiti ve çözümü
+    - [x] API bilgilerini koda gömme (Hardcode)
+    - [x] İmza algoritması ve fiyat formatı düzeltmesi
+    - [/] Website Index ve zorunlu alan standardizasyonu
 
 ---
 ## 🛠 SPRINT 6: LANDING PAGE & MAİL İYİLEŞTİRMELERİ (P1)
