@@ -149,7 +149,8 @@
                 </div>
             </div>
 
-            <form method="POST" action="{{ url_for('payment.initiate_payment') }}" id="payment-form">
+            <form method="POST" action="/payment/initiate" id="payment-form">
+                {{ csrf_token() if csrf_token }}
                 <input type="hidden" name="plan" value="{{ plan }}">
                 <input type="hidden" name="gateway" value="shopier">
 
@@ -196,7 +197,6 @@
                 </div>
             </form>
         </div>
-
         <div class="text-center mt-4 text-muted small">
             <i class="bi bi-shield-lock me-1"></i> Ödemeleriniz 256-bit SSL ile şifrelenir.
         </div>
@@ -210,7 +210,9 @@
             const monthlyLabel = document.getElementById('monthly-label');
             const yearlyLabel = document.getElementById('yearly-label');
 
-            const mPrice = {{ plan_details.price }};`r`n            const yPrice = {{ (plan_details.price * 12 * 0.8) | int }};
+            const mPrice = {{ plan_details.price }
+        };
+        const yPrice = {{ (plan_details.price * 12 * 0.8) | int }};
 
         periodRadios.forEach(radio => {
             radio.addEventListener('change', function () {
