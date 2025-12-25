@@ -124,6 +124,11 @@
 
 <body>
     <div class="payment-container">
+        <!-- Data container to pass Jinja variables to JS safely -->
+        <div id="payment-data" data-price="{{ plan_details.price }}"
+            data-yearly-price="{{ (plan_details.price * 12 * 0.8)|int }}">
+        </div>
+
         <div class="auth-card">
             <div class="auth-logo">
                 <img src="{{ url_for('static', filename='logo.png') }}" alt="Vidos">
@@ -210,23 +215,24 @@
             const monthlyLabel = document.getElementById('monthly-label');
             const yearlyLabel = document.getElementById('yearly-label');
 
-            const mPrice = {{ plan_details.price }
-        };
-        const yPrice = {{ (plan_details.price * 12 * 0.8) | int }};
+            // Get prices from data attributes - SAFE METHOD
+            const dataEl = document.getElementById('payment-data');
+            const mPrice = parseFloat(dataEl.dataset.price);
+            const yPrice = parseFloat(dataEl.dataset.yearlyPrice);
 
-        periodRadios.forEach(radio => {
-            radio.addEventListener('change', function () {
-                if (this.value === 'yearly') {
-                    priceDisplay.innerText = '₺' + yPrice;
-                    yearlyLabel.classList.add('active');
-                    monthlyLabel.classList.remove('active');
-                } else {
-                    priceDisplay.innerText = '₺' + mPrice;
-                    monthlyLabel.classList.add('active');
-                    yearlyLabel.classList.remove('active');
-                }
+            periodRadios.forEach(radio => {
+                radio.addEventListener('change', function () {
+                    if (this.value === 'yearly') {
+                        priceDisplay.innerText = '₺' + yPrice;
+                        yearlyLabel.classList.add('active');
+                        monthlyLabel.classList.remove('active');
+                    } else {
+                        priceDisplay.innerText = '₺' + mPrice;
+                        monthlyLabel.classList.add('active');
+                        yearlyLabel.classList.remove('active');
+                    }
+                });
             });
-        });
         });
     </script>
 </body>
