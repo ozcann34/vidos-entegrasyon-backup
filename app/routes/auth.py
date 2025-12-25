@@ -4,6 +4,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from app.services.user_service import authenticate_user, create_user
 from app.models import User
 from app import db
+from datetime import datetime
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -182,28 +183,39 @@ def verify_email():
         return redirect(url_for('main.dashboard'))
     
     if request.method == 'POST':
-        otp = request.form.get('otp', '').strip()
-        
-        if not otp:
-            flash('Lütfen doğrulama kodunu girin.', 'warning')
-        elif current_user.email_otp == otp:
-            if current_user.otp_expiry and current_user.otp_expiry > datetime.utcnow():
-                current_user.is_email_verified = True
-                current_user.email_otp = None
-                current_user.otp_expiry = None
-                db.session.commit()
-                
-                flash('E-posta adresiniz başarıyla doğrulandı!', 'success')
-                
-                # Check for pending payment
-                plan = session.get('selected_plan')
-                if plan and plan != 'free':
-                    return redirect(url_for('payment.payment_page', plan=plan))
-                return redirect(url_for('main.dashboard'))
+        try:
+            otp = request.form.get('otp', '').strip()
+            
+            if not otp:
+                flash('Lütfen doğrulama kodunu girin.', 'warning')
+            elif current_user.email_otp == otp:
+                if current_user.otp_expiry and current_user.otp_expiry > datetime.utcnow():
+                    current_user.is_email_verified = True
+                    current_user.email_otp = None
+                    current_user.otp_expiry = None
+                    db.session.commit()
+                    
+                    flash('E-posta adresiniz başarıyla doğrulandı!', 'success')
+                    
+                    # Check for pending payment
+                    plan = session.get('selected_plan')
+                    if plan and plan != 'free':
+                        return redirect(url_for('payment.payment_page', plan=plan))
+                    return redirect(url_for('main.dashboard'))
+                else:
+                    flash('Doğrulama kodunun süresi dolmuş. Lütfen yeni bir kod isteyin.', 'danger')
             else:
-                flash('Doğrulama kodunun süresi dolmuş. Lütfen yeni bir kod isteyin.', 'danger')
-        else:
-            flash('Geçersiz doğrulama kodu.', 'danger')
+                flash('Geçersiz doğrulama kodu.', 'danger')
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            print(f"Verify Email Error: {str(e)}")
+            try:
+                import os
+                with open('auth_error.log', 'a') as f:
+                    f.write(f"\\n[{datetime.utcnow()}] Error in verify_email:\\n{error_details}\\n")
+            except: pass
+            flash(f'Bir hata oluştu: {str(e)}', 'danger')
             
     return render_template('auth/verify_email.html')
 
