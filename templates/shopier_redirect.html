@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Yönlendiriliyor...</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background: #f8fafc;
+        }
+
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4f46e5;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        p {
+            color: #64748b;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="loader"></div>
+    <h3>Shopier Ödeme Sayfasına Yönlendiriliyorsunuz</h3>
+    <p>Lütfen bekleyiniz, işlem güvenli sunuculara aktarılıyor...</p>
+
+    <!-- Otomatik Gönderilen Gizli Form -->
+    <form id="shopier_form" method="post" action="{{ post_url }}">
+        {% for key, value in params.items() %}
+        <input type="hidden" name="{{ key }}" value="{{ value }}">
+        {% endfor %}
+    </form>
+
+    <script>
+        // Formu otomatik gönder
+        setTimeout(function () {
+            document.getElementById('shopier_form').submit();
+        }, 500); // 0.5 saniye bekle (Kullanıcı mesajı görsün)
+    </script>
+</body>
+
+</html>

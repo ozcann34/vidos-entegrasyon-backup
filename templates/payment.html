@@ -1,240 +1,116 @@
 <!DOCTYPE html>
-<html lang="tr" data-bs-theme="light">
+<html lang="tr">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ödeme - Vidos Entegrasyon</title>
+    <title>Ödeme Yap - Vidos</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-        :root {
-            --primary-gradient: linear-gradient(135deg, #4f46e5 0%, #db2777 100%);
-            --vidos-blue: #4f46e5;
-            --white-bg: #ffffff;
-            --light-grey: #f8fafc;
-            --border-color: #e2e8f0;
-        }
-
         body {
-            min-height: 100vh;
-            background-color: var(--light-grey);
-            font-family: 'Inter', -apple-system, sans-serif;
-            color: #0f172a;
-            padding: 3rem 0;
+            background-color: #f8fafc;
+            padding: 40px 0;
+            font-family: sans-serif;
         }
 
-        .payment-container {
-            max-width: 700px;
+        .payment-card {
+            max-width: 600px;
             margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
 
-        .auth-card {
-            background: var(--white-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 20px;
-            padding: 2.5rem;
-            box-shadow: 0 10px 25px -4px rgba(0, 0, 0, 0.05);
-        }
-
-        .auth-logo {
+        .plan-header {
             text-align: center;
-            margin-bottom: 2rem;
+            margin-bottom: 30px;
         }
 
-        .auth-logo img {
-            height: 50px;
-            margin-bottom: 1rem;
-        }
-
-        .plan-info {
-            background-color: #f1f5f9;
-            border-radius: 16px;
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-            border-left: 4px solid var(--vidos-blue);
-        }
-
-        .price-display {
-            font-size: 2.5rem;
-            font-weight: 800;
-            color: var(--vidos-blue);
-        }
-
-        .btn-payment {
-            padding: 1rem;
-            background: var(--primary-gradient);
-            border: none;
-            border-radius: 12px;
-            font-weight: 600;
-            font-size: 1.1rem;
-            color: white;
-            transition: all 0.3s ease;
-        }
-
-        .btn-payment:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(79, 70, 229, 0.4);
-        }
-
-        .feature-item {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            margin-bottom: 0.5rem;
-            font-size: 0.95rem;
-            color: #475569;
-        }
-
-        .feature-item i {
-            color: #22c55e;
-        }
-
-        .billing-cycle-card {
-            cursor: pointer;
+        .price-option {
             border: 2px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 1rem;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            cursor: pointer;
             transition: all 0.2s;
-            position: relative;
-        }
-
-        .billing-cycle-card.active {
-            border-color: var(--vidos-blue);
-            background-color: rgba(79, 70, 229, 0.03);
-        }
-
-        .billing-cycle-card input {
-            position: absolute;
-            opacity: 0;
-        }
-
-        .shopier-badge {
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            justify-content: center;
-            background: #fff;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 0.5rem;
-            margin-top: 1rem;
+        }
+
+        .price-option:hover {
+            border-color: #4f46e5;
+        }
+
+        .price-option input {
+            margin-right: 15px;
+            transform: scale(1.5);
+        }
+
+        .btn-pay {
+            width: 100%;
+            padding: 15px;
+            background: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+
+        .btn-pay:hover {
+            background: #4338ca;
         }
     </style>
 </head>
 
 <body>
-    <div class="payment-container">
-        <!-- Data container to pass Jinja variables to JS safely -->
-        <div id="payment-data" data-price="{{ plan_details.price }}"
-            data-yearly-price="{{ (plan_details.price * 12 * 0.8)|int }}">
+
+    <div class="payment-card">
+        <div class="plan-header">
+            <h3>{{ plan_details.name }} Paketi</h3>
+            <p class="text-muted">Aboneliğinizi başlatmak için ödeme planını seçin.</p>
         </div>
 
-        <div class="auth-card">
-            <div class="auth-logo">
-                <img src="{{ url_for('static', filename='logo.png') }}" alt="Vidos">
-                <h3>Güvenli Ödeme</h3>
-                <p class="text-muted">Aboneliğinizi başlatmak için ödeme yöntemi seçin</p>
+        <!-- Backend'e POST yapan saf HTML form -->
+        <form action="/payment/initiate" method="POST">
+            <input type="hidden" name="plan" value="{{ plan }}">
+
+            <label class="price-option">
+                <div class="d-flex align-items-center">
+                    <input type="radio" name="billing_period" value="monthly" checked>
+                    <div>
+                        <strong>Aylık Ödeme</strong><br>
+                        <small class="text-muted">Her ay yenilenir</small>
+                    </div>
+                </div>
+                <div class="fs-5 fw-bold">₺{{ plan_details.price }}</div>
+            </label>
+
+            <label class="price-option">
+                <div class="d-flex align-items-center">
+                    <input type="radio" name="billing_period" value="yearly">
+                    <div>
+                        <strong>Yıllık Ödeme</strong> <span class="badge bg-success ms-2">%20 İndirim</span><br>
+                        <small class="text-muted">Tek seferlik ödeme</small>
+                    </div>
+                </div>
+                <div class="fs-5 fw-bold">₺{{ (plan_details.price * 12 * 0.8)|int }}</div>
+            </label>
+
+            <button type="submit" class="btn btn-pay">
+                Shopier ile Güvenli Öde
+            </button>
+
+            <div class="text-center mt-3">
+                <img src="https://www.shopier.com/images/shopier_logo_main.png" alt="Shopier"
+                    style="height: 25px; opacity: 0.7;">
             </div>
-
-            <div class="plan-info">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="mb-0">Seçilen Paket: <strong>{{ plan_details.name }}</strong></h5>
-                    <span class="badge bg-primary rounded-pill">Aktif Plan</span>
-                </div>
-                <div class="mb-3">
-                    {% for feature in plan_details.features[:4] %}
-                    <div class="feature-item">
-                        <i class="bi bi-check2-circle"></i>
-                        {{ feature }}
-                    </div>
-                    {% endfor %}
-                    {% if plan_details.features|length > 4 %}
-                    <div class="text-muted small ps-4">+ {{ plan_details.features|length - 4 }} özellik daha</div>
-                    {% endif %}
-                </div>
-            </div>
-
-            <form method="POST" action="/payment/initiate" id="payment-form">
-                {{ csrf_token() if csrf_token }}
-                <input type="hidden" name="plan" value="{{ plan }}">
-                <input type="hidden" name="gateway" value="shopier">
-
-                <h6 class="mb-3 fw-bold">Ödeme Aralığı Seçin</h6>
-                <div class="row g-3 mb-4">
-                    <div class="col-md-6">
-                        <label class="billing-cycle-card active w-100" id="monthly-label">
-                            <input type="radio" name="billing_period" value="monthly" checked>
-                            <div class="fw-bold">Aylık Ödeme</div>
-                            <div class="text-muted small">₺{{ plan_details.price }}/ay</div>
-                        </label>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="billing-cycle-card w-100" id="yearly-label">
-                            <input type="radio" name="billing_period" value="yearly">
-                            <div class="fw-bold">Yıllık Ödeme <span class="badge bg-success ms-1">%20</span></div>
-                            <div class="text-muted small">₺{{ (plan_details.price * 12 * 0.8)|int }}/yıl</div>
-                        </label>
-                    </div>
-                </div>
-
-                <div class="price-summary mb-4 text-center">
-                    <div class="text-muted small">Toplam Ödenecek Tutar</div>
-                    <div class="price-display" id="total-price">₺{{ plan_details.price }}</div>
-                </div>
-
-                <div class="d-grid">
-                    <button type="submit" class="btn btn-payment">
-                        <i class="bi bi-credit-card me-2"></i>
-                        Shopier ile Ödemeyi Tamamla
-                    </button>
-                </div>
-
-                <div class="shopier-badge">
-                    <img src="https://www.shopier.com/images/shopier_logo_main.png" alt="Shopier"
-                        style="height: 20px; filter: grayscale(1);">
-                    <span class="ms-2 text-muted small">Shopier Güvencesiyle</span>
-                </div>
-
-                <div class="text-center mt-4">
-                    <a href="{{ url_for('main.dashboard') }}" class="text-muted small text-decoration-none">
-                        <i class="bi bi-arrow-left me-1"></i> İptal et ve kontrol paneline dön
-                    </a>
-                </div>
-            </form>
-        </div>
-        <div class="text-center mt-4 text-muted small">
-            <i class="bi bi-shield-lock me-1"></i> Ödemeleriniz 256-bit SSL ile şifrelenir.
-        </div>
+        </form>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const periodRadios = document.querySelectorAll('input[name="billing_period"]');
-            const priceDisplay = document.getElementById('total-price');
-            const monthlyLabel = document.getElementById('monthly-label');
-            const yearlyLabel = document.getElementById('yearly-label');
-
-            // Get prices from data attributes - SAFE METHOD
-            const dataEl = document.getElementById('payment-data');
-            const mPrice = parseFloat(dataEl.dataset.price);
-            const yPrice = parseFloat(dataEl.dataset.yearlyPrice);
-
-            periodRadios.forEach(radio => {
-                radio.addEventListener('change', function () {
-                    if (this.value === 'yearly') {
-                        priceDisplay.innerText = '₺' + yPrice;
-                        yearlyLabel.classList.add('active');
-                        monthlyLabel.classList.remove('active');
-                    } else {
-                        priceDisplay.innerText = '₺' + mPrice;
-                        monthlyLabel.classList.add('active');
-                        yearlyLabel.classList.remove('active');
-                    }
-                });
-            });
-        });
-    </script>
 </body>
 
 </html>

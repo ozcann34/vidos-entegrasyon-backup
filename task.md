@@ -101,6 +101,23 @@
 - [x] Ödeme geçmişi ve fatura görüntüleme ekranı (Mevcut altyapı kullanılıyor)
 - [x] Admin Paneli: Ödeme Geçmişi Sayfası (Sadece yetkili erişimi)
 
+- [x] Admin Paneli: Ödeme Geçmişi Sayfası (Sadece yetkili erişimi)
+
+---
+## 🔄 SPRINT 5.5: SHOPIER ALTYAPI YENİLEME (REBUILD) (P0)
+**Durum**: [/] Başlandı
+*Kritik: Hata giderilemediği için altyapı "Backend-First" mimarisiyle sıfırdan yazılıyor.*
+
+### A. Temizlik & Hazırlık 🧹
+- [ ] Eski ödeme dosyalarının ve logiklerin temizlenmesi (`payment.html`, `payment.py`, `service`)
+- [ ] `shopier_redirect.html` template'inin oluşturulması (Auto-submit form)
+
+### B. "Backend-First" Implementasyonu ⚙️
+- [ ] `payment_service.py`: Adapter'ın sadeleştirilmesi (Sadece imza ve parametre üretimi)
+- [ ] `payment.py`: Route'ların request/response yapısının değiştirilmesi
+- [ ] `payment.html`: JS bağımlılığının kaldırılması, saf HTML forma dönüştürülmesi
+- [ ] Sunucu tarafında manuel dosya overwrite işlemi (Deployment)
+
 ---
 ## 🛠 SPRINT 6: LANDING PAGE & MAİL İYİLEŞTİRMELERİ (P1)
 **Durum**: [/] Planlanıyor
