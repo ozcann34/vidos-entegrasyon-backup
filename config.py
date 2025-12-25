@@ -25,6 +25,8 @@ class Config:
 
 class DevelopmentConfig(Config):
     DEBUG = True
+    # Force correct password for local dev
+    MAIL_PASSWORD = 'ftkq fpri dhiz nsqj'
 
 class ProductionConfig(Config):
     DEBUG = False

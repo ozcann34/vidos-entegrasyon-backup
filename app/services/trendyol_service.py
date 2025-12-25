@@ -667,7 +667,14 @@ def fetch_all_trendyol_products(user_id: int = None, job_id: Optional[str] = Non
     """Fetch ALL products from Trendyol API with pagination."""
     from app.services.job_queue import update_mp_job, get_mp_job
     
-    client = get_trendyol_client(user_id=user_id)
+    try:
+        client = get_trendyol_client(user_id=user_id)
+    except ValueError as e:
+        if job_id:
+            append_mp_job_log(job_id, f"Hata: {str(e)}", level='error')
+        logging.warning(f"Trendyol credentials missing for user {user_id}: {str(e)}")
+        return []
+
     all_items = []
     page = 0
     size = 100 # Safe batch size

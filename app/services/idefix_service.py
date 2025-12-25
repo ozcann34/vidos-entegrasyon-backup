@@ -12,6 +12,8 @@ from app.services.job_queue import append_mp_job_log, get_mp_job, update_mp_job
 from app.models import Setting, Product, SupplierXML
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO) # Keep INFO but will demote specific logs
+
 
 # TF-IDF imports (optional, graceful fallback)
 try:
@@ -911,12 +913,12 @@ items: List[Dict[str, Any]],
             params["poolState"] = pool_state
             
         try:
-            logger.info(f"[IDEFIX] Listing products: page={page}, limit={limit}, search={search}, state={pool_state}")
+            logger.debug(f"[IDEFIX] Listing products: page={page}, limit={limit}, search={search}, state={pool_state}")
             resp = self.session.get(url, headers=self._get_headers(), params=params, timeout=60)
             resp.raise_for_status()
             
             data = resp.json()
-            logger.info(f"[IDEFIX] list_products response keys: {list(data.keys()) if isinstance(data, dict) else 'raw list'}")
+            logger.debug(f"[IDEFIX] list_products response keys: {list(data.keys()) if isinstance(data, dict) else 'raw list'}")
             
             if isinstance(data, dict):
                 # Standard response: { "products": [...], ... }
