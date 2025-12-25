@@ -277,7 +277,7 @@
             <!-- GRUP: DESTEK & AYARLAR -->
             <li class="nav-section-title px-3 mb-2 mt-4 small text-uppercase text-white-50 fw-bold"
                 style="font-size: 0.7rem; letter-spacing: 1px;">Sistem</li>
-            {% if current_user.is_admin %}
+            {% if current_user.is_super_admin %}
             <li class="nav-item">
                 <a href="{{ url_for('admin.global_settings') }}"
                     class="nav-link {% if request.endpoint == 'admin.global_settings' %}active{% endif %}"
