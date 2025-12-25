@@ -56,6 +56,53 @@
                             {% endfor %}
                         </div>
 
+                        <!-- Shopier API Settings (Super Admin Only) -->
+                        <div class="mt-5 pt-4 border-top">
+                            <div class="d-flex align-items-center mb-4">
+                                <div class="p-2 rounded-circle bg-primary shadow-sm me-3 text-white">
+                                    <i class="bi bi-credit-card fs-4"></i>
+                                </div>
+                                <div>
+                                    <h5 class="mb-0 fw-bold">Shopier Ödeme Entegrasyonu</h5>
+                                    <p class="text-muted small mb-0">Global ödeme sistemi API bilgileri</p>
+                                </div>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="shopier_api_username" class="form-label fw-bold">
+                                        <i class="bi bi-person-badge me-1"></i> API Kullanıcı Adı
+                                    </label>
+                                    <input type="text" class="form-control" id="shopier_api_username"
+                                        name="shopier_api_username" value="{{ shopier_settings.username }}"
+                                        placeholder="93d990d318d7429b720d52d394681ac3">
+                                    <small class="text-muted">Shopier panel → Ayarlar → API Bilgileri</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="shopier_api_password" class="form-label fw-bold">
+                                        <i class="bi bi-key me-1"></i> API Şifre
+                                    </label>
+                                    <input type="text" class="form-control" id="shopier_api_password"
+                                        name="shopier_api_password" value="{{ shopier_settings.password }}"
+                                        placeholder="3980f311a4dd2438cccca4237a9ae73">
+                                    <small class="text-muted">API Secret Key</small>
+                                </div>
+                                <div class="col-12">
+                                    <label for="shopier_callback_url" class="form-label fw-bold">
+                                        <i class="bi bi-arrow-return-left me-1"></i> Geri Dönüş URL
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">https://</span>
+                                        <input type="text" class="form-control" id="shopier_callback_url"
+                                            name="shopier_callback_url" value="{{ shopier_settings.callback_url }}"
+                                            placeholder="yourdomain.com/payment/callback">
+                                    </div>
+                                    <small class="text-muted">Ödeme tamamlandığında Shopier'in yönlendireceği
+                                        URL</small>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="mt-5 pt-4 border-top d-flex justify-content-end gap-3">
                             <a href="{{ url_for('admin.dashboard') }}" class="btn btn-light rounded-pill px-5">İptal</a>
                             <button type="submit" class="btn btn-primary rounded-pill px-5 shadow-sm fw-bold">

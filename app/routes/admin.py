@@ -665,9 +665,22 @@ def global_settings():
     }
     
     if request.method == 'POST':
+        # Save feature toggles
         for key in features.keys():
             value = 'true' if request.form.get(f'global_{key}_enabled') == 'on' else 'false'
             Setting.set(f'global_{key}_enabled', value, user_id=None)
+        
+        # Save Shopier API settings (super admin only)
+        shopier_username = request.form.get('shopier_api_username', '').strip()
+        shopier_password = request.form.get('shopier_api_password', '').strip()
+        shopier_callback = request.form.get('shopier_callback_url', '').strip()
+        
+        if shopier_username:
+            Setting.set('SHOPIER_API_USERNAME', shopier_username, user_id=None)
+        if shopier_password:
+            Setting.set('SHOPIER_API_PASSWORD', shopier_password, user_id=None)
+        if shopier_callback:
+            Setting.set('SHOPIER_CALLBACK_URL', shopier_callback, user_id=None)
             
         flash('Küresel ayarlar başarıyla güncellendi.', 'success')
         return redirect(url_for('admin.global_settings'))
@@ -676,8 +689,18 @@ def global_settings():
     current_values = {}
     for key in features.keys():
         current_values[key] = Setting.get(f'global_{key}_enabled', 'true', user_id=None) == 'true'
+    
+    # Get Shopier settings
+    shopier_settings = {
+        'username': Setting.get('SHOPIER_API_USERNAME', '', user_id=None),
+        'password': Setting.get('SHOPIER_API_PASSWORD', '', user_id=None),
+        'callback_url': Setting.get('SHOPIER_CALLBACK_URL', '', user_id=None)
+    }
         
-    return render_template('admin/global_settings.html', features=features, current_values=current_values)
+    return render_template('admin/global_settings.html', 
+                         features=features, 
+                         current_values=current_values,
+                         shopier_settings=shopier_settings)
 
 
 
