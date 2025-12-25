@@ -364,7 +364,18 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
     from app.utils.helpers import get_marketplace_multiplier
     
     # Extract options from kwargs
-    price_multiplier = to_float(kwargs.get('price_multiplier', 1.0))
+    price_multiplier = to_float(kwargs.get('price_multiplier', 0))
+    
+    # If multiplier not provided or is 0/1, try to get from settings
+    if price_multiplier <= 0 or price_multiplier == 1.0:
+        setting_multiplier = Setting.get("N11_PRICE_MULTIPLIER", user_id=user_id)
+        if setting_multiplier:
+            price_multiplier = to_float(setting_multiplier)
+    
+    # Final fallback to 1.0
+    if price_multiplier <= 0:
+        price_multiplier = 1.0
+    
     default_price_val = to_float(kwargs.get('default_price', 0.0))
     skip_no_barcode = kwargs.get('skip_no_barcode', False)
     skip_no_image = kwargs.get('skip_no_image', False)
