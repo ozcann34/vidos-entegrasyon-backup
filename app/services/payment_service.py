@@ -57,45 +57,58 @@ class ShopierAdapter:
         user = payment.user
         plan_name = SUBSCRIPTION_PLANS.get(payment.plan, {}).get('name', 'Abonelik')
         
-        # Fiyat kontrolü
+        # Fiyat ve Para Birimi
         try:
             price = float(payment.amount)
         except:
             price = 0.0
+            
+        # Shopier parametreleri için temizlik
+        # Turkce karakterleri temizliyoruz (Signature hatasini onlemek icin)
+        product_name = f"Vidos - {plan_name} Paketi".replace('ı', 'i').replace('ğ', 'g').replace('ü', 'u').replace('ş', 's').replace('ö', 'o').replace('ç', 'c').replace('İ', 'I')
         
-        # Shopier'in istediği zorunlu parametreler
+        # Telefon numarasi (Basinda 0 olmadan 10 hane olmasi daha saglikli)
+        phone = str(user.phone) if user.phone else '5555555555'
+        if phone.startswith('0'): phone = phone[1:]
+        if len(phone) > 10: phone = phone[-10:]
+
+        # Shopier'in istedigi zorunlu parametreler
         args = {
             'API_key': self.api_key,
             'website_index': 1,
-            'platform_order_id': payment.payment_reference,
-            'product_name': f"Vidos - {plan_name} Paketi",
-            'product_type': 1, # 1: Fiziksel/Dijital Ürün, 0: Hizmet
-            'buyer_name': user.first_name if user.first_name else 'Misafir',
-            'buyer_surname': user.last_name if user.last_name else 'Kullanici',
+            'platform_order_id': str(payment.payment_reference),
+            'product_name': product_name,
+            'product_type': 0, # 0: Hizmet (Abonelik icin daha uygun)
+            'price': str(int(price)) if price == int(price) else f"{price:.2f}",
+            'currency': 0, # 0: TL
+            'buyer_name': (user.first_name if user.first_name else 'Misafir').replace('ı', 'i').replace('ğ', 'g').replace('ü', 'u').replace('ş', 's').replace('ö', 'o').replace('ç', 'c'),
+            'buyer_surname': (user.last_name if user.last_name else 'Kullanici').replace('ı', 'i').replace('ğ', 'g').replace('ü', 'u').replace('ş', 's').replace('ö', 'o').replace('ç', 'c'),
             'buyer_email': user.email,
             'buyer_account_age': 0,
             'buyer_id_nr': 0,
-            'buyer_phone': user.phone if user.phone else '05555555555', # Zorunlu alan
-            'billing_address': "Turkiye", # Zorunlu
-            'city': "Istanbul", # Zorunlu
-            'country': "Turkiye", # Zorunlu
-            'zip_code': "34000", # Zorunlu
-            'shipping_address': "Turkiye",
+            'buyer_phone': phone,
+            'billing_address': "Turkiye - Online Hizmet", 
+            'city': "Istanbul", 
+            'country': "TR", 
+            'zip_code': "34000", 
+            'shipping_address': "Turkiye - Online Hizmet",
             'shipping_city': "Istanbul",
-            'shipping_country': "Turkiye",
+            'shipping_country': "TR",
             'shipping_zip_code': "34000",
-            'currency': 0, # 0: TL, 1: USD, 2: EUR
             'modul_version': '1.0.4',
             'random_nr': generate_transaction_id()
         }
 
-        # İmza oluşturma (Shopier Dokümantasyonuna göre sıralı birleştirme)
+        # İmza oluşturma (Shopier Pay4Post Guncel Siralamasi)
+        # SİRALAMA: API_key + website_index + platform_order_id + product_name + product_type + price + currency + buyer_name + buyer_surname + buyer_email + buyer_account_age + buyer_id_nr + buyer_phone + billing_address + city + country + zip_code + shipping_address + shipping_city + shipping_country + shipping_zip_code + modul_version + random_nr
         data_to_sign = [
             args['API_key'],
             args['website_index'],
             args['platform_order_id'],
             args['product_name'],
             args['product_type'],
+            args['price'],
+            args['currency'],
             args['buyer_name'],
             args['buyer_surname'],
             args['buyer_email'],
@@ -110,7 +123,6 @@ class ShopierAdapter:
             args['shipping_city'],
             args['shipping_country'],
             args['shipping_zip_code'],
-            args['currency'],
             args['modul_version'],
             args['random_nr']
         ]
@@ -125,9 +137,6 @@ class ShopierAdapter:
         
         args['signature'] = base64.b64encode(signature).decode()
         
-        # Fiyat parametresini sonradan ekliyoruz
-        args['price'] = str(price)
-
         # Başarılı dönüş: Post URL ve Parametreleri ver
         return {
             'success': True,
