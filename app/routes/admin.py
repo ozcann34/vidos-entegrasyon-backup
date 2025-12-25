@@ -332,24 +332,33 @@ def delete_user_route(user_id):
     try:
 
         # Delete related data
-        from app.models import Product, Order, SupplierXML, BatchLog, Payment, MarketplaceProduct, Notification, CategoryMapping, BrandMapping, UserActivityLog, SupportTicket, Expense, AdminLog
+        from app.models import Product, Order, SupplierXML, BatchLog, Payment, MarketplaceProduct, Notification, CategoryMapping, BrandMapping, UserActivityLog, SupportTicket, Expense, AdminLog, Setting, ExcelFile, Blacklist, AutoSync, PushSubscription
 
         # 1. Product & Catalog Data
         MarketplaceProduct.query.filter_by(user_id=user_id).delete()
         Product.query.filter_by(user_id=user_id).delete()
         SupplierXML.query.filter_by(user_id=user_id).delete()
+        CategoryMapping.query.filter_by(user_id=user_id).delete()
+        BrandMapping.query.filter_by(user_id=user_id).delete()
+        ExcelFile.query.filter_by(user_id=user_id).delete()
+        Blacklist.query.filter_by(user_id=user_id).delete()
         
         # 2. Operational Data
         Order.query.filter_by(user_id=user_id).delete()
         BatchLog.query.filter_by(user_id=user_id).delete()
         Notification.query.filter_by(user_id=user_id).delete()
+        PushSubscription.query.filter_by(user_id=user_id).delete()
         UserActivityLog.query.filter_by(user_id=user_id).delete()
         Expense.query.filter_by(user_id=user_id).delete()
+        AutoSync.query.filter_by(user_id=user_id).delete()
+        
+        # 3. Settings (user-specific)
+        Setting.query.filter_by(user_id=user_id).delete()
         
         # Clean up Admin Logs where user was the actor
         AdminLog.query.filter_by(admin_id=user_id).delete()
 
-        # 3. Financial & Account Data
+        # 4. Financial & Account Data
         Payment.query.filter_by(user_id=user_id).delete()
         Subscription.query.filter_by(user_id=user_id).delete()
         SupportTicket.query.filter_by(user_id=user_id).delete()
