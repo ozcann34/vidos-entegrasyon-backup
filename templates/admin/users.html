@@ -70,9 +70,11 @@
                     <form action="{{ url_for('admin.toggle_admin', user_id=user.id) }}" method="POST" class="d-inline"
                         onsubmit="return confirm('Bu kullanıcının yetkisini değiştirmek istediğinize emin misiniz?');">
                         {% if user.is_admin %}
+                        {% if user.email != 'bugraerkaradeniz34@gmail.com' %}
                         <button type="submit" class="btn btn-sm btn-outline-warning" title="Yönetici Yetkisini Al">
                             <i class="bi bi-person-down"></i>
                         </button>
+                        {% endif %}
                         {% else %}
                         <button type="submit" class="btn btn-sm btn-outline-success" title="Yönetici Yap">
                             <i class="bi bi-person-up"></i>
