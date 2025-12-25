@@ -55,8 +55,11 @@ class BatchLog(db.Model):
     timestamp = db.Column(db.String, nullable=False)
     success = db.Column(db.Boolean, nullable=False)
     product_count = db.Column(db.Integer, default=0)
+    success_count = db.Column(db.Integer, default=0)
+    fail_count = db.Column(db.Integer, default=0)
     details_json = db.Column(db.Text, nullable=True)
     marketplace = db.Column(db.String, default='trendyol')
+    job_type = db.Column(db.String, nullable=True)
 
     def get_details(self) -> Dict[str, Any]:
         return json.loads(self.details_json) if self.details_json else {}

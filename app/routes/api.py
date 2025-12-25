@@ -2093,7 +2093,7 @@ def api_auto_sync_settings():
     try:
         settings = []
         for marketplace_key in MARKETPLACES.keys():
-            auto_sync = AutoSync.get_or_create(marketplace_key)
+            auto_sync = AutoSync.get_or_create(marketplace_key, user_id=current_user.id)
             data = auto_sync.to_dict()
             
             # Load extended settings
@@ -2121,7 +2121,7 @@ def api_auto_sync_toggle():
             return jsonify({'success': False, 'message': 'Geçersiz pazaryeri'}), 400
         
         # AutoSync kaydını güncelle
-        auto_sync = AutoSync.get_or_create(marketplace)
+        auto_sync = AutoSync.get_or_create(marketplace, user_id=current_user.id)
         auto_sync.enabled = enabled
         auto_sync.sync_interval_minutes = int(interval_minutes)
         auto_sync.updated_at = datetime.utcnow().isoformat()
@@ -2176,7 +2176,7 @@ def api_auto_sync_trigger(marketplace: str):
         def sync_task(job_id):
             from flask import current_app
             with current_app.app_context():
-                return sync_marketplace_products(marketplace, job_id=job_id)
+                return sync_marketplace_products(marketplace, user_id=current_user.id, job_id=job_id)
         
         job_id = submit_mp_job(
             f'manual_sync_{marketplace}',
@@ -2474,6 +2474,42 @@ def update_product_cost():
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@api_bp.route('/api/announcement/<int:ann_id>/dismiss', methods=['POST'])
+@login_required
+def api_dismiss_announcement(ann_id):
+    """Dismiss a global announcement for the current user."""
+    try:
+        from app.models import UserAnnouncement
+        # This assumes a UserAnnouncement table exists or handles it via Setting
+        # Given the dashboard code uses dismissAnnouncement('id'), let's implement via Setting
+        dismissed = Setting.get('DISMISSED_ANNOUNCEMENTS', '', user_id=current_user.id)
+        ids = dismissed.split(',') if dismissed else []
+        if str(ann_id) not in ids:
+            ids.append(str(ann_id))
+            Setting.set('DISMISSED_ANNOUNCEMENTS', ','.join(ids), user_id=current_user.id)
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@api_bp.route('/api/notification/<int:notif_id>/read', methods=['POST'])
+@login_required
+def api_mark_notification_read(notif_id):
+    """Mark a user notification as read."""
+    try:
+        from app.models.notification import Notification
+        notif = Notification.query.filter_by(id=notif_id, user_id=current_user.id).first()
+        if notif:
+            notif.is_read = True
+            db.session.commit()
+            return jsonify({'success': True})
+        return jsonify({'success': False, 'message': 'Bildirim bulunamadı'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 
 
 @api_bp.route('/product/details', methods=['GET'])

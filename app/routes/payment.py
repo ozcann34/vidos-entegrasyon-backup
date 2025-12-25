@@ -61,10 +61,22 @@ def initiate_payment():
     
     # Integrate with actual payment gateway
     gw_adapter = get_payment_gateway(gateway)
-    init_res = gw_adapter.initiate_payment(payment)
+    
+    # Dynamic callback URL
+    callback_url = url_for('payment.payment_callback', _external=True)
+    
+    init_res = gw_adapter.initiate_payment(payment, callback_url=callback_url)
     
     if init_res.get('success'):
-        if init_res.get('redirect_url'):
+        if init_res.get('post_url'):
+            # Return a simple auto-submit form
+            return f"""
+            <form id="shopier_form" method="post" action="{init_res['post_url']}">
+                {''.join([f'<input type="hidden" name="{k}" value="{v}">' for k, v in init_res['params'].items()])}
+            </form>
+            <script type="text/javascript">document.getElementById('shopier_form').submit();</script>
+            """
+        elif init_res.get('redirect_url'):
             return redirect(init_res['redirect_url'])
         else:
             # Auto-complete for mock/test if no URL
@@ -79,17 +91,18 @@ def initiate_payment():
 @payment_bp.route('/callback', methods=['GET', 'POST'])
 def payment_callback():
     """Handle payment gateway callback."""
-    # TODO: Implement actual gateway callback handling
-    # This will be called by Shopier/Iyzico after payment
+    # Shopier sends data via POST usually
+    data = request.form.to_dict()
+    if not data:
+        data = request.args.to_dict()
+        
+    payment_ref = data.get('platform_order_id')
     
-    transaction_id = request.args.get('transaction_id') or request.form.get('transaction_id')
-    payment_ref = request.args.get('payment_ref') or request.form.get('payment_ref')
-    
-    if not transaction_id or not payment_ref:
+    if not payment_ref:
         flash('Geçersiz ödeme callback.', 'danger')
         return redirect(url_for('auth.landing'))
     
-    # Find payment by reference (Shopier may send it as platform_order_id)
+    # Find payment by reference
     payment = Payment.query.filter_by(payment_reference=payment_ref).first()
     
     if not payment:
@@ -98,19 +111,21 @@ def payment_callback():
     
     # Verify callback using gateway adapter
     gw_adapter = get_payment_gateway('shopier')
-    if not gw_adapter.verify_callback(request.form):
+    if not gw_adapter.verify_callback(data):
         flash('Ödeme doğrulaması başarısız (Geçersiz imza).', 'danger')
         return redirect(url_for('payment.cancel'))
 
     # Mark as completed
-    success = complete_payment(payment.id, transaction_id=transaction_id, gateway='shopier')
+    status = data.get('status', '').lower()
+    if status == 'success':
+        success = complete_payment(payment.id, transaction_id=data.get('payment_id', 'SHOP-TRX'), gateway='shopier')
+        if success:
+            flash('Ödemeniz başarıyla tamamlandı! Aboneliğiniz aktifleştirildi.', 'success')
+            return redirect(url_for('payment.success'))
     
-    if success:
-        flash('Ödemeniz başarıyla tamamlandı! Aboneliğiniz aktifleştirildi.', 'success')
-        return redirect(url_for('payment.success'))
-    else:
-        flash('Ödeme doğrulanamadı.', 'danger')
-        return redirect(url_for('payment.cancel'))
+    flash('Ödeme işlemi tamamlanamadı veya reddedildi.', 'danger')
+    return redirect(url_for('payment.cancel'))
+
 
 
 @payment_bp.route('/success')

@@ -15,18 +15,39 @@ from app.utils.helpers import get_marketplace_multiplier, to_float, to_int, chun
 logger = logging.getLogger(__name__)
 
 
-def sync_marketplace_products(marketplace: str, job_id: Optional[str] = None) -> Dict[str, Any]:
+def sync_all_users_marketplace(marketplace: str):
     """
-    Marketplace senkronizasyonu çalıştırır
+    Finds all users who have auto-sync enabled for this marketplace
+    and runs the sync task for each of them.
+    """
+    logger.info(f"Checking all users for {marketplace} auto-sync...")
     
-    Returns:
-        Dict with sync results: products_updated, stock_changes, price_changes, errors
+    # Get all uniquely enabled user sync records for this marketplace
+    sync_records = AutoSync.query.filter_by(marketplace=marketplace, enabled=True).all()
+    
+    success_count = 0
+    total_count = len(sync_records)
+    
+    for record in sync_records:
+        if record.user_id:
+            try:
+                res = sync_marketplace_products(marketplace, user_id=record.user_id)
+                if res.get('success'):
+                    success_count += 1
+            except Exception as e:
+                logger.error(f"Sync failed for user {record.user_id} on {marketplace}: {e}")
+                
+    logger.info(f"Global sync for {marketplace} finished. Total users: {total_count}, Success: {success_count}")
+    return {'total': total_count, 'success': success_count}
+
+
+def sync_marketplace_products(marketplace: str, user_id: int, job_id: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Marketplace senkronizasyonu çalıştırır (Belirli bir kullanıcı için)
     """
     from app.services.job_queue import update_mp_job, append_mp_job_log
-    from app.models import Setting, AutoSync
-    from flask_login import current_user
     
-    logger.info(f"Starting sync for {marketplace}")
+    logger.info(f"Starting sync for {marketplace} (User: {user_id})")
     
     if job_id:
         append_mp_job_log(job_id, f"{marketplace} senkronizasyonu başlatılıyor...", level='info')
@@ -42,17 +63,18 @@ def sync_marketplace_products(marketplace: str, job_id: Optional[str] = None) ->
     }
     
     try:
-        # Load configuration from Settings
-        # Assumes user context is handled or settings are global/appropriately scoped via AutoSync user_id logic if needed.
+        sync_record = AutoSync.query.filter_by(marketplace=marketplace, enabled=True, user_id=user_id).first()
         
-        sync_record = AutoSync.query.filter_by(marketplace=marketplace, enabled=True).first()
-        user_id = sync_record.user_id if sync_record else None
-        
+        if not sync_record:
+            msg = f"Kullanıcı {user_id} için senkronizasyon pasif."
+            result['errors'].append(msg)
+            return result
+            
         xml_source_id = Setting.get(f'AUTO_SYNC_XML_SOURCE_{marketplace}', user_id=user_id)
         match_by = Setting.get(f'AUTO_SYNC_MATCH_BY_{marketplace}', user_id=user_id) or 'barcode'
         
         if not xml_source_id:
-            msg = f"XML kaynağı seçilmemiş. Lütfen Otomatik Senkronizasyon ayarlarını kontrol edin."
+            msg = f"XML kaynağı seçilmemiş (Kullanıcı: {user_id})."
             if job_id: append_mp_job_log(job_id, msg, level='error')
             result['errors'].append(msg)
             return result
@@ -76,39 +98,12 @@ def sync_marketplace_products(marketplace: str, job_id: Optional[str] = None) ->
             sync_res = perform_pazarama_sync_all(job_id if job_id else 'auto_sync_temp', xml_source_id)
             
         elif marketplace == 'hepsiburada':
-             from app.services.hepsiburada_service import perform_hepsiburada_send_products
-             # Hepsiburada 'send' might be equivalent to sync?
-             sync_res = perform_hepsiburada_send_products(job_id if job_id else 'auto_sync_temp', [], xml_source_id)
+             from app.services.hepsiburada_service import perform_hepsiburada_send_all
+             sync_res = perform_hepsiburada_send_all(job_id if job_id else 'auto_sync_temp', xml_source_id, user_id=user_id)
         
         elif marketplace == 'idefix':
-             from app.services.idefix_service import perform_idefix_send_products
-             # Idefix 'send' is used as sync for now, takes empty list for 'all' if supported?
-             # Check perform_idefix_send_products signature: (job_id, barcodes, xml_source_id)
-             # If barcodes is empty, does it send ALL?
-             # I should check. Usually 'send' implies sending SPECIFIC list.
-             # 'sync' usually implies ALL matched.
-             # If idefix_service doesn't have sync_all, I might need to implement it or use send with ALL products from XML.
-             # For now, let's assume I need to fetch all XML products and pass their barcodes?
-             # Or better: check if perform_idefix_send_products handles empty list as "ALL".
-             # Step 1619 showed: perform_idefix_send_products(job_id, barcodes, xml_source_id).
-             # It iterates barcodes. If empty, it does nothing?
-             
-             # I will implement a quick logic here to get ALL barcodes from XML Source and pass to it?
-             # Or better: Create perform_idefix_sync_all in idefix_service?
-             # To avoid editing idefix_service right now (as it wasn't requested explicitly but implied by 'Auto Sync Logic Review'),
-             # I will skip deep integration for Idefix if complex.
-             # But 'Idefix sync not fully implemented yet' was the old message.
-             # Let's try to extract barcodes from XML index.
-             
-             from app.services.xml_service import load_xml_source_index
-             xml_index = load_xml_source_index(xml_source_id)
-             mp_map = xml_index.get('by_barcode') or {}
-             all_barcodes = list(mp_map.keys())
-             
-             if not all_barcodes:
-                 sync_res = {'success': False, 'message': 'XML kaynağında ürün bulunamadı.'}
-             else:
-                 sync_res = perform_idefix_send_products(job_id if job_id else 'auto_sync_temp', all_barcodes, xml_source_id)
+             from app.services.idefix_service import perform_idefix_send_all
+             sync_res = perform_idefix_send_all(job_id if job_id else 'auto_sync_temp', xml_source_id, user_id=user_id)
 
         else:
             msg = f"Desteklenmeyen pazaryeri: {marketplace}"

@@ -57,9 +57,27 @@
                     class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"
                     style="margin-top: 5px; margin-left: -5px;"></span>
             </a>
+
+            <!-- PWA Install Icon for Mobile -->
+            <a href="#" id="pwa-mobile-install" class="text-white me-1 animate__animated animate__bounceIn"
+                style="display: none;">
+                <i class="bi bi-download fs-4 text-info"></i>
+            </a>
+
             <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-3" style="width: 280px; border-radius: 12px;">
                 <li class="dropdown-header">Bildirimler</li>
+                {% if active_announcements %}
+                {% for ann in active_announcements[:5] %}
+                <li>
+                    <a class="dropdown-item py-2 border-bottom" href="#">
+                        <div class="fw-bold small">{{ ann.title }}</div>
+                        <div class="text-muted extra-small">{{ ann.created_at.strftime('%d.%m.%Y') }}</div>
+                    </a>
+                </li>
+                {% endfor %}
+                {% else %}
                 <li class="text-center text-muted small py-3">Yeni bildirim yok.</li>
+                {% endif %}
             </ul>
 
             <a href="#" class="text-white" onclick="toggleChatbot(); return false;"><i
@@ -183,7 +201,8 @@
             <li class="nav-item">
                 {% set ops_active = (request.endpoint in ['main.orders_page', 'main.order_detail', 'main.batch_logs',
                 'main.batch_detail', 'main.auto_sync_page', 'main.xml_updates', 'products.bulk_update',
-                'report.error_history', 'report.profit_loss_report', 'main.questions_page', 'main.returns_page']) %}
+                'report.error_history', 'report.profit_loss_report', 'main.questions_page', 'main.returns_page',
+                'main.n11_mapping_page']) %}
                 <a href="#opsSubmenu" data-bs-toggle="collapse" aria-expanded="{{ 'true' if ops_active else 'false' }}"
                     class="nav-link dropdown-toggle text-white {% if not ops_active %}collapsed{% endif %}">
                     <i class="bi bi-gear-wide-connected me-2"></i> İşlemler
@@ -232,6 +251,12 @@
                         <a href="{{ url_for('products.bulk_update') }}"
                             class="nav-link py-2 fs-6 {% if request.endpoint == 'products.bulk_update' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
                             <i class="bi bi-caret-right-fill me-1 small"></i> Toplu Güncelleme
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('main.n11_mapping_page') }}"
+                            class="nav-link py-2 fs-6 {% if request.endpoint == 'main.n11_mapping_page' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
+                            <i class="bi bi-caret-right-fill me-1 small"></i> N11 Kategori Eşleştirme
                         </a>
                     </li>
                     <li>
@@ -334,6 +359,18 @@
     <div id="main-content">
 
         <div class="flash-message-container">
+            <!-- iOS PWA Instructions -->
+            <div id="pwa-ios-msg"
+                class="alert alert-info alert-dismissible fade show animate__animated animate__fadeInDown mb-2"
+                role="alert" style="display: none;">
+                <i class="bi bi-info-circle-fill me-2"></i>
+                <strong>Uygulamayı Yükle:</strong> iOS cihazınızda bu uygulamayı yüklemek için <strong>Paylaş</strong>
+                <i class="bi bi-share"></i> simgesine ve ardından <strong>Ana Ekrana Ekle</strong> <i
+                    class="bi bi-plus-square"></i> seçeneğine dokunun.
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"
+                    onclick="this.parentElement.style.display='none'"></button>
+            </div>
+
             {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
             {% for category, message in messages %}
@@ -346,6 +383,23 @@
             {% endif %}
             {% endwith %}
         </div>
+
+        <!-- Announcement Marquee -->
+        {% if active_announcements %}
+        <div class="announcement-marquee mb-3 shadow-sm rounded-pill overflow-hidden">
+            <div class="marquee-content d-flex align-items-center">
+                <span class="badge bg-warning text-dark ms-2 me-3 rounded-pill">DUYURU</span>
+                <div class="marquee-text-wrapper">
+                    <div class="marquee-text">
+                        {% for ann in active_announcements %}
+                        <span class="me-5"><i class="bi bi-megaphone-fill me-2"></i><strong>{{ ann.title }}:</strong> {{
+                            ann.content }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
 
         <!-- Hızlı Erişim Butonları -->
         <div class="quick-actions-bar d-flex gap-2">
@@ -406,9 +460,23 @@
                         <li>
                             <h6 class="dropdown-header">Bildirimler</h6>
                         </li>
+                        {% if active_announcements %}
+                        {% for ann in active_announcements[:5] %}
+                        <li>
+                            <a class="dropdown-item py-2 border-bottom" href="#">
+                                <div class="fw-bold small">{{ ann.title }}</div>
+                                <div class="text-muted" style="font-size: 0.7rem;">{{ ann.content[:60] }}{% if
+                                    ann.content|length > 60 %}...{% endif %}</div>
+                                <div class="text-muted extra-small" style="font-size: 0.6rem;">{{
+                                    ann.created_at.strftime('%d.%m.%Y %H:%M') }}</div>
+                            </a>
+                        </li>
+                        {% endfor %}
+                        {% else %}
                         <li>
                             <div class="text-center text-muted small py-3">Yeni bildirim yok.</div>
                         </li>
+                        {% endif %}
                         <li>
                             <hr class="dropdown-divider">
                         </li>
@@ -858,6 +926,31 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Bottom Navigation (Mobile Only) -->
+    <div class="bottom-nav d-lg-none shadow-lg">
+        <a href="{{ url_for('main.dashboard') }}"
+            class="bottom-nav-item {% if request.endpoint == 'main.dashboard' %}active{% endif %}">
+            <i class="bi bi-house-door{% if request.endpoint == 'main.dashboard' %}-fill{% endif %}"></i>
+            <span>Panel</span>
+        </a>
+        <a href="{{ url_for('main.xml_urunler') }}"
+            class="bottom-nav-item {% if request.endpoint == 'main.xml_urunler' %}active{% endif %}">
+            <i class="bi bi-box-seam{% if request.endpoint == 'main.xml_urunler' %}-fill{% endif %}"></i>
+            <span>Ürünler</span>
+        </a>
+        <a href="{{ url_for('main.orders_page') }}"
+            class="bottom-nav-item {% if request.endpoint == 'main.orders_page' or request.endpoint == 'main.order_detail' %}active{% endif %}">
+            <i
+                class="bi bi-cart3{% if request.endpoint == 'main.orders_page' or request.endpoint == 'main.order_detail' %}-fill{% endif %}"></i>
+            <span>Sipariş</span>
+        </a>
+        <a href="{{ url_for('main.questions_page') }}"
+            class="bottom-nav-item {% if request.endpoint == 'main.questions_page' %}active{% endif %}">
+            <i class="bi bi-chat-dots{% if request.endpoint == 'main.questions_page' %}-fill{% endif %}"></i>
+            <span>Sorular</span>
+        </a>
     </div>
 
     <!-- Bootstrap Bundle with Popper -->

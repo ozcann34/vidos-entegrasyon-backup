@@ -1501,18 +1501,23 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
     append_mp_job_log(job_id, "")
     append_mp_job_log(job_id, "📋 SON DURUM:")
     append_mp_job_log(job_id, f"Gönderilen: {success_count}")
-    append_mp_job_log(job_id, f"Hatalı: {fail_count}")
+    append_mp_job_log(job_id, f"Hatalı/Atlanan: {fail_count + skipped_count}")
     if batch_request_ids:
         append_mp_job_log(job_id, f"Batch ID'leri: {', '.join(batch_request_ids[:3])}...")
         append_mp_job_log(job_id, "")
         append_mp_job_log(job_id, "ℹ️ Ürünler İdefix tarafından işleniyor. Sonuçları İdefix panelinden takip edebilirsiniz.")
 
     return {
+        "success": True,
         "success_count": success_count,
-        "fail_count": fail_count,
+        "fail_count": fail_count + skipped_count, # Include skipped in fail for BatchLog summary
         "failures": failures[:20],
         "batch_id": batch_request_id if 'batch_request_id' in locals() else None,
-        "skipped": skipped_list
+        "skipped": skipped_list,
+        "summary": {
+            "success_count": success_count,
+            "fail_count": fail_count + skipped_count
+        }
     }
 
 def perform_idefix_send_all(job_id: str, xml_source_id: Any, user_id: int = None, **kwargs) -> Dict[str, Any]:

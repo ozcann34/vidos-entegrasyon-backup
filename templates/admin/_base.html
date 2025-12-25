@@ -222,6 +222,15 @@
                     Abonelikler
                 </a>
             </li>
+            {% if current_user.email == 'bugraerkaradeniz34@gmail.com' %}
+            <li>
+                <a href="{{ url_for('admin.payments') }}"
+                    class="{% if request.endpoint == 'admin.payments' %}active{% endif %}">
+                    <i class="bi bi-wallet2"></i>
+                    Ödeme Geçmişi
+                </a>
+            </li>
+            {% endif %}
             <li>
                 <a href="{{ url_for('admin.announcements') }}"
                     class="{% if 'announcement' in request.endpoint %}active{% endif %}">

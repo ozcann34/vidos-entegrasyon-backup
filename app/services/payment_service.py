@@ -43,10 +43,11 @@ SUBSCRIPTION_PLANS = {
         'max_products': 30000,
         'max_marketplaces': 10,
         'max_xml_sources': -1,
-        'duration_days': 30,
+        'duration_days': 30, # Default to 30 days
         'sync_interval_mins': 60
     }
 }
+
 
 
 def get_plan_details(plan_name: str) -> Optional[Dict[str, Any]]:
@@ -155,7 +156,7 @@ def get_user_payments(user_id: int, limit: int = 10):
 class PaymentGateway:
     """Base payment gateway interface."""
     
-    def initiate_payment(self, payment: Payment) -> Dict[str, Any]:
+    def initiate_payment(self, payment: Payment, callback_url: str = None) -> Dict[str, Any]:
         """Initiate payment and get redirect URL."""
         raise NotImplementedError
     
@@ -170,36 +171,82 @@ class ShopierAdapter(PaymentGateway):
     """
     
     def __init__(self, api_key: str = None, api_secret: str = None):
-        import os
-        self.api_key = api_key or os.environ.get('SHOPIER_API_KEY')
-        self.api_secret = api_secret or os.environ.get('SHOPIER_API_SECRET')
+        if not api_key:
+             from app.models import Setting
+             api_key = Setting.get('SHOPIER_API_KEY')
+        if not api_secret:
+             from app.models import Setting
+             api_secret = Setting.get('SHOPIER_API_SECRET')
+             
+        self.api_key = api_key
+        self.api_secret = api_secret
+        from app.models import Setting
+        self.is_test = (Setting.get('SHOPIER_TEST_MODE') == 'on')
     
-    def initiate_payment(self, payment: Payment) -> Dict[str, Any]:
+    def initiate_payment(self, payment: Payment, callback_url: str = None) -> Dict[str, Any]:
         """
         Initiate Shopier payment and return redirect info.
-        For Shopier, we usually generate a signed form or use their API to get a URL.
+        Generates sign and returns parameters for a dynamic form.
         """
         if not self.api_key or not self.api_secret:
             return {
                 'success': False,
-                'message': 'Shopier API anahtarları yapılandırılmamış. Lütfen admin ile iletişime geçin.',
+                'message': 'Shopier API anahtarları yapılandırılmamış.',
                 'redirect_url': None
             }
 
-        # Mock transition for now until real creds are provided
-        # In a real scenario, we would use requests to post to Shopier or return a signed form data
+        from app.models.user import User
+        user = User.query.get(payment.user_id)
+        
+        # Shopier API parameters
+        import json
+        import base64
+        import hmac
+        import hashlib
+
+        # Basic user info
+        first_name = user.first_name or user.full_name.split()[0] if user.full_name else "Müşteri"
+        last_name = user.last_name or (user.full_name.split()[-1] if user.full_name and len(user.full_name.split()) > 1 else "Soyadı")
+        
+        res_data = {
+            'API_KEY': self.api_key,
+            'user_name': first_name,
+            'user_surname': last_name,
+            'user_email': user.email,
+            'user_phone': user.phone or "05555555555",
+            'user_address': user.address or "Türkiye",
+            'product_name': f"Vidos - {payment.plan.title()} Paket",
+            'product_price': payment.amount,
+            'currency': 'TRY',
+            'platform_order_id': payment.payment_reference,
+            'callback_url': callback_url or "https://vidosentegrasyon.com.tr/payment/callback",
+            'modul_version': '1.0.0',
+            'type': 'vidos'
+        }
+
+        # Signature generation
+        # data = platform_order_id + product_price + currency
+        data_to_sign = f"{res_data['platform_order_id']}{res_data['product_price']}{res_data['currency']}"
+        signature = hmac.new(self.api_secret.encode(), data_to_sign.encode(), hashlib.sha256).digest()
+        signature = base64.b64encode(signature).decode()
+        
+        res_data['signature'] = signature
+
         return {
             'success': True,
-            'message': 'Shopier ödemesi başlatılıyor...',
-            'redirect_url': f"https://www.shopier.com/ShowProduct/index.php?id={payment.payment_reference}" # Example URL structure
+            'message': 'Shopier ödemesi hazırlanıyor...',
+            'params': res_data,
+            'post_url': "https://www.shopier.com/ShowProduct/api/pay4post" 
         }
     
     def verify_callback(self, callback_data: Dict[str, Any]) -> bool:
         """
         Verify Shopier callback using HMAC SHA256.
+        Shopier sends: platform_order_id, status, installment, signature
         """
         import hmac
         import base64
+        import hashlib
         
         try:
             signature = callback_data.get('signature')
@@ -210,7 +257,6 @@ class ShopierAdapter(PaymentGateway):
                 return False
                 
             # Verify signature: HMAC-SHA256(API_SECRET, random_nr + platform_order_id)
-            # Note: The exact string to sign may vary by Shopier API version
             data_to_sign = f"{random_nr}{platform_order_id}"
             expected_sig_raw = hmac.new(
                 self.api_secret.encode(),
@@ -225,6 +271,7 @@ class ShopierAdapter(PaymentGateway):
             return False
 
 
+
 class IyzicoAdapter(PaymentGateway):
     """Iyzico payment gateway adapter - PLACEHOLDER."""
     
@@ -232,7 +279,7 @@ class IyzicoAdapter(PaymentGateway):
         self.api_key = api_key or "IYZICO_API_KEY_PLACEHOLDER"
         self.secret_key = secret_key or "IYZICO_SECRET_PLACEHOLDER"
     
-    def initiate_payment(self, payment: Payment) -> Dict[str, Any]:
+    def initiate_payment(self, payment: Payment, callback_url: str = None) -> Dict[str, Any]:
         """
         Initiate Iyzico payment.
         TODO: Implement actual Iyzico API integration
@@ -254,7 +301,7 @@ class IyzicoAdapter(PaymentGateway):
 class MockAdapter(PaymentGateway):
     """Local development mock gateway."""
     
-    def initiate_payment(self, payment: Payment) -> Dict[str, Any]:
+    def initiate_payment(self, payment: Payment, callback_url: str = None) -> Dict[str, Any]:
         """Instant success for testing."""
         # Auto complete
         complete_payment(payment.id, transaction_id=f"MOCK-TRX-{payment.id}", gateway="mock")

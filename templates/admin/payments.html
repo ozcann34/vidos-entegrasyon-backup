@@ -1,0 +1,104 @@
+{% extends "admin/_base.html" %}
+
+{% block title %}Ödeme Geçmişi{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1><i class="bi bi-credit-card-2-front me-2"></i>Ödeme Geçmişi</h1>
+    <span class="text-muted">Toplam {{ payments.total }} işlem</span>
+</div>
+
+<div class="admin-card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Kullanıcı</th>
+                    <th>Plan</th>
+                    <th>Tutar</th>
+                    <th>Ödeme Yöntemi</th>
+                    <th>Durum</th>
+                    <th>Tarih</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for payment in payments.items %}
+                <tr>
+                    <td>{{ payment.id }}</td>
+                    <td>
+                        <div class="d-flex flex-column">
+                            <a href="{{ url_for('admin.user_detail', user_id=payment.user_id) }}"
+                                class="text-white text-decoration-none fw-bold">
+                                {{ payment.user.full_name or 'İsimsiz' }}
+                            </a>
+                            <small class="text-muted">{{ payment.user.email }}</small>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge bg-info text-dark">{{ payment.plan|upper }}</span>
+                        <small class="text-muted d-block">{{ payment.billing_cycle }}</small>
+                    </td>
+                    <td class="fw-bold text-success">
+                        {{ payment.amount }} {{ payment.currency }}
+                    </td>
+                    <td>
+                        <div class="d-flex flex-column">
+                            <span>{{ payment.gateway|base_title }}</span>
+                            <small class="text-muted" style="font-size: 0.75rem;">{{ payment.transaction_id or
+                                payment.payment_reference }}</small>
+                        </div>
+                    </td>
+                    <td>
+                        {% if payment.status == 'completed' %}
+                        <span class="badge bg-success">Başarılı</span>
+                        {% elif payment.status == 'pending' %}
+                        <span class="badge bg-warning text-dark">Beklemede</span>
+                        {% elif payment.status == 'failed' %}
+                        <span class="badge bg-danger">Başarısız</span>
+                        {% elif payment.status == 'cancelled' %}
+                        <span class="badge bg-secondary">İptal</span>
+                        {% else %}
+                        <span class="badge bg-light text-dark">{{ payment.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-muted">
+                        {{ payment.created_at.strftime('%d.%m.%Y %H:%M') }}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center py-4 text-muted">
+                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                        Henüz ödeme kaydı bulunmuyor.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if payments.pages > 1 %}
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            <li class="page-item {{ 'disabled' if not payments.has_prev }}">
+                <a class="page-link" href="{{ url_for('admin.payments', page=payments.prev_num) }}">Önceki</a>
+            </li>
+            {% for page_num in payments.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=1) %}
+            {% if page_num %}
+            <li class="page-item {{ 'active' if page_num == payments.page }}">
+                <a class="page-link" href="{{ url_for('admin.payments', page=page_num) }}">{{ page_num }}</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+            {% endfor %}
+            <li class="page-item {{ 'disabled' if not payments.has_next }}">
+                <a class="page-link" href="{{ url_for('admin.payments', page=payments.next_num) }}">Sonraki</a>
+            </li>
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}

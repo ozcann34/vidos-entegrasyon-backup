@@ -9,7 +9,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from flask import Flask
 from app import db
 from app.models import AutoSync
-from app.services.auto_sync_service import sync_marketplace_products
+from app.services.auto_sync_service import sync_all_users_marketplace
 from app.services.image_template_service import ImageTemplateService
 from app.services.instagram_service import publish_photo
 
@@ -54,40 +54,29 @@ def init_scheduler(app: Flask):
 
 
 def _load_sync_jobs(job_wrapper_func):
-    """Veritabanından aktif senkronizasyon ayarlarını yükle ve job'ları ekle"""
-    from app.models import Setting, AutoSync
-
+    """Sistem çapında senkronizasyon job'larını yükle (Her 1 saatte bir)"""
+    from app.models import Setting
+    
+    marketplaces = ['trendyol', 'n11', 'pazarama', 'hepsiburada', 'idefix']
+    
     try:
-        # 1. Marketplace Product Sync Jobs
-        active_syncs = AutoSync.query.filter_by(enabled=True).all()
-        
-        for sync in active_syncs:
-            job_id = f"sync_{sync.marketplace}"
+        # 1. Her pazaryeri için saatlik toplu senkronizasyon job'u ekle
+        for mp in marketplaces:
+            job_id = f"sync_{mp}_global"
             
-            # Mevcut job'u kontrol et
-            if scheduler.get_job(job_id):
-                continue
-            
-            # Yeni job ekle
             scheduler.add_job(
                 func=job_wrapper_func,
-                args=[sync.marketplace],
-                trigger=IntervalTrigger(minutes=sync.sync_interval_minutes),
+                args=[mp],
+                trigger=IntervalTrigger(minutes=60), # Her zaman 60 dk
                 id=job_id,
-                name=f"Auto Sync {sync.marketplace.capitalize()}",
+                name=f"Global Hourly Sync {mp.capitalize()}",
                 replace_existing=True
             )
-            logger.info(f"Loaded sync job for {sync.marketplace} (interval: {sync.sync_interval_minutes} min)")
+            logger.info(f"Loaded global hourly sync job for {mp}")
 
         # 2. Global Order Sync Job
-        # We need a wrapper for order sync too because it needs app context
-        # But _load_sync_jobs is called inside an app context wrapper in init_scheduler
-        # Wait, the job function itself needs app context when RUNNING.
-        # The wrapper passed here 'job_wrapper_func' takes 'marketplace' arg.
-        # We need a different wrapper or use a lambda?
-        # Let's create a dedicated wrapper for order sync in init_scheduler or add_order_sync_job
-        
-        order_sync_enabled = Setting.get('ORDER_SYNC_ENABLED') == 'true'
+        # Sipariş çekme her zaman aktif ve 60 dk olsun (veya ayarlardan alabiliriz ama 60 dk varsayılan)
+        order_sync_enabled = Setting.get('ORDER_SYNC_ENABLED') != 'false' # Default true if not explicitly false
         if order_sync_enabled:
             interval = int(Setting.get('ORDER_SYNC_INTERVAL') or 60)
             add_order_sync_job(interval)
@@ -108,14 +97,14 @@ def add_order_sync_job(interval_minutes: int = 60):
     
     try:
         from flask import current_app
-        from app.services.order_service import sync_all_orders
+        from app.services.order_service import sync_all_users_orders
         
         # Wrapper to provide context
         def order_sync_wrapper():
             with current_app.app_context():
                 try:
                     logger.info("Running Global Order Sync Task...")
-                    sync_all_orders()
+                    sync_all_users_orders()
                     logger.info("Global Order Sync Task Completed")
                 except Exception as e:
                     logger.error(f"Global Order Sync Failed: {e}")
@@ -231,18 +220,16 @@ def sync_marketplace_task(marketplace: str):
     logger.info(f"Running scheduled sync for {marketplace}")
     
     try:
-        result = sync_marketplace_products(marketplace)
+        result = sync_all_users_marketplace(marketplace)
         
-        if result.get('success'):
-            logger.info(f"Sync successful for {marketplace}: "
-                       f"{result.get('products_updated', 0)} products updated, "
-                       f"{result.get('stock_changes', 0)} stock changes, "
-                       f"{result.get('price_changes', 0)} price changes")
+        if result.get('total', 0) > 0:
+            logger.info(f"Global sync finished for {marketplace}: "
+                       f"{result.get('success', 0)} of {result.get('total', 0)} sessions successful")
         else:
-            logger.warning(f"Sync completed with errors for {marketplace}: {result.get('errors', [])}")
+            logger.info(f"No active auto-sync sessions for {marketplace}")
             
     except Exception as e:
-        logger.exception(f"Sync task failed for {marketplace}: {e}")
+        logger.exception(f"Global sync task failed for {marketplace}: {e}")
 
 
 

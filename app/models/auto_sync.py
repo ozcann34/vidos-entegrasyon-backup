@@ -23,11 +23,17 @@ class AutoSync(db.Model):
     )
     
     @staticmethod
-    def get_or_create(marketplace: str) -> 'AutoSync':
+    def get_or_create(marketplace: str, user_id: int = None) -> 'AutoSync':
         """Get or create AutoSync record for marketplace"""
-        sync = AutoSync.query.filter_by(marketplace=marketplace).first()
+        query = AutoSync.query.filter_by(marketplace=marketplace)
+        if user_id:
+            query = query.filter_by(user_id=user_id)
+        else:
+            query = query.filter(AutoSync.user_id.is_(None))
+            
+        sync = query.first()
         if not sync:
-            sync = AutoSync(marketplace=marketplace)
+            sync = AutoSync(marketplace=marketplace, user_id=user_id)
             db.session.add(sync)
             db.session.commit()
         return sync

@@ -1254,10 +1254,9 @@
     currentStock = 'all';
     localStorage.removeItem(STOCK_STORAGE_KEY);
   }
-  let currentView = localStorage.getItem(VIEW_STORAGE_KEY) || 'table';
-  if (!['table', 'grid', 'compact'].includes(currentView)) {
-    currentView = 'table';
-    localStorage.removeItem(VIEW_STORAGE_KEY);
+  let currentView = localStorage.getItem(VIEW_STORAGE_KEY);
+  if (!currentView || !['table', 'grid', 'compact'].includes(currentView)) {
+    currentView = window.innerWidth < 768 ? 'grid' : 'table';
   }
 
 

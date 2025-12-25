@@ -772,8 +772,13 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
                                 append_mp_job_log(job_id, f"✅ Task {task_id}: Tüm ürünler ({done_count}) başarıyla işlendi.", level='info')
                             else:
                                 append_mp_job_log(job_id, f"⚠️ Task {task_id}: {done_count} başarılı, {error_count} HATALI ürün.", level='warning')
-                                for e_msg in list(error_messages)[:10]: # Log first 10 unique errors
-                                    append_mp_job_log(job_id, f"   ❌ Hata: {e_msg}", level='error')
+                                for task_info in content:
+                                    if task_info.get('status', '').upper() not in ['DONE', 'WAITING', 'DOING']:
+                                        bc = task_info.get('sellerStockCode', 'Bilinmeyen')
+                                        e_msg = task_info.get('statusDescription') or task_info.get('message') or "Bilinmeyen hata"
+                                        failures_list.append({'barcode': bc, 'reason': e_msg})
+                                        if len(failures_list) <= 10:
+                                             append_mp_job_log(job_id, f"   ❌ {bc}: {e_msg}", level='error')
                             
                             final_results_received = True
                             break
@@ -801,10 +806,17 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
             
     return {
         'success': True,
+        'success_count': success_count if 'success_count' in locals() else total_sent, 
+        'fail_count': (fail_count if 'fail_count' in locals() else 0) + len(skipped),
         'count': total_sent,
         'batch_id': main_task_id,
         'skipped': skipped,
-        'message': f"{total_sent} ürün N11'e iletildi."
+        'message': f"{total_sent} ürün N11'e iletildi.",
+        'summary': {
+            'success_count': success_count if 'success_count' in locals() else total_sent,
+            'fail_count': (fail_count if 'fail_count' in locals() else 0) + len(skipped),
+            'failures': failures_list if 'failures_list' in locals() else []
+        }
     }
 
 def perform_n11_send_all(job_id: str, xml_source_id: Any, auto_match: bool = False, user_id: int = None, **kwargs) -> Dict[str, Any]:
@@ -945,7 +957,13 @@ def perform_n11_batch_update(job_id: str, items: List[Dict[str, Any]], user_id: 
     result = {
         'success': True,
         'updated_count': total_sent,
-        'message': f'{total_sent} ürün için güncelleme isteği gönderildi.'
+        'success_count': total_sent,
+        'fail_count': 0,
+        'message': f'{total_sent} ürün için güncelleme isteği gönderildi.',
+        'summary': {
+            'success_count': total_sent,
+            'fail_count': 0
+        }
     }
     append_mp_job_log(job_id, "İşlem tamamlandı.")
     return result

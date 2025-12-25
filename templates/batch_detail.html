@@ -5,8 +5,14 @@
 {% block content %}
 <div class="card p-3 animate-fade-in">
   <div class="d-flex justify-content-between align-items-center mb-4">
-    <a href="{{ url_for('main.batch_logs') }}" class="btn btn-sm btn-outline-secondary btn-animated"><i
-        class="bi bi-arrow-left me-2"></i> Loglara Geri Dön</a>
+    <div>
+      <a href="{{ url_for('main.batch_logs') }}" class="btn btn-sm btn-outline-secondary btn-animated"><i
+          class="bi bi-arrow-left me-2"></i> Loglara Geri Dön</a>
+      {% if entry.job_type %}
+      <span class="badge bg-info ms-2 text-uppercase" style="letter-spacing: 1px; font-size: 0.7rem;">{{
+        entry.job_type.replace('_', ' ') }}</span>
+      {% endif %}
+    </div>
     <span class="badge bg-secondary font-monospace">{{ entry.batch_id }}</span>
   </div>
 
@@ -50,22 +56,57 @@
 
   {% if d and d.logs %}
   <div class="card mb-4 shadow-sm">
-    <div class="card-header bg-transparent">
+    <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
       <h6 class="mb-0"><i class="bi bi-terminal me-2"></i>İşlem Logları ({{ d.logs|length }})</h6>
+      <div class="form-check form-switch mb-0">
+        <input class="form-check-input" type="checkbox" id="filterErrors">
+        <label class="form-check-label small text-muted" for="filterErrors">Sadece Hatalıları Göster</label>
+      </div>
     </div>
     <div class="card-body p-0">
-      <div class="list-group list-group-flush" style="max-height: 400px; overflow-y: auto;">
+      <div class="list-group list-group-flush" id="logList" style="max-height: 400px; overflow-y: auto;">
         {% for log in d.logs %}
-        <div class="list-group-item py-2" style="background: transparent; color: var(--text);">
+        <div class="list-group-item py-2 log-item" data-level="{{ log.level or 'info' }}"
+          style="background: transparent; color: var(--text);">
           <div class="d-flex justify-content-between align-items-start">
             <span
-              class="badge bg-{{ 'danger' if log.level == 'error' else 'warning' if log.level == 'warning' else 'info' }} me-2">{{
-              log.level or 'info' | upper }}</span>
+              class="badge bg-{{ 'danger' if log.level == 'error' else 'warning' if log.level == 'warning' else 'info' }} me-2 text-uppercase"
+              style="font-size: 0.65rem;">{{
+              log.level or 'info' }}</span>
             <small class="text-muted ms-auto">{{ log.timestamp or '' }}</small>
           </div>
           <div class="mt-1 small">{{ log.message }}</div>
         </div>
         {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if d and (d.summary and d.summary.failures) or (d.failures) %}
+  {% set failures = d.summary.failures if d.summary and d.summary.failures else d.failures %}
+  <div class="card mb-4 border-danger shadow-sm" style="background: var(--bg);">
+    <div class="card-header bg-danger text-white">
+      <h6 class="mb-0"><i class="bi bi-exclamation-octagon me-2"></i>Hata Detayları ({{ failures|length }})</h6>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0" style="color: var(--text);">
+          <thead class="table-light" style="background: rgba(0,0,0,0.05);">
+            <tr>
+              <th class="ps-3">Barkod / ID</th>
+              <th>Hata Nedeni</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in failures %}
+            <tr>
+              <td class="ps-3 fw-bold">{{ f.barcode or f.code or 'N/A' }}</td>
+              <td class="text-danger small">{{ f.reason or f.error or 'Bilinmeyen hata' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -79,20 +120,22 @@
   </div>
   {% endif %}
 
-  {% if d and d.summary %}
-  <div class="card mb-4">
-    <div class="card-header bg-transparent">
-      <h6 class="mb-0"><i class="bi bi-list-check me-2"></i>Özet</h6>
+  {% if entry.success_count or entry.fail_count or (d and d.summary) %}
+  {% set s_cnt = entry.success_count or (d.summary.success_count if d and d.summary else 0) %}
+  {% set f_cnt = entry.fail_count or (d.summary.fail_count if d and d.summary else 0) %}
+  <div class="card mb-4 border-0 shadow-sm" style="background: var(--bg);">
+    <div class="card-header bg-transparent border-0 pt-3">
+      <h6 class="mb-0 fw-bold"><i class="bi bi-list-check me-2 text-primary"></i> İşlem Özeti</h6>
     </div>
     <div class="card-body">
       <div class="row text-center">
-        <div class="col-6">
-          <div class="text-success fw-bold display-6">{{ d.summary.success_count or 0 }}</div>
-          <small class="text-muted">Başarılı</small>
+        <div class="col-6 border-end">
+          <div class="text-success fw-bold display-6">{{ s_cnt }}</div>
+          <small class="text-muted text-uppercase" style="font-size: 0.7rem;">Başarılı</small>
         </div>
         <div class="col-6">
-          <div class="text-danger fw-bold display-6">{{ d.summary.fail_count or 0 }}</div>
-          <small class="text-muted">Hatalı</small>
+          <div class="text-danger fw-bold display-6">{{ f_cnt }}</div>
+          <small class="text-muted text-uppercase" style="font-size: 0.7rem;">Hatalı / Atlanan</small>
         </div>
       </div>
     </div>
@@ -132,11 +175,23 @@
       <i class="bi bi-info-circle-fill me-3 fs-4 text-info"></i>
       <div>
         <h6 class="alert-heading fw-bold">İşlem Tamamlandı</h6>
-        <p class="mb-0">Trendyol Toplu Ürün Yükleme (Batch) işlemi başarıyla tamamlanmıştır. Detaylar ve ürün durumları
+        <p class="mb-0">{{ entry.marketplace | capitalize }} Toplu Ürün Yükleme (Batch) işlemi başarıyla tamamlanmıştır.
+          Detaylar ve ürün durumları
           için
-          Trendyol satıcı panelini kontrol ediniz.</p>
+          pazaryeri satıcı panelini kontrol ediniz.</p>
       </div>
     </div>
+  </div>
+  {% elif d and d.skipped and d.skipped|length > 0 %}
+  <div class="mt-4 text-center">
+    <div class="alert alert-warning mb-3">
+      <i class="bi bi-exclamation-circle me-2"></i> {{ d.skipped|length }} ürün gönderilemedi veya atlandı.
+    </div>
+    <form action="{{ url_for('main.retry_batch', batch_id=entry.batch_id) }}" method="POST">
+      <button type="submit" class="btn btn-warning btn-lg shadow-sm px-5 rounded-pill fw-bold">
+        <i class="bi bi-arrow-clockwise me-2"></i> Hatalı Ürünleri Tekrar Gönder
+      </button>
+    </form>
   </div>
   {% endif %}
 </div>

@@ -81,6 +81,19 @@ def create_app(config_name='default'):
     from app.routes.api_returns import api_returns_bp
     app.register_blueprint(api_returns_bp)
     
+    # Context Processor for Announcements
+    @app.context_processor
+    def inject_announcements():
+        from app.models.announcement import Announcement
+        from datetime import datetime
+        active = Announcement.query.filter(
+            Announcement.is_active == True
+        ).filter(
+            (Announcement.expires_at == None) | (Announcement.expires_at > datetime.utcnow())
+        ).order_by(Announcement.created_at.desc()).all()
+        return dict(active_announcements=active)
+
+    
     # Ban check middleware
     @app.before_request
     def check_banned_user():

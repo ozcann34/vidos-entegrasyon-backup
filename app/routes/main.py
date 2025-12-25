@@ -412,9 +412,17 @@ def dashboard():
     # Announcements (Fix: Enable fetching)
     announcements = Announcement.query.filter_by(is_active=True).order_by(Announcement.priority.desc(), Announcement.created_at.desc()).all()
 
+    # User Notifications
+    from app.models.notification import Notification
+    user_notifications = Notification.query.filter_by(user_id=user_id, is_read=False).order_by(Notification.created_at.desc()).all()
+
     # Financial Service Integration
-    from app.services.subscription_service import get_usage_stats
+    from app.services.subscription_service import get_usage_stats, check_expiring_subscriptions
     from app.services.finance_service import get_financial_summary
+    
+    # Run a quick check for expiring subs (In a real app, this would be a daily cron job)
+    # But for this dev session, we can trigger it or assume it runs.
+    # check_expiring_subscriptions() # Don't run every load, but maybe once per session
     
     usage_stats = get_usage_stats(user_id)
     financial_stats = get_financial_summary(user_id)
@@ -422,6 +430,7 @@ def dashboard():
     stats = {
         'marketplaces': marketplaces_stats,
         'announcements': announcements,
+        'user_notifications': user_notifications,
         'monthly_revenue': financial_stats.get('revenue', 0), # Fallback usage in legacy parts
         'revenue_growth': 0, 
         'monthly_orders': financial_stats.get('order_count', 0),
@@ -444,6 +453,7 @@ def dashboard():
             'mp_data': mp_data
         }
     }
+
     
     return render_template("dashboard.html", stats=stats, last_sync=last_sync_display)
 
@@ -560,6 +570,93 @@ def batch_detail(batch_id):
     
     flash("Log bulunamadı.", "danger")
     return redirect(url_for('main.batch_logs'))
+
+@main_bp.route("/batch/retry/<batch_id>", methods=["POST"])
+@login_required
+@admin_required
+def retry_batch(batch_id):
+    """Resubmit failed products from a batch."""
+    from app.services.job_queue import submit_mp_job
+    
+    entry = BatchLog.query.filter_by(batch_id=batch_id, user_id=current_user.id).first_or_404()
+    details = entry.get_details()
+    
+    # 1. Extract failed/skipped barcodes
+    failed_barcodes = []
+    skipped = details.get('skipped', [])
+    if skipped:
+        failed_barcodes.extend([s['barcode'] for s in skipped])
+    
+    # Also check logs for specific barcode errors if possible, or just use 'skipped'
+    # For now, 'skipped' is the standard for failed items in our service results.
+    
+    if not failed_barcodes:
+        flash("Yeniden gönderilecek hatalı ürün bulunamadı.", "info")
+        return redirect(url_for('main.batch_detail', batch_id=batch_id))
+    
+    # 2. Get original params
+    orig_params = details.get('params', {})
+    xml_source_id = orig_params.get('xml_source_id')
+    user_id = current_user.id
+    
+    if not xml_source_id:
+        flash("Kaynak XML bilgisi (xml_source_id) eksik, yeniden gönderilemiyor.", "danger")
+        return redirect(url_for('main.batch_detail', batch_id=batch_id))
+
+    # 3. Trigger based on marketplace
+    marketplace = entry.marketplace
+    try:
+        if marketplace == 'n11':
+            from app.services.n11_service import perform_n11_send_products
+            new_job_id = submit_mp_job(
+                'n11_retry', 'n11',
+                lambda jid: perform_n11_send_products(jid, failed_barcodes, xml_source_id, auto_match=True, user_id=user_id),
+                params={'barcodes': failed_barcodes, 'xml_source_id': xml_source_id, 'retry_of': batch_id}
+            )
+            flash(f"{len(failed_barcodes)} ürün N11 için tekrar sıraya alındı.", "success")
+        elif marketplace == 'trendyol':
+            from app.services.trendyol_service import perform_trendyol_send_products
+            new_job_id = submit_mp_job(
+                'trendyol_retry', 'trendyol',
+                lambda jid: perform_trendyol_send_products(jid, failed_barcodes, xml_source_id, auto_match=True, user_id=user_id),
+                params={'barcodes': failed_barcodes, 'xml_source_id': xml_source_id, 'retry_of': batch_id}
+            )
+            flash(f"{len(failed_barcodes)} ürün Trendyol için tekrar sıraya alındı.", "success")
+        elif marketplace == 'pazarama':
+             from app.services.pazarama_service import perform_pazarama_send_products
+             new_job_id = submit_mp_job(
+                'pazarama_retry', 'pazarama',
+                lambda jid: perform_pazarama_send_products(jid, failed_barcodes, xml_source_id, user_id=user_id),
+                params={'barcodes': failed_barcodes, 'xml_source_id': xml_source_id, 'retry_of': batch_id}
+            )
+             flash(f"{len(failed_barcodes)} ürün Pazarama için tekrar sıraya alındı.", "success")
+        else:
+            flash(f"{marketplace.upper()} için otomatik tekrar gönderim henüz desteklenmiyor.", "warning")
+            return redirect(url_for('main.batch_detail', batch_id=batch_id))
+            
+    except Exception as e:
+        flash(f"Hata oluştu: {str(e)}", "danger")
+        return redirect(url_for('main.batch_detail', batch_id=batch_id))
+
+    return redirect(url_for('main.batch_logs'))
+
+
+@main_bp.route("/n11/category-mapping")
+@login_required
+@permission_required('n11')
+def n11_mapping_page():
+    """N11 kategori eşleştirme sayfası"""
+    # Kayıtlı eşleşmeleri al
+    mapping_json = Setting.get('N11_CATEGORY_MAPPING', user_id=current_user.id)
+    mapping = json.loads(mapping_json) if mapping_json else {}
+    
+    # Kullanıcının XML ürünlerindeki benzersiz kategorileri bul (basitçe Product tablosundan)
+    # Ya da SupplierXML üzerinden. Product tablosu daha günceldir.
+    xml_categories = db.session.query(Product.category).filter_by(user_id=current_user.id).distinct().all()
+    xml_categories = [c[0] for c in xml_categories if c[0]]
+    
+    return render_template("n11_mapping.html", mapping=mapping, xml_categories=xml_categories)
+
 
 @main_bp.route("/settings", methods=["GET", "POST"])
 @login_required

@@ -35,8 +35,11 @@ def _persist_job(job_id: str, job_data: Dict[str, Any]):
                 timestamp=job_data.get('created_at'),
                 success=False, # Default
                 marketplace=job_data.get('marketplace', 'unknown'),
+                job_type=job_data.get('job_type'),
                 user_id=user_id,
-                product_count=0, # Can update later
+                product_count=0,
+                success_count=0,
+                fail_count=0,
                 details_json=json.dumps(job_data)
             )
             db.session.add(log)
@@ -45,6 +48,10 @@ def _persist_job(job_id: str, job_data: Dict[str, Any]):
             # Ensure marketplace is updated if it changed or was wrong
             if job_data.get('marketplace'):
                 log.marketplace = job_data.get('marketplace')
+            
+            # Ensure job_type is set
+            if job_data.get('job_type'):
+                log.job_type = job_data.get('job_type')
             
             # Ensure user_id is set if missing
             if not log.user_id and user_id:
@@ -61,6 +68,8 @@ def _persist_job(job_id: str, job_data: Dict[str, Any]):
                     total_count = res.get('count', s_count + f_count)
                     
                     log.product_count = total_count
+                    log.success_count = s_count
+                    log.fail_count = f_count
                     log.success = (f_count == 0) and res.get('success', True)
                 else:
                     log.success = True

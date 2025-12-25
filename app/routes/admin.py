@@ -8,7 +8,7 @@ from flask_login import login_required, current_user
 
 from app import db
 
-from app.models import User, Subscription, AdminLog, Announcement, UserActivityLog
+from app.models import User, Subscription, AdminLog, Announcement, UserActivityLog, Payment
 
 from app.services.user_service import ban_user, unban_user, update_subscription, get_all_users
 
@@ -621,6 +621,23 @@ def subscriptions():
     
 
     return render_template('admin/subscriptions.html', subscriptions=subscriptions, plan_filter=plan_filter)
+
+
+@admin_bp.route('/payments')
+@admin_required
+def payments():
+    """View payment history (Restricted)."""
+    # Strict Access Control
+    if current_user.email != 'bugraerkaradeniz34@gmail.com':
+        flash('Bu sayfaya erişim yetkiniz yok.', 'danger')
+        return redirect(url_for('admin.dashboard'))
+        
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    
+    payments = Payment.query.order_by(Payment.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    
+    return render_template('admin/payments.html', payments=payments)
 
 
 @admin_bp.route('/global-settings', methods=['GET', 'POST'])

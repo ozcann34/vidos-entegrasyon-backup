@@ -177,6 +177,7 @@ def perform_hepsiburada_send_products(job_id: str, barcodes: List[str], xml_sour
             append_mp_job_log(job_id, f"Takip ID {track_id} durumu kontrol ediliyor (maks 30sn)...", level='info')
             imported_cnt = 0
             failed_cnt = 0
+            failures_list = []
             
             for _chk in range(10): # 10 * 3s = 30s
                 time.sleep(3)
@@ -200,8 +201,10 @@ def perform_hepsiburada_send_products(job_id: str, barcodes: List[str], xml_sour
                             for res_item in results_list:
                                 if res_item.get('status') == 'FAILED':
                                     merchant_sku = res_item.get('merchantSku')
-                                    err_msg = res_item.get('message') or res_item.get('explanation')
-                                    append_mp_job_log(job_id, f"   ❌ {merchant_sku}: {err_msg}", level='error')
+                                    err_msg = res_item.get('explanation') or res_item.get('message') or "Bilinmeyen hata"
+                                    failures_list.append({'barcode': merchant_sku, 'reason': err_msg})
+                                    if len(failures_list) <= 10:
+                                        append_mp_job_log(job_id, f"   ❌ {merchant_sku}: {err_msg}", level='error')
                         break
                     elif status_enum == 'FAILED':
                         append_mp_job_log(job_id, f"İşlem tamamen BAŞARISIZ oldu: {status_res.get('message')}", level='error')
@@ -214,10 +217,16 @@ def perform_hepsiburada_send_products(job_id: str, barcodes: List[str], xml_sour
         
         return {
             'success': True,
-            'count': len(products_to_send),
+            'success_count': imported_cnt if 'imported_cnt' in locals() and imported_cnt > 0 else len(products_to_send),
+            'fail_count': (failed_cnt if 'failed_cnt' in locals() else 0) + len(skipped),
             'tracking_id': track_id,
             'skipped': skipped,
-            'message': f"{len(products_to_send)} ürün Hepsiburada'ya iletildi. (Takip ID: {track_id})"
+            'message': f"{len(products_to_send)} ürün Hepsiburada'ya iletildi. (Takip ID: {track_id})",
+            'summary': {
+                'success_count': imported_cnt if 'imported_cnt' in locals() and imported_cnt > 0 else len(products_to_send),
+                'fail_count': (failed_cnt if 'failed_cnt' in locals() else 0) + len(skipped),
+                'failures': failures_list if 'failures_list' in locals() else []
+            }
         }
         
     except Exception as e:

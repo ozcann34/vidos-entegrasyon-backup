@@ -1,6 +1,8 @@
 import json
 import logging
 from datetime import datetime, timedelta
+
+logger = logging.getLogger(__name__)
 from typing import List, Dict, Any, Optional
 
 from app import db
@@ -720,6 +722,38 @@ def _process_pazarama_order(data: Dict[str, Any], user_id: int = None) -> bool:
         db.session.commit()
 
     return True
+
+def sync_all_users_orders():
+    """
+    Finds all users who have order sync enabled
+    and runs the sync task for each of them.
+    """
+    from app.models import User, Setting
+    from app.services.subscription_service import check_usage_limit
+    
+    logger.info("Checking all users for Global Order sync...")
+    
+    # We could filter by Setting, but let's just get all users and check their setting
+    # In a larger app, we'd query Setting table for users where ORDER_SYNC_ENABLED is true.
+    users = User.query.all()
+    
+    success_count = 0
+    total_active = 0
+    
+    for user in users:
+        # Check if enabled for this user
+        enabled = Setting.get('ORDER_SYNC_ENABLED', user_id=user.id) == 'true'
+        if enabled:
+            total_active += 1
+            try:
+                sync_all_orders(user_id=user.id)
+                success_count += 1
+            except Exception as e:
+                logger.error(f"Order sync failed for user {user.id}: {e}")
+                
+    logger.info(f"Global Order sync finished. Total users: {total_active}, Success: {success_count}")
+    return {'total': total_active, 'success': success_count}
+
 
 def sync_all_orders(user_id: int = None):
     """Sync orders from ALL marketplaces"""

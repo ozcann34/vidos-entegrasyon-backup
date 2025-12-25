@@ -87,36 +87,19 @@ def check_and_update_expired_subscriptions():
     
     return len(expired)
 def check_usage_limit(user_id: int, metric_type: str, current_count: int = None) -> bool:
-    """
-    Check if user has exceeded their plan limits.
-    
-    Args:
-        user_id: The user ID
-        metric_type: 'products' or 'xml_sources'
-        current_count: Optional current count to check against. If None, it will be calculated.
-        
-    Returns:
-        True if within limit, False if exceeded.
-    """
+    """Check if user has exceeded their plan limits."""
     subscription = get_subscription(user_id)
     if not subscription or not subscription.is_active:
         return False
         
-    # Get effective limits (database stores effective limit including plan defaults, 
-    # but let's be safe and fallback if they are 0/None which shouldn't happen with new logic)
-    
     limit = -1
     usage = 0
     
     if metric_type == 'products':
         limit = subscription.max_products
-        if limit is None: limit = 100 # Fallback
+        if limit is None: limit = 100
         
-        # Calculate usage if not provided
         if current_count is None:
-            # This requires querying Product table or similar
-            # Ideally we pass current_count to avoid circular imports or heavy queries here if possible
-            # But for convenience let's do import locally
             from app.models import Product
             usage = Product.query.filter_by(user_id=user_id).count()
         else:
@@ -124,7 +107,7 @@ def check_usage_limit(user_id: int, metric_type: str, current_count: int = None)
             
     elif metric_type == 'xml_sources':
         limit = subscription.max_xml_sources
-        if limit is None: limit = 1 # Fallback
+        if limit is None: limit = 1
         
         if current_count is None:
             from app.models import SupplierXML
@@ -134,18 +117,55 @@ def check_usage_limit(user_id: int, metric_type: str, current_count: int = None)
             
     elif metric_type == 'marketplaces':
         limit = subscription.max_marketplaces
-        if limit is None: limit = 1 # Fallback
+        if limit is None: limit = 1
         
         if current_count is None:
             usage = len(get_active_marketplaces(user_id))
         else:
             usage = current_count
             
-    # Check limit (-1 means unlimited)
     if limit == -1:
         return True
         
     return usage < limit
+
+def check_expiring_subscriptions():
+    """
+    Check for subscriptions expiring in the next 3 days and notify users.
+    Should be run daily.
+    """
+    from app.models.notification import Notification
+    
+    three_days_later = datetime.utcnow() + timedelta(days=3)
+    
+    # Get active subscriptions expiring within 3 days
+    expiring = Subscription.query.filter(
+        Subscription.status == 'active',
+        Subscription.end_date <= three_days_later,
+        Subscription.end_date > datetime.utcnow()
+    ).all()
+    
+    count = 0
+    for sub in expiring:
+        # Check if notification already sent today to avoid spam
+        existing = Notification.query.filter_by(
+            user_id=sub.user_id,
+            title="Abonelik Hatırlatması"
+        ).filter(Notification.created_at >= datetime.utcnow().date()).first()
+        
+        if not existing:
+            days = sub.days_remaining
+            notif = Notification(
+                user_id=sub.user_id,
+                title="Abonelik Hatırlatması",
+                message=f"Aboneliğiniz {days} gün içinde sona erecektir. Kesintisiz hizmet için lütfen yenileyin.",
+                type='warning'
+            )
+            db.session.add(notif)
+            count += 1
+            
+    db.session.commit()
+    return count
 
 def get_active_marketplaces(user_id: int) -> list:
     """Check which marketplaces have configured API credentials."""
@@ -207,3 +227,4 @@ def get_usage_stats(user_id: int):
             'is_unlimited': subscription.max_marketplaces == -1
         }
     }
+

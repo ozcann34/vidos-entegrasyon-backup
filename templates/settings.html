@@ -627,6 +627,70 @@
       </div> <!-- End accordion-collapse -->
     </div> <!-- End accordion-item (Pazaryeri) -->
 
+    <!-- Ödeme Ayarları (Shopier) -->
+    {% if current_user.email == 'bugraerkaradeniz34@gmail.com' %}
+    <div class="accordion-item">
+      <h2 class="accordion-header">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+          data-bs-target="#paymentCollapse">
+          <i class="bi bi-credit-card me-2"></i>
+          Ödeme Yöntemleri
+        </button>
+      </h2>
+      <div id="paymentCollapse" class="accordion-collapse collapse" data-bs-parent="#settingsAccordion">
+        <div class="accordion-body">
+          <form method="POST" action="{{ url_for('main.settings_page') }}">
+
+            <div class="alert alert-light border shadow-sm mb-4">
+              <div class="d-flex align-items-center">
+                <img src="https://assets.shopier.com/s/s-2.0.0/images/shopier-logo.png" alt="Shopier" height="30"
+                  class="me-3">
+                <div>
+                  <h6 class="alert-heading text-dark fw-bold mb-1">Shopier Entegrasyonu</h6>
+                  <p class="mb-0 small text-muted">Shopier panelinizden alacağınız API bilgilerini buraya girerek kredi
+                    kartı ile ödeme almaya başlayabilirsiniz.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label fw-bold">API Kullanıcısı (API Key)</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-key"></i></span>
+                  <input type="text" class="form-control" name="SHOPIER_API_KEY" value="{{ settings.SHOPIER_API_KEY }}"
+                    required placeholder="API Key">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold">API Şifresi (API Secret)</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-shield-lock"></i></span>
+                  <input type="password" class="form-control" name="SHOPIER_API_SECRET"
+                    value="{{ settings.SHOPIER_API_SECRET }}" required placeholder="API Secret">
+                  <button class="btn btn-outline-secondary" type="button" onclick="togglePassword(this)"><i
+                      class="bi bi-eye"></i></button>
+                </div>
+              </div>
+
+              <div class="col-12">
+                <div class="form-check form-switch mt-2">
+                  <input class="form-check-input" type="checkbox" id="shopierTestMode" name="SHOPIER_TEST_MODE" {% if
+                    settings.SHOPIER_TEST_MODE=='on' %}checked{% endif %}>
+                  <label class="form-check-label" for="shopierTestMode">Test Modu (Gerçek ödeme alınmaz)</label>
+                </div>
+              </div>
+
+              <div class="col-12 mt-3">
+                <button type="submit" class="btn btn-success"><i class="bi bi-save me-2"></i> Kaydet</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div> <!-- End accordion-item (Payment) -->
+    {% endif %}
+
     <!-- XML Kaynakları -->
     <div class="accordion-item">
       <h2 class="accordion-header">
@@ -876,6 +940,18 @@
         });
       });
     });
+
+    // Password Visibility Toggle
+    window.togglePassword = function (btn) {
+      const input = btn.previousElementSibling;
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.innerHTML = '<i class="bi bi-eye-slash"></i>';
+      } else {
+        input.type = 'password';
+        btn.innerHTML = '<i class="bi bi-eye"></i>';
+      }
+    };
 
   });
 </script>
