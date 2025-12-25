@@ -1380,23 +1380,45 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
         if title_prefix:
              title = f"{title_prefix} {title}"
         desc = clean_forbidden_words(product.get('description', '') or title)
-        brand_name = product.get('brand', '') or product.get('vendor', '')
         
         # Debug: Log first few titles to verify prefix
         if processed <= 3:
             append_mp_job_log(job_id, f"DEBUG Title for {barcode}: '{title[:80]}...'")
         
-        # Log original brand from Excel
-        if brand_name:
-            append_mp_job_log(job_id, f"Excel marka: '{brand_name}' - barcode: {barcode}")
+        # ========================================
+        # BRAND RESOLUTION - Priority: Settings → Excel
+        # ========================================
+        brand_id = 0
+        brand_name = ""
         
-        # First check for pre-resolved brand_id from Excel index
-        brand_id = product.get('brand_id') or product.get('brandId') or 0
+        # 1. FIRST: Check Settings for default brand (fastest, no API call)
+        settings_brand_id = Setting.get("TRENDYOL_BRAND_ID", user_id=user_id)
+        settings_brand_name = Setting.get("TRENDYOL_BRAND_NAME", user_id=user_id)
         
-        # If not pre-resolved, use resolve_brand_id (handles empty brand with fallback)
+        if settings_brand_id and settings_brand_id.strip():
+            try:
+                brand_id = int(settings_brand_id)
+                brand_name = settings_brand_name or "Ayarlardaki Marka"
+                if processed <= 3:
+                    append_mp_job_log(job_id, f"Settings marka kullanıldı: '{brand_name}' (ID: {brand_id})")
+            except:
+                pass
+        
+        # 2. FALLBACK: Use Excel/XML brand if Settings not configured
         if not brand_id:
-            brand_id = resolve_brand_id(brand_name)
+            excel_brand = product.get('brand', '') or product.get('vendor', '')
+            if excel_brand:
+                append_mp_job_log(job_id, f"Excel marka: '{excel_brand}' - barcode: {barcode}")
+                brand_name = excel_brand
+                
+                # Check if pre-resolved brand_id from Excel index
+                brand_id = product.get('brand_id') or product.get('brandId') or 0
+                
+                # If not pre-resolved, use resolve_brand_id (handles API lookup)
+                if not brand_id:
+                    brand_id = resolve_brand_id(excel_brand)
         
+        # 3. ERROR: No brand found
         if not brand_id:
             skipped.append({'barcode': barcode, 'reason': f'Marka bulunamadı: {brand_name or "boş"} (Ayarlarda varsayılan marka tanımlayın)'})
             continue
