@@ -30,7 +30,7 @@
                         <div class="d-flex flex-column">
                             <a href="{{ url_for('admin.user_detail', user_id=payment.user_id) }}"
                                 class="text-white text-decoration-none fw-bold">
-                                {{ payment.user.full_name or 'İsimsiz' }}
+                                {{ payment.user.full_name if payment.user.full_name else 'İsimsiz' }}
                             </a>
                             <small class="text-muted">{{ payment.user.email }}</small>
                         </div>
@@ -45,8 +45,9 @@
                     <td>
                         <div class="d-flex flex-column">
                             <span>{{ payment.gateway|title }}</span>
-                            <small class="text-muted" style="font-size: 0.75rem;">{{ payment.transaction_id or
-                                payment.payment_reference }}</small>
+                            <small class="text-muted" style="font-size: 0.75rem;">
+                                {{ payment.transaction_id if payment.transaction_id else payment.payment_reference }}
+                            </small>
                         </div>
                     </td>
                     <td>
@@ -78,7 +79,6 @@
         </table>
     </div>
 
-    <!-- Pagination -->
     {% if payments.pages > 1 %}
     <nav class="mt-4">
         <ul class="pagination justify-content-center">
