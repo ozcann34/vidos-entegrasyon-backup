@@ -12,8 +12,8 @@ from app.models.subscription import Subscription
 SUBSCRIPTION_PLANS = {
     'basic': {
         'name': 'Giriş Paketi',
-        'price': 1290, # Aylık liste fiyatı
-        'yearly_price_monthly': 790, # Yıllık alımda aylık bedel
+        'price': 5, # TEST: Aylık 5 TL
+        'yearly_price_monthly': 5, # TEST: Yıllık alımda da 5 TL
         'currency': 'TRY',
         'features': ['3 Pazaryeri Entegrasyonu', '5.000 Ürün Limiti', '3 XML Tedarikçi', 'Günde 2 Kez Otomatik Güncelleme', 'Temel Sipariş Listeleme', '7/24 Destek'],
         'max_products': 5000,
@@ -24,8 +24,8 @@ SUBSCRIPTION_PLANS = {
     },
     'pro': {
         'name': 'Ticaret Paketi',
-        'price': 2390, # Aylık liste fiyatı
-        'yearly_price_monthly': 1490, # Yıllık alımda aylık bedel
+        'price': 5, # TEST: Aylık 5 TL
+        'yearly_price_monthly': 5, # TEST: Yıllık alımda da 5 TL
         'currency': 'TRY',
         'features': ['5 Pazaryeri Entegrasyonu', '15.000 Ürün Limiti', '6 XML Tedarikçi', '2 Saatte Bir Otomatik Güncelleme', 'Gelişmiş Sipariş Yönetimi', '7/24 Destek', 'Excel İle Yönetim', 'Sosyal Medya AI Taslakları'],
         'max_products': 15000,
@@ -36,8 +36,8 @@ SUBSCRIPTION_PLANS = {
     },
     'enterprise': {
         'name': 'Kurumsal Paket',
-        'price': 4290, # Aylık liste fiyatı
-        'yearly_price_monthly': 2990, # Yıllık alımda aylık bedel
+        'price': 5, # TEST: Aylık 5 TL
+        'yearly_price_monthly': 5, # TEST: Yıllık alımda da 5 TL
         'currency': 'TRY',
         'features': ['10 Pazaryeri Entegrasyonu', '30.000 Ürün Limiti', 'Sınırsız XML Tedarikçi', '1 Saatte Bir Sınırsız Güncelleme', 'Gelişmiş Sipariş Yönetimi', '7/24 Destek', 'Excel İle Yönetim', 'Zamanlamalı Sosyal Medya Paylaşımı', 'Kişisel E-ticaret Entegrasyonu'],
         'max_products': 30000,
