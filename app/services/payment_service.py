@@ -3,7 +3,7 @@ import hashlib
 import base64
 import random
 from app.models.payment import Payment
-from app.models.setting import Setting  # Admin panelinden ayarları çekmek için
+from app.models.settings import Setting  # Admin panelinden ayarları çekmek için
 from flask import url_for
 
 # Sabit Plan Tanımları (Veritabanında tutulmuyor, kodda sabit)
