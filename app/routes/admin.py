@@ -347,8 +347,8 @@ def delete_user_route(user_id):
         Expense.query.filter_by(user_id=user_id).delete()
 
         # 3. Financial & Account Data
-        Subscription.query.filter_by(user_id=user_id).delete()
         Payment.query.filter_by(user_id=user_id).delete()
+        Subscription.query.filter_by(user_id=user_id).delete()
         SupportTicket.query.filter_by(user_id=user_id).delete()
 
         
