@@ -114,6 +114,7 @@
 ### B. Fonksiyonel Düzeltmeler 🐛
 - [x] E-posta servisinin debug edilmesi (Kod gönderildi diyor ama gitmiyor)
 - [x] SMTP ayarlarının kontrolü ve loglamanın artırılması
+- [x] 500 error hatasının çözülmesi (Auth ve Dashboard)
 
 ---
 ## 📊 İLERLEME ÖZETİ
