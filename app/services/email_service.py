@@ -220,6 +220,8 @@ def verify_reset_token(token: str) -> User:
     return user
 
 
+def clear_reset_token(user: User):
+    """Clear the password reset token."""
     user.reset_token = None
     user.reset_token_expiry = None
     db.session.commit()
