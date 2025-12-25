@@ -338,8 +338,6 @@ def delete_user_route(user_id):
         MarketplaceProduct.query.filter_by(user_id=user_id).delete()
         Product.query.filter_by(user_id=user_id).delete()
         SupplierXML.query.filter_by(user_id=user_id).delete()
-        CategoryMapping.query.filter_by(user_id=user_id).delete()
-        BrandMapping.query.filter_by(user_id=user_id).delete()
 
         # 2. Operational Data
         Order.query.filter_by(user_id=user_id).delete()
