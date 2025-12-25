@@ -72,8 +72,8 @@ def create_app(config_name='default'):
     from app.routes.products import products_bp
     app.register_blueprint(products_bp)
 
-    from app.routes.api_n11_mapping import api_n11_mapping_bp
-    app.register_blueprint(api_n11_mapping_bp)
+    from app.routes.api_n11_mapping import n11_mapping_bp
+    app.register_blueprint(n11_mapping_bp)
 
     from app.routes.api_questions import api_questions_bp
     app.register_blueprint(api_questions_bp)
