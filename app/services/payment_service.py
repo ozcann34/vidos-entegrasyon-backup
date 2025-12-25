@@ -188,7 +188,11 @@ class ShopierAdapter(PaymentGateway):
         Initiate Shopier payment and return redirect info.
         Generates sign and returns parameters for a dynamic form.
         """
+        print(f"DEBUG: ShopierAdapter.initiate_payment")
+        print(f"DEBUG: API Key present: {bool(self.api_key)}, Secret present: {bool(self.api_secret)}")
+        
         if not self.api_key or not self.api_secret:
+            print("DEBUG: Missing Shopier Credentials!")
             return {
                 'success': False,
                 'message': 'Shopier API anahtarları yapılandırılmamış.',
@@ -208,6 +212,10 @@ class ShopierAdapter(PaymentGateway):
         first_name = user.first_name or user.full_name.split()[0] if user.full_name else "Müşteri"
         last_name = user.last_name or (user.full_name.split()[-1] if user.full_name and len(user.full_name.split()) > 1 else "Soyadı")
         
+        # Override callback for testing/production mismatch
+        actual_callback = callback_url or "https://vidosentegrasyon.com.tr/payment/callback"
+        print(f"DEBUG: Callback URL: {actual_callback}")
+
         res_data = {
             'API_KEY': self.api_key,
             'user_name': first_name,
@@ -219,10 +227,12 @@ class ShopierAdapter(PaymentGateway):
             'product_price': payment.amount,
             'currency': 'TRY',
             'platform_order_id': payment.payment_reference,
-            'callback_url': callback_url or "https://vidosentegrasyon.com.tr/payment/callback",
+            'callback_url': actual_callback,
             'modul_version': '1.0.0',
             'type': 'vidos'
         }
+        
+        print(f"DEBUG: Shopier Data Prepared: {res_data['platform_order_id']} - {res_data['product_price']}")
 
         # Signature generation
         # data = platform_order_id + product_price + currency
@@ -232,6 +242,7 @@ class ShopierAdapter(PaymentGateway):
         
         res_data['signature'] = signature
 
+        print("DEBUG: Signature generated. Returning success.")
         return {
             'success': True,
             'message': 'Shopier ödemesi hazırlanıyor...',

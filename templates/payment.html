@@ -210,9 +210,7 @@
             const monthlyLabel = document.getElementById('monthly-label');
             const yearlyLabel = document.getElementById('yearly-label');
 
-            const mPrice = {{ plan_details.price }
-        };
-        const yPrice = {{ (plan_details.price * 12 * 0.8) | int }};
+            const mPrice = {{ plan_details.price }};`r`n            const yPrice = {{ (plan_details.price * 12 * 0.8) | int }};
 
         periodRadios.forEach(radio => {
             radio.addEventListener('change', function () {

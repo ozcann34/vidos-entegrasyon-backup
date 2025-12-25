@@ -48,9 +48,14 @@ def payment_page():
 @login_required
 def initiate_payment():
     """Initiate payment process."""
+    print(f"DEBUG: initiate_payment called by user {current_user.id}")
+    print(f"DEBUG: Form data: {request.form}")
+    
     plan = request.form.get('plan', 'basic')
     billing_cycle = request.form.get('billing_period', 'monthly')
-    gateway = 'shopier' # Sadece shopier kullanılacak
+    gateway = 'shopier' # Force shopier for debugging
+    
+    print(f"DEBUG: Plan: {plan}, Cycle: {billing_cycle}, Gateway: {gateway}")
     
     # Validate plan
     plan_details = get_plan_details(plan)
