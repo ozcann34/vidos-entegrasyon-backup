@@ -155,9 +155,12 @@
                         <strong>{{ plan_details.name }}</strong> planı seçildi
                     </div>
                     <span class="badge bg-primary">
-                        ₺{% if billing == 'yearly' %}{{ plan_details.yearly_price_monthly }}{% else %}{{
-                        plan_details.price }}{% endif %}/ay
-                        {% if billing == 'yearly' %}(Yıllık Ödeme){% endif %}
+                        {% if billing == 'yearly' %}
+                        ₺{{ '{:,.0f}'.format(plan_details.yearly_price_monthly * 12).replace(',', '.') }} /yıl
+                        (Tek Çekim)
+                        {% else %}
+                        ₺{{ '{:,.0f}'.format(plan_details.price).replace(',', '.') }}/ay
+                        {% endif %}
                     </span>
                 </div>
             </div>

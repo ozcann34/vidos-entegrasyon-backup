@@ -75,7 +75,7 @@
 ---
 
 ## 🚀 SPRINT 4: TOPLU İŞLEM DETAYLARI & PAZARYERİ OPTİMİZASYONLARI
-**Durum**: [/] Planlanıyor
+**Durum**: [x] Tamamlandı
 
 ### A. Toplu İşlem & Kuyruk Yönetimi İyileştirmeleri ⚡
 - [x] Job Queue loglarına detaylı ürün bazlı sonuçların eklenmesi
@@ -102,7 +102,21 @@
 - [x] Admin Paneli: Ödeme Geçmişi Sayfası (Sadece yetkili erişimi)
 
 ---
+## 🛠 SPRINT 6: LANDING PAGE & MAİL İYİLEŞTİRMELERİ (P1)
+**Durum**: [/] Planlanıyor
+
+### A. Landing Page UI/UX İyileştirmeleri 🎨
+- [x] Yıllık/Aylık fiyat değişiminin kayıt sayfasına aktarılması (Seçilen fiyattan ödeme)
+- [x] Fiyat toggle text'inin (Aylık/Yıllık) okunabilirlik sorunu (CSS Fix)
+- [x] Header menü elemanları (Logo, Login, Linkler) arasındaki boşlukların (spacing) düzenlenmesi
+- [x] "Ücretsiz Başlayın" butonunun paket seçim ekranına yönlendirmesi 
+
+### B. Fonksiyonel Düzeltmeler 🐛
+- [x] E-posta servisinin debug edilmesi (Kod gönderildi diyor ama gitmiyor)
+- [x] SMTP ayarlarının kontrolü ve loglamanın artırılması
+
+---
 ## 📊 İLERLEME ÖZETİ
-- **Sprint 1, 2, 3, 4**: %100 Tamamlandı
-- **Sprint 5 (Shopier)**: %100 Tamamlandı
-- **Genel İlerleme**: Platformun tüm kritik modülleri ve ödeme altyapısı hazır.
+- **Sprint 1, 2, 3, 4, 5**: %100 Tamamlandı
+- **Sprint 6**: %0 Başlıyor
+- **Genel İlerleme**: Shopier entegrasyonu tamamlandı, şimdi son kullanıcı deneyimi iyileştiriliyor.

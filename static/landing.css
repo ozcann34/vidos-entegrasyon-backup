@@ -138,6 +138,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: var(--spacing-md);
 }
 
 .logo {
@@ -447,7 +448,8 @@ body {
 }
 
 .pricing-toggle-label.active {
-    color: white;
+    color: var(--color-primary);
+    font-weight: 800;
 }
 
 .switch {
