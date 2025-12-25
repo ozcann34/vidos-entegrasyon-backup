@@ -332,22 +332,26 @@ def delete_user_route(user_id):
     try:
 
         # Delete related data
+        from app.models import Product, Order, SupplierXML, BatchLog, Payment, MarketplaceProduct, Notification, CategoryMapping, BrandMapping, UserActivityLog, SupportTicket, Expense
 
-        from app.models import Product, Order, SupplierXML, BatchLog, Payment
-
-        
-
+        # 1. Product & Catalog Data
+        MarketplaceProduct.query.filter_by(user_id=user_id).delete()
         Product.query.filter_by(user_id=user_id).delete()
-
-        Order.query.filter_by(user_id=user_id).delete()
-
         SupplierXML.query.filter_by(user_id=user_id).delete()
+        CategoryMapping.query.filter_by(user_id=user_id).delete()
+        BrandMapping.query.filter_by(user_id=user_id).delete()
 
+        # 2. Operational Data
+        Order.query.filter_by(user_id=user_id).delete()
         BatchLog.query.filter_by(user_id=user_id).delete()
+        Notification.query.filter_by(user_id=user_id).delete()
+        UserActivityLog.query.filter_by(user_id=user_id).delete()
+        Expense.query.filter_by(user_id=user_id).delete()
 
+        # 3. Financial & Account Data
         Subscription.query.filter_by(user_id=user_id).delete()
-
         Payment.query.filter_by(user_id=user_id).delete()
+        SupportTicket.query.filter_by(user_id=user_id).delete()
 
         
 
