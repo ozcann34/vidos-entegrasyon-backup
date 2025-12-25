@@ -16,9 +16,9 @@ class Config:
     MAIL_PORT = int(os.environ.get('MAIL_PORT', 587))
     MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'true').lower() in ('true', '1', 'yes')
     MAIL_USE_SSL = os.environ.get('MAIL_USE_SSL', 'false').lower() in ('true', '1', 'yes')
-    MAIL_USERNAME = os.environ.get('MAIL_USERNAME', '')
-    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD', '')
-    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER', 'noreply@vidos.com')
+    MAIL_USERNAME = os.environ.get('MAIL_USERNAME', 'bugraerkaradeniz34@gmail.com')
+    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD', 'ftkq fpri dhiz nsqj')
+    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER', 'Vidos Entegrasyon <bugraerkaradeniz34@gmail.com>')
     
     # Password Reset Settings
     PASSWORD_RESET_EXPIRY_HOURS = 24
