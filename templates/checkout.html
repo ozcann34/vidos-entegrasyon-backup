@@ -1,64 +1,156 @@
-{% extends "_base.html" %}
+<!DOCTYPE html>
+<html lang="tr">
 
-{% block title %}Ödeme Onayı - Vidos{% endblock %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Güvenli Ödeme Onayı - Vidos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
 
-{% block content %}
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
-                <div class="card-header bg-primary text-white p-4 text-center">
-                    <h2 class="mb-0">Ödeme Bilgilerini Onayla</h2>
-                    <p class="mb-0 opacity-75">{{ plan_details.name }} Paketi - {{ "Yıllık" if billing_period ==
-                        'yearly' else "Aylık" }}</p>
-                </div>
-                <div class="card-body p-5">
-                    <form action="{{ url_for('payment.initiate_payment') }}" method="POST">
-                        <input type="hidden" name="plan" value="{{ plan }}">
-                        <input type="hidden" name="billing_period" value="{{ billing_period }}">
+        body {
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            font-family: 'Inter', sans-serif;
+        }
 
-                        <h4 class="mb-4 text-primary"><i class="fas fa-user-circle me-2"></i>Kişisel Bilgiler</h4>
-                        <div class="row g-3 mb-4">
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">Ad</label>
-                                <input type="text" name="first_name" class="form-control form-control-lg bg-light"
-                                    value="{{ current_user.first_name or '' }}" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">Soyad</label>
-                                <input type="text" name="last_name" class="form-control form-control-lg bg-light"
-                                    value="{{ current_user.last_name or '' }}" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">E-posta</label>
-                                <input type="email" name="email" class="form-control form-control-lg bg-light"
-                                    value="{{ current_user.email }}" readonly>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">Telefon (5XXXXXXXXX)</label>
-                                <input type="text" name="phone" class="form-control form-control-lg bg-light"
-                                    value="{{ current_user.phone or '' }}" placeholder="5xxxxxxxxx" required>
-                            </div>
-                        </div>
+        .checkout-container {
+            max-width: 500px;
+            width: 100%;
+            margin: auto;
+            padding: 20px;
+        }
 
-                        <div class="alert alert-info border-0 rounded-4 p-4 mb-4">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="h5 mb-0">Toplam Tutar:</span>
-                                <span class="h3 mb-0 fw-bold">{{ "%.2f"|format(price) }} TRY</span>
-                            </div>
-                            <small class="text-muted">Güvenli ödeme sayfasına yönlendirileceksiniz.</small>
-                        </div>
+        .card {
+            border: none;
+            border-radius: 24px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
+        }
 
-                        <div class="d-grid gap-3">
-                            <button type="submit" class="btn btn-primary btn-lg py-3 rounded-pill fw-bold shadow">
-                                <i class="fas fa-lock me-2"></i>Ödemeye Geç (Shopier)
-                            </button>
-                            <a href="{{ url_for('payment.payment_page') }}" class="btn btn-link text-muted">Vazgeç</a>
-                        </div>
-                    </form>
-                </div>
+        .card-header {
+            background: white;
+            border-bottom: 1px solid #f1f5f9;
+            padding: 30px 30px 10px;
+            text-align: center;
+        }
+
+        .shopier-badge {
+            height: 25px;
+            margin-bottom: 15px;
+        }
+
+        .form-control {
+            border-radius: 12px;
+            padding: 12px 15px;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+        }
+
+        .form-control:focus {
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+            border-color: var(--primary-color);
+        }
+
+        .btn-pay {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 16px;
+            padding: 16px;
+            font-weight: 700;
+            width: 100%;
+            transition: all 0.3s ease;
+            font-size: 1.1rem;
+        }
+
+        .btn-pay:hover {
+            background: #4338ca;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.4);
+            color: white;
+        }
+
+        .price-tag {
+            background: #f0fdf4;
+            color: #166534;
+            padding: 15px;
+            border-radius: 16px;
+            text-align: center;
+            margin: 20px 0;
+            border: 1px solid #bbf7d0;
+        }
+
+        .back-link {
+            text-align: center;
+            margin-top: 20px;
+            color: #64748b;
+            text-decoration: none;
+            display: block;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="checkout-container">
+        <div class="card">
+            <div class="card-header">
+                <img src="https://www.shopier.com/images/shopier_logo_main.png" alt="Shopier" class="shopier-badge">
+                <h4 class="fw-bold text-dark">Güvenli Ödeme Adımı</h4>
+                <p class="text-muted small">Lütfen bilgilerinizi kontrol edip onaylayın.</p>
+            </div>
+            <div class="card-body p-4">
+                <form action="{{ url_for('payment.initiate_payment') }}" method="POST">
+                    <input type="hidden" name="plan" value="{{ plan }}">
+                    <input type="hidden" name="billing_period" value="{{ billing_period }}">
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-secondary">Adınız</label>
+                        <input type="text" name="first_name" class="form-control"
+                            value="{{ current_user.first_name or '' }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-secondary">Soyadınız</label>
+                        <input type="text" name="last_name" class="form-control"
+                            value="{{ current_user.last_name or '' }}" required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label small fw-bold text-secondary">Telefon (Örn: 5XXXXXXXXX)</label>
+                        <input type="text" name="phone" class="form-control" value="{{ current_user.phone or '' }}"
+                            placeholder="5xxxxxxxxx" maxlength="10" required>
+                    </div>
+
+                    <div class="price-tag">
+                        <div class="small opacity-75">Ödenecek Tutar</div>
+                        <div class="h3 mb-0 fw-bold">₺{{ "%.2f"|format(price) }}</div>
+                    </div>
+
+                    <button type="submit" class="btn btn-pay">
+                        <i class="fas fa-shield-alt me-2"></i>Şimdi Ödemeye Geç
+                    </button>
+
+                    <a href="{{ url_for('payment.payment_page') }}" class="back-link">
+                        <i class="fas fa-arrow-left me-1"></i> Geri Dön
+                    </a>
+                </form>
             </div>
         </div>
+        <div class="text-center mt-3 text-secondary small">
+            &copy; 2025 Vidos Entegrasyon. Tüm ödemeler Shopier güvencesiyle gerçekleşir.
+        </div>
     </div>
-</div>
-{% endblock %}
+
+</body>
+
+</html>

@@ -88,6 +88,9 @@ class ShopierAdapter:
         if phone.startswith('0'): phone = phone[1:]
         phone = phone[:10]
 
+        # Random sayıyı önceden oluştur
+        random_nr_val = generate_transaction_id()
+
         # Shopier'in istedigi zorunlu parametreler
         args = {
             'API_key': self.api_key,
@@ -103,21 +106,21 @@ class ShopierAdapter:
             'buyer_account_age': 0,
             'buyer_id_nr': 0,
             'buyer_phone': phone,
-            'billing_address': "Turkiye Online", 
+            'billing_address': "Turkiye", 
             'city': "Istanbul", 
             'country': "Turkiye", 
             'zip_code': "34000", 
-            'shipping_address': "Turkiye Online",
+            'shipping_address': "Turkiye",
             'shipping_city': "Istanbul",
             'shipping_country': "Turkiye",
             'shipping_zip_code': "34000",
             'modul_version': '1.0.4',
             'platform': 0, # 0: Custom
             'is_test': int(Setting.get_value('SHOPIER_TEST_MODE', '0')), 
-            'random_nr': generate_transaction_id()
+            'random_nr': random_nr_val
         }
 
-        # İmza Sıralaması (Pay4Post)
+        # İmza Sıralaması (Pay4Post - Kesin Sıralama)
         data_to_sign = [
             args['API_key'],
             args['website_index'],
