@@ -443,6 +443,11 @@ def returns_page():
 @permission_required('excel_products')
 def excel_products_page():
     """Excel ürünleri sayfası"""
+    # Check plan permission (BUG-Z Restriction)
+    if not current_user.has_plan_feature('add_excel_source'):
+         flash('Bu özellik paketinizde kısıtlıdır.', 'danger')
+         return redirect(url_for('main.dashboard'))
+         
     return render_template("excel_products.html")
 
 
@@ -766,6 +771,11 @@ def instagram_tools():
     """Instagram story and post tools page."""
     from app.services.scheduler_service import add_instagram_job, get_scheduled_instagram_jobs, execute_instagram_task
     from app.services.image_template_service import ImageTemplateService
+    
+    # Check plan permission
+    if not current_user.has_plan_feature('instagram_panel'):
+        flash('Bu özellik paketinizde mevcut değil. Lütfen yükseltin.', 'danger')
+        return redirect(url_for('main.dashboard'))
     
     if request.method == "POST":
         action = request.form.get('action')
@@ -1092,3 +1102,9 @@ def list_files():
     except Exception as e:
         flash(f"Dosyalar listelenirken hata oluştu: {str(e)}", "danger")
         return redirect(url_for('main.dashboard'))
+
+
+@main_bp.route('/bug-z-bayilik')
+def bug_z_detail():
+    """BUG-Z Bayilik Paketi detail page."""
+    return render_template('bug_z_detail.html')

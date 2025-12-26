@@ -120,6 +120,11 @@ def create_product():
 def bulk_update():
     """Bulk update product stock and prices via Excel."""
     if request.method == 'POST':
+        # Check plan permission (BUG-Z Restriction)
+        if not current_user.has_plan_feature('add_excel_source'):
+             flash('Bu özellik paketinizde kısıtlıdır.', 'danger')
+             return redirect(request.url)
+             
         if 'file' not in request.files:
             flash('Dosya seçilmedi.', 'danger')
             return redirect(request.url)
@@ -206,8 +211,13 @@ def bulk_update():
                         flash(f'Hiçbir ürün güncellenmedi. {not_found_count} barkod bulunamadı.', 'warning')
 
                 elif target == 'trendyol':
-                    from app.services.job_queue import submit_mp_job
+                    from app.services.job_queue import submit_mp_job, is_job_running_for_user
                     from app.services.trendyol_service import perform_trendyol_batch_update
+                    
+                    # Concurrency Check: Prevent new sync if one is already running
+                    if is_job_running_for_user(current_user.id):
+                        flash('Zaten devam eden bir işlem var. Lütfen tamamlanmasını bekleyin.', 'warning')
+                        return redirect(url_for('products.bulk_update'))
                     
                     job_id = submit_mp_job(
                         'trendyol_excel_update', 'trendyol',
@@ -218,8 +228,13 @@ def bulk_update():
                     # Optionally redirect to logs?
                     
                 elif target == 'n11':
-                    from app.services.job_queue import submit_mp_job
+                    from app.services.job_queue import submit_mp_job, is_job_running_for_user
                     from app.services.n11_service import perform_n11_batch_update
+                    
+                    # Concurrency Check
+                    if is_job_running_for_user(current_user.id):
+                        flash('Zaten devam eden bir işlem var. Lütfen tamamlanmasını bekleyin.', 'warning')
+                        return redirect(url_for('products.bulk_update'))
                     
                     job_id = submit_mp_job(
                         'n11_excel_update', 'n11',
@@ -229,8 +244,13 @@ def bulk_update():
                     flash(f'N11 güncelleme işlemi başlatıldı (Job ID: {job_id}).', 'success')
 
                 elif target == 'pazarama':
-                    from app.services.job_queue import submit_mp_job
+                    from app.services.job_queue import submit_mp_job, is_job_running_for_user
                     from app.services.pazarama_service import perform_pazarama_batch_update
+                    
+                    # Concurrency Check
+                    if is_job_running_for_user(current_user.id):
+                        flash('Zaten devam eden bir işlem var. Lütfen tamamlanmasını bekleyin.', 'warning')
+                        return redirect(url_for('products.bulk_update'))
                     
                     job_id = submit_mp_job(
                         'pazarama_excel_update', 'pazarama',

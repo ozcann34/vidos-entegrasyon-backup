@@ -186,20 +186,86 @@
         .btn-admin:hover {
             background: linear-gradient(135deg, #c82333 0%, #a71d2a 100%);
         }
+
+        .btn-admin:hover {
+            background: linear-gradient(135deg, #c82333 0%, #a71d2a 100%);
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            .admin-sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease-in-out;
+                width: 280px;
+                box-shadow: 5px 0 15px rgba(0, 0, 0, 0.5);
+            }
+
+            .admin-sidebar.show {
+                transform: translateX(0);
+            }
+
+            .admin-content {
+                margin-left: 0;
+                padding: 1rem;
+            }
+
+            .admin-overlay {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 999;
+                backdrop-filter: blur(3px);
+            }
+
+            .admin-overlay.show {
+                display: block;
+            }
+
+            .mobile-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 2rem;
+                background: rgba(255, 255, 255, 0.05);
+                padding: 1rem;
+                border-radius: 12px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+        }
+
+        @media (min-width: 769px) {
+            .mobile-header {
+                display: none;
+            }
+
+            .admin-overlay {
+                display: none !important;
+            }
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
 
 <body>
     <!-- Sidebar -->
-    <aside class="admin-sidebar">
-        <div class="admin-logo">
-            <i class="bi bi-shield-lock-fill"></i>
-            <div>
-                <span>Vidos</span>
-                <small>ADMIN PANEL</small>
+    <aside class="admin-sidebar" id="adminSidebar">
+        <div class="d-flex justify-content-between align-items-center pe-3">
+            <div class="admin-logo mb-0 border-0 pb-0">
+                <i class="bi bi-shield-lock-fill"></i>
+                <div>
+                    <span>Vidos</span>
+                    <small>ADMIN PANEL</small>
+                </div>
             </div>
+            <button class="btn btn-link text-white d-md-none" id="closeSidebar">
+                <i class="bi bi-x-lg"></i>
+            </button>
         </div>
+        <hr class="border-secondary mt-2 mb-4 opacity-25">
 
         <ul class="admin-nav">
             <li>
@@ -209,6 +275,7 @@
                     Dashboard
                 </a>
             </li>
+
             <li>
                 <a href="{{ url_for('admin.users') }}" class="{% if 'users' in request.endpoint %}active{% endif %}">
                     <i class="bi bi-people"></i>
@@ -222,7 +289,6 @@
                     Abonelikler
                 </a>
             </li>
-            {% if current_user.email == 'bugraerkaradeniz34@gmail.com' %}
             <li>
                 <a href="{{ url_for('admin.payments') }}"
                     class="{% if request.endpoint == 'admin.payments' %}active{% endif %}">
@@ -230,7 +296,6 @@
                     Ödeme Geçmişi
                 </a>
             </li>
-            {% endif %}
             <li>
                 <a href="{{ url_for('admin.announcements') }}"
                     class="{% if 'announcement' in request.endpoint %}active{% endif %}">
@@ -252,6 +317,22 @@
                     İşlem Logları
                 </a>
             </li>
+            {% if current_user.email == 'bugraerkaradeniz34@gmail.com' %}
+            <li>
+                <a href="{{ url_for('admin.global_settings') }}"
+                    class="{% if request.endpoint == 'admin.global_settings' %}active{% endif %}">
+                    <i class="bi bi-gear-wide-connected"></i>
+                    Küresel Ayarlar
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('admin.team_permissions') }}"
+                    class="{% if request.endpoint == 'admin.team_permissions' %}active{% endif %}">
+                    <i class="bi bi-people-fill"></i>
+                    Ekip İzinleri
+                </a>
+            </li>
+            {% endif %}
             <li class="mt-4 pt-3" style="border-top: 1px solid rgba(255,255,255,0.1);">
                 <a href="{{ url_for('main.dashboard') }}">
                     <i class="bi bi-arrow-left"></i>
@@ -261,8 +342,22 @@
         </ul>
     </aside>
 
+    <!-- Mobile Overlay -->
+    <div class="admin-overlay" id="adminOverlay"></div>
+
     <!-- Main Content -->
     <main class="admin-content">
+        <!-- Mobile Header -->
+        <div class="mobile-header">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-shield-lock-fill text-danger fs-4"></i>
+                <span class="fw-bold fs-5">Vidos Admin</span>
+            </div>
+            <button class="btn btn-dark border-secondary" id="sidebarToggle">
+                <i class="bi bi-list fs-4"></i>
+            </button>
+        </div>
+
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         {% for category, message in messages %}
@@ -279,6 +374,22 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Mobile Sidebar Toggle
+        const sidebar = document.getElementById('adminSidebar');
+        const overlay = document.getElementById('adminOverlay');
+        const toggleBtn = document.getElementById('sidebarToggle');
+        const closeBtn = document.getElementById('closeSidebar');
+
+        function toggleSidebar() {
+            sidebar.classList.toggle('show');
+            overlay.classList.toggle('show');
+        }
+
+        if (toggleBtn) toggleBtn.addEventListener('click', toggleSidebar);
+        if (closeBtn) closeBtn.addEventListener('click', toggleSidebar);
+        if (overlay) overlay.addEventListener('click', toggleSidebar);
+    </script>
     {% block extra_js %}{% endblock %}
 </body>
 

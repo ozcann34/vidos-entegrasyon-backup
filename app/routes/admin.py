@@ -203,6 +203,56 @@ def user_detail(user_id):
     return render_template('admin/user_detail.html', user=user, stats=stats, recent_logs=recent_logs)
 
 
+@admin_bp.route('/users/<int:user_id>/update-profile', methods=['POST'])
+@admin_required
+def update_user_profile(user_id):
+    """
+    Update normal user profile information (Admin only).
+    """
+    from app.models import User
+    
+    user = User.query.get_or_404(user_id)
+    
+    # Prevent editing super admin by others
+    if user.is_super_admin and current_user.id != user.id:
+        flash('Ana yönetici hesabı düzenlenemez.', 'danger')
+        return redirect(url_for('admin.user_detail', user_id=user_id))
+        
+    try:
+        # Update basics
+        user.full_name = request.form.get('full_name')
+        user.first_name = request.form.get('first_name')
+        user.last_name = request.form.get('last_name')
+        user.email = request.form.get('email')
+        user.phone = request.form.get('phone')
+        
+        # Company Info
+        user.company_title = request.form.get('company_title')
+        user.tc_no = request.form.get('tc_no')
+        user.tax_no = request.form.get('tax_no')
+        user.tax_office = request.form.get('tax_office')
+        
+        # Address
+        user.city = request.form.get('city')
+        user.district = request.form.get('district')
+        user.address = request.form.get('address')
+        
+        db.session.commit()
+        
+        # Log action
+        from app.models import AdminLog
+        AdminLog.log_action(current_user.id, 'update_user_profile', details=f"User {user.email} updated")
+        
+        flash('Kullanıcı bilgileri başarıyla güncellendi.', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Güncelleme hatası: {str(e)}', 'danger')
+        
+    return redirect(url_for('admin.user_detail', user_id=user_id))
+
+
+
 
 
 
@@ -639,10 +689,7 @@ def subscriptions():
 @admin_required
 def payments():
     """View payment history (Restricted)."""
-    # Strict Access Control
-    if current_user.email != 'bugraerkaradeniz34@gmail.com':
-        flash('Bu sayfaya erişim yetkiniz yok.', 'danger')
-        return redirect(url_for('admin.dashboard'))
+    # Access allowed for all admins (Support Team included)
         
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
@@ -780,6 +827,16 @@ def user_permissions(user_id):
         'auto_sync': 'Otomatik Senkronizasyon',
 
         'settings': 'Ayarlar',
+
+        'n11': 'N11',
+        
+        'assistant': 'Vidos Asistanı',
+        
+        'documentation': 'Kullanım Kılavuzu',
+        
+        'faq': 'S.S.S.',
+        
+        'support_tickets': 'Destek Talepleri',
 
     }
 
@@ -1289,6 +1346,22 @@ def user_activity_logs(user_id):
         
     return render_template('admin/user_logs.html', user=user, logs=logs)
 
+
+@admin_bp.route('/users/<int:user_id>/orders')
+@admin_required
+def user_orders(user_id):
+    """View orders for a specific user."""
+    from app.models import Order
+    user = User.query.get_or_404(user_id)
+    
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    pagination = Order.query.filter_by(user_id=user_id).order_by(Order.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    orders = pagination.items
+    
+    return render_template('admin/user_orders.html', user=user, orders=orders, pagination=pagination)
+
+
 @admin_bp.route('/api/live_logs')
 @admin_required
 def api_live_logs():
@@ -1339,4 +1412,17 @@ def debug_xml_log():
     except Exception as e:
         return f"Hata: {e}", 500
 
+
+@admin_bp.route('/team-permissions')
+@super_admin_required
+def team_permissions():
+    """List all support team members (admins except super admin)."""
+    # Get all admin users except the super admin
+    team_members = User.query.filter(
+        User.is_admin == True,
+        User.email != 'bugraerkaradeniz34@gmail.com'
+    ).order_by(User.created_at.desc()).all()
+    
+    return render_template('admin/team_permissions.html', 
+                         team_members=team_members)
 

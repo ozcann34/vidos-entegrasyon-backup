@@ -11,21 +11,38 @@ from flask import url_for
 SUBSCRIPTION_PLANS = {
     'basic': {
         'name': 'Başlangıç',
-        'price': 5.00,
+        'price': 1.00,
         'currency': 'TRY',
         'features': ['Ayda 1000 Ürün', 'Pazarama & İdefix', 'Temel İstatistikler']
     },
     'pro': {
         'name': 'Profesyonel',
-        'price': 5.00,
+        'price': 1.00,
         'currency': 'TRY',
         'features': ['Ayda 5000 Ürün', 'Tüm Pazaryerleri', 'Gelişmiş Raporlar', '7/24 Destek']
     },
     'enterprise': {
         'name': 'Kurumsal',
-        'price': 5.00,
+        'price': 1.00,
         'currency': 'TRY',
         'features': ['Sınırsız Ürün', 'Özel Entegrasyon', 'Dedicated Sunucu', 'Özel Hesap Yöneticisi']
+    },
+    'bug-z-bayilik': {
+        'name': 'BUG-Z Bayilik Paketi',
+        'price': 0.00,  # Ücretsiz (başvuru sonrası aktif)
+        'currency': 'TRY',
+        'features': [
+            'bug-z.com XML Bayiliği',
+            'Tüm Pazaryerleri (XML/Excel)',
+            'Sipariş Takibi',
+            'Temel Raporlar'
+        ],
+        'is_application_based': True,  # Başvuru gerektiriyor
+        'application_url': 'https://bug-z.com/bayilik-basvuru',
+        'max_xml_sources': 1,  # Sadece Admin ekleyebilir
+        'max_products': 10000,
+        'max_marketplaces': 5,
+        'restricted_features': ['instagram_panel', 'add_xml_source', 'add_excel_source']
     }
 }
 

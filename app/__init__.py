@@ -130,13 +130,13 @@ def create_app(config_name='default'):
                         flash('Sisteme erişmek için lütfen bir paket seçin ve ödeme yapın.', 'info')
                         return redirect(url_for('payment.payment_page'))
                 
-                elif not sub.is_approved:
-                    # Paid but not approved yet
-                    # Allow dashboard but nothing else
-                    allowed_pending = free_endpoints + ['main.dashboard', 'main.api_dashboard_stats']
-                    if request.endpoint and request.endpoint not in allowed_pending and not request.endpoint.startswith('auth.'):
-                        flash('Hesabınız şu anda onay sürecindedir. Onaylandığında tüm özellikler açılacaktır.', 'warning')
-                        return redirect(url_for('main.dashboard'))
+                # elif not sub.is_approved:
+                #     # Paid but not approved yet
+                #     # Allow dashboard but nothing else
+                #     allowed_pending = free_endpoints + ['main.dashboard', 'main.api_dashboard_stats']
+                #     if request.endpoint and request.endpoint not in allowed_pending and not request.endpoint.startswith('auth.'):
+                #         flash('Hesabınız şu anda onay sürecindedir. Onaylandığında tüm özellikler açılacaktır.', 'warning')
+                #         return redirect(url_for('main.dashboard'))
 
 
     

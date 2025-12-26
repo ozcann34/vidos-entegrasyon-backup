@@ -21,6 +21,10 @@ def payment_page():
         flash('Geçersiz paket seçimi.', 'warning')
         return redirect(url_for('auth.landing'))
         
+    # Redirect application-based plans (like BUG-Z) to their external URL or detail page
+    if plan_details.get('is_application_based') and plan_details.get('application_url'):
+        return redirect(plan_details['application_url'])
+        
     return render_template('payment.html', plan=plan, plan_details=plan_details)
 
 @payment_bp.route('/checkout')
@@ -132,6 +136,16 @@ def payment_callback():
         status = data.get('status', '').lower()
         if status == 'success':
             complete_payment(payment.id, data.get('payment_id'), 'shopier')
+            
+            # Aboneliği aktif et ve onay sürecini başlat
+            from app.services.subscription_service import activate_subscription
+            activate_subscription(
+                user_id=payment.user_id,
+                plan=payment.plan,
+                payment_id=payment.id,
+                billing_cycle=payment.billing_cycle,
+                price_paid=payment.amount
+            )
             flash('Ödemeniz başarıyla alındı! Teşekkürler.', 'success')
             return redirect(url_for('main.dashboard'))
         else:

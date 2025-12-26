@@ -1,0 +1,130 @@
+{% extends "admin/_base.html" %}
+
+{% block title %}Kullanıcı Siparişleri - {{ user.email }}{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>
+        <a href="{{ url_for('admin.user_detail', user_id=user.id) }}" class="text-muted text-decoration-none me-2">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        Kullanıcı Siparişleri: {{ user.full_name or user.email }}
+    </h1>
+</div>
+
+<div class="admin-card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Tarih</th>
+                    <th>Sipariş No</th>
+                    <th>Pazaryeri</th>
+                    <th>Müşteri</th>
+                    <th>Tutar</th>
+                    <th>Durum</th>
+                    <th>İşlemler</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr>
+                    <td class="text-nowrap small">
+                        {{ order.created_at.strftime('%d.%m.%Y %H:%M') }}
+                    </td>
+                    <td class="small font-monospace">{{ order.order_number }}</td>
+                    <td>
+                        {% if order.marketplace == 'trendyol' %}
+                        <span class="badge bg-warning text-dark">Trendyol</span>
+                        {% elif order.marketplace == 'hepsiburada' %}
+                        <span class="badge bg-warning text-dark"
+                            style="background-color: #ff6000 !important; color: white !important;">Hepsiburada</span>
+                        {% elif order.marketplace == 'n11' %}
+                        <span class="badge bg-danger">N11</span>
+                        {% elif order.marketplace == 'pazarama' %}
+                        <span class="badge bg-primary">Pazarama</span>
+                        {% elif order.marketplace == 'idefix' %}
+                        <span class="badge bg-info text-white">İdefix</span>
+                        {% elif order.marketplace == 'amazon' %}
+                        <span class="badge bg-dark">Amazon</span>
+                        {% else %}
+                        <span class="badge bg-secondary">{{ order.marketplace }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="fw-bold small">{{ order.customer_name }}</div>
+                    </td>
+                    <td>
+                        {{ "%.2f"|format(order.total_price) }} TL
+                    </td>
+                    <td>
+                        {% if 'iptal' in order.status.lower() or 'cancel' in order.status.lower() %}
+                        <span class="badge bg-danger">{{ order.status }}</span>
+                        {% elif 'iade' in order.status.lower() or 'return' in order.status.lower() %}
+                        <span class="badge bg-warning text-dark">{{ order.status }}</span>
+                        {% elif 'teslim' in order.status.lower() or 'deliver' in order.status.lower() %}
+                        <span class="badge bg-success">{{ order.status }}</span>
+                        {% elif 'kargo' in order.status.lower() or 'ship' in order.status.lower() %}
+                        <span class="badge bg-info text-white">{{ order.status }}</span>
+                        {% else %}
+                        <span class="badge bg-secondary">{{ order.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <!-- Admin can view raw order details JSON if needed -->
+                        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#orderJson{{ order.id }}">
+                            <i class="bi bi-code-slash"></i> JSON
+                        </button>
+                    </td>
+                </tr>
+                <tr class="collapse" id="orderJson{{ order.id }}">
+                    <td colspan="7">
+                        <div class="card card-body bg-light">
+                            <pre class="small mb-0"
+                                style="max-height: 200px; overflow-y: auto;">{{ order.raw_data_json }}</pre>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center py-5 text-muted">Sipariş bulunamadı.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if pagination.pages > 1 %}
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if pagination.has_prev %}
+            <li class="page-item">
+                <a class="page-link"
+                    href="{{ url_for('admin.user_orders', user_id=user.id, page=pagination.prev_num) }}">Geri</a>
+            </li>
+            {% endif %}
+
+            {% for page in pagination.iter_pages() %}
+            {% if page %}
+            <li class="page-item {{ 'active' if page == pagination.page else '' }}">
+                <a class="page-link" href="{{ url_for('admin.user_orders', user_id=user.id, page=page) }}">{{
+                    page }}</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+            {% endfor %}
+
+            {% if pagination.has_next %}
+            <li class="page-item">
+                <a class="page-link"
+                    href="{{ url_for('admin.user_orders', user_id=user.id, page=pagination.next_num) }}">İleri</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}

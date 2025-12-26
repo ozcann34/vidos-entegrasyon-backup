@@ -128,6 +128,10 @@ def api_xml_sources():
         if not name or not url:
             return jsonify({'success': False, 'message': 'İsim ve URL zorunludur.'}), 400
             
+        # Check plan permission (BUG-Z Restriction)
+        if not current_user.has_plan_feature('add_xml_source'):
+            return jsonify({'success': False, 'message': 'Bu özellik paketinizde kısıtlıdır. Sadece Admin XML kaynağı ekleyebilir.'}), 403
+            
         # Check subscription limit
         from app.services.subscription_service import check_usage_limit
         if not check_usage_limit(user_id, 'xml_sources'):

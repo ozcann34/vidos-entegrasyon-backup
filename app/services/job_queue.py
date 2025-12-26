@@ -17,6 +17,45 @@ _MP_JOBS_LOCK = threading.Lock()
 _MP_MAX_JOBS = Config.MP_MAX_JOBS
 MP_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=4)
 
+
+def is_job_running_for_user(user_id: int, job_type: str = None) -> bool:
+    """
+    Check if there's an active job running for the given user.
+    Optionally filter by job_type (e.g., 'batch_send', 'sync').
+    Returns True if a running/queued job exists.
+    """
+    with _MP_JOBS_LOCK:
+        for job in _MP_JOBS.values():
+            job_user_id = job.get('params', {}).get('_user_id')
+            if job_user_id == user_id:
+                status = job.get('status', '')
+                if status in ('queued', 'running', 'pausing'):
+                    # If job_type filter is specified, also check job type
+                    if job_type:
+                        if job.get('job_type') == job_type:
+                            return True
+                    else:
+                        return True
+    return False
+
+
+def get_running_job_for_user(user_id: int, job_type: str = None) -> Optional[Dict[str, Any]]:
+    """
+    Get the currently running job for a user, if any.
+    """
+    with _MP_JOBS_LOCK:
+        for job in _MP_JOBS.values():
+            job_user_id = job.get('params', {}).get('_user_id')
+            if job_user_id == user_id:
+                status = job.get('status', '')
+                if status in ('queued', 'running', 'pausing'):
+                    if job_type:
+                        if job.get('job_type') == job_type:
+                            return serialize_job(job)
+                    else:
+                        return serialize_job(job)
+    return None
+
 def _persist_job(job_id: str, job_data: Dict[str, Any]):
     """Helper to save/update BatchLog in DB."""
     try:

@@ -27,7 +27,10 @@ def activate_subscription(user_id: int, plan: str, payment_id: int = None, billi
         subscription.plan = plan
         subscription.status = 'active'
         subscription.start_date = datetime.utcnow()
-        subscription.end_date = datetime.utcnow() + timedelta(days=plan_details['duration_days'])
+        if billing_cycle == 'yearly':
+            subscription.end_date = datetime.utcnow() + timedelta(days=365)
+        else:
+            subscription.end_date = datetime.utcnow() + timedelta(days=30)
         subscription.max_products = plan_details['max_products']
         subscription.max_marketplaces = plan_details['max_marketplaces']
         subscription.max_xml_sources = plan_details.get('max_xml_sources', 1) # Default to 1
@@ -44,7 +47,7 @@ def activate_subscription(user_id: int, plan: str, payment_id: int = None, billi
             price_paid=price_paid,
             status='active',
             start_date=datetime.utcnow(),
-            end_date=datetime.utcnow() + timedelta(days=plan_details['duration_days']),
+            end_date=datetime.utcnow() + timedelta(days=365 if billing_cycle == 'yearly' else 30),
             max_products=plan_details['max_products'],
             max_marketplaces=plan_details['max_marketplaces'],
             max_xml_sources=plan_details.get('max_xml_sources', 1),
@@ -55,18 +58,21 @@ def activate_subscription(user_id: int, plan: str, payment_id: int = None, billi
     # Determine approval status: Admins are auto-approved, others wait
     from app.models.user import User
     user = User.query.get(user_id)
-    subscription.is_approved = True if (user and user.is_admin) else False
+    subscription.is_approved = True # Auto-approve all paid subscriptions
+
     
     subscription.updated_at = datetime.utcnow()
     db.session.commit()
     
     # Send notification if NOT an admin and NOT already approved (new activation)
-    if user and not user.is_admin:
-        try:
-            from app.services.email_service import send_admin_approval_notification
-            send_admin_approval_notification(user, subscription)
-        except Exception as e:
-            print(f"Error sending admin notification: {e}")
+    # USER REQUEST: Disable Admin Email Notifications for approval
+    # if user and not user.is_admin:
+    #     try:
+    #         from app.services.email_service import send_admin_approval_notification
+    #         send_admin_approval_notification(user, subscription)
+    #     except Exception as e:
+    #         print(f"Error sending admin notification: {e}")
+
     
     return subscription
 

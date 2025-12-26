@@ -84,6 +84,10 @@
         <div class="admin-card mt-4">
             <h6 class="mb-3"><i class="bi bi-gear me-2"></i>İşlemler</h6>
 
+            <a href="{{ url_for('admin.user_orders', user_id=user.id) }}" class="btn btn-outline-info w-100 mb-2">
+                <i class="bi bi-box-seam me-2"></i>Siparişleri Gör
+            </a>
+
             <a href="{{ url_for('admin.user_activity_logs', user_id=user.id) }}"
                 class="btn btn-outline-primary w-100 mb-2">
                 <i class="bi bi-journal-text me-2"></i>İşlem Loglarını Gör
@@ -99,6 +103,12 @@
             <a href="{{ url_for('admin.user_permissions', user_id=user.id) }}" class="btn btn-warning w-100 mb-2">
                 <i class="bi bi-key me-2"></i>İzinleri Düzenle
             </a>
+
+            <!-- Edit Profile Button -->
+            <button type="button" class="btn btn-outline-secondary w-100 mb-2" data-bs-toggle="modal"
+                data-bs-target="#editProfileModal">
+                <i class="bi bi-pencil-square me-2"></i>Bilgileri Düzenle
+            </button>
 
             {% if current_user.is_super_admin %}
             {% if user.is_banned %}
@@ -227,11 +237,12 @@
                 <div class="col-md-4">
                     <label class="form-label">Plan</label>
                     <select name="plan" class="form-select">
-                        <option value="free" {{ 'selected' if user.subscription.plan=='free' else '' }}>Ücretsiz
+                        <option value="basic" {{ 'selected' if user.subscription.plan=='basic' else '' }}>Başlangıç
                         </option>
-                        <option value="pro" {{ 'selected' if user.subscription.plan=='pro' else '' }}>Pro</option>
+                        <option value="pro" {{ 'selected' if user.subscription.plan=='pro' else '' }}>Profesyonel
+                        </option>
                         <option value="enterprise" {{ 'selected' if user.subscription.plan=='enterprise' else '' }}>
-                            Enterprise</option>
+                            Kurumsal</option>
                     </select>
                 </div>
                 <div class="col-md-4">
@@ -390,6 +401,91 @@
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
                     <button type="submit" class="btn btn-danger">
                         <i class="bi bi-trash me-2"></i>Evet, Sil
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Profile Modal -->
+<div class="modal fade" id="editProfileModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form action="{{ url_for('admin.update_user_profile', user_id=user.id) }}" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Kullanıcı Bilgilerini Düzenle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <!-- Personal Info -->
+                        <div class="col-md-6">
+                            <label class="form-label">Ad</label>
+                            <input type="text" name="first_name" class="form-control"
+                                value="{{ user.first_name or '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Soyad</label>
+                            <input type="text" name="last_name" class="form-control" value="{{ user.last_name or '' }}">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Tam Ad</label>
+                            <input type="text" name="full_name" class="form-control" value="{{ user.full_name or '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">E-posta</label>
+                            <input type="email" name="email" class="form-control" value="{{ user.email }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Telefon</label>
+                            <input type="tel" name="phone" class="form-control" value="{{ user.phone or '' }}">
+                        </div>
+
+                        <hr class="my-3">
+
+                        <!-- Company Info -->
+                        <div class="col-12">
+                            <label class="form-label">Firma Ünvanı</label>
+                            <input type="text" name="company_title" class="form-control"
+                                value="{{ user.company_title or '' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">TC Kimlik No</label>
+                            <input type="text" name="tc_no" class="form-control" value="{{ user.tc_no or '' }}"
+                                maxlength="11">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Vergi No</label>
+                            <input type="text" name="tax_no" class="form-control" value="{{ user.tax_no or '' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Vergi Dairesi</label>
+                            <input type="text" name="tax_office" class="form-control"
+                                value="{{ user.tax_office or '' }}">
+                        </div>
+
+                        <hr class="my-3">
+
+                        <!-- Address -->
+                        <div class="col-md-6">
+                            <label class="form-label">İl</label>
+                            <input type="text" name="city" class="form-control" value="{{ user.city or '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">İlçe</label>
+                            <input type="text" name="district" class="form-control" value="{{ user.district or '' }}">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Adres</label>
+                            <textarea name="address" class="form-control" rows="2">{{ user.address or '' }}</textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-2"></i>Kaydet
                     </button>
                 </div>
             </form>

@@ -148,6 +148,28 @@ class User(db.Model, UserMixin):
         """Check if user is the main super admin."""
         return self.email == "bugraerkaradeniz34@gmail.com"
 
+    @property
+    def is_bug_z_user(self) -> bool:
+        """Check if user is on the BUG-Z Bayilik plan."""
+        if not self.subscription:
+            return False
+        return self.subscription.plan == 'bug-z-bayilik'
+    
+    def has_plan_feature(self, feature: str) -> bool:
+        """
+        Check if user's plan allows a specific feature.
+        BUG-Z users have restricted features defined in payment_service.py.
+        """
+        if self.is_admin:
+            return True  # Admins can do everything
+        
+        if not self.is_bug_z_user:
+            return True  # Non-BUG-Z users have all features
+        
+        # BUG-Z restricted features
+        restricted_features = ['instagram_panel', 'add_xml_source', 'add_excel_source']
+        return feature not in restricted_features
+
     def __repr__(self):
         return f'<User {self.email}>'
 
