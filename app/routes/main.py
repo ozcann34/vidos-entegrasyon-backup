@@ -626,7 +626,7 @@ def n11_mapping_page():
     
     # Kullanıcının XML ürünlerindeki benzersiz kategorileri bul (basitçe Product tablosundan)
     # Ya da SupplierXML üzerinden. Product tablosu daha günceldir.
-    xml_categories = db.session.query(Product.category).filter_by(user_id=current_user.id).distinct().all()
+    xml_categories = db.session.query(Product.top_category).filter_by(user_id=current_user.id).distinct().all()
     xml_categories = [c[0] for c in xml_categories if c[0]]
     
     return render_template("n11_mapping.html", mapping=mapping, xml_categories=xml_categories)
