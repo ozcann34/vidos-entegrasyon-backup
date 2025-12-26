@@ -122,7 +122,7 @@ def create_app(config_name='default'):
                 sub = current_user.subscription
                 
                 # Publicly allowed endpoints for all users
-                free_endpoints = ['auth.logout', 'static', 'payment.payment_page', 'payment.initiate_payment', 'payment.callback', 'main.index']
+                free_endpoints = ['auth.logout', 'static', 'payment.payment_page', 'payment.checkout', 'payment.initiate_payment', 'payment.callback', 'main.index']
                 
                 if not sub or sub.plan == 'free':
                     # User needs to pay
