@@ -11,19 +11,19 @@ from flask import url_for
 SUBSCRIPTION_PLANS = {
     'basic': {
         'name': 'Başlangıç',
-        'price': 499.00,
+        'price': 5.00,
         'currency': 'TRY',
         'features': ['Ayda 1000 Ürün', 'Pazarama & İdefix', 'Temel İstatistikler']
     },
     'pro': {
         'name': 'Profesyonel',
-        'price': 999.00,
+        'price': 5.00,
         'currency': 'TRY',
         'features': ['Ayda 5000 Ürün', 'Tüm Pazaryerleri', 'Gelişmiş Raporlar', '7/24 Destek']
     },
     'enterprise': {
         'name': 'Kurumsal',
-        'price': 1999.00,
+        'price': 5.00,
         'currency': 'TRY',
         'features': ['Sınırsız Ürün', 'Özel Entegrasyon', 'Dedicated Sunucu', 'Özel Hesap Yöneticisi']
     }

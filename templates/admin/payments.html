@@ -53,6 +53,9 @@
                     <td>
                         {% if payment.status == 'completed' %}
                         <span class="badge bg-success">Başarılı</span>
+                        {% if payment.user.subscription and not payment.user.subscription.is_approved %}
+                        <span class="badge bg-warning text-dark"><i class="bi bi-shield-lock"></i> Onay Bekliyor</span>
+                        {% endif %}
                         {% elif payment.status == 'pending' %}
                         <span class="badge bg-warning text-dark">Beklemede</span>
                         {% elif payment.status == 'failed' %}
@@ -63,8 +66,20 @@
                         <span class="badge bg-light text-dark">{{ payment.status }}</span>
                         {% endif %}
                     </td>
-                    <td class="text-muted">
-                        {{ payment.created_at.strftime('%d.%m.%Y %H:%M') }}
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="text-muted small">{{ payment.created_at.strftime('%d.%m.%Y %H:%M') }}</span>
+                            {% if payment.status == 'completed' and payment.user.subscription and not
+                            payment.user.subscription.is_approved %}
+                            <form
+                                action="{{ url_for('admin.approve_subscription_route', sub_id=payment.user.subscription.id) }}"
+                                method="POST" class="ms-2">
+                                <button type="submit" class="btn btn-sm btn-success py-0" style="font-size: 0.7rem;">
+                                    <i class="bi bi-check-circle me-1"></i> Onayla
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
                     </td>
                 </tr>
                 {% else %}

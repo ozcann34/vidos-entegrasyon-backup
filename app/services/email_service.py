@@ -408,3 +408,53 @@ def send_contact_form_email(name, email, subject, message) -> bool:
     except Exception as e:
         print(f"Contact form email error: {e}")
         return False
+
+def send_admin_approval_notification(user, subscription) -> bool:
+    """Send notification to admin when a user is waiting for approval."""
+    try:
+        admin_email = "bugraerkaradeniz34@gmail.com"
+        subject = f"🔔 Yeni Kullanıcı Onayı Bekleniyor: {user.email}"
+        
+        # Plan details for email
+        from app.services.payment_service import SUBSCRIPTION_PLANS
+        plan_name = SUBSCRIPTION_PLANS.get(subscription.plan, {}).get('name', subscription.plan)
+        
+        html_body = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+            <div style="background: #e67e22; padding: 20px; border-radius: 10px 10px 0 0; color: white; text-align: center;">
+                <h2>Yeni Ödeme ve Onay Talebi</h2>
+            </div>
+            <div style="padding: 20px;">
+                <p><strong>Kullanıcı:</strong> {user.full_name or user.email} ({user.email})</p>
+                <p><strong>Seçilen Plan:</strong> {plan_name}</p>
+                <p><strong>Ödeme Tutarı:</strong> {subscription.price_paid} {subscription.currency}</p>
+                <p><strong>Referans:</strong> {subscription.payment_reference}</p>
+                <p><strong>Tarih:</strong> {datetime.utcnow().strftime('%d.%m.%Y %H:%M')}</p>
+                <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+                <p>Kullanıcının panel erişimini aktif etmek için lütfen admin panelinden onay verin.</p>
+                <div style="text-align: center; margin-top: 30px;">
+                    <a href="https://vidos.com.tr/admin-secret-panel/payments" style="background: #e67e22; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Ödemeleri Kontrol Et</a>
+                </div>
+            </div>
+            <div style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">
+                Vidos Entegrasyon - Admin Bildirim Sistemi
+            </div>
+        </div>
+        """
+        
+        msg = Message(
+            subject=subject,
+            recipients=[admin_email],
+            html=html_body
+        )
+        
+        if current_app.config.get('MAIL_USERNAME'):
+            mail.send(msg)
+            return True
+        else:
+            print(f"Admin approval notification simulated for {user.email}")
+            return True
+            
+    except Exception as e:
+        print(f"Admin notification email error: {e}")
+        return False

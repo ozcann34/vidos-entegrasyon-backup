@@ -116,6 +116,27 @@ def create_app(config_name='default'):
                 allowed_endpoints = ['auth.verify_email', 'auth.resend_otp', 'auth.logout', 'static']
                 if request.endpoint and request.endpoint not in allowed_endpoints and not request.endpoint.startswith('auth.'):
                     return redirect(url_for('auth.verify_email'))
+            
+            # 3. Subscription & Approval Check (Subscription Gate)
+            if not current_user.is_admin:
+                sub = current_user.subscription
+                
+                # Publicly allowed endpoints for all users
+                free_endpoints = ['auth.logout', 'static', 'payment.payment_page', 'payment.initiate_payment', 'payment.callback', 'main.index']
+                
+                if not sub or sub.plan == 'free':
+                    # User needs to pay
+                    if request.endpoint and request.endpoint not in free_endpoints and not request.endpoint.startswith('auth.'):
+                        flash('Sisteme erişmek için lütfen bir paket seçin ve ödeme yapın.', 'info')
+                        return redirect(url_for('payment.payment_page'))
+                
+                elif not sub.is_approved:
+                    # Paid but not approved yet
+                    # Allow dashboard but nothing else
+                    allowed_pending = free_endpoints + ['main.dashboard', 'main.api_dashboard_stats']
+                    if request.endpoint and request.endpoint not in allowed_pending and not request.endpoint.startswith('auth.'):
+                        flash('Hesabınız şu anda onay sürecindedir. Onaylandığında tüm özellikler açılacaktır.', 'warning')
+                        return redirect(url_for('main.dashboard'))
 
     
     # Initialize scheduler for auto sync

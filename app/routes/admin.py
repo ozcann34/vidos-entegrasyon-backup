@@ -652,6 +652,32 @@ def payments():
     return render_template('admin/payments.html', payments=payments)
 
 
+@admin_bp.route('/subscriptions/<int:sub_id>/approve', methods=['POST'])
+@admin_required
+def approve_subscription_route(sub_id):
+    """Approve a pending subscription."""
+    # Strict Access Control
+    if current_user.email != 'bugraerkaradeniz34@gmail.com':
+        flash('Bu işlem için yetkiniz yok.', 'danger')
+        return redirect(url_for('admin.dashboard'))
+        
+    subscription = Subscription.query.get_or_404(sub_id)
+    subscription.is_approved = True
+    db.session.commit()
+    
+    # Log action
+    AdminLog.log_action(
+        admin_id=current_user.id,
+        action='approve_subscription',
+        target_user_id=subscription.user_id,
+        details=f'Subscription ID {sub_id} approved. Plan: {subscription.plan}',
+        ip_address=request.remote_addr
+    )
+    
+    flash(f'Abonelik başarıyla onaylandı. Kullanıcı artık sisteme erişebilir.', 'success')
+    return redirect(request.referrer or url_for('admin.payments'))
+
+
 @admin_bp.route('/global-settings', methods=['GET', 'POST'])
 @super_admin_required
 def global_settings():

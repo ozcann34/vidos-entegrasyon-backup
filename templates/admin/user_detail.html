@@ -183,8 +183,24 @@
                                 class="badge bg-{{ 'success' if user.subscription.plan == 'enterprise' else 'primary' if user.subscription.plan == 'pro' else 'secondary' }} fs-6">
                                 {{ user.subscription.plan_display_name }}
                             </span>
+                            {% if not user.subscription.is_approved %}
+                            <span class="badge bg-warning text-dark ms-2"><i class="bi bi-shield-lock"></i> Onay
+                                Bekliyor</span>
+                            {% endif %}
                         </p>
                     </div>
+                    {% if not user.subscription.is_approved %}
+                    <div class="mb-3">
+                        <form action="{{ url_for('admin.approve_subscription_route', sub_id=user.subscription.id) }}"
+                            method="POST">
+                            <button type="submit"
+                                class="btn btn-success p-2 px-4 shadow-sm animate__animated animate__pulse animate__infinite">
+                                <i class="bi bi-check-circle me-2"></i> Aboneliği Onayla <i
+                                    class="bi bi-arrow-right ms-2"></i>
+                            </button>
+                        </form>
+                    </div>
+                    {% endif %}
                     <div class="mb-3">
                         <small class="text-muted">Durum</small>
                         <p class="mb-0">{{ user.subscription.status }}</p>

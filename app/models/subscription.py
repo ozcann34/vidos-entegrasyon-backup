@@ -14,6 +14,7 @@ class Subscription(db.Model):
     plan = db.Column(db.String(50), default='free')  # free, pro, enterprise
     billing_cycle = db.Column(db.String(20), default='monthly')  # monthly, yearly
     status = db.Column(db.String(20), default='active')  # active, expired, cancelled, suspended
+    is_approved = db.Column(db.Boolean, default=False)  # Admin approval flag
     
     # Dates
     start_date = db.Column(db.DateTime, default=datetime.utcnow)
