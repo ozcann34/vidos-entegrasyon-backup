@@ -318,13 +318,7 @@
                 </a>
             </li>
             {% if current_user.email == 'bugraerkaradeniz34@gmail.com' %}
-            <li>
-                <a href="{{ url_for('admin.global_settings') }}"
-                    class="{% if request.endpoint == 'admin.global_settings' %}active{% endif %}">
-                    <i class="bi bi-gear-wide-connected"></i>
-                    Küresel Ayarlar
-                </a>
-            </li>
+            <!-- Küresel Ayarlar Removed -->
             <li>
                 <a href="{{ url_for('admin.team_permissions') }}"
                     class="{% if request.endpoint == 'admin.team_permissions' %}active{% endif %}">

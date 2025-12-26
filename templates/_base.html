@@ -235,18 +235,20 @@
 
 
             <!-- GRUP: İŞLEMLER -->
+            <!-- GRUP: YENİ YAPILANDIRMA -->
             <li class="nav-section-title px-3 mb-2 mt-4 small text-uppercase text-white-50 fw-bold"
-                style="font-size: 0.7rem; letter-spacing: 1px;">Operasyon & Raporlar</li>
+                style="font-size: 0.7rem; letter-spacing: 1px;">Operasyon</li>
+
+            <!-- 1. Pazaryeri İşlemleri -->
             <li class="nav-item">
-                {% set ops_active = (request.endpoint in ['main.orders_page', 'main.order_detail', 'main.batch_logs',
-                'main.batch_detail', 'main.auto_sync_page', 'main.xml_updates', 'products.bulk_update',
-                'report.error_history', 'report.profit_loss_report', 'main.questions_page', 'main.returns_page',
-                'main.n11_mapping_page']) %}
-                <a href="#opsSubmenu" data-bs-toggle="collapse" aria-expanded="{{ 'true' if ops_active else 'false' }}"
-                    class="nav-link dropdown-toggle text-white {% if not ops_active %}collapsed{% endif %}">
-                    <i class="bi bi-gear-wide-connected me-2"></i> İşlemler
+                {% set pm_ops_active = (request.endpoint in ['main.orders_page', 'main.order_detail',
+                'main.questions_page', 'main.returns_page']) %}
+                <a href="#pmOpsSubmenu" data-bs-toggle="collapse"
+                    aria-expanded="{{ 'true' if pm_ops_active else 'false' }}"
+                    class="nav-link dropdown-toggle text-white {% if not pm_ops_active %}collapsed{% endif %}">
+                    <i class="bi bi-shop me-2"></i> Pazaryeri İşlemleri
                 </a>
-                <ul class="collapse list-unstyled ps-3 {{ 'show' if ops_active else '' }}" id="opsSubmenu"
+                <ul class="collapse list-unstyled ps-3 {{ 'show' if pm_ops_active else '' }}" id="pmOpsSubmenu"
                     data-bs-parent="#sidebar-nav">
                     <li>
                         <a href="{{ url_for('main.orders_page') }}"
@@ -266,14 +268,20 @@
                             <i class="bi bi-caret-right-fill me-1 small"></i> İade Talepleri
                         </a>
                     </li>
-                    {% if current_user.is_admin %}
-                    <li>
-                        <a href="{{ url_for('main.batch_logs') }}"
-                            class="nav-link py-2 fs-6 {% if request.endpoint == 'main.batch_logs' or request.endpoint == 'main.batch_detail' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
-                            <i class="bi bi-caret-right-fill me-1 small"></i> Batch Logları
-                        </a>
-                    </li>
-                    {% endif %}
+                </ul>
+            </li>
+
+            <!-- 2. Güncelleme Seçenekleri -->
+            <li class="nav-item">
+                {% set update_ops_active = (request.endpoint in ['main.auto_sync_page', 'main.xml_updates',
+                'products.bulk_update']) %}
+                <a href="#updateOpsSubmenu" data-bs-toggle="collapse"
+                    aria-expanded="{{ 'true' if update_ops_active else 'false' }}"
+                    class="nav-link dropdown-toggle text-white {% if not update_ops_active %}collapsed{% endif %}">
+                    <i class="bi bi-arrow-repeat me-2"></i> Güncelleme Seçenekleri
+                </a>
+                <ul class="collapse list-unstyled ps-3 {{ 'show' if update_ops_active else '' }}" id="updateOpsSubmenu"
+                    data-bs-parent="#sidebar-nav">
                     <li>
                         <a href="{{ url_for('main.auto_sync_page') }}"
                             class="nav-link py-2 fs-6 {% if request.endpoint == 'main.auto_sync_page' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
@@ -289,25 +297,54 @@
                     <li>
                         <a href="{{ url_for('products.bulk_update') }}"
                             class="nav-link py-2 fs-6 {% if request.endpoint == 'products.bulk_update' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
-                            <i class="bi bi-caret-right-fill me-1 small"></i> Toplu Güncelleme
+                            <i class="bi bi-caret-right-fill me-1 small"></i> Toplu Güncelleme (Excel)
                         </a>
                     </li>
-                    <li>
-                        <a href="{{ url_for('main.n11_mapping_page') }}"
-                            class="nav-link py-2 fs-6 {% if request.endpoint == 'main.n11_mapping_page' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
-                            <i class="bi bi-caret-right-fill me-1 small"></i> N11 Kategori Eşleştirme
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ url_for('report.error_history') }}"
-                            class="nav-link py-2 fs-6 {% if request.endpoint == 'report.error_history' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
-                            <i class="bi bi-caret-right-fill me-1 small"></i> Hata Geçmişi
-                        </a>
-                    </li>
+                </ul>
+            </li>
+
+            <!-- 3. Finansal Raporlar -->
+            <li class="nav-item">
+                {% set fin_ops_active = (request.endpoint in ['report.profit_loss_report']) %}
+                <a href="#finOpsSubmenu" data-bs-toggle="collapse"
+                    aria-expanded="{{ 'true' if fin_ops_active else 'false' }}"
+                    class="nav-link dropdown-toggle text-white {% if not fin_ops_active %}collapsed{% endif %}">
+                    <i class="bi bi-cash-stack me-2"></i> Finansal Raporlar
+                </a>
+                <ul class="collapse list-unstyled ps-3 {{ 'show' if fin_ops_active else '' }}" id="finOpsSubmenu"
+                    data-bs-parent="#sidebar-nav">
                     <li>
                         <a href="{{ url_for('report.profit_loss_report') }}"
                             class="nav-link py-2 fs-6 {% if request.endpoint == 'report.profit_loss_report' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
                             <i class="bi bi-caret-right-fill me-1 small"></i> Kâr / Zarar Analizi
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+            <!-- 4. Diğer İşlemler (Reduced) -->
+            <li class="nav-item">
+                {% set other_ops_active = (request.endpoint in ['main.batch_logs', 'main.batch_detail',
+                'report.error_history']) %}
+                <a href="#otherOpsSubmenu" data-bs-toggle="collapse"
+                    aria-expanded="{{ 'true' if other_ops_active else 'false' }}"
+                    class="nav-link dropdown-toggle text-white {% if not other_ops_active %}collapsed{% endif %}">
+                    <i class="bi bi-lightning-charge me-2"></i> İşlemler
+                </a>
+                <ul class="collapse list-unstyled ps-3 {{ 'show' if other_ops_active else '' }}" id="otherOpsSubmenu"
+                    data-bs-parent="#sidebar-nav">
+                    {% if current_user.is_admin %}
+                    <li>
+                        <a href="{{ url_for('main.batch_logs') }}"
+                            class="nav-link py-2 fs-6 {% if request.endpoint == 'main.batch_logs' or request.endpoint == 'main.batch_detail' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
+                            <i class="bi bi-caret-right-fill me-1 small"></i> Batch Logları
+                        </a>
+                    </li>
+                    {% endif %}
+                    <li>
+                        <a href="{{ url_for('report.error_history') }}"
+                            class="nav-link py-2 fs-6 {% if request.endpoint == 'report.error_history' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
+                            <i class="bi bi-caret-right-fill me-1 small"></i> Hata Geçmişi
                         </a>
                     </li>
                 </ul>
