@@ -92,7 +92,7 @@ class ShopierAdapter:
         args = {
             'API_key': self.api_key,
             'website_index': website_index,
-            'platform_order_id': f"VID_{payment.payment_reference}", # Prefix eklendi
+            'platform_order_id': f"VID_{payment.payment_reference}",
             'product_name': product_name,
             'product_type': 1, # 1: Market/Dijital
             'price': price_str,
@@ -113,7 +113,7 @@ class ShopierAdapter:
             'shipping_zip_code': "34000",
             'modul_version': '1.0.4',
             'platform': 0, # 0: Custom
-            'is_test': 0, # 0: Live
+            'is_test': int(Setting.get_value('SHOPIER_TEST_MODE', '0')), 
             'random_nr': generate_transaction_id()
         }
 
@@ -148,14 +148,15 @@ class ShopierAdapter:
         
         signature_data = "".join([str(x) for x in data_to_sign])
         
-        # DEBUG: Log raw data
+        # DEBUG: Log V1 Attempt
         try:
             with open('shopier_debug.log', 'a') as f:
-                f.write(f"\n[{datetime.now()}] --- PAYMENT ATTEMPT ---\n")
+                f.write(f"\n[{datetime.now()}] --- V1 (CLASSIC) PAYMENT ATTEMPT ---\n")
                 f.write(f"Website Index: {args['website_index']}\n")
                 f.write(f"Order ID: {args['platform_order_id']}\n")
-                f.write(f"Signature String: {signature_data}\n")
+                f.write(f"Phone: {args['buyer_phone']}\n")
                 f.write(f"Price: {args['price']}\n")
+                f.write(f"Signature String: {signature_data}\n")
         except: pass
 
         signature = hmac.new(

@@ -23,13 +23,49 @@ def payment_page():
         
     return render_template('payment.html', plan=plan, plan_details=plan_details)
 
+@payment_bp.route('/checkout')
+@login_required
+def checkout():
+    """Ödeme öncesi son onay sayfası."""
+    plan = request.args.get('plan', 'basic')
+    billing_period = request.args.get('billing_period', 'monthly')
+    
+    plan_details = get_plan_details(plan)
+    if not plan_details:
+        flash('Geçersiz paket seçimi.', 'warning')
+        return redirect(url_for('auth.landing'))
+        
+    price = plan_details['price']
+    if billing_period == 'yearly':
+        price = price * 12 * 0.8 # %20 indirim
+        
+    return render_template(
+        'checkout.html', 
+        plan=plan, 
+        billing_period=billing_period, 
+        plan_details=plan_details,
+        price=price
+    )
+
 @payment_bp.route('/initiate', methods=['POST'])
 @login_required
 def initiate_payment():
-    """Formdan gelen verilerle ödemeyi başlatır."""
+    """Checkout formundan gelen verilerle ödemeyi başlatır."""
     plan = request.form.get('plan')
     billing_period = request.form.get('billing_period', 'monthly')
     
+    # Kullanıcının checkout sayfasında güncellediği veriler
+    temp_name = request.form.get('first_name')
+    temp_surname = request.form.get('last_name')
+    temp_phone = request.form.get('phone')
+    
+    # Geçici olarak User objesini güncellemiyoruz, sadece ödeme anında kullanacağız
+    # Ama istenirse db'ye kaydedilebilir:
+    if temp_phone:
+        current_user.phone = temp_phone
+        from app import db
+        db.session.commit()
+
     # 1. Ödeme Kaydı Oluştur (Fiyat sunucuda hesaplanır)
     payment = create_payment(
         user_id=current_user.id,
@@ -45,6 +81,11 @@ def initiate_payment():
         
     # 2. Shopier Adaptörünü Çağır (V1 - Klasik Form Yöntemi)
     adapter = get_payment_gateway('shopier')
+    
+    # Overwrite user details for this payment attempt
+    if temp_name: current_user.first_name = temp_name
+    if temp_surname: current_user.last_name = temp_surname
+    
     result = adapter.initiate_payment(payment)
     
     # 3. Sonuç Başarılıysa Yönlendirme Sayfasını Render Et
