@@ -82,10 +82,11 @@ class ShopierAdapter:
         buyer_name = clean_text_strict(user.first_name if user.first_name else 'Misafir')
         buyer_surname = clean_text_strict(user.last_name if user.last_name else 'Kullanici')
         
-        # Telefon numarasi (10 Hane Kesin)
+        # Telefon numarasi (Shopier 10 hane bekler: 5XXXXXXXXX)
         phone = "".join(filter(str.isdigit, str(user.phone or '5555555555')))
+        if phone.startswith('90'): phone = phone[2:]
         if phone.startswith('0'): phone = phone[1:]
-        phone = phone[:10].ljust(10, '0')
+        phone = phone[:10]
 
         # Shopier'in istedigi zorunlu parametreler
         args = {
@@ -205,19 +206,21 @@ class ShopierAdapter:
             "platform_order_id": f"VID_{payment.payment_reference}",
             "callback_url": callback_url,
             "product_name": clean_text_strict(f"Vidos {plan_name}")[:20],
-            "website_index": str(Setting.get_value('SHOPIER_WEBSITE_INDEX', '1')),
-            "product_type": 1, # 1: Dijital/Market
+            "website_index": 1, # Integer olarak deneyelim
+            "product_type": 1,
             "buyer_id_nr": 0,
             "platform": 0,
             "is_test": 0
         }
         
         # Veriyi Base64'e çevir
-        data_string = json.dumps(user_data)
+        data_string = json.dumps(user_data, separators=(',', ':')) # Compact JSON
         encoded_data = base64.b64encode(data_string.encode()).decode()
         
-        # İmza (V2 genellikle data + random_nr kullanır)
+        # İmza (V2 genellikle data + random_nr kullanır ancak sıralama önemlidir)
         random_nr = generate_transaction_id()
+        # BAZI SHOPIER HESAPLARINDA IMZA ICIN SADECE DATA + RANDOM_NR YETERLIDIR
+        # ANCAK GARANTI OLMASI ICIN DATA VE RANDOM_NR'YI BIRLESTIRIYORUZ
         signature_data = encoded_data + random_nr
         
         signature = hmac.new(

@@ -43,9 +43,9 @@ def initiate_payment():
         flash('Ödeme kaydı oluşturulurken bir hata oluştu.', 'danger')
         return redirect(url_for('payment.payment_page', plan=plan))
         
-    # 2. Shopier Adaptörünü Çağır (V2 - Base64 JSON Yöntemi)
+    # 2. Shopier Adaptörünü Çağır (V1 - Klasik Form Yöntemi)
     adapter = get_payment_gateway('shopier')
-    result = adapter.initiate_payment_v2(payment)
+    result = adapter.initiate_payment(payment)
     
     # 3. Sonuç Başarılıysa Yönlendirme Sayfasını Render Et
     if result.get('success'):
