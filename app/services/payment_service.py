@@ -187,10 +187,11 @@ class ShopierAdapter:
         # KULLANICI ISTEGI UZERINE CALLBACK SABITLENDI
         callback_url = "https://vidosentegrasyon.com.tr/payment/callback"
 
-        # Telefon No Temizleme (Shopier genellikle 10 veya 11 hane bekler)
-        # Kullanıcı '0' ile yazıyor dediği için '0'ı artık temizlemiyoruz.
-        phone = "".join(filter(str.isdigit, str(user.phone or '05555555555')))
-        if phone.startswith('90'): phone = phone[2:] # Sadece ülke kodunu temizle
+        # Telefon No Temizleme (Shopier 10 hane bekler: 5XX... şeklinde)
+        phone = "".join(filter(str.isdigit, str(user.phone or '5555555555')))
+        if phone.startswith('90'): phone = phone[2:]
+        if phone.startswith('0'): phone = phone[1:]
+        phone = phone[:10]
         
         # JSON Verisi (Golden Form v2)
         user_data = {
@@ -205,6 +206,8 @@ class ShopierAdapter:
             "callback_url": callback_url,
             "product_name": clean_text_strict(f"Vidos {plan_name}")[:20],
             "website_index": str(Setting.get_value('SHOPIER_WEBSITE_INDEX', '1')),
+            "product_type": 1, # 1: Dijital/Market
+            "buyer_id_nr": 0,
             "platform": 0,
             "is_test": 0
         }
@@ -230,6 +233,15 @@ class ShopierAdapter:
             'signature': base64.b64encode(signature).decode()
         }
         
+        # DEBUG: Log results
+        try:
+            with open('shopier_debug.log', 'a') as f:
+                f.write(f"\n[{datetime.now()}] --- V2 PAYMENT ATTEMPT ---\n")
+                f.write(f"Payload: {data_string}\n")
+                f.write(f"Random Nr: {random_nr}\n")
+                f.write(f"Signature: {args['signature']}\n")
+        except: pass
+
         return {
             'success': True,
             'post_url': self.base_url, # Genellikle aynı veya v1/pay
