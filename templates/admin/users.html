@@ -39,7 +39,10 @@
                 <td>{{ user.email }}</td>
                 <td>
                     {% if user.subscription %}
-                    <span class="badge bg-primary">Abonelik Var</span>
+                    <span
+                        class="badge bg-{{ 'success' if user.subscription.plan == 'enterprise' else 'primary' if user.subscription.plan == 'pro' else 'secondary' }}">
+                        {{ user.subscription.plan_display_name }}
+                    </span>
                     {% else %}
                     <span class="badge bg-secondary">Yok</span>
                     {% endif %}
