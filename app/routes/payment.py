@@ -59,9 +59,12 @@ def initiate_payment():
         flash(result.get('message', 'Ödeme başlatılamadı.'), 'danger')
         return redirect(url_for('payment.payment_page', plan=plan))
 
-@payment_bp.route('/callback', methods=['POST'])
+@payment_bp.route('/callback', methods=['GET', 'POST'])
 def payment_callback():
     """Shopier'den gelen sonucu işler."""
+    if request.method == 'GET':
+        return "Geri dönüş URL'si çalışıyor (Sadece POST istekleri kabul edilir).", 200
+        
     data = request.form.to_dict()
     
     # Shopier platform_order_id parametresini bizim payment_reference ile eşleştirir

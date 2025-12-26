@@ -187,13 +187,12 @@ class ShopierAdapter:
         # KULLANICI ISTEGI UZERINE CALLBACK SABITLENDI
         callback_url = "https://vidosentegrasyon.com.tr/payment/callback"
 
-        # Telefon No Temizleme (Kesin 10 haneli, 0 veya 90 olmadan)
-        phone = "".join(filter(str.isdigit, str(user.phone or '5555555555')))
-        if phone.startswith('90'): phone = phone[2:]
-        elif phone.startswith('0'): phone = phone[1:]
-        phone = phone[:10].ljust(10, '0')
-
-        # JSON Verisi
+        # Telefon No Temizleme (Shopier genellikle 10 veya 11 hane bekler)
+        # Kullanıcı '0' ile yazıyor dediği için '0'ı artık temizlemiyoruz.
+        phone = "".join(filter(str.isdigit, str(user.phone or '05555555555')))
+        if phone.startswith('90'): phone = phone[2:] # Sadece ülke kodunu temizle
+        
+        # JSON Verisi (Golden Form v2)
         user_data = {
             "buyer_name": clean_text_strict(user.first_name if user.first_name else 'Misafir'),
             "buyer_surname": clean_text_strict(user.last_name if user.last_name else 'Kullanici'),
@@ -204,7 +203,10 @@ class ShopierAdapter:
             "currency": "TRY",
             "platform_order_id": f"VID_{payment.payment_reference}",
             "callback_url": callback_url,
-            "product_name": clean_text_strict(f"Vidos {plan_name}")[:20]
+            "product_name": clean_text_strict(f"Vidos {plan_name}")[:20],
+            "website_index": str(Setting.get_value('SHOPIER_WEBSITE_INDEX', '1')),
+            "platform": 0,
+            "is_test": 0
         }
         
         # Veriyi Base64'e çevir
