@@ -51,7 +51,7 @@ class ShopierAdapter:
         # KULLANICI ISTEGI UZERINE HARDCODED OLARAK EKLENDI
         self.api_key = "93d990d318d7429b720d52d394681ac3"
         self.api_secret = "3980f311a4dd2438ecccaf4237a9ae73"
-        self.base_url = "https://www.shopier.com/ShowProduct/api/pay4post"
+        self.base_url = "https://www.shopier.com/ShowProduct/api_pay4.php"
 
     def initiate_payment(self, payment: Payment, callback_url: str = None) -> dict:
         """
