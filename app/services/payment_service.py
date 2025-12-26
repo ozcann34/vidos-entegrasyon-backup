@@ -55,122 +55,91 @@ class ShopierAdapter:
 
     def initiate_payment(self, payment: Payment, callback_url: str = None) -> dict:
         """
-        Shopier ödeme formunu hazırlar. (Pay4Post - Klasik Yöntem)
+        Shopier ödeme formunu hazırlar (api_pay4.php - SDK STANDART).
+        HATA 500 sorununu çözmek için HMAC-SHA256 imza algoritması uygulanmıştır.
         """
         if not self.api_key or not self.api_secret:
             return {
                 'success': False,
-                'message': 'Shopier API anahtarları eksik. Lütfen yönetici ile iletişime geçin.'
+                'message': 'Shopier API anahtarları eksik.'
             }
 
         user = payment.user
-        plan_name = SUBSCRIPTION_PLANS.get(payment.plan, {}).get('name', 'Abonelik')
-        
-        # Website Index (Admin panelinden cekiliyor)
         website_index = str(Setting.get_value('SHOPIER_WEBSITE_INDEX', '1')).strip()
-        if not website_index:
-            website_index = '1'
-            
-        # Fiyat Formatlama (PHP örneğindeki gibi 10.0 formatı veya X.XX)
-        # Shopier genellikle .2f bekler ancak bazı durumlarda hassas olabilir
-        try:
-            price = float(payment.amount)
-        except:
-            price = 0.0
-        price_str = f"{price:.2f}"
-            
-        product_name = clean_text_strict(f"Vidos {plan_name}")[:20].strip()
-        buyer_name = clean_text_strict(user.first_name if user.first_name else 'Misafir').strip()
-        buyer_surname = clean_text_strict(user.last_name if user.last_name else 'Kullanici').strip()
         
-        # Telefon numarasi (Shopier tam 10 hane bekler: 5XXXXXXXXX)
-        phone = "".join(filter(str.isdigit, str(user.phone or '5555555555')))
-        if phone.startswith('90'): phone = phone[2:]
+        # Ürün Adı (Maks 100 karakter önerilir)
+        product_name = f"Vidos Abonelik - {payment.plan_id}"
+        if payment.billing_period == 'yearly':
+            product_name += " (Yıllık)"
+            
+        # Fiyat Formatı: X.XX (SDK total_order_value bekler)
+        price_str = "{:.2f}".format(float(payment.amount))
+
+        # Telefon Temizleme: Tam 10 hane (5XXXXXXXXX)
+        phone = ''.join(filter(str.isdigit, user.phone or ""))
         if phone.startswith('0'): phone = phone[1:]
+        if phone.startswith('90'): phone = phone[2:]
         phone = phone[:10]
 
-        # Random sayıyı önceden oluştur
-        random_nr_val = generate_transaction_id()
+        # SDK Standart: random_nr (100000-999999)
+        import random
+        random_nr_val = random.randint(100000, 999999)
 
-        # Shopier'in istedigi zorunlu parametreler (PHP örneği baz alınarak)
+        # Shopier SDK (api_pay4.php) için GEREKLİ parametreler
         args = {
             'API_key': self.api_key,
             'website_index': website_index,
-            'platform_order_id': str(payment.payment_reference), # ID'yi sadeleştirmiş olabilirler
-            'product_name': product_name,
-            'product_type': 2, # 2: DOWNLOADABLE_VIRTUAL (PHP Örneğindeki gibi)
-            'price': price_str,
-            'currency': 0, # 0: TL
-            'buyer_name': buyer_name,
-            'buyer_surname': buyer_surname,
+            'platform_order_id': str(payment.payment_reference),
+            'product_name': product_name.strip(),
+            'product_type': 1, # 1: DOWNLOADABLE_VIRTUAL
+            'buyer_name': (user.first_name or "Müşteri").strip(),
+            'buyer_surname': (user.last_name or "Soyadı").strip(),
             'buyer_email': user.email.strip(),
             'buyer_account_age': 0,
-            'buyer_id_nr': 0,
+            'buyer_id_nr': user.id,
             'buyer_phone': phone,
             'billing_address': "Turkiye", 
-            'city': "Istanbul", 
-            'country': "Turkey", # PHP örneğinde 'Turkey' yazılmış
-            'zip_code': "34000", 
+            'billing_city': "Istanbul", 
+            'billing_country': "Turkey",
+            'billing_postcode': "34000", 
             'shipping_address': "Turkiye",
             'shipping_city': "Istanbul",
             'shipping_country': "Turkey",
-            'shipping_zip_code': "34000",
-            'modul_version': '1.0.4',
+            'shipping_postcode': "34000",
+            'total_order_value': price_str,
+            'currency': 0, # 0: TL
             'platform': 0, 
-            'is_test': int(Setting.get_value('SHOPIER_TEST_MODE', '0')), 
+            'is_in_frame': 0,
+            'current_language': 0, # 0: TR
+            'modul_version': '1.0.4',
             'random_nr': random_nr_val
         }
 
-        # İmza Sıralaması (V1 Pay4Post - PHP Kütüphanesi ile Uyumlu)
-        data_to_sign = [
-            args['API_key'],
-            args['website_index'],
-            args['platform_order_id'],
-            args['product_name'],
-            args['product_type'],
-            args['price'],
-            args['currency'],
-            args['buyer_name'],
-            args['buyer_surname'],
-            args['buyer_email'],
-            args['buyer_account_age'],
-            args['buyer_id_nr'],
-            args['buyer_phone'],
-            args['billing_address'],
-            args['city'],
-            args['country'],
-            args['zip_code'],
-            args['shipping_address'],
-            args['shipping_city'],
-            args['shipping_country'],
-            args['shipping_zip_code'],
-            args['modul_version'],
-            args['platform'],
-            args['is_test'],
-            args['random_nr']
-        ]
+        # İMZA ALGORİTMASI (SDK'dan teyit edildi):
+        # random_nr . platform_order_id . total_order_value . currency
+        hash_str = f"{args['random_nr']}{args['platform_order_id']}{args['total_order_value']}{args['currency']}"
         
-        signature_data = "".join([str(x) for x in data_to_sign])
+        import hmac
+        import hashlib
+        import base64
+        from datetime import datetime
         
-        # DEBUG: Log V1 Attempt
-        try:
-            with open('shopier_debug.log', 'a') as f:
-                f.write(f"\n[{datetime.now()}] --- V1 (CLASSIC) PAYMENT ATTEMPT ---\n")
-                f.write(f"Website Index: {args['website_index']}\n")
-                f.write(f"Order ID: {args['platform_order_id']}\n")
-                f.write(f"Phone: {args['buyer_phone']}\n")
-                f.write(f"Price: {args['price']}\n")
-                f.write(f"Signature String: {signature_data}\n")
-        except: pass
-
         signature = hmac.new(
             self.api_secret.encode('utf-8'),
-            signature_data.encode('utf-8'),
+            hash_str.encode('utf-8'),
             hashlib.sha256
         ).digest()
         
-        args['signature'] = base64.b64encode(signature).decode()
-        
+        args['signature'] = base64.b64encode(signature).decode('utf-8')
+
+        # Loglama
+        try:
+            with open('shopier_debug.log', 'a', encoding='utf-8') as f:
+                f.write(f"\n--- Shopier V1 (api_pay4.php) SDK Attempt [{datetime.now()}] ---\n")
+                f.write(f"Ref: {args['platform_order_id']}, Hash Str: {hash_str}\n")
+                f.write(f"Signature: {args['signature']}\n")
+        except: pass
+
         return {
             'success': True,
             'post_url': self.base_url,
