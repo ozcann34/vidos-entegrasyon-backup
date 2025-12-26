@@ -99,7 +99,7 @@ def create_app(config_name='default'):
     def check_banned_user():
         """Check if logged-in user is banned before each request."""
         from flask_login import current_user
-        from flask import redirect, url_for, session, request
+        from flask import redirect, url_for, session, request, flash
         from flask_login import logout_user
         
         if current_user.is_authenticated:
