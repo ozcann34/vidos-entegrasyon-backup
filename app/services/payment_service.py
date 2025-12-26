@@ -36,6 +36,15 @@ def generate_transaction_id():
     """Benzersiz bir işlem ID'si oluşturur."""
     return str(random.randint(100000000, 999999999))
 
+def clean_text_strict(text):
+    import re
+    if not text: return ""
+    # Turkce karakter donusumu
+    text = str(text).replace('ı', 'i').replace('ğ', 'g').replace('ü', 'u').replace('ş', 's').replace('ö', 'o').replace('ç', 'c').replace('İ', 'I').replace('Ğ', 'G').replace('Ü', 'U').replace('Ş', 'S').replace('Ö', 'O').replace('Ç', 'C')
+    # Sadece Alfanumerik ve Bosluk birak
+    text = re.sub(r'[^a-zA-Z0-9 ]', '', text)
+    return text.strip()
+
 class ShopierAdapter:
     def __init__(self):
         # API bilgilerini veritabanından (Admin Ayarları) çekiyoruz
@@ -46,8 +55,7 @@ class ShopierAdapter:
 
     def initiate_payment(self, payment: Payment, callback_url: str = None) -> dict:
         """
-        Shopier ödeme formunu hazırlar.
-        Backend-First yaklaşımı: Parametreleri ve imzayı burada oluşturur.
+        Shopier ödeme formunu hazırlar. (Pay4Post - Klasik Yöntem)
         """
         if not self.api_key or not self.api_secret:
             return {
@@ -70,16 +78,6 @@ class ShopierAdapter:
             price = 0.0
         price_str = f"{price:.2f}"
             
-        # Karakter Temizligi (Strict ASCII - Sadece Harf, Rakam ve Bosluk)
-        import re
-        def clean_text_strict(text):
-            if not text: return ""
-            # Turkce karakter donusumu
-            text = str(text).replace('ı', 'i').replace('ğ', 'g').replace('ü', 'u').replace('ş', 's').replace('ö', 'o').replace('ç', 'c').replace('İ', 'I').replace('Ğ', 'G').replace('Ü', 'U').replace('Ş', 'S').replace('Ö', 'O').replace('Ç', 'C')
-            # Sadece Alfanumerik ve Bosluk birak
-            text = re.sub(r'[^a-zA-Z0-9 ]', '', text)
-            return text.strip()
-
         product_name = clean_text_strict(f"Vidos {plan_name}")[:20]
         buyer_name = clean_text_strict(user.first_name if user.first_name else 'Misafir')
         buyer_surname = clean_text_strict(user.last_name if user.last_name else 'Kullanici')
@@ -113,6 +111,8 @@ class ShopierAdapter:
             'shipping_country': "Turkiye",
             'shipping_zip_code': "34000",
             'modul_version': '1.0.4',
+            'platform': 0, # 0: Custom
+            'is_test': 0, # 0: Live
             'random_nr': generate_transaction_id()
         }
 
@@ -140,6 +140,8 @@ class ShopierAdapter:
             args['shipping_country'],
             args['shipping_zip_code'],
             args['modul_version'],
+            args['platform'],
+            args['is_test'],
             args['random_nr']
         ]
         
@@ -166,6 +168,69 @@ class ShopierAdapter:
         return {
             'success': True,
             'post_url': self.base_url,
+            'params': args
+        }
+
+    def initiate_payment_v2(self, payment: Payment, callback_url: str = None) -> dict:
+        """
+        Shopier Ödeme Formu (Base64 JSON - 'Golden Form' Yaklaşımı)
+        Bazı Shopier hesapları bu yeni formatı bekler.
+        """
+        import json
+        import base64
+        
+        user = payment.user
+        plan_name = SUBSCRIPTION_PLANS.get(payment.plan, {}).get('name', 'Abonelik')
+        
+        # Fiyat ve Callback
+        price = float(payment.amount)
+        # KULLANICI ISTEGI UZERINE CALLBACK SABITLENDI
+        callback_url = "https://vidosentegrasyon.com.tr/payment/callback"
+
+        # Telefon No Temizleme (Kesin 10 haneli, 0 veya 90 olmadan)
+        phone = "".join(filter(str.isdigit, str(user.phone or '5555555555')))
+        if phone.startswith('90'): phone = phone[2:]
+        elif phone.startswith('0'): phone = phone[1:]
+        phone = phone[:10].ljust(10, '0')
+
+        # JSON Verisi
+        user_data = {
+            "buyer_name": clean_text_strict(user.first_name if user.first_name else 'Misafir'),
+            "buyer_surname": clean_text_strict(user.last_name if user.last_name else 'Kullanici'),
+            "buyer_email": user.email,
+            "buyer_phone": phone,
+            "buyer_address": "Istanbul, Turkiye",
+            "total_order_value": f"{price:.2f}",
+            "currency": "TRY",
+            "platform_order_id": f"VID_{payment.payment_reference}",
+            "callback_url": callback_url,
+            "product_name": clean_text_strict(f"Vidos {plan_name}")[:20]
+        }
+        
+        # Veriyi Base64'e çevir
+        data_string = json.dumps(user_data)
+        encoded_data = base64.b64encode(data_string.encode()).decode()
+        
+        # İmza (V2 genellikle data + random_nr kullanır)
+        random_nr = generate_transaction_id()
+        signature_data = encoded_data + random_nr
+        
+        signature = hmac.new(
+            self.api_secret.encode('utf-8'),
+            signature_data.encode('utf-8'),
+            hashlib.sha256
+        ).digest()
+        
+        args = {
+            'API_key': self.api_key,
+            'data': encoded_data,
+            'random_nr': random_nr,
+            'signature': base64.b64encode(signature).decode()
+        }
+        
+        return {
+            'success': True,
+            'post_url': self.base_url, # Genellikle aynı veya v1/pay
             'params': args
         }
 
