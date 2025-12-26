@@ -71,18 +71,19 @@ class ShopierAdapter:
         if not website_index:
             website_index = '1'
             
-        # Fiyat Formatlama (Strict X.XX)
+        # Fiyat Formatlama (PHP örneğindeki gibi 10.0 formatı veya X.XX)
+        # Shopier genellikle .2f bekler ancak bazı durumlarda hassas olabilir
         try:
             price = float(payment.amount)
         except:
             price = 0.0
         price_str = f"{price:.2f}"
             
-        product_name = clean_text_strict(f"Vidos {plan_name}")[:20]
-        buyer_name = clean_text_strict(user.first_name if user.first_name else 'Misafir')
-        buyer_surname = clean_text_strict(user.last_name if user.last_name else 'Kullanici')
+        product_name = clean_text_strict(f"Vidos {plan_name}")[:20].strip()
+        buyer_name = clean_text_strict(user.first_name if user.first_name else 'Misafir').strip()
+        buyer_surname = clean_text_strict(user.last_name if user.last_name else 'Kullanici').strip()
         
-        # Telefon numarasi (Shopier 10 hane bekler: 5XXXXXXXXX)
+        # Telefon numarasi (Shopier tam 10 hane bekler: 5XXXXXXXXX)
         phone = "".join(filter(str.isdigit, str(user.phone or '5555555555')))
         if phone.startswith('90'): phone = phone[2:]
         if phone.startswith('0'): phone = phone[1:]
@@ -91,36 +92,36 @@ class ShopierAdapter:
         # Random sayıyı önceden oluştur
         random_nr_val = generate_transaction_id()
 
-        # Shopier'in istedigi zorunlu parametreler
+        # Shopier'in istedigi zorunlu parametreler (PHP örneği baz alınarak)
         args = {
             'API_key': self.api_key,
             'website_index': website_index,
-            'platform_order_id': f"VID_{payment.payment_reference}",
+            'platform_order_id': str(payment.payment_reference), # ID'yi sadeleştirmiş olabilirler
             'product_name': product_name,
-            'product_type': 1, # 1: Market/Dijital
+            'product_type': 2, # 2: DOWNLOADABLE_VIRTUAL (PHP Örneğindeki gibi)
             'price': price_str,
             'currency': 0, # 0: TL
             'buyer_name': buyer_name,
             'buyer_surname': buyer_surname,
-            'buyer_email': user.email,
+            'buyer_email': user.email.strip(),
             'buyer_account_age': 0,
             'buyer_id_nr': 0,
             'buyer_phone': phone,
             'billing_address': "Turkiye", 
             'city': "Istanbul", 
-            'country': "Turkiye", 
+            'country': "Turkey", # PHP örneğinde 'Turkey' yazılmış
             'zip_code': "34000", 
             'shipping_address': "Turkiye",
             'shipping_city': "Istanbul",
-            'shipping_country': "Turkiye",
+            'shipping_country': "Turkey",
             'shipping_zip_code': "34000",
             'modul_version': '1.0.4',
-            'platform': 0, # 0: Custom
+            'platform': 0, 
             'is_test': int(Setting.get_value('SHOPIER_TEST_MODE', '0')), 
             'random_nr': random_nr_val
         }
 
-        # İmza Sıralaması (Pay4Post - Kesin Sıralama)
+        # İmza Sıralaması (V1 Pay4Post - PHP Kütüphanesi ile Uyumlu)
         data_to_sign = [
             args['API_key'],
             args['website_index'],
