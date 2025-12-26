@@ -2,6 +2,7 @@ import hmac
 import hashlib
 import base64
 import random
+from datetime import datetime
 from app.models.payment import Payment
 from app.models.settings import Setting  # Updated for correctness (settings.py)
 from flask import url_for
@@ -58,11 +59,9 @@ class ShopierAdapter:
         plan_name = SUBSCRIPTION_PLANS.get(payment.plan, {}).get('name', 'Abonelik')
         
         # Website Index (Admin panelinden cekiliyor)
-        website_index = Setting.get_value('SHOPIER_WEBSITE_INDEX', '1')
-        try:
-            website_index = int(website_index)
-        except:
-            website_index = 1
+        website_index = str(Setting.get_value('SHOPIER_WEBSITE_INDEX', '1')).strip()
+        if not website_index:
+            website_index = '1'
             
         # Fiyat Formatlama (Strict X.XX)
         try:
@@ -81,7 +80,7 @@ class ShopierAdapter:
             text = re.sub(r'[^a-zA-Z0-9 ]', '', text)
             return text.strip()
 
-        product_name = clean_text_strict(f"Vidos {plan_name} Paketi")[:50]
+        product_name = clean_text_strict(f"Vidos {plan_name}")[:20]
         buyer_name = clean_text_strict(user.first_name if user.first_name else 'Misafir')
         buyer_surname = clean_text_strict(user.last_name if user.last_name else 'Kullanici')
         

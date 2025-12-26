@@ -65,10 +65,20 @@ def payment_callback():
     data = request.form.to_dict()
     
     # Shopier platform_order_id parametresini bizim payment_reference ile eşleştirir
-    payment_ref = data.get('platform_order_id')
+    # Önemli: payment_service.py içinde platform_order_id = f"VID_{payment.payment_reference}" yapılmıştı.
+    platform_order_id = data.get('platform_order_id', '')
+    
+    # Debug logging
+    print(f"DEBUG: Shopier Callback received for Order ID: {platform_order_id}")
+    
+    payment_ref = platform_order_id
+    if platform_order_id.startswith('VID_'):
+        payment_ref = platform_order_id.replace('VID_', '')
+        
     payment = Payment.query.filter_by(payment_reference=payment_ref).first()
     
     if not payment:
+        print(f"ERROR: Payment not found for reference: {payment_ref}")
         return "Ödeme bulunamadı", 404
         
     adapter = get_payment_gateway('shopier')
