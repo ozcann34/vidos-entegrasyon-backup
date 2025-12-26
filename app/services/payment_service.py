@@ -68,8 +68,8 @@ class ShopierAdapter:
         website_index = str(Setting.get_value('SHOPIER_WEBSITE_INDEX', '1')).strip()
         
         # Ürün Adı (Maks 100 karakter önerilir)
-        product_name = f"Vidos Abonelik - {payment.plan_id}"
-        if payment.billing_period == 'yearly':
+        product_name = f"Vidos Abonelik - {payment.plan}"
+        if payment.billing_cycle == 'yearly':
             product_name += " (Yıllık)"
             
         # Fiyat Formatı: X.XX (SDK total_order_value bekler)
