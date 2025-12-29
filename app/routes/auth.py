@@ -222,7 +222,6 @@ def verify_email():
                             
                             plan_details = get_plan_details(plan)
                             if plan_details:
-                            if plan_details:
                                 # Update existing subscription or Create new if not exists
                                 sub = Subscription.query.filter_by(user_id=current_user.id).first()
                                 if not sub:
