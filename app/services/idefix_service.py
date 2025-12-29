@@ -5,7 +5,7 @@ import logging
 import requests
 from typing import List, Dict, Optional, Any
 from datetime import datetime
-from app.utils.helpers import chunked, get_marketplace_multiplier, to_int, to_float, clean_forbidden_words, is_product_forbidden
+from app.utils.helpers import chunked, get_marketplace_multiplier, to_int, to_float, clean_forbidden_words, is_product_forbidden, calculate_price
 from app.utils.rate_limiter import idefix_limiter
 
 from app.services.job_queue import append_mp_job_log, get_mp_job, update_mp_job
@@ -1183,7 +1183,8 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
              continue
 
         price = float(rec.get('price', 0))
-        final_price = price * multiplier
+        # final_price = price * multiplier
+        final_price = calculate_price(price, 'idefix', user_id=user_id, multiplier_override=multiplier)
         
         # Resolve brand via API
         brand_name = rec.get('brand') or rec.get('vendor') or ''

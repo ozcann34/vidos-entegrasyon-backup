@@ -12,7 +12,7 @@ from app.models import Setting, Product, SupplierXML
 from app.services.trendyol_client import TrendyolClient, build_attributes_payload
 from app.services.xml_service import load_xml_source_index
 from app.services.job_queue import append_mp_job_log, get_mp_job, update_mp_job
-from app.utils.helpers import to_int, to_float, chunked, get_marketplace_multiplier, clean_forbidden_words, is_product_forbidden
+from app.utils.helpers import to_int, to_float, chunked, get_marketplace_multiplier, clean_forbidden_words, calculate_price, is_product_forbidden
 
 _CAT_TFIDF = {
     "leaf": [],
@@ -1018,7 +1018,9 @@ def perform_trendyol_sync_prices(job_id: str, xml_source_id: Any, match_by: str 
             skipped_zero_price.append(xml_barcode)
             continue
             
-        price = round(base_price * multiplier, 2)
+        # price = round(base_price * multiplier, 2)
+        # price = calculate_price(base_price, 'trendyol')
+        price = calculate_price(base_price, 'trendyol', multiplier_override=multiplier)
         qty = to_int(info.get('quantity'))
         
         updates.append({
@@ -1471,7 +1473,9 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
 
         # Price & Stock
         try:
-            base_price = float(product.get('price', 0)) * multiplier
+            # base_price = float(product.get('price', 0)) * multiplier
+            # base_price = calculate_price(float(product.get('price', 0)), 'trendyol', user_id=user_id)
+            base_price = calculate_price(float(product.get('price', 0)), 'trendyol', user_id=user_id, multiplier_override=multiplier)
             stock = int(product.get('quantity', 0))
         except:
             base_price = 0
@@ -1484,7 +1488,9 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
         
         # Apply default_price if product price is 0
         if base_price <= 0 and default_price > 0:
-            base_price = default_price * multiplier
+            # base_price = default_price * multiplier
+            # base_price = calculate_price(default_price, 'trendyol', user_id=user_id)
+            base_price = calculate_price(default_price, 'trendyol', user_id=user_id, multiplier_override=multiplier)
             append_mp_job_log(job_id, f"Varsayılan fiyat uygulandı: {barcode} → {base_price}")
             
         if base_price <= 0:

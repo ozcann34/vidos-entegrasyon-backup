@@ -4,15 +4,16 @@ from app.models import Setting
 
 def get_marketplace_multiplier(marketplace: str, user_id: Optional[int] = None):
     """Get price multiplier for a marketplace. Uses current_user if user_id not provided."""
+    # Deprecated: Use calculate_price instead for full logic
     mult_key_map = {
         'trendyol': 'PRICE_MULTIPLIER',
         'hepsiburada': 'HB_PRICE_MULTIPLIER',
         'pazarama': 'PAZARAMA_PRICE_MULTIPLIER',
         'idefix': 'IDEFIX_PRICE_MULTIPLIER',
+        'n11': 'N11_PRICE_MULTIPLIER',
     }
     skey = mult_key_map.get(marketplace, 'PRICE_MULTIPLIER')
     
-    # If no user_id provided, try to get from current_user
     if user_id is None:
         try:
             from flask_login import current_user
@@ -28,6 +29,70 @@ def get_marketplace_multiplier(marketplace: str, user_id: Optional[int] = None):
     except Exception:
         mp_multiplier = 1.0
     return mp_multiplier
+
+def calculate_price(base_price: float, marketplace: str, user_id: Optional[int] = None, multiplier_override: Optional[float] = None) -> float:
+    """
+    Calculate final price based on Multiplier, Percentage, and Fixed Amount.
+    Formula: (Base * Multiplier * (1 + Percent/100)) + Fixed
+    If multiplier_override is provided, it is used instead of the DB setting.
+    """
+    if base_price <= 0:
+        return 0.0
+
+    # 1. Start with Multiplier
+    if multiplier_override is not None and multiplier_override > 0:
+        multiplier = multiplier_override
+    else:
+        multiplier = get_marketplace_multiplier(marketplace, user_id)
+    
+    price = base_price * multiplier
+
+    # Get user_id if needed for other settings
+    if user_id is None:
+        try:
+            from flask_login import current_user
+            if current_user and current_user.is_authenticated:
+                user_id = current_user.id
+        except Exception:
+            pass
+
+    # Define keys for new settings
+    perc_key_map = {
+        'trendyol': 'PRICE_PERCENTAGE',
+        'hepsiburada': 'HB_PRICE_PERCENTAGE',
+        'pazarama': 'PAZARAMA_PRICE_PERCENTAGE',
+        'idefix': 'IDEFIX_PRICE_PERCENTAGE',
+        'n11': 'N11_PRICE_PERCENTAGE',
+    }
+    fixed_key_map = {
+        'trendyol': 'PRICE_FIXED',
+        'hepsiburada': 'HB_PRICE_FIXED',
+        'pazarama': 'PAZARAMA_PRICE_FIXED',
+        'idefix': 'IDEFIX_PRICE_FIXED',
+        'n11': 'N11_PRICE_FIXED',
+    }
+
+    # 2. Add Percentage
+    try:
+        pkey = perc_key_map.get(marketplace)
+        if pkey:
+            perc_val = float(Setting.get(pkey, '0', user_id=user_id) or '0')
+            if perc_val != 0:
+                price = price * (1 + (perc_val / 100.0))
+    except Exception:
+        pass
+
+    # 3. Add Fixed Amount
+    try:
+        fkey = fixed_key_map.get(marketplace)
+        if fkey:
+            fixed_val = float(Setting.get(fkey, '0', user_id=user_id) or '0')
+            if fixed_val != 0:
+                price = price + fixed_val
+    except Exception:
+        pass
+    
+    return round(price, 2)
 
 
 def chunked(iterable: Iterable[Any], size: int) -> Iterable[List[Any]]:

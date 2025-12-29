@@ -19,7 +19,7 @@ from app.models import Setting
 from app.services.pazarama_client import PazaramaClient
 from app.services.xml_service import load_xml_source_index, lookup_xml_record
 from app.services.job_queue import append_mp_job_log
-from app.utils.helpers import to_int, to_float, chunked, get_marketplace_multiplier, clean_forbidden_words, is_product_forbidden
+from app.utils.helpers import to_int, to_float, chunked, get_marketplace_multiplier, clean_forbidden_words, is_product_forbidden, calculate_price
 
 # Category cache for basic operations
 _PAZARAMA_CATEGORY_CACHE = {"list": [], "names": [], "ids": []}
@@ -768,7 +768,8 @@ def perform_pazarama_sync_prices(job_id: str, xml_source_id: Any, user_id: int =
         if base_price <= 0:
             skipped_zero_price.append(code or stock_code)
             continue
-        new_price = round(base_price * multiplier, 2)
+        # new_price = round(base_price * multiplier, 2)
+        new_price = calculate_price(base_price, 'pazarama', multiplier_override=multiplier)
         if new_price <= 0:
             skipped_zero_price.append(code or stock_code)
             continue
@@ -1244,7 +1245,8 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
                 skipped.append({'barcode': barcode, 'reason': 'Fiyat 0'})
                 continue
             
-            price = round(base_price * multiplier, 2)
+            # price = round(base_price * multiplier, 2)
+            price = calculate_price(base_price, 'pazarama', user_id=user_id, multiplier_override=multiplier)
             list_price = round(price * 1.05, 2)  # 5% higher for list price
             
             # Images

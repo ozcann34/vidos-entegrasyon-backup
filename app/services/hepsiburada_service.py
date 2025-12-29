@@ -7,7 +7,7 @@ from app.models import Setting, SupplierXML
 from app.services.hepsiburada_client import HepsiburadaClient
 from app.services.xml_service import load_xml_source_index
 from app.services.job_queue import append_mp_job_log, update_mp_job, get_mp_job
-from app.utils.helpers import get_marketplace_multiplier, to_float, to_int, is_product_forbidden
+from app.utils.helpers import get_marketplace_multiplier, to_float, to_int, is_product_forbidden, calculate_price
 
 def get_hepsiburada_client(user_id: int = None) -> HepsiburadaClient:
     """Factory to get authenticated client."""
@@ -118,7 +118,8 @@ def perform_hepsiburada_send_products(job_id: str, barcodes: List[str], xml_sour
             start_price = default_price
             append_mp_job_log(job_id, f"Varsayılan fiyat uygulandı: {barcode}")
 
-        final_price = round(start_price * multiplier, 2)
+        # final_price = round(start_price * multiplier, 2)
+        final_price = calculate_price(start_price, 'hepsiburada', user_id=user_id, multiplier_override=multiplier)
         stock = to_int(product.get('quantity'))
 
         if stock <= 0 and zero_stock_as_one:

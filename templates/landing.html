@@ -266,6 +266,26 @@
                     </ul>
                     <button class="btn-pricing">Paketi Seç</button>
                 </div>
+
+                <!-- BUG-Z Bayilik Paketi -->
+                <div class="pricing-card scroll-animate border-primary" style="border-width: 2px;">
+                    <div class="pricing-badge bg-primary">Bayi Özel</div>
+                    <h3>BUG-Z Bayilik</h3>
+                    <div class="pricing-price">
+                        <span class="fs-4">Ücretsiz</span>
+                    </div>
+                    <div class="text-muted small mb-3">Sadece onaylı bayiler içindir</div>
+                    <ul class="pricing-features">
+                        <li>Trendyol, N11, HB, Pazarama, İdefix</li>
+                        <li>Sınırsız Ürün Limiti</li>
+                        <li>Hazır XML Kaynakları</li>
+                        <li>Otomatik Stok/Fiyat Güncelleme</li>
+                        <li>Sipariş Yönetimi</li>
+                        <li>Dropshipping Desteği</li>
+                    </ul>
+                    <a href="{{ url_for('auth.register', plan='bug-z-bayilik') }}"
+                        class="btn btn-primary w-100 py-2 rounded-pill fw-bold">Başvuru Yap</a>
+                </div>
             </div>
         </section>
 

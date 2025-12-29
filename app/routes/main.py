@@ -682,6 +682,18 @@ def settings_page():
             "INSTAGRAM_ACCESS_TOKEN": Setting.get("INSTAGRAM_ACCESS_TOKEN", "", user_id=user_id),
             "INSTAGRAM_ACCOUNT_ID": Setting.get("INSTAGRAM_ACCOUNT_ID", "", user_id=user_id),
             "CRITICAL_STOCK_LIMIT": Setting.get("CRITICAL_STOCK_LIMIT", "3", user_id=user_id),
+            
+            # New Price Settings
+            "PRICE_PERCENTAGE": Setting.get("PRICE_PERCENTAGE", "0", user_id=user_id),
+            "PRICE_FIXED": Setting.get("PRICE_FIXED", "0", user_id=user_id),
+            "HB_PRICE_PERCENTAGE": Setting.get("HB_PRICE_PERCENTAGE", "0", user_id=user_id),
+            "HB_PRICE_FIXED": Setting.get("HB_PRICE_FIXED", "0", user_id=user_id),
+            "N11_PRICE_PERCENTAGE": Setting.get("N11_PRICE_PERCENTAGE", "0", user_id=user_id),
+            "N11_PRICE_FIXED": Setting.get("N11_PRICE_FIXED", "0", user_id=user_id),
+            "PAZARAMA_PRICE_PERCENTAGE": Setting.get("PAZARAMA_PRICE_PERCENTAGE", "0", user_id=user_id),
+            "PAZARAMA_PRICE_FIXED": Setting.get("PAZARAMA_PRICE_FIXED", "0", user_id=user_id),
+            "IDEFIX_PRICE_PERCENTAGE": Setting.get("IDEFIX_PRICE_PERCENTAGE", "0", user_id=user_id),
+            "IDEFIX_PRICE_FIXED": Setting.get("IDEFIX_PRICE_FIXED", "0", user_id=user_id),
         }
         xml_sources = SupplierXML.query.filter_by(user_id=user_id).order_by(SupplierXML.id.desc()).all()
         return render_template("settings.html", settings=settings, xml_sources=xml_sources)
@@ -708,6 +720,13 @@ def settings_page():
             "IDEFIX_BARCODE_PREFIX", "IDEFIX_USE_RANDOM_BARCODE",
             "INSTAGRAM_ACCESS_TOKEN", "INSTAGRAM_ACCOUNT_ID",
             "CRITICAL_STOCK_LIMIT",
+            
+            # New Price Keys
+            "PRICE_PERCENTAGE", "PRICE_FIXED",
+            "HB_PRICE_PERCENTAGE", "HB_PRICE_FIXED",
+            "N11_PRICE_PERCENTAGE", "N11_PRICE_FIXED",
+            "PAZARAMA_PRICE_PERCENTAGE", "PAZARAMA_PRICE_FIXED",
+            "IDEFIX_PRICE_PERCENTAGE", "IDEFIX_PRICE_FIXED",
         ]
         
         # Identify which MP being updated/added

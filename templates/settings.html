@@ -359,6 +359,22 @@
                         value="{{ settings.PRICE_MULTIPLIER }}">
                     </div>
                   </div>
+                  <div class="col-md-4">
+                    <label class="form-label fw-bold">Ek Yüzde (%)</label>
+                    <div class="input-group">
+                      <span class="input-group-text">%</span>
+                      <input type="number" step="0.01" class="form-control" name="PRICE_PERCENTAGE"
+                        value="{{ settings.PRICE_PERCENTAGE }}" placeholder="Örn: 10">
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label fw-bold">Ek Sabit Tutar (TL)</label>
+                    <div class="input-group">
+                      <span class="input-group-text">₺</span>
+                      <input type="number" step="0.01" class="form-control" name="PRICE_FIXED"
+                        value="{{ settings.PRICE_FIXED }}" placeholder="Örn: 50">
+                    </div>
+                  </div>
                   <div class="col-md-6">
                     <label class="form-label fw-bold">Marka Adı</label>
                     <div class="input-group">
@@ -406,10 +422,22 @@
                       name="HB_MERCHANT_ID" value="{{ settings.HB_MERCHANT_ID }}"></div>
                   <div class="col-md-6"><label class="form-label fw-bold">Service Key (Servis Anahtarı)</label><input
                       class="form-control" name="HB_SERVICE_KEY" value="{{ settings.HB_SERVICE_KEY }}"></div>
-                  <div class="col-md-6">
+                  <div class="col-md-4">
                     <label class="form-label fw-bold">Fiyat Çarpanı</label>
                     <div class="input-group"><span class="input-group-text">x</span><input type="number" step="0.01"
                         class="form-control" name="HB_PRICE_MULTIPLIER" value="{{ settings.HB_PRICE_MULTIPLIER }}">
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label fw-bold">Ek Yüzde (%)</label>
+                    <div class="input-group"><span class="input-group-text">%</span><input type="number" step="0.01"
+                        class="form-control" name="HB_PRICE_PERCENTAGE" value="{{ settings.HB_PRICE_PERCENTAGE }}">
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label fw-bold">Ek Sabit Tutar (TL)</label>
+                    <div class="input-group"><span class="input-group-text">₺</span><input type="number" step="0.01"
+                        class="form-control" name="HB_PRICE_FIXED" value="{{ settings.HB_PRICE_FIXED }}">
                     </div>
                   </div>
                   <div class="col-md-6">
@@ -444,6 +472,18 @@
                     <div class="input-group"><span class="input-group-text">x</span><input type="number" step="0.01"
                         class="form-control" name="PAZARAMA_PRICE_MULTIPLIER"
                         value="{{ settings.PAZARAMA_PRICE_MULTIPLIER }}"></div>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label fw-bold">Ek Yüzde (%)</label>
+                    <div class="input-group"><span class="input-group-text">%</span><input type="number" step="0.01"
+                        class="form-control" name="PAZARAMA_PRICE_PERCENTAGE"
+                        value="{{ settings.PAZARAMA_PRICE_PERCENTAGE }}"></div>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label fw-bold">Ek Sabit Tutar (TL)</label>
+                    <div class="input-group"><span class="input-group-text">₺</span><input type="number" step="0.01"
+                        class="form-control" name="PAZARAMA_PRICE_FIXED" value="{{ settings.PAZARAMA_PRICE_FIXED }}">
+                    </div>
                   </div>
                   <div class="col-md-6">
                     <label class="form-label fw-bold">Marka Adı</label>
@@ -521,10 +561,26 @@
                     </div>
                   </div>
 
-                  <div class="col-md-6 mb-3">
+                  <div class="col-md-4 mb-3">
                     <label class="form-label fw-bold">Fiyat Çarpanı</label>
-                    <input type="number" step="0.01" class="form-control" name="IDEFIX_PRICE_MULTIPLIER"
-                      value="{{ settings.IDEFIX_PRICE_MULTIPLIER }}">
+                    <div class="input-group"><span class="input-group-text">x</span>
+                      <input type="number" step="0.01" class="form-control" name="IDEFIX_PRICE_MULTIPLIER"
+                        value="{{ settings.IDEFIX_PRICE_MULTIPLIER }}">
+                    </div>
+                  </div>
+                  <div class="col-md-4 mb-3">
+                    <label class="form-label fw-bold">Ek Yüzde (%)</label>
+                    <div class="input-group"><span class="input-group-text">%</span>
+                      <input type="number" step="0.01" class="form-control" name="IDEFIX_PRICE_PERCENTAGE"
+                        value="{{ settings.IDEFIX_PRICE_PERCENTAGE }}">
+                    </div>
+                  </div>
+                  <div class="col-md-4 mb-3">
+                    <label class="form-label fw-bold">Ek Sabit Tutar (TL)</label>
+                    <div class="input-group"><span class="input-group-text">₺</span>
+                      <input type="number" step="0.01" class="form-control" name="IDEFIX_PRICE_FIXED"
+                        value="{{ settings.IDEFIX_PRICE_FIXED }}">
+                    </div>
                   </div>
 
                   <div class="col-12 mt-3">
@@ -555,12 +611,28 @@
                     <label class="form-label fw-bold">App Secret (Gizli Anahtar)</label>
                     <input class="form-control" name="N11_API_SECRET" value="{{ settings.N11_API_SECRET }}" required>
                   </div>
-                  <div class="col-md-6">
+                  <div class="col-md-4">
                     <label class="form-label fw-bold">Fiyat Çarpanı</label>
                     <div class="input-group">
                       <span class="input-group-text">x</span>
                       <input type="number" step="0.01" class="form-control" name="N11_PRICE_MULTIPLIER"
                         value="{{ settings.N11_PRICE_MULTIPLIER }}">
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label fw-bold">Ek Yüzde (%)</label>
+                    <div class="input-group">
+                      <span class="input-group-text">%</span>
+                      <input type="number" step="0.01" class="form-control" name="N11_PRICE_PERCENTAGE"
+                        value="{{ settings.N11_PRICE_PERCENTAGE }}">
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label fw-bold">Ek Sabit Tutar (TL)</label>
+                    <div class="input-group">
+                      <span class="input-group-text">₺</span>
+                      <input type="number" step="0.01" class="form-control" name="N11_PRICE_FIXED"
+                        value="{{ settings.N11_PRICE_FIXED }}">
                     </div>
                   </div>
                   <div class="col-md-6 mt-3">

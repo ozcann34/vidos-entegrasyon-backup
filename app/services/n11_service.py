@@ -12,7 +12,7 @@ from app.models import Product, Setting
 from flask_login import current_user
 from app.services.n11_client import get_n11_client
 from app.services.job_queue import append_mp_job_log
-from app.utils.helpers import clean_forbidden_words, to_int, to_float, is_product_forbidden
+from app.utils.helpers import clean_forbidden_words, to_int, to_float, is_product_forbidden, calculate_price
 
 # ---------------------------------------------------
 # N11 Category Caching & Auto Match Globals
@@ -489,7 +489,8 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
             # Typically XML service always applies multiplier, but here user might want explicit control.
             # Assuming global multiplier is always active, but if unchecked in Excel, maybe 1.0? 
             # For simplicity, we stick to global multiplier.
-            price = raw_price * multiplier
+            # price = raw_price * multiplier
+            price = calculate_price(raw_price, 'n11', user_id=user_id, multiplier_override=multiplier)
             
             quantity = int(product.get('quantity', 0))
             if quantity <= 0 and send_options.get('zero_stock_as_one'):
