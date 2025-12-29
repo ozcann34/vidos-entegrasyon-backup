@@ -222,18 +222,22 @@ def verify_email():
                             
                             plan_details = get_plan_details(plan)
                             if plan_details:
-                                # Create subscription directly (Unapproved)
-                                new_sub = Subscription(
-                                    user_id=current_user.id,
-                                    plan=plan,
-                                    billing_cycle=billing,
-                                    status='active', # Status active but approval false blocks access
-                                    is_approved=False, # Wait for admin
-                                    max_products=plan_details.get('max_products', 100),
-                                    max_marketplaces=plan_details.get('max_marketplaces', 1),
-                                    max_xml_sources=plan_details.get('max_xml_sources', 1)
-                                )
-                                db.session.add(new_sub)
+                            if plan_details:
+                                # Update existing subscription or Create new if not exists
+                                sub = Subscription.query.filter_by(user_id=current_user.id).first()
+                                if not sub:
+                                    sub = Subscription(user_id=current_user.id)
+                                    db.session.add(sub)
+                                
+                                sub.plan = plan
+                                sub.billing_cycle = billing
+                                sub.status = 'active'
+                                sub.is_approved = False # Wait for admin
+                                sub.max_products = plan_details.get('max_products', 100)
+                                sub.max_marketplaces = plan_details.get('max_marketplaces', 1)
+                                sub.max_xml_sources = plan_details.get('max_xml_sources', 1)
+                                sub.updated_at = datetime.utcnow()
+                                
                                 db.session.commit()
                                 
                                 flash('BUG-Z Bayilik başvurunuz alındı. Admin onayı bekleniyor.', 'info')
