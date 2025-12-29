@@ -1037,16 +1037,43 @@ def get_idefix_client(user_id: Optional[int] = None) -> IdefixClient:
     vendor_id = Setting.get("IDEFIX_VENDOR_ID", "", user_id=actual_user_id)
     
     if not api_key or not vendor_id:
-        # Fallback to hardcoded just in case for legacy/dev, but logs warn
-        # Actually better to raise error if not in settings
-        if not api_key:
-             logging.warning("[IDEFIX] API Key not found in settings for user %s", actual_user_id)
-             # Fallback to dev keys only if absolutely empty
-             api_key = "44d9e992-99bb-4d2c-a71d-dc049496438e"
-             api_secret = "babbe6fe-a86a-465d-972e-55b295eecc66"
-             vendor_id = "15237"
+        # No fallback to hardcoded anymore to ensure data isolation.
+        logging.error("[IDEFIX] API Key or Vendor ID not found in settings for user %s", actual_user_id)
+        # Return a client that will fail on requests if keys are missing
+        return IdefixClient("", "", "")
     
     return IdefixClient(api_key, api_secret, vendor_id)
+
+def clear_idefix_cache(user_id: Optional[int] = None):
+    """
+    Clear Idefix related caches and local marketplace product data for a user.
+    """
+    from app.models import Setting, MarketplaceProduct
+    from app import db
+    
+    # 1. Reset global TF-IDF cache (this affects all users but is safe since it auto-reloads)
+    global _IDEFIX_CAT_TFIDF
+    _IDEFIX_CAT_TFIDF = {
+        "leaf": [],
+        "names": [],
+        "vectorizer": None,
+        "matrix": None
+    }
+    
+    # 2. Clear category tree setting
+    if user_id:
+        Setting.set("IDEFIX_CATEGORY_TREE", "", user_id=user_id)
+        
+        # 3. Delete local marketplace products for Idefix
+        try:
+            MarketplaceProduct.query.filter_by(user_id=user_id, marketplace='idefix').delete()
+            db.session.commit()
+            logging.info("Idefix marketplace products cleared for user %s", user_id)
+        except Exception as e:
+            db.session.rollback()
+            logging.error("Failed to clear Idefix marketplace products: %s", e)
+    else:
+        logging.warning("clear_idefix_cache called without user_id, only global cache cleared.")
 
 def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id: Optional[int] = None, title_prefix: str = None, user_id: int = None, **kwargs) -> Dict[str, Any]:
     from app.services.job_queue import append_mp_job_log, get_mp_job, update_mp_job
@@ -1693,11 +1720,15 @@ def sync_idefix_products(user_id: Optional[int] = None, job_id: Optional[str] = 
                 img_json = json.dumps([i.get('url') if isinstance(i, dict) else i for i in imgs])
                 
                 # Upsert
+                if not user_id:
+                    # If user_id is missing, we must skip to prevent cross-user pollution
+                    continue
+
                 existing = MarketplaceProduct.query.filter_by(
                     marketplace='idefix',
-                    barcode=barcode
-                ).filter(
-                    (MarketplaceProduct.user_id == user_id) if user_id else True
+                    barcode=barcode,
+                    user_id=user_id
+                ).first()
                 ).first()
                 
                 if existing:

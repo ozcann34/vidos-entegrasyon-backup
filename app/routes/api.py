@@ -91,6 +91,30 @@ def api_clear_all_cache():
         except:
             pass
         
+        # 6. Clear Idefix cache
+        try:
+            from app.services.idefix_service import clear_idefix_cache
+            clear_idefix_cache(user_id=current_user.id)
+            cleared_items.append("Idefix")
+        except:
+            pass
+
+        # 7. Clear HB cache
+        try:
+            from app.services.hepsiburada_service import clear_hepsiburada_cache
+            clear_hepsiburada_cache(user_id=current_user.id)
+            cleared_items.append("Hepsiburada")
+        except:
+            pass
+            
+        # 8. Clear N11 cache
+        try:
+            from app.services.n11_service import clear_n11_cache
+            clear_n11_cache(user_id=current_user.id)
+            cleared_items.append("N11")
+        except:
+            pass
+        
         return jsonify({
             'success': True,
             'message': f"Temizlendi: {', '.join(cleared_items)}"
@@ -1916,24 +1940,31 @@ def api_pazarama_search_brand():
 
 
 @api_bp.route('/api/hepsiburada/clear_cache', methods=['POST'])
+@login_required
 def api_hb_clear_cache():
     try:
+        from app.services.hepsiburada_service import clear_hepsiburada_cache
+        clear_hepsiburada_cache(user_id=current_user.id)
         return jsonify({'success': True, 'message': 'Hepsiburada önbelleği temizlendi.'})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @api_bp.route('/api/idefix/clear_cache', methods=['POST'])
+@login_required
 def api_idefix_clear_cache():
     try:
         from app.services.idefix_service import clear_idefix_cache
-        clear_idefix_cache()
+        clear_idefix_cache(user_id=current_user.id)
         return jsonify({'success': True, 'message': 'Idefix önbelleği temizlendi.'})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @api_bp.route('/api/n11/clear_cache', methods=['POST'])
+@login_required
 def api_n11_clear_cache():
     try:
+        from app.services.n11_service import clear_n11_cache
+        clear_n11_cache(user_id=current_user.id)
         return jsonify({'success': True, 'message': 'N11 önbelleği temizlendi.'})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500

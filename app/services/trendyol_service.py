@@ -821,12 +821,14 @@ def refresh_trendyol_cache(job_id: Optional[str] = None, user_id: int = None) ->
                 images = item.get('images', [])
                 img_json = json.dumps([img['url'] for img in images if isinstance(img, dict) and 'url' in img])
                 
+                if not user_id:
+                    continue
+                    
                 # Check existing
                 existing = MarketplaceProduct.query.filter_by(
                     marketplace='trendyol', 
-                    barcode=barcode
-                ).filter(
-                    (MarketplaceProduct.user_id == user_id) if user_id else True
+                    barcode=barcode,
+                    user_id=user_id
                 ).first()
                 
                 if existing:

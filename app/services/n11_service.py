@@ -1144,8 +1144,32 @@ def perform_n11_product_update(barcode: str, data: Dict[str, Any], user_id: int 
 
     return {'success': success, 'message': ' | '.join(messages)}
 
-def sync_n11_products(user_id: int, job_id: Optional[str] = None) -> Dict[str, Any]:
+def clear_n11_cache(user_id: int):
     """
+    Clear N11 related caches and local marketplace product data for a user.
+    """
+    from app.models import Setting, MarketplaceProduct
+    from app import db
+    
+    # 1. Reset global memory cache (affects all but safe)
+    global _N11_CATEGORY_CACHE, _N11_CAT_TFIDF, _N11_ATTR_CACHE
+    _N11_CATEGORY_CACHE = {"by_id": {}, "list": [], "loaded": False, "timestamp": 0}
+    _N11_CAT_TFIDF = {"leaf": [], "names": [], "vectorizer": None, "matrix": None}
+    _N11_ATTR_CACHE = {}
+    
+    # 2. Clear category settings in DB
+    Setting.set("N11_CATEGORY_TREE", "", user_id=user_id)
+    
+    # 3. Delete local marketplace products for N11
+    try:
+        MarketplaceProduct.query.filter_by(user_id=user_id, marketplace='n11').delete()
+        db.session.commit()
+        logging.info("N11 marketplace products cleared for user %s", user_id)
+    except Exception as e:
+        db.session.rollback()
+        logging.error("Failed to clear N11 marketplace products: %s", e)
+
+def sync_n11_products(user_id: int, job_id: Optional[str] = None) -> Dict[str, Any]:
     Fetch all products from N11 and sync them to the local MarketplaceProduct table.
     """
     from app import db
