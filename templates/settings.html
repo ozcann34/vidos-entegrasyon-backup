@@ -725,12 +725,22 @@
           <div class="tab-content mb-3">
             <div class="tab-pane fade show active" id="xmlUrlPane">
               <div class="row g-2 align-items-end">
+                {% if current_user.has_plan_feature('add_xml_source') %}
                 <div class="col-md-3"><label class="form-label">İsim</label><input id="xmlName" class="form-control"
                     placeholder="Tedarikçi A"></div>
                 <div class="col-md-6"><label class="form-label">XML URL</label><input id="xmlUrl" class="form-control"
                     placeholder="https://.../urunler.xml"></div>
                 <div class="col-md-3"><button id="btnAddXml" type="button" class="btn btn-primary w-100"><i
                       class="bi bi-plus-lg me-1"></i> Ekle</button></div>
+                {% else %}
+                <div class="col-12">
+                  <div class="alert alert-warning border-0 shadow-sm">
+                    <i class="bi bi-lock-fill me-2"></i>
+                    XML Ekleme özelliği mevcut planınızda ({{ current_user.subscription.plan_display_name }})
+                    kullanılamaz.
+                  </div>
+                </div>
+                {% endif %}
               </div>
             </div>
           </div>

@@ -290,14 +290,13 @@
                         </a>
                     </li>
                     {% endif %}
-                    {% if current_user.has_plan_feature('add_xml_source') %}
+                    <!-- XML Updates restored for BUG-Z users -->
                     <li>
                         <a href="{{ url_for('main.xml_updates') }}"
                             class="nav-link py-2 fs-6 {% if request.endpoint == 'main.xml_updates' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
                             <i class="bi bi-caret-right-fill me-1 small"></i> XML Güncellemeleri
                         </a>
                     </li>
-                    {% endif %}
                     {% if current_user.has_plan_feature('add_excel_source') %}
                     <li>
                         <a href="{{ url_for('products.bulk_update') }}"

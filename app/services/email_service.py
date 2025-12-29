@@ -161,6 +161,17 @@ def send_otp_email(user: User) -> bool:
         </div>
         """
         
+        text_body = f"""
+Merhaba,
+
+Vidos Entegrasyon hesabınızı doğrulamak için doğrulama kodunuz: {otp}
+
+Bu kod 15 dakika süreyle geçerlidir.
+
+---
+Vidos Entegrasyon
+        """
+        
         # Check if mail is configured
         if not current_app.config.get('MAIL_USERNAME'):
             log_message = f"[{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}] 🔐 OTP Oluşturuldu (Email Yapılandırılmamış)\n   Kullanıcı: {user.email}\n   Kod: {otp}\n\n"
@@ -175,7 +186,7 @@ def send_otp_email(user: User) -> bool:
             
             return True
             
-        msg = Message(subject=subject, recipients=[user.email], html=html_body)
+        msg = Message(subject=subject, recipients=[user.email], html=html_body, body=text_body)
         mail.send(msg)
         print(f"✅ OTP emaili gönderildi: {user.email}")
         return True
