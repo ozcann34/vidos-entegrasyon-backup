@@ -376,6 +376,11 @@ def dashboard():
             }
         }
 
+        # 8. Last Sync Time (Display)
+        from app.models import MarketplaceProduct
+        last_sync_prod = MarketplaceProduct.query.filter_by(user_id=user_id).order_by(MarketplaceProduct.last_sync_at.desc()).first()
+        last_sync_display = last_sync_prod.last_sync_at.strftime('%d.%m.%Y %H:%M') if last_sync_prod else "Nan"
+
         return render_template("dashboard.html", stats=stats, last_sync=last_sync_display)
         
     except Exception as e:
@@ -385,10 +390,18 @@ def dashboard():
         try:
             import os
             with open('dashboard_error.log', 'a') as f:
-                f.write(f"\\n[{datetime.utcnow()}] Error in dashboard:\\n{error_details}\\n")
+                f.write(f"\n[{datetime.utcnow()}] Error in dashboard:\n{error_details}\n")
         except: pass
         flash(f'Dashboard yüklenirken bir hata oluştu: {str(e)}', 'danger')
-        return render_template('dashboard.html', stats=None, error=str(e))
+        
+        # Provide a minimal stats structure to prevent template crashes
+        fallback_stats = {
+            'usage': {'products': {'used': 0, 'limit': 0}},
+            'marketplaces': [],
+            'announcements': [],
+            'user_notifications': []
+        }
+        return render_template('dashboard.html', stats=fallback_stats, last_sync="Hata", error=str(e))
 
 @main_bp.route("/questions")
 @login_required

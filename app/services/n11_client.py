@@ -25,6 +25,8 @@ class N11Client:
         self.headers = {
             "appKey": self.api_key,
             "appSecret": self.api_secret,
+            "appkey": self.api_key,
+            "appsecret": self.api_secret,
             "Content-Type": "application/json",
             "Accept": "application/json"
         }
