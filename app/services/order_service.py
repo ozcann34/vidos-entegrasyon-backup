@@ -816,6 +816,13 @@ def sync_all_products(user_id: int = None):
         results['n11'] = sync_n11_products(user_id=user_id)
     except Exception as e:
         results['n11'] = {"error": str(e)}
+
+    # Hepsiburada
+    try:
+        from app.services.hepsiburada_service import sync_hepsiburada_products
+        results['hepsiburada'] = sync_hepsiburada_products(user_id=user_id)
+    except Exception as e:
+        results['hepsiburada'] = {"error": str(e)}
         
     return results
 

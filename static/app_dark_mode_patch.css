@@ -91,3 +91,46 @@
     border-color: rgba(13, 110, 253, 0.2) !important;
     color: #60a5fa !important;
 }
+
+/* 7. Tables & Modals Re-Refined */
+[data-theme="dark"] .modal-body {
+    background-color: var(--card) !important;
+    color: var(--text) !important;
+}
+
+[data-theme="dark"] .table-hover tbody tr:hover td {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    color: #ffffff !important;
+}
+
+/* 8. Pagination */
+[data-theme="dark"] .pagination .page-link {
+    background-color: var(--card) !important;
+    border-color: var(--border) !important;
+    color: var(--text) !important;
+}
+
+[data-theme="dark"] .pagination .page-link:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-theme="dark"] .pagination .page-item.active .page-link {
+    background-color: var(--primary) !important;
+    border-color: var(--primary) !important;
+    color: #ffffff !important;
+}
+
+/* 9. Form Checks */
+[data-theme="dark"] .form-check-input {
+    background-color: var(--input-bg) !important;
+    border-color: var(--input-border) !important;
+}
+
+[data-theme="dark"] .form-check-input:checked {
+    background-color: var(--primary) !important;
+    border-color: var(--primary) !important;
+}
+
+[data-theme="dark"] .form-check-label {
+    color: var(--text) !important;
+}

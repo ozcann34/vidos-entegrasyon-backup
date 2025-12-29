@@ -48,45 +48,51 @@ def get_mp_count(mp_name, u_id):
     """Get product count for a marketplace (Hybrid: DB + API fallback)"""
     try:
         from app.models import MarketplaceProduct
-        # 1. Try Local DB (Cached Detailed Data)
-        count = db.session.query(MarketplaceProduct).filter_by(user_id=u_id, marketplace=mp_name).count()
-        if count > 0:
-            return count
+        # 1. Try Local DB (Detailed Data)
+        stats = db.session.query(
+            db.func.count(MarketplaceProduct.id).label('total'),
+            db.func.sum(db.case((MarketplaceProduct.status == 'Aktif', 1), else_=0)).label('active'),
+            db.func.sum(db.case((MarketplaceProduct.status == 'Pasif', 1), else_=0)).label('passive')
+        ).filter_by(user_id=u_id, marketplace=mp_name).first()
+        
+        if stats and stats.total > 0:
+            return {
+                'count': stats.total,
+                'active': int(stats.active or 0),
+                'passive': int(stats.passive or 0)
+            }
             
-        # 2. API Fallback if DB is empty (Lightweight metadata fetch)
+        # 2. API Fallback if DB is empty (Lightweight total count)
+        total_api = 0
         try:
             if mp_name == 'trendyol':
                 from app.services.trendyol_service import get_trendyol_client
                 client = get_trendyol_client(user_id=u_id)
-                return client.get_product_count()
+                total_api = client.get_product_count()
             elif mp_name == 'pazarama':
                 from app.services.pazarama_service import get_pazarama_client
                 client = get_pazarama_client(user_id=u_id)
-                return client.get_product_count()
+                total_api = client.get_product_count()
             elif mp_name == 'hepsiburada':
                 from app.services.hepsiburada_service import get_hepsiburada_client
                 client = get_hepsiburada_client(user_id=u_id)
-                return client.get_product_count()
+                total_api = client.get_product_count()
             elif mp_name == 'idefix':
                 from app.services.idefix_service import get_idefix_client
                 client = get_idefix_client(user_id=u_id)
-                return client.get_product_count()
+                total_api = client.get_product_count()
             elif mp_name == 'n11':
                 from app.services.n11_client import get_n11_client
-                client = get_n11_client() # uses current_user internally
+                client = get_n11_client()
                 if client:
-                    return client.get_product_count()
-            elif mp_name == 'ikas':
-                from app.services.ikas_service import get_ikas_service
-                service = get_ikas_service(user_id=u_id)
-                return service.get_product_count()
+                    total_api = client.get_product_count()
         except Exception as api_err:
             logging.warning(f"Fallback API count failed for {mp_name}: {api_err}")
             
-        return 0
+        return {'count': total_api, 'active': total_api, 'passive': 0}
     except Exception as e:
         logging.error(f"Error count for {mp_name}: {e}")
-        return 0
+        return {'count': 0, 'active': 0, 'passive': 0}
 
 
 def permission_required(permission_name):
@@ -204,68 +210,24 @@ def dashboard():
         start_of_month = datetime(now.year, now.month, 1)
 
         # Marketplace Stats
-        trendyol_total = get_mp_count('trendyol', user_id)
-        pazarama_total = get_mp_count('pazarama', user_id)
-        hepsiburada_total = get_mp_count('hepsiburada', user_id)
-        idefix_total = get_mp_count('idefix', user_id)
-        n11_total = get_mp_count('n11', user_id)
-
-        # Sync products and orders asynchronously
-        try:
-            from app.services.order_service import sync_all_orders, sync_all_products
-            if user_id:
-                force_sync = request.args.get('force_sync') == 'true'
-                
-                # Cooldown logic: 15 minutes
-                last_sync = Setting.get('LAST_DASHBOARD_SYNC', user_id=user_id)
-                should_sync = force_sync
-                
-                if not should_sync:
-                    if not last_sync:
-                        should_sync = True
-                    else:
-                        try:
-                            last_sync_dt = datetime.fromisoformat(last_sync)
-                            if datetime.now() - last_sync_dt > timedelta(minutes=15):
-                                should_sync = True
-                        except:
-                            should_sync = True
-                
-                if should_sync:
-                    logging.info(f"DEBUG: Background sync triggered for user {user_id}...")
-                    # Start background thread to avoid blocking dashboard load
-                    thread = threading.Thread(target=background_dashboard_sync, args=(current_app._get_current_object(), user_id))
-                    thread.daemon = True
-                    thread.start()
-                else:
-                    logging.info(f"DEBUG: Skipping sync (Cooldown active). Last sync: {last_sync}")
-                
-                # Re-calculate counts (uses whatever is currently in DB, background sync is separate)
-                trendyol_total = get_mp_count('trendyol', user_id)
-                pazarama_total = get_mp_count('pazarama', user_id)
-                hepsiburada_total = get_mp_count('hepsiburada', user_id)
-                idefix_total = get_mp_count('idefix', user_id)
-                n11_total = get_mp_count('n11', user_id)
-        except Exception as e:
-            logging.error(f"Sync error: {e}")
-
-        # Refetch last sync time for template display
-        last_sync_display = Setting.get('LAST_DASHBOARD_SYNC', user_id=user_id)
-        if last_sync_display:
-            try:
-                last_sync_display = datetime.fromisoformat(last_sync_display).strftime('%H:%M:%S')
-            except:
-                pass
+        stats = {}
+        for mp in ['trendyol', 'pazarama', 'hepsiburada', 'idefix', 'n11']:
+            stats[mp] = get_mp_count(mp, user_id)
 
         marketplaces_stats = [
-            {"name": "Trendyol", "key": "trendyol", "icon": "bag-check-fill", "color": "success", "count": trendyol_total, "sent": trendyol_total, "failed": 0},
-            {"name": "Pazarama", "key": "pazarama", "icon": "shop", "color": "primary", "count": pazarama_total, "sent": pazarama_total, "failed": 0},
-            {"name": "Hepsiburada", "key": "hepsiburada", "icon": "cart", "color": "warning", "count": hepsiburada_total, "sent": hepsiburada_total, "failed": 0},
-            {"name": "İdefix", "key": "idefix", "icon": "box-fill", "color": "info", "count": idefix_total, "sent": idefix_total, "failed": 0},
-            {"name": "N11", "key": "n11", "icon": "tag-fill", "color": "danger", "count": n11_total, "sent": n11_total, "failed": 0},
+            {"name": "Trendyol", "key": "trendyol", "icon": "bag-check-fill", "color": "success", 
+             "count": stats['trendyol']['count'], "active": stats['trendyol']['active'], "passive": stats['trendyol']['passive']},
+            {"name": "Pazarama", "key": "pazarama", "icon": "shop", "color": "primary", 
+             "count": stats['pazarama']['count'], "active": stats['pazarama']['active'], "passive": stats['pazarama']['passive']},
+            {"name": "Hepsiburada", "key": "hepsiburada", "icon": "cart", "color": "warning", 
+             "count": stats['hepsiburada']['count'], "active": stats['hepsiburada']['active'], "passive": stats['hepsiburada']['passive']},
+            {"name": "İdefix", "key": "idefix", "icon": "box-fill", "color": "info", 
+             "count": stats['idefix']['count'], "active": stats['idefix']['active'], "passive": stats['idefix']['passive']},
+            {"name": "N11", "key": "n11", "icon": "tag-fill", "color": "danger", 
+             "count": stats['n11']['count'], "active": stats['n11']['active'], "passive": stats['n11']['passive']},
         ]
 
-        total_sent = trendyol_total + pazarama_total + hepsiburada_total + idefix_total + n11_total
+        total_sent = sum(s['count'] for s in stats.values())
 
         # 1. Total Revenue (This Month)
         revenue_query = db.session.query(db.func.sum(Order.total_price)).filter(

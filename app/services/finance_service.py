@@ -78,7 +78,14 @@ class ProfitCalculator:
 def get_financial_summary(user_id: int, start_date: datetime = None, end_date: datetime = None) -> Dict[str, Any]:
     """Tarih aralığına göre finansal özet raporu döner."""
     
-    query = Order.query.filter_by(user_id=user_id).filter(Order.status != 'cancelled')
+    query = Order.query.filter_by(user_id=user_id).filter(
+        ~Order.status.ilike('%iptal%'),
+        ~Order.status.ilike('%iade%'),
+        ~Order.status.ilike('%cancel%'),
+        ~Order.status.ilike('%return%'),
+        ~Order.status.ilike('%red%'),
+        Order.status != 'REJECTED'
+    )
     
     if start_date:
         query = query.filter(Order.order_date >= start_date)

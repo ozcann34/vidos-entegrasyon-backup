@@ -23,8 +23,8 @@ class N11Client:
         self.api_key = api_key
         self.api_secret = api_secret
         self.headers = {
-            "appkey": self.api_key,
-            "appsecret": self.api_secret,
+            "appKey": self.api_key,
+            "appSecret": self.api_secret,
             "Content-Type": "application/json",
             "Accept": "application/json"
         }
@@ -42,13 +42,21 @@ class N11Client:
         return self.session.request(method, url, **kwargs)
 
     def check_connection(self) -> bool:
-        """Test connection by fetching categories (noauth but good specific check) or products"""
+        """Bağlantıyı test et"""
         try:
-            # Try fetching 1 product to test auth
-            res = self.get_products(size=1)
-            return res is not None
+            # Basit bir ürün listeleme isteği ile yetkiyi kontrol et
+            payload = {
+                "pagingData": {"currentPage": 0, "pageSize": 1}
+            }
+            response = self.session.post(f"{self.PRODUCT_BASE_URL}/product/list", json=payload, timeout=30)
+            
+            if response.status_code == 200:
+                return True
+            else:
+                logging.error(f"N11 connection test failed: {response.status_code} - {response.text}")
+                return False
         except Exception as e:
-            logging.error(f"N11 connection check failed: {e}")
+            logging.error(f"N11 connection test exception: {str(e)}")
             return False
 
     def get_orders(self, start_date: int = None, end_date: int = None, 

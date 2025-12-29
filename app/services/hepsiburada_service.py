@@ -3,7 +3,8 @@ import logging
 import time
 from typing import List, Dict, Any, Optional
 
-from app.models import Setting, SupplierXML
+from app import db
+from app.models import Setting, SupplierXML, MarketplaceProduct
 from app.services.hepsiburada_client import HepsiburadaClient
 from app.services.xml_service import load_xml_source_index
 from app.services.job_queue import append_mp_job_log, update_mp_job, get_mp_job
@@ -249,3 +250,116 @@ def perform_hepsiburada_send_all(job_id: str, xml_source_id: Any, user_id: int =
     append_mp_job_log(job_id, f"Toplam {len(all_barcodes)} ürün bulundu. Gönderim başlıyor...")
     
     return perform_hepsiburada_send_products(job_id, all_barcodes, xml_source_id, user_id=user_id, **kwargs)
+
+def perform_hepsiburada_batch_update(job_id: str, items: List[Dict[str, Any]], user_id: int = None) -> Dict[str, Any]:
+    """
+    Batch update Hepsiburada stock/price from Excel items.
+    items: [{'barcode': '...', 'stock': 10, 'price': 100.0}, ...]
+    """
+    try:
+        client = get_hepsiburada_client(user_id=user_id)
+        append_mp_job_log(job_id, f"Hepsiburada toplu güncelleme başlatıldı. {len(items)} ürün.")
+        
+        payload = []
+        for item in items:
+            barcode = item['barcode']
+            
+            # Form standard HB listing payload
+            # We need at least price or stock. 
+            # If one is missing, we might have issues if we don't have current values.
+            # But normally Listing API allows partial if we send the same structure.
+            
+            hb_item = {
+                "merchantSku": barcode,
+                "dispatchTime": 3, # Default
+                "cargoCompany1": "Yurtiçi Kargo" # Default
+            }
+            
+            if 'stock' in item:
+                hb_item["availableStock"] = int(item['stock'])
+            
+            if 'price' in item:
+                hb_item["price"] = {
+                    "amount": float(item['price']),
+                    "currency": "TRY"
+                }
+            
+            payload.append(hb_item)
+            
+        if not payload:
+            return {'success': False, 'message': 'Güncellenecek veri bulunamadı.'}
+            
+        # Send in chunks of 50 (HB limit is 1000 but small chunks safer for logs)
+        total_sent = 0
+        from app.utils.helpers import chunked
+        for chunk in chunked(payload, 50):
+            client.upload_products(chunk)
+            total_sent += len(chunk)
+            append_mp_job_log(job_id, f"{total_sent}/{len(payload)} ürün gönderildi.")
+            time.sleep(1)
+            
+        append_mp_job_log(job_id, "Hepsiburada güncelleme işlemi tamamlandı.")
+        return {'success': True, 'count': total_sent}
+        
+    except Exception as e:
+        msg = f"Hepsiburada batch update hatası: {str(e)}"
+        append_mp_job_log(job_id, msg, level='error')
+        return {'success': False, 'message': msg}
+
+def sync_hepsiburada_products(user_id: int) -> Dict[str, Any]:
+    """Hepsiburada ürünlerini çek ve MarketplaceProduct tablosuna kaydet/güncelle."""
+    try:
+        client = get_hepsiburada_client(user_id=user_id)
+        
+        offset = 0
+        limit = 100
+        total_synced = 0
+        
+        while True:
+            res = client.get_products(offset=offset, limit=limit)
+            items = res.get('items', [])
+            if not items:
+                break
+            
+            for item in items:
+                barcode = item.get('merchantSku')
+                if not barcode:
+                    continue
+                
+                mp_product = MarketplaceProduct.query.filter_by(
+                    user_id=user_id,
+                    marketplace='hepsiburada',
+                    barcode=barcode
+                ).first()
+                
+                if not mp_product:
+                    mp_product = MarketplaceProduct(
+                        user_id=user_id,
+                        marketplace='hepsiburada',
+                        barcode=barcode
+                    )
+                    db.session.add(mp_product)
+                
+                mp_product.title = item.get('productName')
+                mp_product.stock = to_int(item.get('availableStock', 0))
+                
+                price_data = item.get('price', {})
+                mp_product.sale_price = to_float(price_data.get('amount', 0))
+                
+                # Durum Eşitleme
+                # isActive=True/False veya status='ACTIVE' kontrolü
+                is_active = item.get('status') == 'ACTIVE' or item.get('isActive') == True
+                mp_product.on_sale = is_active
+                mp_product.status = 'Aktif' if is_active else 'Pasif'
+                
+            db.session.commit()
+            total_synced += len(items)
+            offset += limit
+            
+            if len(items) < limit:
+                break
+                
+        return {'success': True, 'count': total_synced}
+    except Exception as e:
+        logging.error(f"Hepsiburada senkronizasyon hatası: {str(e)}")
+        return {'success': False, 'message': str(e)}

@@ -259,6 +259,36 @@ def bulk_update():
                     )
                     flash(f'Pazarama güncelleme işlemi başlatıldı (Job ID: {job_id}).', 'success')
                 
+                elif target == 'hepsiburada':
+                    from app.services.job_queue import submit_mp_job, is_job_running_for_user
+                    from app.services.hepsiburada_service import perform_hepsiburada_batch_update
+                    
+                    if is_job_running_for_user(current_user.id):
+                        flash('Zaten devam eden bir işlem var.', 'warning')
+                        return redirect(url_for('products.bulk_update'))
+                    
+                    job_id = submit_mp_job(
+                        'hepsiburada_excel_update', 'hepsiburada',
+                        lambda jid: perform_hepsiburada_batch_update(jid, items),
+                        params={'count': len(items)}
+                    )
+                    flash(f'Hepsiburada güncelleme ix lemi bax latıldı (Job ID: {job_id}).', 'success')
+
+                elif target == 'idefix':
+                    from app.services.job_queue import submit_mp_job, is_job_running_for_user
+                    from app.services.idefix_service import perform_idefix_batch_update
+                    
+                    if is_job_running_for_user(current_user.id):
+                        flash('Zaten devam eden bir ix lem var.', 'warning')
+                        return redirect(url_for('products.bulk_update'))
+                    
+                    job_id = submit_mp_job(
+                        'idefix_excel_update', 'idefix',
+                        lambda jid: perform_idefix_batch_update(jid, items),
+                        params={'count': len(items)}
+                    )
+                    flash(f'Idefix güncelleme ix lemi bax latıldı (Job ID: {job_id}).', 'success')
+                
                 else:
                     flash('Geçersiz hedef seçimi.', 'danger')
 

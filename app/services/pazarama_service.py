@@ -1681,14 +1681,14 @@ def sync_pazarama_products(user_id: int, job_id: Optional[str] = None) -> Dict[s
 
             existing.title = p.get('name', 'İsimsiz Ürün')
             existing.quantity = int(p.get('stockCount', 0))
-            existing.price = float(p.get('salePrice') or p.get('listPrice', 0.0))
+            existing.price = float(p.get('listPrice', 0.0) or p.get('salePrice', 0.0))
+            existing.sale_price = float(p.get('salePrice', 0.0) or p.get('listPrice', 0.0))
             existing.stock_code = p.get('code')
             
-            # Map state to status
+            # Durum Eşitleme: Aktif / Pasif (1: Yayında, 2: Yayında Değil)
             state = p.get('state')
-            if state == 1: existing.status = 'Yayında'
-            elif state == 2: existing.status = 'Yayında Değil'
-            else: existing.status = f'Durum {state}'
+            existing.status = 'Aktif' if state == 1 else 'Pasif'
+            existing.on_sale = (state == 1)
             
             # Images
             imgs = p.get('images', [])

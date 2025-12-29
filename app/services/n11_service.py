@@ -1232,8 +1232,13 @@ def sync_n11_products(user_id: int, job_id: Optional[str] = None) -> Dict[str, A
             existing.title = p.get('title', 'İsimsiz Ürün')
             existing.quantity = qty
             existing.price = price
+            existing.sale_price = price
             existing.stock_code = p.get('sellerCode')
-            existing.status = p.get('productStatus', 'Active')
+            
+            # Durum Eşitleme: Aktif / Pasif
+            n11_status = p.get('productStatus')
+            existing.status = 'Aktif' if n11_status == 'Active' else 'Pasif'
+            existing.on_sale = (n11_status == 'Active')
             
             # Additional fields if model has them
             if hasattr(existing, 'brand'):

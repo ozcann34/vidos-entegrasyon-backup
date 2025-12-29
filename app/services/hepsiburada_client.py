@@ -273,10 +273,6 @@ class HepsiburadaClient:
         """
         url = f"{self.listing_api_url}/listings/merchantid/{self.merchant_id}/listings"
         
-        # New Integrator Auth requires User-Agent to be the 'username' (merchant_id)
-        # Using _get_auth_headers logic but customized for listing API if needed, 
-        # normally listing API accepts the same auth.
-        
         try:
             headers = self._get_auth_headers()
             # Just request 1 item to get total count
@@ -288,6 +284,25 @@ class HepsiburadaClient:
         except Exception as e:
             logging.error(f"Hepsiburada get_product_count error: {e}")
             return 0
+
+    def get_products(self, offset: int = 0, limit: int = 100) -> Dict[str, Any]:
+        """
+        Fetch product listings with pagination.
+        GET /listings/merchantid/{merchantId}/listings
+        """
+        url = f"{self.listing_api_url}/listings/merchantid/{self.merchant_id}/listings"
+        params = {
+            "offset": offset,
+            "limit": limit
+        }
+        try:
+            headers = self._get_auth_headers()
+            resp = self.session.get(url, headers=headers, params=params, timeout=30)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as e:
+            logging.error(f"Hepsiburada get_products error: {e}")
+            return {"items": [], "total": 0}
 
     def get_changeable_cargo_companies(self, order_line_id: str) -> List[Dict[str, Any]]:
         """

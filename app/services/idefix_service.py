@@ -2090,3 +2090,47 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
         'skipped': skipped,
         'message': f"{total_sent} ürün için işlem başlatıldı."
     }
+
+def perform_idefix_batch_update(job_id: str, items: List[Dict[str, Any]], user_id: int = None) -> Dict[str, Any]:
+    """
+    Batch update Idefix stock/price from Excel items.
+    items: [{'barcode': '...', 'stock': 10, 'price': 100.0}, ...]
+    """
+    try:
+        client = get_idefix_client(user_id=user_id)
+        append_mp_job_log(job_id, f"Idefix toplu güncelleme başlatıldı. {len(items)} ürün.")
+        
+        payload = []
+        for item in items:
+            barcode = item['barcode']
+            idefix_item = {'barcode': barcode}
+            
+            if 'stock' in item:
+                idefix_item['inventoryQuantity'] = int(item['stock'])
+            
+            if 'price' in item:
+                # Idefix update usually wants both if they are strict, but let's try partial
+                idefix_item['price'] = float(item['price'])
+                idefix_item['comparePrice'] = float(item['price']) # Default same
+                
+            payload.append(idefix_item)
+            
+        if not payload:
+            return {'success': False, 'message': 'Güncellenecek veri bulunamadı.'}
+            
+        # Idefix batch limit is usually 100
+        total_sent = 0
+        from app.utils.helpers import chunked
+        for chunk in chunked(payload, 50):
+            client.update_inventory_and_price(chunk)
+            total_sent += len(chunk)
+            append_mp_job_log(job_id, f"{total_sent}/{len(payload)} ürün gönderildi.")
+            time.sleep(1)
+            
+        append_mp_job_log(job_id, "Idefix güncelleme işlemi tamamlandı.")
+        return {'success': True, 'count': total_sent}
+        
+    except Exception as e:
+        msg = f"Idefix batch update hatası: {str(e)}"
+        append_mp_job_log(job_id, msg, level='error')
+        return {'success': False, 'message': msg}

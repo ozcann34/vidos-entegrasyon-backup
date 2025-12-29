@@ -806,12 +806,12 @@ def refresh_trendyol_cache(job_id: Optional[str] = None, user_id: int = None) ->
                 on_sale = item.get('onSale')
                 approved = item.get('approved')
                 # Map to status string
-                # Logic: If onSale=True -> Active, else Passive?
-                # Also check 'rejected'.
-                status_str = "Active" if on_sale else "Passive"
-                approval_str = "Approved" if approved else ("Rejected" if item.get('rejected') else "Pending")
+                # Status mapping: Standardize to Aktif/Pasif
+                status_str = "Aktif" if on_sale else "Pasif"
+                approval_str = "Onaylandı" if approved else ("Reddedildi" if item.get('rejected') else "Beklemede")
+                
                 if not on_sale and not approved:
-                    status_str = "Archived" # Example
+                    status_str = "Arşivlenmiş"
                 
                 # Price/Qty
                 list_price = float(item.get('listPrice', 0))
