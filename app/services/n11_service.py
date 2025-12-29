@@ -1,4 +1,5 @@
 import logging
+logger = logging.getLogger(__name__)
 import time
 import json
 from datetime import datetime
@@ -1170,6 +1171,7 @@ def clear_n11_cache(user_id: int):
         logging.error("Failed to clear N11 marketplace products: %s", e)
 
 def sync_n11_products(user_id: int, job_id: Optional[str] = None) -> Dict[str, Any]:
+    """
     Fetch all products from N11 and sync them to the local MarketplaceProduct table.
     """
     from app import db

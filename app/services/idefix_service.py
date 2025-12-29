@@ -1729,7 +1729,6 @@ def sync_idefix_products(user_id: Optional[int] = None, job_id: Optional[str] = 
                     barcode=barcode,
                     user_id=user_id
                 ).first()
-                ).first()
                 
                 if existing:
                     existing.stock_code = stock_code
