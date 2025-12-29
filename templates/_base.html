@@ -282,24 +282,30 @@
                 </a>
                 <ul class="collapse list-unstyled ps-3 {{ 'show' if update_ops_active else '' }}" id="updateOpsSubmenu"
                     data-bs-parent="#sidebar-nav">
+                    {% if current_user.has_plan_feature('auto_sync') %}
                     <li>
                         <a href="{{ url_for('main.auto_sync_page') }}"
                             class="nav-link py-2 fs-6 {% if request.endpoint == 'main.auto_sync_page' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
                             <i class="bi bi-caret-right-fill me-1 small"></i> Otomatik Senk.
                         </a>
                     </li>
+                    {% endif %}
+                    {% if current_user.has_plan_feature('add_xml_source') %}
                     <li>
                         <a href="{{ url_for('main.xml_updates') }}"
                             class="nav-link py-2 fs-6 {% if request.endpoint == 'main.xml_updates' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
                             <i class="bi bi-caret-right-fill me-1 small"></i> XML Güncellemeleri
                         </a>
                     </li>
+                    {% endif %}
+                    {% if current_user.has_plan_feature('add_excel_source') %}
                     <li>
                         <a href="{{ url_for('products.bulk_update') }}"
                             class="nav-link py-2 fs-6 {% if request.endpoint == 'products.bulk_update' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
                             <i class="bi bi-caret-right-fill me-1 small"></i> Toplu Güncelleme (Excel)
                         </a>
                     </li>
+                    {% endif %}
                 </ul>
             </li>
 
@@ -333,7 +339,7 @@
                 </a>
                 <ul class="collapse list-unstyled ps-3 {{ 'show' if other_ops_active else '' }}" id="otherOpsSubmenu"
                     data-bs-parent="#sidebar-nav">
-                    {% if current_user.is_admin %}
+                    {% if current_user.has_permission('batch_logs') and current_user.has_plan_feature('batch_logs') %}
                     <li>
                         <a href="{{ url_for('main.batch_logs') }}"
                             class="nav-link py-2 fs-6 {% if request.endpoint == 'main.batch_logs' or request.endpoint == 'main.batch_detail' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
@@ -376,7 +382,7 @@
                     <i class="bi bi-life-preserver me-2"></i> Destek Taleplerim
                 </a>
             </li>
-            {% if current_user.has_permission('assistant') %}
+            {% if current_user.has_permission('assistant') and current_user.has_plan_feature('vidos_assistant') %}
             <li class="nav-item">
                 <a href="#" onclick="toggleChatbot(); return false;" class="nav-link text-white">
                     <i class="bi bi-robot me-2 text-warning"></i> Vidos Asistan
@@ -403,34 +409,7 @@
     </div>
 
     <!-- Mobile Bottom Navigation -->
-    <div class="mobile-bottom-nav d-lg-none d-flex justify-content-around align-items-center position-fixed bottom-0 w-100 py-2 border-top"
-        style="z-index: 1010; backdrop-filter: blur(15px); background: rgba(10, 10, 15, 0.9) !important; border-top: 1px solid rgba(255,255,255,0.05) !important;">
-        <a href="{{ url_for('main.dashboard') }}"
-            class="mobile-nav-item d-flex flex-column align-items-center text-decoration-none {% if request.endpoint == 'main.dashboard' %}active{% endif %}">
-            <i class="bi bi-speedometer2 mb-1"></i>
-            <span>Panel</span>
-        </a>
-        <a href="{{ url_for('main.marketplace_products_page', marketplace='trendyol') }}"
-            class="mobile-nav-item d-flex flex-column align-items-center text-decoration-none {% if request.endpoint == 'main.marketplace_products_page' %}active{% endif %}">
-            <i class="bi bi-shop mb-1"></i>
-            <span>Mağazalar</span>
-        </a>
-        <a href="{{ url_for('main.orders_page') }}"
-            class="mobile-nav-item d-flex flex-column align-items-center text-decoration-none {% if request.endpoint == 'main.orders_page' %}active{% endif %}">
-            <i class="bi bi-cart3 mb-1"></i>
-            <span>Siparişler</span>
-        </a>
-        <a href="#" onclick="document.getElementById('sidebar-toggle').click(); return false;"
-            class="mobile-nav-item d-flex flex-column align-items-center text-decoration-none">
-            <i class="bi bi-grid mb-1"></i>
-            <span>Menü</span>
-        </a>
-        <a href="#" id="pwa-mobile-install"
-            class="mobile-nav-item d-flex flex-column align-items-center text-decoration-none" style="display: none;">
-            <i class="bi bi-download mb-1 text-primary"></i>
-            <span>Yükle</span>
-        </a>
-    </div>
+    <!-- Mobile Bottom Navigation Removed (Sidebar is used instead) -->
 
     <div id="main-content">
 
@@ -1074,14 +1053,46 @@
     <!-- Bootstrap Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Initialize Batch Status Window State
+        document.addEventListener('DOMContentLoaded', function () {
+            const statusWindow = document.querySelector('.process-status-window');
+            if (statusWindow) {
+                // Check localStorage
+                const isMinimized = localStorage.getItem('batchStatusMinimized') === 'true';
+                if (isMinimized) {
+                    statusWindow.classList.add('minimized');
+                }
+
+                // Add toggle listener if not exists
+                const header = statusWindow.querySelector('.card-header');
+                if (header) {
+                    header.addEventListener('click', function () {
+                        statusWindow.classList.toggle('minimized');
+                        localStorage.setItem('batchStatusMinimized', statusWindow.classList.contains('minimized'));
+                    });
+                }
+            }
+        });
+
         document.addEventListener('DOMContentLoaded', function () {
             // Re-bind Toggle Function since we removed the wrapper div
             window.toggleChatbot = function () {
                 const w = document.getElementById('chatbot-window');
+                const statusWindow = document.querySelector('.process-status-window');
+
                 if (w.classList.contains('d-none')) {
+                    // Opening Chatbot
                     w.classList.remove('d-none');
+                    w.classList.add('animate__fadeInLeft');
                     document.getElementById('chatbot-input').focus();
+
+                    // Auto-minimize Process Status Window
+                    if (statusWindow && !statusWindow.classList.contains('minimized')) {
+                        statusWindow.classList.add('minimized');
+                        localStorage.setItem('batchStatusMinimized', 'true');
+                    }
                 } else {
+                    // Closing Chatbot
                     w.classList.add('d-none');
                 }
             };

@@ -42,7 +42,7 @@ SUBSCRIPTION_PLANS = {
         'max_xml_sources': 1,  # Sadece Admin ekleyebilir
         'max_products': 10000,
         'max_marketplaces': 5,
-        'restricted_features': ['instagram_panel', 'add_xml_source', 'add_excel_source']
+        'restricted_features': ['instagram_panel', 'add_xml_source', 'add_excel_source', 'vidos_assistant', 'batch_logs', 'auto_sync']
     }
 }
 

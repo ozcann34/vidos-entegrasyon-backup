@@ -122,6 +122,8 @@ def admin_required(f):
 @main_bp.route('/api/chatbot/message', methods=['POST'])
 def chatbot_message():
     """Advanced chatbot API."""
+    if current_user.is_authenticated and not current_user.has_plan_feature('vidos_assistant'):
+        return jsonify({'reply': 'Bu özellik paketinizde kısıtlıdır.'}), 403
     from app.services.chatbot_service import get_chatbot_response
     
     data = request.get_json()
@@ -461,6 +463,10 @@ def xml_urunler():
 @main_bp.route("/operations/xml_updates")
 @login_required
 def xml_updates():
+    if not current_user.has_plan_feature('add_xml_source'):
+        flash('Bu özellik paketinizde kısıtlıdır.', 'danger')
+        return redirect(url_for('main.dashboard'))
+        
     xml_sources = SupplierXML.query.filter_by(user_id=current_user.id).order_by(SupplierXML.id.desc()).all()
     return render_template("operations/xml_updates.html", xml_sources=xml_sources)
 
@@ -529,8 +535,10 @@ def api_dashboard_stats():
 
 @main_bp.route("/batch_logs")
 @login_required
-@admin_required
 def batch_logs():
+    if not (current_user.is_admin or (current_user.has_permission('batch_logs') and current_user.has_plan_feature('batch_logs'))):
+        flash('Bu sayfaya erişim izniniz yok.', 'danger')
+        return redirect(url_for('main.dashboard'))
     logs = BatchLog.query.filter_by(user_id=current_user.id).order_by(BatchLog.id.desc()).all()
     return render_template("batch_logs.html", logs=logs)
 
@@ -1021,6 +1029,9 @@ def print_order_label(order_id):
 @permission_required('auto_sync')
 def auto_sync_page():
     """Otomatik senkronizasyon yönetim sayfası"""
+    if not current_user.has_plan_feature('auto_sync'):
+        flash('Bu özellik paketinizde kısıtlıdır.', 'danger')
+        return redirect(url_for('main.dashboard'))
     xml_sources = SupplierXML.query.filter_by(user_id=current_user.id).all()
     return render_template("auto_sync.html", marketplaces=MARKETPLACES, xml_sources=xml_sources)
 

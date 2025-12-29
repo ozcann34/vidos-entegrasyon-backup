@@ -199,7 +199,33 @@ def verify_email():
                     
                     # Check for pending payment
                     plan = session.get('selected_plan')
+                    billing = session.get('selected_billing', 'monthly')
+                    
                     if plan and plan != 'free':
+                        # BUG-Z Plan Special Logic: Bypass Payment, Force Wait for Approval
+                        if plan == 'bug-z-bayilik':
+                            from app.models.subscription import Subscription
+                            from app.services.payment_service import get_plan_details
+                            
+                            plan_details = get_plan_details(plan)
+                            if plan_details:
+                                # Create subscription directly (Unapproved)
+                                new_sub = Subscription(
+                                    user_id=current_user.id,
+                                    plan=plan,
+                                    billing_cycle=billing,
+                                    status='active', # Status active but approval false blocks access
+                                    is_approved=False, # Wait for admin
+                                    max_products=plan_details.get('max_products', 100),
+                                    max_marketplaces=plan_details.get('max_marketplaces', 1),
+                                    max_xml_sources=plan_details.get('max_xml_sources', 1)
+                                )
+                                db.session.add(new_sub)
+                                db.session.commit()
+                                
+                                flash('BUG-Z Bayilik başvurunuz alındı. Admin onayı bekleniyor.', 'info')
+                                return redirect(url_for('main.dashboard'))
+                        
                         return redirect(url_for('payment.payment_page', plan=plan))
                     return redirect(url_for('main.dashboard'))
                 else:

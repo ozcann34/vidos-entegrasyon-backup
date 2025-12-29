@@ -276,10 +276,16 @@
                 </a>
             </li>
 
+            <a href="{{ url_for('admin.users') }}" class="{% if 'users' in request.endpoint %}active{% endif %}">
+                <i class="bi bi-people"></i>
+                Kullanıcılar
+            </a>
+            </li>
             <li>
-                <a href="{{ url_for('admin.users') }}" class="{% if 'users' in request.endpoint %}active{% endif %}">
-                    <i class="bi bi-people"></i>
-                    Kullanıcılar
+                <a href="{{ url_for('admin.bug_z_settings') }}"
+                    class="{% if request.endpoint == 'admin.bug_z_settings' %}active{% endif %}">
+                    <i class="bi bi-shop-window"></i>
+                    BUG-Z Ayarları
                 </a>
             </li>
             <li>

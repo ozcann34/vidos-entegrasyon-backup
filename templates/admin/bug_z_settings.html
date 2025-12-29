@@ -1,0 +1,130 @@
+{% extends "admin/_base.html" %}
+
+{% block title %}BUG-Z Bayilik Ayarları{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h4 class="mb-1 fw-bold">BUG-Z Bayilik Paket Yönetimi</h4>
+                        <p class="text-muted mb-0">BUG-Z paketi kullanan bayiler için XML kaynağı tanımlayabilirsiniz.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="border-0 rounded-start">Kullanıcı</th>
+                                <th class="border-0">E-posta</th>
+                                <th class="border-0">Durum</th>
+                                <th class="border-0">Mevcut XML Kaynakları</th>
+                                <th class="border-0 rounded-end text-end">İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-circle bg-primary-subtle text-primary me-3">
+                                            {{ user.first_name[0] | upper }}{{ user.last_name[0] | upper }}
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-0 fw-bold">{{ user.first_name }} {{ user.last_name }}</h6>
+                                            <small class="text-muted">ID: {{ user.id }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>{{ user.email }}</td>
+                                <td>
+                                    {% if user.subscription and user.subscription.is_active %}
+                                    {% if user.subscription.is_approved %}
+                                    <span class="badge bg-success-subtle text-success">Aktif & Onaylı</span>
+                                    {% else %}
+                                    <span class="badge bg-warning-subtle text-warning">Onay Bekliyor</span>
+                                    {% endif %}
+                                    {% else %}
+                                    <span class="badge bg-danger-subtle text-danger">Pasif</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark border">{{ user.xml_sources|length }}
+                                        Kaynak</span>
+                                </td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-primary"
+                                        onclick="openAddXmlModal('{{ user.id }}', '{{ user.first_name }} {{ user.last_name }}')">
+                                        <i class="bi bi-file-earmark-code me-1"></i> XML Ekle
+                                    </button>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center py-5 text-muted">
+                                    <i class="bi bi-people display-6 d-block mb-3"></i>
+                                    BUG-Z paketi kullanan kullanıcı bulunamadı.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add XML Modal -->
+<div class="modal fade" id="addXmlModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-light border-bottom-0">
+                <h5 class="modal-title section-title mb-0">XML Kaynağı Ekle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="addXmlForm" method="POST" action="">
+                <div class="modal-body p-4">
+                    <div class="alert alert-info mb-3">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <span id="modalUserName" class="fw-bold"></span> kullanıcısı için XML ekliyorsunuz. Bu işlem
+                        paket limitinden düşülecektir (Admin yetkisiyle).
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">Kaynak Adı</label>
+                        <input type="text" class="form-control" name="name" placeholder="Örn: Entegra XML" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">XML URL</label>
+                        <input type="url" class="form-control" name="url" placeholder="https://..." required>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 bg-light p-3">
+                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                        data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-sm btn-primary px-4">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openAddXmlModal(userId, userName) {
+        document.getElementById('modalUserName').textContent = userName;
+        // Construct the action URL properly
+        // We assume the route pattern is /admin/bug-z/add-xml/<user_id>
+        const form = document.getElementById('addXmlForm');
+        form.action = "{{ url_for('admin.add_bug_z_xml', user_id=0) }}".replace('0', userId);
+
+        const modal = new bootstrap.Modal(document.getElementById('addXmlModal'));
+        modal.show();
+    }
+</script>
+{% endblock %}

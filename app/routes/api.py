@@ -105,6 +105,11 @@ def api_clear_all_cache():
 @login_required
 def api_xml_sources():
     user_id = current_user.id
+    
+    # Check plan permission for both GET (view) and POST (add)
+    if not current_user.has_plan_feature('add_xml_source'):
+         return jsonify({'items': [], 'error': 'Bu özellik paketinizde kısıtlıdır.'}), 403
+
     if request.method == 'GET':
         try:
             rows = SupplierXML.query.filter_by(user_id=user_id).order_by(SupplierXML.id.desc()).all()

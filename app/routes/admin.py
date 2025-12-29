@@ -1421,3 +1421,46 @@ def team_permissions():
     return render_template('admin/team_permissions.html', 
                          team_members=team_members)
 
+
+@admin_bp.route('/bug_z_settings')
+@admin_required
+def bug_z_settings():
+    """Manage BUG-Z Bayilik Plan users and settings."""
+    from app.models import Subscription, SupplierXML
+    # Filter users who have 'bug-z-bayilik' plan in active subscription
+    users = User.query.join(Subscription).filter(Subscription.plan == 'bug-z-bayilik').order_by(User.id.desc()).all()
+    return render_template('admin/bug_z_settings.html', users=users)
+
+@admin_bp.route('/bug_z/add_xml/<int:user_id>', methods=['POST'])
+@admin_required
+def add_bug_z_xml(user_id):
+    """Add XML source for a BUG-Z user (Admin Bypass)."""
+    from app.models import SupplierXML
+    
+    user = User.query.get_or_404(user_id)
+    name = request.form.get('name')
+    url = request.form.get('url')
+    
+    if not name or not url:
+        flash('İsim ve URL gereklidir.', 'danger')
+        return redirect(url_for('admin.bug_z_settings'))
+        
+    try:
+        new_xml = SupplierXML(user_id=user.id, name=name, url=url, active=True)
+        db.session.add(new_xml)
+        db.session.commit()
+        
+        # Log action
+        AdminLog.log_action(
+            admin_id=current_user.id,
+            action='add_bugz_xml',
+            details=f'Added XML for user {user.email}: {name}',
+            ip_address=request.remote_addr
+        )
+        
+        flash(f'{user.email} için XML kaynağı eklendi.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Hata: {str(e)}', 'danger')
+        
+    return redirect(url_for('admin.bug_z_settings'))
