@@ -1199,27 +1199,22 @@ def new_user():
             email=email,
 
             is_admin=(role == 'admin'),
-
-            is_active=True
-
+            is_active=True,
+            is_email_verified=True  # Auto-verify admin created users
         )
-
         user.set_password(password)
-
         
-
         db.session.add(user)
-
         db.session.commit()
-
         
-
         # Create subscription
-
         from app.models import Subscription
-
-        sub = Subscription(user_id=user.id, plan=subscription_plan)
-
+        sub = Subscription(
+            user_id=user.id, 
+            plan=subscription_plan,
+            is_approved=True,  # Auto-approve admin created users
+            status='active'
+        )
         db.session.add(sub)
 
         db.session.commit()
