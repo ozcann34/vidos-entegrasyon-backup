@@ -10,6 +10,13 @@ auth_bp = Blueprint('auth', __name__)
 
 
 
+@auth_bp.route('/register/bug-z')
+def register_bugz():
+    """BUG-Z dealership application page."""
+    if current_user.is_authenticated:
+        return redirect(url_for('main.dashboard'))
+    return render_template('register_bugz.html')
+
 @auth_bp.route('/landing')
 def landing():
     """Landing page for the application."""
@@ -85,6 +92,12 @@ def register():
         address = request.form.get('address', '').strip()
         plan = request.form.get('plan', 'basic')  # Get plan from form
         billing = request.form.get('billing', 'monthly') # Get billing from form
+        
+        # BUG-Z Extra Fields (Optional storage, for now just allowing registration)
+        bugz_dealer_code = request.form.get('bugz_dealer_code')
+        # if bugz_dealer_code and plan == 'bug-z-bayilik':
+             # Logic to save this code if needed e.g. in Settings or User field
+             # For now, just proceeding.
         
         # Validation
         if not email or not password:
@@ -224,6 +237,10 @@ def verify_email():
                                 db.session.commit()
                                 
                                 flash('BUG-Z Bayilik başvurunuz alındı. Admin onayı bekleniyor.', 'info')
+                                return redirect(url_for('main.dashboard'))
+                            else:
+                                # Fallback if plan details missing
+                                flash('Plan detayları alınamadı, lütfen desteğe başvurun.', 'danger')
                                 return redirect(url_for('main.dashboard'))
                         
                         return redirect(url_for('payment.payment_page', plan=plan))

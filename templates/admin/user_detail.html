@@ -190,7 +190,7 @@
                         <small class="text-muted">Mevcut Plan</small>
                         <p class="mb-0">
                             <span
-                                class="badge bg-{{ 'success' if user.subscription.plan == 'enterprise' else 'primary' if user.subscription.plan == 'pro' else 'secondary' }} fs-6">
+                                class="badge bg-{{ 'success' if user.subscription.plan in ['enterprise', 'bug-z-bayilik'] else 'primary' if user.subscription.plan == 'pro' else 'secondary' }} fs-6">
                                 {{ user.subscription.plan_display_name }}
                             </span>
                             {% if not user.subscription.is_approved %}
@@ -243,6 +243,9 @@
                         </option>
                         <option value="enterprise" {{ 'selected' if user.subscription.plan=='enterprise' else '' }}>
                             Kurumsal</option>
+                        <option value="bug-z-bayilik" {{ 'selected' if user.subscription.plan=='bug-z-bayilik' else ''
+                            }}>
+                            BUG-Z Bayilik</option>
                     </select>
                 </div>
                 <div class="col-md-4">

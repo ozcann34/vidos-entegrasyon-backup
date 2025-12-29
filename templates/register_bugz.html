@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="tr" data-bs-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BUG-Z Bayilik Başvurusu - Vidos Entegrasyon</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --bugz-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            --bugz-primary: #10b981;
+            --glass-bg: rgba(255, 255, 255, 0.95);
+            --glass-border: rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            min-height: 100vh;
+            background-color: #f0fdf4;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-image: radial-gradient(#d1fae5 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 900px;
+            padding: 2rem;
+        }
+
+        .auth-card {
+            background-color: #ffffff;
+            border: 1px solid #d1fae5;
+            border-radius: 20px;
+            padding: 2.5rem;
+            box-shadow: 0 10px 25px -4px rgba(16, 185, 129, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .auth-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: var(--bugz-gradient);
+        }
+
+        .auth-logo {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .auth-logo i {
+            font-size: 3rem;
+            color: var(--bugz-primary);
+        }
+
+        .auth-logo h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-top: 0.5rem;
+            color: #065f46;
+        }
+
+        .form-floating {
+            margin-bottom: 1rem;
+        }
+
+        .form-floating>.form-control {
+            background: rgba(16, 185, 129, 0.03);
+            border: 1px solid rgba(16, 185, 129, 0.1);
+            border-radius: 12px;
+            color: #333;
+            height: 56px;
+        }
+
+        .form-floating>.form-control:focus {
+            background: #fff;
+            border-color: var(--bugz-primary);
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
+        }
+
+        .form-floating>label {
+            color: rgba(0, 0, 0, 0.6);
+        }
+
+        .btn-bugz {
+            background: var(--bugz-gradient);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 0.875rem 1.5rem;
+            font-weight: 600;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+
+        .btn-bugz:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4);
+            color: white;
+        }
+
+        .auth-links {
+            text-align: center;
+            margin-top: 1.5rem;
+        }
+
+        .auth-links a {
+            color: var(--bugz-primary);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .auth-links a:hover {
+            color: #047857;
+        }
+
+        .badge-bugz {
+            background-color: #ecfdf5;
+            color: #047857;
+            border: 1px solid #6ee7b7;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            display: inline-block;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-logo">
+                <i class="bi bi-box-seam-fill"></i>
+                <h1>Vidos Entegrasyon</h1>
+                <div class="badge-bugz mt-2">
+                    <i class="bi bi-patch-check-fill me-1"></i> BUG-Z Bayilik Başvurusu
+                </div>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show"
+                role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            <div class="alert alert-success mb-4 border-0 bg-success-subtle text-success-emphasis">
+                <i class="bi bi-info-circle-fill me-2"></i>
+                Bu form <strong>BUG-Z Bayileri</strong> için özel olarak hazırlanmıştır. Başvurunuz onaylandıktan sonra
+                panelinizi limitsiz olarak kullanmaya başlayabilirsiniz.
+            </div>
+
+            <form method="POST" action="{{ url_for('auth.register') }}">
+                <!-- Force BUG-Z plan -->
+                <input type="hidden" name="plan" value="bug-z-bayilik">
+                <input type="hidden" name="billing" value="monthly">
+                <input type="hidden" name="is_bug_z_application" value="true">
+
+                <div class="row g-4">
+                    <!-- Sol Kolon: Kişisel Bilgiler -->
+                    <div class="col-md-6 border-end-md border-secondary border-opacity-10 pe-md-4">
+                        <h5 class="text-success fs-6 mb-3 border-bottom border-success border-opacity-25 pb-2">Hesap
+                            Bilgileri</h5>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="first_name" name="first_name"
+                                        placeholder="Ad" required>
+                                    <label for="first_name"><i class="bi bi-person me-2"></i>Ad</label>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="last_name" name="last_name"
+                                        placeholder="Soyad" required>
+                                    <label for="last_name"><i class="bi bi-person me-2"></i>Soyad</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="tc_no" name="tc_no" placeholder="TC Kimlik No"
+                                maxlength="11" required>
+                            <label for="tc_no"><i class="bi bi-person-vcard me-2"></i>TC Kimlik No</label>
+                        </div>
+
+                        <div class="form-floating">
+                            <input type="email" class="form-control" id="email" name="email" placeholder="Email"
+                                required>
+                            <label for="email"><i class="bi bi-envelope me-2"></i>Email Adresi</label>
+                        </div>
+
+                        <div class="form-floating mt-3">
+                            <input type="password" class="form-control" id="password" name="password"
+                                placeholder="Şifre" required minlength="6">
+                            <label for="password"><i class="bi bi-lock me-2"></i>Şifre</label>
+                        </div>
+
+                        <div class="form-floating mt-3 mb-3">
+                            <input type="password" class="form-control" id="password_confirm" name="password_confirm"
+                                placeholder="Şifre Tekrar" required>
+                            <label for="password_confirm"><i class="bi bi-lock-fill me-2"></i>Şifre Tekrar</label>
+                        </div>
+                    </div>
+
+                    <!-- Sağ Kolon: Bayi ve Firma Bilgileri -->
+                    <div class="col-md-6 ps-md-4">
+                        <h5 class="text-success fs-6 mb-3 border-bottom border-success border-opacity-25 pb-2">Bayi
+                            Bilgileri</h5>
+
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="bugz_dealer_code" name="bugz_dealer_code"
+                                placeholder="BUG-Z Bayi Kodu">
+                            <label for="bugz_dealer_code"><i class="bi bi-upc-scan me-2"></i>BUG-Z Bayi Kodu
+                                (Varsa)</label>
+                        </div>
+
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="company_title" name="company_title"
+                                placeholder="Firma Ünvanı" required>
+                            <label for="company_title"><i class="bi bi-building me-2"></i>Firma Ünvanı</label>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="tax_office" name="tax_office"
+                                        placeholder="Vergi Dairesi">
+                                    <label for="tax_office"><i class="bi bi-bank me-1"></i>V. Dairesi</label>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="tax_no" name="tax_no"
+                                        placeholder="Vergi No" required>
+                                    <label for="tax_no"><i class="bi bi-receipt me-1"></i>Vergi No</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-floating mb-3">
+                            <input type="tel" class="form-control" id="phone" name="phone" placeholder="Telefon"
+                                required>
+                            <label for="phone"><i class="bi bi-telephone me-2"></i>Telefon</label>
+                        </div>
+
+                        <div class="form-floating">
+                            <textarea class="form-control" placeholder="Açık Adres" id="address" name="address"
+                                style="height: 80px"></textarea>
+                            <label for="address"><i class="bi bi-map me-2"></i>Açık Adres</label>
+                        </div>
+                    </div>
+
+                    <div class="col-12 mt-4 text-center">
+                        <button type="submit" class="btn btn-bugz btn-lg w-50">
+                            <i class="bi bi-check-circle-fill me-2"></i>Başvuruyu Tamamla
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <div class="auth-links">
+                <span class="text-muted">Ana sayfaya dönmek için</span>
+                <a href="{{ url_for('auth.landing') }}" class="ms-1 fw-semibold">Tıklayın</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

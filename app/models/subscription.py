@@ -57,7 +57,8 @@ class Subscription(db.Model):
         plan_names = {
             'free': 'Ücretsiz',
             'pro': 'Pro',
-            'enterprise': 'Enterprise'
+            'enterprise': 'Enterprise',
+            'bug-z-bayilik': 'BUG-Z Bayilik'
         }
         return plan_names.get(self.plan, self.plan.title())
     
