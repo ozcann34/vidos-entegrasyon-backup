@@ -66,36 +66,32 @@ class HepsiburadaClient:
             "Accept": "application/json"
         }
         
-        # Strategy 2: Standard (User-Agent = AppName, Auth = MerchantID:ServiceKey)
+        # Strategy 2: HB App Identity (UA: VidosE_MerchantID)
         headers_2 = {
             "Authorization": f"Basic {auth_1}",
-            "User-Agent": "VidosEntegrasyon/1.0", 
+            "User-Agent": f"VidosE_{m_id}", 
             "Accept": "application/json"
         }
         
-        # Strategy 3: Old/No-Service-Key (User-Agent = MerchantID, Auth = MerchantID:)
-        # (Only if user maybe entered API Key instead of Service Key or hasn't migrated)
-        auth_3 = base64.b64encode(f"{m_id}:".encode('utf-8')).decode('utf-8')
+        # Strategy 3: Standard UA
         headers_3 = {
-            "Authorization": f"Basic {auth_3}",
-            "User-Agent": f"{m_id}",
+            "Authorization": f"Basic {auth_1}",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
             "Accept": "application/json"
         }
 
         strategies = [
             ("New Integrator (UA=ID)", headers_1),
-            ("Standard (UA=App)", headers_2),
-            ("Old (No Pass)", headers_3)
+            ("HB Identity (UA=VidosE_ID)", headers_2),
+            ("Standard Browser UA", headers_3)
         ]
         
         results = {}
         
         for name, headers in strategies:
             try:
-                logging.info(f"Checking HB Connection with Strategy: {name}")
-                resp = self.session.get(url, headers=headers, timeout=10)
+                resp = self.session.get(url, headers=headers, timeout=15)
                 if resp.ok:
-                    logging.info(f"HB Auth Success with {name}")
                     return {"success": True, "strategy": name, "status_code": resp.status_code}
                 else:
                     results[name] = f"Status: {resp.status_code}, Resp: {resp.text[:100]}"
@@ -105,6 +101,20 @@ class HepsiburadaClient:
         # If all failed
         logging.error(f"HB All Auth Strategies Failed: {results}")
         return {"success": False, "details": results}
+
+    def _get_auth_headers(self) -> Dict[str, str]:
+        """Helper method with correct auth format"""
+        import base64
+        m_id = self.merchant_id.strip()
+        s_key = self.service_key.strip()
+        encoded = base64.b64encode(f"{m_id}:{s_key}".encode('utf-8')).decode('utf-8')
+        
+        return {
+            "Authorization": f"Basic {encoded}",
+            "User-Agent": f"{m_id}",
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        }
 
     def import_products_file(self, json_file_content: str, file_name: str = "products.json") -> Dict[str, Any]:
         """

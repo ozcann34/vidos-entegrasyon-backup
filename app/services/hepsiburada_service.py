@@ -370,6 +370,12 @@ def sync_hepsiburada_products(user_id: int) -> Dict[str, Any]:
     except Exception as e:
         return {'success': False, 'message': str(e)}
 
+def clear_hepsiburada_cache(user_id: int):
+    """Placeholder for Hepsiburada cache clear.
+    This service currently doesn't use heavy caching but keeping it for UI compatibility.
+    """
+    pass
+
 def create_hepsiburada_catalog_request(product_data: Dict[str, Any], user_id: int = None):
     """
     [PREPARATION] Basic structure for Hepsiburada Catalog API (Product Creation)

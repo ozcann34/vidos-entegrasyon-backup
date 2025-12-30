@@ -290,36 +290,33 @@ class PazaramaClient:
                 result["error"] = error_block.get("message")
         return result
 
+    def check_connection(self) -> Dict[str, Any]:
+        """Test connection and return detailed report."""
+        try:
+            self.ensure_token()
+            # Simple metadata call
+            url = f"{BASE_URL}/brand/getBrands"
+            resp = self._request("GET", url, params={"Size": 1})
+            return {"success": True, "message": "Pazarama bağlantısı başarılı."}
+        except Exception as e:
+            return {"success": False, "message": f"Pazarama hatası: {str(e)}"}
+
     def get_product_count(self) -> int:
         """
-        Get total product count from Pazarama.
+        Get total product count from Pazarama. Raises on auth error.
         """
-        try:
-            # list_products uses /product/products. We use the same but inspect root JSON for total.
-            url = f"{BASE_URL}/product/products"
-            params = {"Page": 1, "Size": 1}
-            resp = self._request("GET", url, params=params, headers={"Accept": "application/json"})
-            data = resp.json()
-            
-            # Check for total keys in root response
-            # (Based on standard Pazarama/Entegra structures)
-            if "totalCount" in data: return int(data["totalCount"])
-            if "totalProductCount" in data: return int(data["totalProductCount"])
-            if "total" in data: return int(data["total"])
-            
-            # If payload has 'paging' object
-            if "paging" in data and isinstance(data['paging'], dict):
-                 if "totalCount" in data['paging']: return int(data['paging']['totalCount'])
-            
-            # Log structure if 0 to help debug if it fails again
-            if "data" in data and isinstance(data["data"], list):
-                 # We have data but no total count key found yet.
-                 pass
-                 
-            return 0
-        except Exception as e:
-            logging.error(f"Pazarama get_product_count error: {e}")
-            return 0
+        # list_products uses /product/products. We use the same but inspect root JSON for total.
+        url = f"{BASE_URL}/product/products"
+        params = {"Page": 1, "Size": 1}
+        resp = self._request("GET", url, params=params, headers={"Accept": "application/json"})
+        data = resp.json()
+        
+        if "totalCount" in data: return int(data["totalCount"])
+        if "totalProductCount" in data: return int(data["totalProductCount"])
+        if "total" in data: return int(data["total"])
+        if "paging" in data and isinstance(data['paging'], dict):
+             if "totalCount" in data['paging']: return int(data['paging']['totalCount'])
+        return 0
 
     def list_products(
         self,

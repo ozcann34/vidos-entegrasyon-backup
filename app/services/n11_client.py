@@ -46,15 +46,16 @@ class N11Client:
     def check_connection(self) -> bool:
         """Bağlantıyı test et"""
         try:
-            # Basit bir ürün listeleme isteği ile yetkiyi kontrol et
-            payload = {
-                "pagingData": {"currentPage": 0, "pageSize": 1}
-            }
-            response = self.session.post(f"{self.PRODUCT_BASE_URL}/product/list", json=payload, timeout=30)
+            # REST Auth Test: Try a simple GET on product-query or orders
+            # Some environments prefer CamelCase or all-lowercase headers.
+            # We already send both in __init__, but let's try a real call.
+            url = f"{self.PRODUCT_BASE_URL}/product-query?page=0&size=1"
+            response = self.session.get(url, timeout=30)
             
             if response.status_code == 200:
                 return True
             else:
+                # If 401, try one more time with simple session headers
                 logging.error(f"N11 connection test failed: {response.status_code} - {response.text}")
                 return False
         except Exception as e:
@@ -102,28 +103,16 @@ class N11Client:
         if sale_status:
             params["saleStatus"] = sale_status
             
-        try:
-            # Note: pagination params might be different for product-query, doc says page/size in response but check request
-            # Doc example: GET : https://api.n11.com/ms/product-query?id=&...
-            # Response has "pageable": {"pageNumber": 0, "pageSize": 20}
-            # So params usually match Spring Data naming: page, size
-            
-            response = self.session.get(url, params=params, timeout=30)
-            response.raise_for_status()
-            return response.json()
-        except Exception as e:
-            logging.error(f"N11 get_products error: {e}")
-            return {}
+        response = self.session.get(url, params=params, timeout=30)
+        response.raise_for_status()
+        return response.json()
 
     def get_product_count(self) -> int:
-        """Get total count of products"""
-        try:
-            res = self.get_products(page=0, size=1)
-            if res and 'totalElements' in res:
-                return int(res['totalElements'])
-            return 0
-        except:
-            return 0
+        """Get total count of products. Raises on auth error."""
+        res = self.get_products(page=0, size=1)
+        if res and 'totalElements' in res:
+            return int(res['totalElements'])
+        return 0
 
     def get_categories(self) -> List[Dict[str, Any]]:
         """Get all categories (No Auth required according to docs but using headers doesn't hurt)"""

@@ -167,34 +167,40 @@ class TrendyolClient:
 
     def get_brands_by_name(self, name: str) -> List[Dict[str, Any]]:
         """Search brands by name using Trendyol integration API."""
-        # Correct endpoint per Trendyol docs:
-        # https://apigw.trendyol.com/integration/product/brands/by-name?name={brand-name}
         url = "https://apigw.trendyol.com/integration/product/brands/by-name"
-        
         try:
             resp = self.session.get(url, auth=self.auth, params={"name": name}, timeout=self.timeout)
-            logging.info(f"Brand search for '{name}': status={resp.status_code}")
-            
             if resp.status_code == 200:
                 result = resp.json()
-                # Log response structure for debugging
-                if isinstance(result, list):
-                    logging.info(f"Brand search returned {len(result)} results")
-                    return result
-                elif isinstance(result, dict):
-                    # Try to find brands in response
+                if isinstance(result, list): return result
+                if isinstance(result, dict):
                     for key in ['brands', 'items', 'data', 'content']:
-                        if key in result and isinstance(result[key], list):
-                            logging.info(f"Brand search returned {len(result[key])} results in '{key}'")
-                            return result[key]
-                    logging.info(f"Brand search response keys: {list(result.keys())}")
+                        if key in result and isinstance(result[key], list): return result[key]
                 return []
-            else:
-                logging.warning(f"Brand search failed: {resp.status_code} - {resp.text[:200]}")
-                return []
+            return []
         except Exception as e:
             logging.exception(f"Brand search error for '{name}': {e}")
             return []
+
+    def get_brands(self, **kwargs) -> List[Dict[str, Any]]:
+        """Alias for get_brands_by_name or get_all_brands depending on params."""
+        name = kwargs.get('name')
+        if name:
+            return self.get_brands_by_name(name)
+        res = self.get_all_brands(page=kwargs.get('page', 0), size=kwargs.get('size', 1000))
+        return res.get('brands', []) if isinstance(res, dict) else []
+
+    def get_shipment_addresses(self) -> List[Dict[str, Any]]:
+        """
+        Lightweight call usually for connection testing.
+        Official: GET /suppliers/{sellerId}/addresses
+        """
+        url = f"https://api.trendyol.com/sapigw/suppliers/{self.seller_id}/addresses"
+        resp = self.session.get(url, auth=self.auth, timeout=self.timeout)
+        resp.raise_for_status()
+        # Returns: { "supplierAddresses": [...] }
+        data = resp.json()
+        return data.get("supplierAddresses", [])
 
     def get_all_brands(self, page: int = 0, size: int = 1500) -> Dict[str, Any]:
         """

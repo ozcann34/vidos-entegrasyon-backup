@@ -2075,25 +2075,15 @@ def api_test_connection(marketplace):
         elif marketplace == 'pazarama':
             from app.services.pazarama_service import get_pazarama_client
             client = get_pazarama_client()
-            try:
-                # Pazarama auth check
-                # Currently get_product_count was buggy returning 0 but no error means auth ok?
-                # Or try get_brands if available
-                client.get_product_count() 
-                success = True
-                message = "Pazarama bağlantısı başarılı."
-            except Exception as e:
-                message = f"Pazarama hatası: {str(e)}"
+            res = client.check_connection()
+            success = res.get('success', False)
+            message = res.get('message', "Bağlantı hatası.")
                 
         elif marketplace == 'n11':
             from app.services.n11_client import get_n11_client
             client = get_n11_client()
-            try:
-                client.get_product_count()
-                success = True
-                message = "N11 bağlantısı başarılı."
-            except Exception as e:
-                message = f"N11 hatası: {str(e)}"
+            success = client.check_connection()
+            message = "N11 bağlantısı başarılı." if success else "N11 bağlantı hatası (Yetkilendirme sorunu)."
 
         elif marketplace == 'idefix':
             from app.services.idefix_service import get_idefix_client
