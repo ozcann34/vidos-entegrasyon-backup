@@ -238,6 +238,45 @@
       </div>
     </div>
 
+    <!-- Kademeli Fiyat Kuralları (Tüm Pazaryerlerine Ortak) -->
+    <div class="accordion-item">
+      <h2 class="accordion-header">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+          data-bs-target="#priceRulesCollapse">
+          <i class="bi bi-percent me-2"></i>
+          Kademeli Fiyat Kuralları
+          <span class="badge bg-success ms-2">TÜM PAZARYERLERI</span>
+        </button>
+      </h2>
+      <div id="priceRulesCollapse" class="accordion-collapse collapse" data-bs-parent="#settingsAccordion">
+        <div class="accordion-body">
+          <div class="alert alert-info border-0 shadow-sm mb-4">
+            <i class="bi bi-info-circle-fill me-2"></i>
+            <strong>Nasıl Çalışır?</strong> Aşağıda tanımladığınız kurallar, XML'den pazaryerlerine (Trendyol,
+            Hepsiburada, Pazarama, İdefix, N11) ürün gönderirken otomatik olarak uygulanır.
+            Ürünün XML fiyatı hangi aralığa giriyorsa, o aralık için belirlediğiniz kâr yüzdesi ve sabit tutar eklenir.
+          </div>
+
+          <form method="POST" action="{{ url_for('main.settings_page') }}">
+            <div id="global_rules_container" class="mb-3"></div>
+            <button type="button" class="btn btn-outline-primary" onclick="addGlobalPriceRule()">
+              <i class="bi bi-plus-circle me-1"></i> Yeni Kural Ekle
+            </button>
+            <input type="hidden" name="GLOBAL_PRICE_RULES" id="GLOBAL_PRICE_RULES_HIDDEN"
+              value='{{ settings.GLOBAL_PRICE_RULES }}'>
+
+            <hr class="my-4">
+
+            <div class="d-flex align-items-center">
+              <button type="submit" class="btn btn-success"><i class="bi bi-save me-2"></i> Kaydet</button>
+              <div class="form-text ms-3">Kurallar kaydedildiğinde tüm sonraki ürün gönderimlerinde geçerli olacaktır.
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
     <!-- Pazaryeri Ayarları -->
     <div class="accordion-item">
       <h2 class="accordion-header">
@@ -985,93 +1024,78 @@
       });
     });
 
-    // --- Dynamic Price Rules Logic ---
-    window.priceRules = {
-      trendyol: [],
-      hepsiburada: [],
-      pazarama: [],
-      idefix: [],
-      n11: []
-    };
+    // --- Global Price Rules Logic (Tüm Pazaryerlerine Ortak) ---
+    window.globalPriceRules = [];
 
-    function initPriceRules() {
-      ['trendyol', 'hepsiburada', 'pazarama', 'idefix', 'n11'].forEach(mp => {
-        const hiddenInput = document.getElementById(`${mp.toUpperCase().replace('TRENDYOL', 'TRENDYOL')}${mp === 'hepsiburada' ? 'HB' : (mp === 'trendyol' ? 'TRENDYOL' : mp.toUpperCase())}_PRICE_RULES_HIDDEN`);
-        const containerId = `${mp}_rules_container`;
-
-        // Correction for ID mapping if needed
-        let finalHiddenId = `${mp.toUpperCase()}_PRICE_RULES_HIDDEN`;
-        if (mp === 'hepsiburada') finalHiddenId = 'HB_PRICE_RULES_HIDDEN';
-
-        const realHidden = document.getElementById(finalHiddenId);
-
-        if (realHidden && realHidden.value) {
-          try {
-            window.priceRules[mp] = JSON.parse(realHidden.value);
-          } catch (e) {
-            console.error(`Error parsing ${mp} rules:`, e);
-            window.priceRules[mp] = [];
-          }
+    function initGlobalPriceRules() {
+      const hiddenInput = document.getElementById('GLOBAL_PRICE_RULES_HIDDEN');
+      if (hiddenInput && hiddenInput.value) {
+        try {
+          window.globalPriceRules = JSON.parse(hiddenInput.value);
+        } catch (e) {
+          console.error('Error parsing global price rules:', e);
+          window.globalPriceRules = [];
         }
-        renderPriceRules(mp);
-      });
+      }
+      renderGlobalRules();
     }
 
-    window.addPriceRule = function (mp) {
-      window.priceRules[mp].push({ min: 0, max: 1000, percent: 10, fixed: 0 });
-      renderPriceRules(mp);
-      savePriceRules(mp);
+    window.addGlobalPriceRule = function () {
+      window.globalPriceRules.push({ min: 0, max: 1000, percent: 10, fixed: 0 });
+      renderGlobalRules();
+      saveGlobalRules();
     };
 
-    window.removePriceRule = function (mp, index) {
-      window.priceRules[mp].splice(index, 1);
-      renderPriceRules(mp);
-      savePriceRules(mp);
+    window.removeGlobalPriceRule = function (index) {
+      window.globalPriceRules.splice(index, 1);
+      renderGlobalRules();
+      saveGlobalRules();
     };
 
-    window.updatePriceRule = function (mp, index, field, value) {
-      window.priceRules[mp][index][field] = parseFloat(value) || 0;
-      savePriceRules(mp);
+    window.updateGlobalPriceRule = function (index, field, value) {
+      window.globalPriceRules[index][field] = parseFloat(value) || 0;
+      saveGlobalRules();
     };
 
-    function renderPriceRules(mp) {
-      const container = document.getElementById(`${mp}_rules_container`);
+    function renderGlobalRules() {
+      const container = document.getElementById('global_rules_container');
       if (!container) return;
 
-      if (window.priceRules[mp].length === 0) {
-        container.innerHTML = '<div class="alert alert-light py-2 small border text-center">Tanımlı kural yok.</div>';
+      if (window.globalPriceRules.length === 0) {
+        container.innerHTML = `
+          <div class="alert alert-warning py-3 text-center">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            Henüz tanımlı kural yok. "Yeni Kural Ekle" butonuna tıklayarak başlayın.
+          </div>`;
         return;
       }
 
-      let html = '<div class="table-responsive"><table class="table table-sm table-bordered align-middle" style="font-size: 0.85rem;">';
-      html += '<thead class="table-light"><tr><th>Min Fiyat (>=)</th><th>Max Fiyat (<)</th><th>Kâr (%)</th><th>Ek Sabit (TL)</th><th></th></tr></thead><tbody>';
+      let html = '<div class="table-responsive"><table class="table table-bordered align-middle mb-0">';
+      html += '<thead class="table-light"><tr><th style="width:20%">Min Fiyat (>=)</th><th style="width:20%">Max Fiyat (<)</th><th style="width:20%">Kâr Yüzdesi (%)</th><th style="width:20%">Ek Sabit (TL)</th><th style="width:10%"></th></tr></thead><tbody>';
 
-      window.priceRules[mp].forEach((rule, idx) => {
+      window.globalPriceRules.forEach((rule, idx) => {
         html += `<tr>
-                <td><input type="number" step="0.01" class="form-control form-control-sm" value="${rule.min}" onchange="updatePriceRule('${mp}', ${idx}, 'min', this.value)"></td>
-                <td><input type="number" step="0.01" class="form-control form-control-sm" value="${rule.max || 999999}" onchange="updatePriceRule('${mp}', ${idx}, 'max', this.value)"></td>
-                <td><input type="number" step="0.1" class="form-control form-control-sm" value="${rule.percent}" onchange="updatePriceRule('${mp}', ${idx}, 'percent', this.value)"></td>
-                <td><input type="number" step="0.01" class="form-control form-control-sm" value="${rule.fixed || 0}" onchange="updatePriceRule('${mp}', ${idx}, 'fixed', this.value)"></td>
-                <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="removePriceRule('${mp}', ${idx})"><i class="bi bi-x"></i></button></td>
-            </tr>`;
+          <td><div class="input-group input-group-sm"><span class="input-group-text">₺</span><input type="number" step="0.01" class="form-control" value="${rule.min}" onchange="updateGlobalPriceRule(${idx}, 'min', this.value)"></div></td>
+          <td><div class="input-group input-group-sm"><span class="input-group-text">₺</span><input type="number" step="0.01" class="form-control" value="${rule.max || 999999}" onchange="updateGlobalPriceRule(${idx}, 'max', this.value)"></div></td>
+          <td><div class="input-group input-group-sm"><input type="number" step="0.1" class="form-control" value="${rule.percent}" onchange="updateGlobalPriceRule(${idx}, 'percent', this.value)"><span class="input-group-text">%</span></div></td>
+          <td><div class="input-group input-group-sm"><span class="input-group-text">₺</span><input type="number" step="0.01" class="form-control" value="${rule.fixed || 0}" onchange="updateGlobalPriceRule(${idx}, 'fixed', this.value)"></div></td>
+          <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeGlobalPriceRule(${idx})"><i class="bi bi-trash"></i></button></td>
+        </tr>`;
       });
 
       html += '</tbody></table></div>';
       container.innerHTML = html;
     }
 
-    function savePriceRules(mp) {
-      let finalHiddenId = `${mp.toUpperCase()}_PRICE_RULES_HIDDEN`;
-      if (mp === 'hepsiburada') finalHiddenId = 'HB_PRICE_RULES_HIDDEN';
-
-      const realHidden = document.getElementById(finalHiddenId);
-      if (realHidden) {
-        realHidden.value = JSON.stringify(window.priceRules[mp]);
+    function saveGlobalRules() {
+      const hiddenInput = document.getElementById('GLOBAL_PRICE_RULES_HIDDEN');
+      if (hiddenInput) {
+        hiddenInput.value = JSON.stringify(window.globalPriceRules);
       }
     }
 
-    initPriceRules();
-    // --- End Price Rules Logic ---
+    initGlobalPriceRules();
+    // --- End Global Price Rules Logic ---
 
     // Password Visibility Toggle
     window.togglePassword = function (btn) {
