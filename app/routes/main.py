@@ -669,6 +669,9 @@ def settings_page():
             "PAZARAMA_PRICE_FIXED": Setting.get("PAZARAMA_PRICE_FIXED", "0", user_id=user_id),
             "IDEFIX_PRICE_PERCENTAGE": Setting.get("IDEFIX_PRICE_PERCENTAGE", "0", user_id=user_id),
             "IDEFIX_PRICE_FIXED": Setting.get("IDEFIX_PRICE_FIXED", "0", user_id=user_id),
+            
+            # Global Price Rules (Tüm pazaryerlerine ortak)
+            "GLOBAL_PRICE_RULES": Setting.get("GLOBAL_PRICE_RULES", "", user_id=user_id),
         }
         xml_sources = SupplierXML.query.filter_by(user_id=user_id).order_by(SupplierXML.id.desc()).all()
         return render_template("settings.html", settings=settings, xml_sources=xml_sources)
@@ -702,6 +705,9 @@ def settings_page():
             "N11_PRICE_PERCENTAGE", "N11_PRICE_FIXED",
             "PAZARAMA_PRICE_PERCENTAGE", "PAZARAMA_PRICE_FIXED",
             "IDEFIX_PRICE_PERCENTAGE", "IDEFIX_PRICE_FIXED",
+            
+            # Global Price Rules
+            "GLOBAL_PRICE_RULES",
         ]
         
         # Identify which MP being updated/added
