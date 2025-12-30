@@ -130,12 +130,9 @@ def api_clear_all_cache():
 def api_xml_sources():
     user_id = current_user.id
     
-    # Check plan permission for both GET (view) and POST (add)
-    if not current_user.has_plan_feature('add_xml_source'):
-         return jsonify({'items': [], 'error': 'Bu özellik paketinizde kısıtlıdır.'}), 403
-
     if request.method == 'GET':
         try:
+            from app.models.product import SupplierXML
             rows = SupplierXML.query.filter_by(user_id=user_id).order_by(SupplierXML.id.desc()).all()
             items = [
                 {
@@ -149,6 +146,7 @@ def api_xml_sources():
             return jsonify({'items': items})
         except Exception as e:
             return jsonify({'items': [], 'error': str(e)}), 500
+
     # POST
     try:
         data = request.get_json(force=True) or {}
@@ -165,14 +163,22 @@ def api_xml_sources():
         from app.services.subscription_service import check_usage_limit
         if not check_usage_limit(user_id, 'xml_sources'):
              return jsonify({'success': False, 'message': 'Paketinizin XML kaynak limitini doldurdunuz. Lütfen paketinizi yükseltin.'}), 403
-             
-        row = SupplierXML(name=name, url=url, active=True, user_id=user_id)
-        db.session.add(row)
+
+        from app import db
+        from app.models.product import SupplierXML
+        new_xml = SupplierXML(
+            user_id=user_id,
+            name=name,
+            url=url,
+            active=True
+        )
+        db.session.add(new_xml)
         db.session.commit()
-        return jsonify({'success': True, 'id': row.id})
+        
+        return jsonify({'success': True, 'message': 'XML kaynağı başarıyla eklendi.'})
+        
     except Exception as e:
-        db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': f'Hata: {str(e)}'}), 500
 
 @api_bp.route('/api/xml_sources/<int:source_id>', methods=['DELETE'])
 @login_required

@@ -8,9 +8,9 @@ from app.models.order import Order
 class BugZService:
     def __init__(self, user):
         self.user = user
-        self.api_key = Setting.get('bugz_api_key', user_id=user.id)
-        self.api_secret = Setting.get('bugz_api_secret', user_id=user.id)
-        self.base_url = Setting.get('bugz_api_url', 'https://bug-z.com/api/v2', user_id=user.id)
+        self.api_key = Setting.get('BUGZ_API_KEY', user_id=user.id)
+        self.api_secret = Setting.get('BUGZ_API_SECRET', user_id=user.id)
+        self.base_url = Setting.get('BUGZ_API_URL', 'https://bug-z.com/api/v2', user_id=user.id)
 
     def is_configured(self):
         return bool(self.api_key and self.api_secret)
@@ -31,8 +31,11 @@ class BugZService:
         }
         
         try:
-            # Try to fetch orders list as a test (neutral action)
-            url = f"{self.base_url.rstrip('/')}/orders"
+            # Try to fetch orders list or metadata. 
+            # Note: If /orders doesn't exist, we might need another endpoint from their docs.
+            url = f"{self.base_url.rstrip('/')}/web_servis/order/filter" # Assuming filter exists as a generic check
+            if not url.endswith('filter'): # simple fallback
+                 url = f"{self.base_url.rstrip('/')}/web_servis/orders"
             # Using a small limit if possible to be light
             params = {"limit": 1}
             response = requests.get(url, headers=headers, params=params, timeout=15)
@@ -74,10 +77,10 @@ class BugZService:
 
         # Handle Order Mapping
         order_data = {
-            "paymentType": 38, # Cariden Ödeme (Pull from card/balance)
+            "paymentType": 38, # Cariden Ödeme
             "status": 1,      # Yeni Sipariş
             "note": f"Vidos - {vidos_order.marketplace.upper()} Siparişi: {vidos_order.order_number}",
-            "createdAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "createdAt": vidos_order.created_at.strftime("%Y-%m-%d %H:%M:%S") if vidos_order.created_at else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
 
         # Handle Product Mapping (Assuming order has line items)
@@ -100,7 +103,7 @@ class BugZService:
         }
 
         try:
-            url = f"{self.base_url.rstrip('/')}/order/create"
+            url = f"{self.base_url.rstrip('/')}/web_servis/order/create"
             response = requests.post(url, headers=headers, json=payload, timeout=30)
             res_json = response.json()
 

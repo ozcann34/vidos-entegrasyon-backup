@@ -53,8 +53,31 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <span class="badge bg-light text-dark border">{{ user.xml_sources|length }}
-                                        Kaynak</span>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-light border dropdown-toggle" type="button"
+                                            data-bs-toggle="dropdown" aria-expanded="false">
+                                            <span class="badge bg-primary-subtle text-primary me-1">{{
+                                                user.supplier_xmls|length }}</span>
+                                            Kaynak
+                                        </button>
+                                        <ul class="dropdown-menu shadow-sm p-2" style="min-width: 250px;">
+                                            <li class="dropdown-header border-bottom mb-2 pb-2">XML Kaynakları</li>
+                                            {% for xml in user.supplier_xmls %}
+                                            <li class="mb-2">
+                                                <div class="d-flex flex-column px-2">
+                                                    <span class="fw-bold small text-dark">{{ xml.name }}</span>
+                                                    <a href="{{ xml.url }}" target="_blank"
+                                                        class="text-muted small text-truncate" style="max-width: 220px;"
+                                                        title="{{ xml.url }}">
+                                                        {{ xml.url }}
+                                                    </a>
+                                                </div>
+                                            </li>
+                                            {% else %}
+                                            <li class="text-center py-2 text-muted small">Kayıtlı kaynak yok</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
                                 </td>
                                 <td class="text-end">
                                     <button class="btn btn-sm btn-primary"
