@@ -186,5 +186,9 @@ class AnonymousUser(AnonymousUserMixin):
     def has_permission(self, permission: str) -> bool:
         """Anonymous users generally have no permissions."""
         return False
+        
+    def has_plan_feature(self, feature: str) -> bool:
+        """Anonymous users have no plan features."""
+        return False
 
 

@@ -306,7 +306,7 @@ class N11Client:
         Service: ProductQuestionService
         Method: GetProductQuestionList
         """
-        url = "https://api.n11.com/ws/ProductQuestionService.wsdl"
+        url = "https://api.n11.com/ws/ProductQuestionService"
         
         xml = f"""<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:n11="http://www.n11.com/ws/schemas">
            <soapenv:Header/>
@@ -383,7 +383,7 @@ class N11Client:
         Service: ProductQuestionService
         Method: SaveProductAnswer
         """
-        url = "https://api.n11.com/ws/ProductQuestionService.wsdl"
+        url = "https://api.n11.com/ws/ProductQuestionService"
         
         xml = f"""<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:n11="http://www.n11.com/ws/schemas">
            <soapenv:Header/>
@@ -502,7 +502,7 @@ class N11Client:
         Service: ClaimService
         Method: ApproveClaim
         """
-        url = "https://api.n11.com/ws/ClaimService.wsdl"
+        url = "https://api.n11.com/ws/ClaimService"
         xml = f"""<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:n11="http://www.n11.com/ws/schemas">
            <soapenv:Header/>
            <soapenv:Body>
@@ -532,7 +532,7 @@ class N11Client:
         Service: ClaimService
         Method: RejectClaim
         """
-        url = "https://api.n11.com/ws/ClaimService.wsdl"
+        url = "https://api.n11.com/ws/ClaimService"
         xml = f"""<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:n11="http://www.n11.com/ws/schemas">
            <soapenv:Header/>
            <soapenv:Body>
@@ -562,7 +562,7 @@ class N11Client:
         """
         Fetch product questions from N11 (SOAP).
         """
-        url = "https://api.n11.com/ws/ProductQuestionService.wsdl"
+        url = "https://api.n11.com/ws/ProductQuestionService"
         xml = f"""<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:n11="http://www.n11.com/ws/schemas">
            <soapenv:Header/>
            <soapenv:Body>
@@ -612,7 +612,7 @@ class N11Client:
         Service: ClaimService
         Method: GetClaimList
         """
-        url = "https://api.n11.com/ws/ClaimService.wsdl"
+        url = "https://api.n11.com/ws/ClaimService"
         xml = f"""<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:n11="http://www.n11.com/ws/schemas">
            <soapenv:Header/>
            <soapenv:Body>

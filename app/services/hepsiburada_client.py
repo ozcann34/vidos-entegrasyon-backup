@@ -398,6 +398,11 @@ class HepsiburadaClient:
         try:
             headers = self._get_auth_headers()
             resp = self.session.get(url, headers=headers, params=params, timeout=30)
+            
+            if resp.status_code == 403:
+                logging.warning(f"Hepsiburada get_claims: 403 Forbidden - insufficient API permissions for merchant {self.merchant_id}")
+                return []
+                
             resp.raise_for_status()
             return resp.json() # Returns a list of claims
         except Exception as e:
