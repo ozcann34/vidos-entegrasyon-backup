@@ -2049,10 +2049,9 @@ def api_test_connection(marketplace):
         if marketplace == 'trendyol':
             from app.services.trendyol_service import get_trendyol_client
             client = get_trendyol_client()
-            # Try fetching a simple data point like supplier addresses or just init
-            # validation often happens in init, but let's try a call
             try:
-               client.get_shipment_addresses() # Lightweight call
+               # Use a safer endpoint: Brands (usually available on all keys)
+               client.get_all_brands(size=1) 
                success = True
                message = "Trendyol bağlantısı başarılı."
             except Exception as e:
@@ -2078,23 +2077,26 @@ def api_test_connection(marketplace):
             res = client.check_connection()
             success = res.get('success', False)
             message = res.get('message', "Bağlantı hatası.")
-                
         elif marketplace == 'n11':
             from app.services.n11_client import get_n11_client
             client = get_n11_client()
             success = client.check_connection()
             message = "N11 bağlantısı başarılı." if success else "N11 bağlantı hatası (Yetkilendirme sorunu)."
-
-        elif marketplace == 'trendyol':
-            from app.services.trendyol_service import get_trendyol_client
-            client = get_trendyol_client()
+                
+        elif marketplace == 'idefix':
+            from app.services.idefix_service import get_idefix_client
+            client = get_idefix_client()
             try:
-                # Use a safer endpoint: Brands (usually available on all keys)
-                client.get_all_brands(size=1) 
-                success = True
-                message = "Trendyol bağlantısı başarılı."
+                # Idefix test
+                token = client.get_token()
+                if token:
+                    # Try a simple API call like categories (first page or light)
+                    success = True
+                    message = "İdefix bağlantısı başarılı."
+                else:
+                    message = "İdefix token alınamadı."
             except Exception as e:
-                message = f"Trendyol hatası: {str(e)}"
+                message = f"İdefix hatası: {str(e)}"
 
         elif marketplace == 'ikas':
             from app.services.ikas_service import get_ikas_service

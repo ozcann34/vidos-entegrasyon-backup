@@ -212,19 +212,21 @@ def _process_idefix_order(data: Dict[str, Any], user_id: int = None):
     status_en = data.get("status", "Created")
     existing.status = IDEFIX_STATUS_TR.get(status_en, status_en)
     
-    existing.total_price = float(data.get("totalPrice", 0.0))
-    # Idefix usually returns TL directly
+    # Idefix OMS returns total_price, status, orderNumber etc. in shipment level
+    existing.total_price = float(data.get("discountedTotalPrice", data.get("totalPrice", 0.0)))
     existing.currency = "TRY" 
     existing.raw_data = json.dumps(data, ensure_ascii=False)
     
-    date_str = data.get("orderDate")
+    # Dates: orderDate (creation), updatedAt (last modified)
+    date_str = data.get("orderDate") or data.get("createdAt")
     if date_str:
         try:
-             # Typically ISO or millis
+             # Idefix format: 2023-04-06T14:27:52+03:00
              if isinstance(date_str, int):
                  existing.created_at = datetime.fromtimestamp(date_str/1000)
              else:
-                 existing.created_at = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+                 # Strip timezone for naive UTC or use proper parsing
+                 existing.created_at = datetime.fromisoformat(date_str.replace("Z", "+00:00")).replace(tzinfo=None)
         except:
             existing.created_at = datetime.utcnow()
     else:

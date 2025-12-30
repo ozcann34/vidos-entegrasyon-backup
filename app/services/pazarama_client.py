@@ -9,7 +9,7 @@ from requests.auth import HTTPBasicAuth
 from urllib3.util import Retry
 from app.utils.rate_limiter import pazarama_limiter
 
-DEFAULT_TIMEOUT = 60
+DEFAULT_TIMEOUT = 20
 TOKEN_URL = "https://isortagimgiris.pazarama.com/connect/token"
 BASE_URL = "https://isortagimapi.pazarama.com"
 
@@ -105,7 +105,7 @@ class PazaramaClient:
                         response.raise_for_status()
                     return response
                 if response.status_code in {403, 429} and attempt < retry:
-                    wait_time = 5 * (attempt + 1)  # 5, 10, 15 seconds
+                    wait_time = 2 * (attempt + 1)  # 2, 4, 6 seconds
                     logging.warning("Pazarama rate limit (429). Waiting %ds...", wait_time)
                     time.sleep(wait_time)
                     continue
@@ -114,7 +114,7 @@ class PazaramaClient:
                 return response
             except Exception as exc:
                 last_exc = exc
-                wait_for = 5 * (attempt + 1)  # 5, 10, 15 seconds
+                wait_for = 1 * (attempt + 1)  # 1, 2, 3 seconds
                 logging.warning("Pazarama request error (attempt %s/%s): %s — waiting %ds", attempt + 1, retry + 1, exc, wait_for)
                 time.sleep(wait_for)
         if last_exc:

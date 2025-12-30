@@ -8,7 +8,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from app.utils.rate_limiter import trendyol_limiter
 
-DEFAULT_TIMEOUT = 60
+DEFAULT_TIMEOUT = 20
 BATCH_SLEEP_SECONDS = 5
 
 class TrendyolClient:

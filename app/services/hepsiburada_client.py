@@ -34,7 +34,7 @@ class HepsiburadaClient:
         def rate_limited_request(method, url, *args, **kwargs):
             # Default timeout for all requests if not specified
             if 'timeout' not in kwargs:
-                kwargs['timeout'] = 30
+                kwargs['timeout'] = 20
                 
             hepsiburada_limiter.wait()
             return original_request(method, url, *args, **kwargs)
@@ -146,7 +146,7 @@ class HepsiburadaClient:
         
         try:
             # Note: headers usually shouldn't include Content-Type for multipart, requests adds it with boundary
-            resp = self.session.post(url, headers=headers, files=files, timeout=120)
+            resp = self.session.post(url, headers=headers, files=files, timeout=40)
             
             if resp.status_code == 403:
                  logging.error(f"HB 403 Forbidden (Import). Check exact permissions for 'Product Import'.")
@@ -179,7 +179,7 @@ class HepsiburadaClient:
         logging.info(f"HB Listing Upload URL: {url}")
         
         try:
-            resp = self.session.post(url, json=products, headers=headers, timeout=60)
+            resp = self.session.post(url, json=products, headers=headers, timeout=30)
             
             if resp.status_code == 401:
                 logging.error(f"HB 401 Unauthorized (Listing). Check MerchantID/Key. UA used: {m_id}")

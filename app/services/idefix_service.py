@@ -321,8 +321,10 @@ items: List[Dict[str, Any]],
             batch_callback: Optional callback function to handle batch response
             
         Returns:
-            Dict containing the API response
         """
+        if not self.vendor_id:
+            raise ValueError("Idefix vendor_id (Satıcı ID) eksik! Lütfen ayarları kontrol edin.")
+            
         url = f"{self.BASE_URL}/pim/catalog/{self.vendor_id}/inventory-upload"
         
         processed_items = []
@@ -368,8 +370,10 @@ items: List[Dict[str, Any]],
             batch_request_id: The batch ID from update_inventory_and_price response
             
         Returns:
-            Dict containing the batch status and item results
         """
+        if not self.vendor_id:
+            raise ValueError("Idefix vendor_id eksik!")
+            
         url = f"{self.BASE_URL}/pim/catalog/{self.vendor_id}/inventory-result/{batch_request_id}"
         
         try:
@@ -484,8 +488,10 @@ items: List[Dict[str, Any]],
         Endpoint: /pim/catalog/{vendorId}/fast-listing
         
         CRITICAL: Idefix API expects prices in TL (float), NOT kuruş!
-        Documentation: https://developer.idefix.com/api/urun-entegrasyonu/hizli-urun-ekleme
         """
+        if not self.vendor_id:
+            raise ValueError("Idefix vendor_id eksik!")
+            
         url = f"{self.BASE_URL}/pim/catalog/{self.vendor_id}/fast-listing"
         
         # NO CONVERSION - Idefix expects TL directly!
@@ -510,7 +516,7 @@ items: List[Dict[str, Any]],
         logger.info(f"[IDEFIX] Sending {len(processed)} products to fast-listing")
         
         try:
-            response = self.session.post(url, headers=self._get_headers(), json=payload, timeout=60)
+            response = self.session.post(url, headers=self._get_headers(), json=payload, timeout=30)
             response.raise_for_status()
             result = response.json()
             logger.info(f"[IDEFIX] Success! BatchRequestId: {result.get('batchRequestId')}")
@@ -528,14 +534,16 @@ items: List[Dict[str, Any]],
         Endpoint: /pim/pool/{vendorId}/batch-result/{batchRequestId}
         
         Returns:
-            Dict containing batch status and item details with failure reasons
         """
+        if not self.vendor_id:
+            return {}
+            
         url = f"{self.BASE_URL}/pim/pool/{self.vendor_id}/batch-result/{batch_request_id}"
         
         logger.info(f"[IDEFIX] Querying pool batch status: {batch_request_id}")
         
         try:
-            response = self.session.get(url, headers=self._get_headers(), timeout=30)
+            response = self.session.get(url, headers=self._get_headers(), timeout=20)
             response.raise_for_status()
             result = response.json()
             
@@ -555,14 +563,16 @@ items: List[Dict[str, Any]],
             batch_request_id: The batchRequestId returned from fast_list_products
             
         Returns:
-            Dict containing batch status and item details
         """
+        if not self.vendor_id:
+            return {}
+            
         url = f"{self.BASE_URL}/pim/catalog/{self.vendor_id}/fast-listing-result/{batch_request_id}"
         
         logger.info(f"[IDEFIX] Querying batch status: {batch_request_id}")
         
         try:
-            response = self.session.get(url, headers=self._get_headers(), timeout=30)
+            response = self.session.get(url, headers=self._get_headers(), timeout=20)
             response.raise_for_status()
             result = response.json()
             
@@ -586,8 +596,10 @@ items: List[Dict[str, Any]],
     def create_product(self, products: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Create new products on Idefix.
-        Endpoint: /pim/pool/{vendor_id}/create
         """
+        if not self.vendor_id:
+            raise ValueError("Idefix vendor_id eksik!")
+            
         url = f"{self.BASE_URL}/pim/pool/{self.vendor_id}/create"
         
         payload = {"products": products}
@@ -595,7 +607,7 @@ items: List[Dict[str, Any]],
         logger.info(f"[IDEFIX] Creating {len(products)} new products")
         
         try:
-            response = self.session.post(url, headers=self._get_headers(), json=payload, timeout=60)
+            response = self.session.post(url, headers=self._get_headers(), json=payload, timeout=30)
             response.raise_for_status()
             result = response.json()
             logger.info(f"[IDEFIX] Create Product Success! BatchRequestId: {result.get('batchRequestId')}")
@@ -607,36 +619,49 @@ items: List[Dict[str, Any]],
                 logger.error(f"[IDEFIX] Response body: {e.response.text}")
             raise
 
-    def get_orders(self, page: int = 0, **kwargs) -> Dict[str, Any]:
+    def get_orders(self, page: int = 1, **kwargs) -> Dict[str, Any]:
         """
-        Fetch orders from Idefix.
-        Endpoint: /pim/orders
+        Fetch orders from Idefix OMS API.
+        Endpoint: /oms/{vendorId}/list
         
-        Supports: limit (or size), startDate, endDate
+        Args:
+            page: Page number (1-indexed default)
+            limit: Page size
+            startDate, endDate: Format 'YYYY/MM/DD HH:mm:ss'
         """
+        if not self.vendor_id:
+            logger.error("[IDEFIX] get_orders failed: vendor_id is missing")
+            return {"items": [], "totalCount": 0}
+
         limit = kwargs.get('limit') or kwargs.get('size') or 50
         start_date = kwargs.get('startDate') or kwargs.get('start_date')
         end_date = kwargs.get('endDate') or kwargs.get('end_date')
+        status = kwargs.get('status') or kwargs.get('state')
         
-        url = f"{self.BASE_URL}/pim/orders"
+        # New OMS Endpoint
+        url = f"{self.BASE_URL}/oms/{self.vendor_id}/list"
         
         params = {"page": page, "limit": limit}
         if start_date:
             params["startDate"] = start_date
         if end_date:
             params["endDate"] = end_date
+        if status:
+            params["state"] = status
             
         try:
-            resp = self.session.get(url, headers=self._get_headers(), params=params, timeout=30)
+            logger.info(f"[IDEFIX] Fetching OMS orders from: {url}")
+            resp = self.session.get(url, headers=self._get_headers(), params=params, timeout=20)
+            
             if resp.status_code == 200:
                 result = resp.json()
-                # Ensure we return a consistent format
-                # Idefix usually returns { "items": [], "totalCount": 10 } or { "content": [], "totalElements": 10 }
-                return result
-            return {"items": [], "total": 0}
+                return result # Returns { "items": [...], "totalCount": X, ... }
+            
+            logger.error(f"[IDEFIX] get_orders failed with status {resp.status_code}: {resp.text}")
+            return {"items": [], "totalCount": 0}
         except Exception as e:
             logger.error(f"Idefix get_orders error: {e}")
-            return {"items": [], "total": 0}
+            return {"items": [], "totalCount": 0}
 
     def update_order_status(self, order_id: str, status: str) -> Dict[str, Any]:
         """
@@ -659,7 +684,7 @@ items: List[Dict[str, Any]],
         logger.info(f"[IDEFIX] Updating order {order_id} status to {status}")
         
         try:
-            resp = self.session.post(url, headers=self._get_headers(), json=payload, timeout=30)
+            resp = self.session.post(url, headers=self._get_headers(), json=payload, timeout=20)
             resp.raise_for_status()
             return resp.json() if resp.text else {"success": True}
         except Exception as e:
@@ -689,7 +714,7 @@ items: List[Dict[str, Any]],
         logger.info(f"[IDEFIX] Sending invoice link for order {order_id}")
         
         try:
-            resp = self.session.post(url, headers=self._get_headers(), json=payload, timeout=30)
+            resp = self.session.post(url, headers=self._get_headers(), json=payload, timeout=20)
             resp.raise_for_status()
             return resp.json() if resp.text else {"success": True}
         except Exception as e:
@@ -724,7 +749,7 @@ items: List[Dict[str, Any]],
         logger.info(f"[IDEFIX] Updating shipment info for order {order_id}")
         
         try:
-            resp = self.session.post(url, headers=self._get_headers(), json=payload, timeout=30)
+            resp = self.session.post(url, headers=self._get_headers(), json=payload, timeout=20)
             resp.raise_for_status()
             return resp.json() if resp.text else {"success": True}
         except Exception as e:
@@ -749,7 +774,7 @@ items: List[Dict[str, Any]],
         logger.info(f"[IDEFIX] Fetching returns list: page={page}")
         
         try:
-            resp = self.session.get(url, headers=self._get_headers(), params=params, timeout=30)
+            resp = self.session.get(url, headers=self._get_headers(), params=params, timeout=20)
             resp.raise_for_status()
             return resp.json()
         except Exception as e:
@@ -773,7 +798,7 @@ items: List[Dict[str, Any]],
         logger.info(f"[IDEFIX] Approving return {return_id}")
         
         try:
-            resp = self.session.post(url, headers=self._get_headers(), json=payload, timeout=30)
+            resp = self.session.post(url, headers=self._get_headers(), json=payload, timeout=20)
             resp.raise_for_status()
             return resp.json() if resp.text else {"success": True}
         except Exception as e:
@@ -801,7 +826,7 @@ items: List[Dict[str, Any]],
         logger.info(f"[IDEFIX] Rejecting return {return_id} with reason {reason_id}")
         
         try:
-            resp = self.session.post(url, headers=self._get_headers(), json=payload, timeout=30)
+            resp = self.session.post(url, headers=self._get_headers(), json=payload, timeout=20)
             resp.raise_for_status()
             return resp.json() if resp.text else {"success": True}
         except Exception as e:
@@ -816,7 +841,7 @@ items: List[Dict[str, Any]],
         url = f"{self.BASE_URL}/api/siparis-entegrasyonu/iade-ret-nedenleri-listesi"
         
         try:
-            resp = self.session.get(url, headers=self._get_headers(), timeout=30)
+            resp = self.session.get(url, headers=self._get_headers(), timeout=20)
             resp.raise_for_status()
             
             # API might return a list directly or wrapped in a dict
@@ -849,7 +874,7 @@ items: List[Dict[str, Any]],
         }
         
         try:
-            resp = self.session.post(url, headers=self._get_headers(), json=payload, timeout=30)
+            resp = self.session.post(url, headers=self._get_headers(), json=payload, timeout=20)
             resp.raise_for_status()
             return resp.json() if resp.text else {"success": True}
         except Exception as e:
@@ -869,7 +894,7 @@ items: List[Dict[str, Any]],
         }
         
         try:
-            resp = self.session.post(url, headers=self._get_headers(), json=payload, timeout=30)
+            resp = self.session.post(url, headers=self._get_headers(), json=payload, timeout=20)
             resp.raise_for_status()
             return resp.json() if resp.text else {"success": True}
         except Exception as e:
@@ -918,8 +943,10 @@ items: List[Dict[str, Any]],
         """
         limit = kwargs.get('limit') or kwargs.get('size') or 50
         search = kwargs.get('search')
-        pool_state = kwargs.get('pool_state')
-        
+        if not self.vendor_id:
+            logger.error("[IDEFIX] list_products failed: vendor_id is missing")
+            return {'content': [], 'totalElements': 0}
+            
         url = f"{self.BASE_URL}/pim/pool/{self.vendor_id}/list"
         
         # documentation says 'limit' instead of 'size'
@@ -937,7 +964,7 @@ items: List[Dict[str, Any]],
             
         try:
             logger.debug(f"[IDEFIX] Listing products: page={page}, limit={limit}, search={search}, state={pool_state}")
-            resp = self.session.get(url, headers=self._get_headers(), params=params, timeout=60)
+            resp = self.session.get(url, headers=self._get_headers(), params=params, timeout=30)
             resp.raise_for_status()
             
             data = resp.json()
