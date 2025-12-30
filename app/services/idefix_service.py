@@ -1124,7 +1124,7 @@ def clear_idefix_cache(user_id: Optional[int] = None):
 def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id: Optional[int] = None, title_prefix: str = None, user_id: int = None, **kwargs) -> Dict[str, Any]:
     from app.services.job_queue import append_mp_job_log, get_mp_job, update_mp_job
     from app.services.xml_service import load_xml_source_index
-    from app.utils.helpers import to_float, to_int
+    from app.utils.helpers import to_float, to_int, clean_forbidden_words, is_product_forbidden, calculate_price, get_marketplace_multiplier
     from app.models import Setting
     from flask_login import current_user
     import time
@@ -1167,7 +1167,8 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
     skipped_list = []
     
     # Settings fetch
-    user_id = current_user.id if hasattr(current_user, 'id') else None
+    if user_id is None:
+        user_id = current_user.id if hasattr(current_user, 'id') else None
     
     
     # Use provided multiplier
@@ -1237,6 +1238,20 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
             skipped_list.append({'barcode': barcode, 'reason': 'XML\'de bulunamadı'})
             continue
             
+        # Forbidden check
+        title = rec.get('title') or ''
+        brand = rec.get('brand') or rec.get('vendor') or ''
+        category = rec.get('category') or rec.get('top_category') or ''
+        
+        forbidden_reason = is_product_forbidden(user_id, title=title, brand=brand, category=category)
+        if forbidden_reason:
+            skipped_count += 1
+            skipped_list.append({'barcode': barcode, 'reason': f"Yasaklı Liste: {forbidden_reason}"})
+            continue
+            
+        # Clean words
+        title = clean_forbidden_words(title)
+            
         # Barcode Cleaning Logic
         final_barcode = barcode
         if barcode_prefix and final_barcode.startswith(barcode_prefix):
@@ -1279,15 +1294,16 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
             final_cat_id = int(default_cat_id)
         
         # Base item for Fast Listing
+        final_title = (f"{title_prefix} " if title_prefix else "") + title
         item = {
             "barcode": final_barcode, # Use the cleaned/new barcode
-            "title": (f"{title_prefix} " if title_prefix else "") + (rec.get('title') or ""),
+            "title": final_title[:200],
             "vendorStockCode": rec.get('stockCode') or barcode,
             "price": final_price,
             "comparePrice": final_price,
             "inventoryQuantity": int(rec.get('quantity', 0)),
             # Extra fields for Create Product
-            "description": rec.get('description', ''),
+            "description": clean_forbidden_words(rec.get('description', '') or title)[:5000],
             "images": rec.get('images', []),
             "vatRate": rec.get('vatRate', 18),
             "desi": 1,
@@ -1907,235 +1923,6 @@ def perform_idefix_product_update(barcode: str, data: Dict[str, Any]) -> Dict[st
     return {'success': success, 'message': ' | '.join(messages)}
 
 
-def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id: Any, title_prefix: str = None, user_id: int = None, **kwargs) -> Dict[str, Any]:
-    """
-    Send products to Idefix from XML source
-    
-    Args:
-        job_id: Job queue ID for progress tracking
-        barcodes: List of product barcodes to send
-        xml_source_id: XML source database ID
-        
-    Returns:
-        Result dictionary with success status and counts
-    """
-    from app.services.job_queue import update_mp_job, get_mp_job
-    from app.services.xml_service import load_xml_source_index
-    from app.utils.helpers import clean_forbidden_words
-    
-    try:
-        if not user_id and xml_source_id:
-            try:
-                from app.models import SupplierXML
-                s_id = str(xml_source_id)
-                if s_id.isdigit():
-                    src = SupplierXML.query.get(int(s_id))
-                    if src: user_id = src.user_id
-            except Exception as e:
-                logging.warning(f"Failed to resolve user_id: {e}")
-
-        client = get_idefix_client(user_id=user_id)
-    except Exception as e:
-        return {'success': False, 'message': f'Idefix client hatası: {e}'}
-
-    append_mp_job_log(job_id, f"Idefix istemcisi hazır (User ID: {user_id})")
-    
-    xml_index = load_xml_source_index(xml_source_id)
-    mp_map = xml_index.get('by_barcode') or {}
-    multiplier = get_marketplace_multiplier('idefix')
-    
-    if not mp_map:
-        append_mp_job_log(job_id, "XML kaynak haritası boş", level='warning')
-        return {'success': False, 'message': 'XML kaynağında ürün bulunamadı.', 'count': 0}
-    
-    if not barcodes:
-        append_mp_job_log(job_id, "Barkod listesi boş", level='warning')
-        return {'success': False, 'message': 'Gönderilecek barkod yok.', 'count': 0}
-    
-    # Ensure categories/TFIDF ready
-    ensure_idefix_tfidf_ready()
-    
-    failures = []
-    skipped = []
-    products_to_send = []
-    
-    total = len(barcodes)
-    
-    # Check for saved brand ID from settings
-    saved_brand_id = Setting.get('IDEFIX_BRAND_ID', '') or ''
-    if saved_brand_id:
-        try: saved_brand_id = int(saved_brand_id)
-        except: saved_brand_id = None
-        append_mp_job_log(job_id, f"Kayıtlı marka ID kullanılıyor: {saved_brand_id}")
-    
-    DEFAULT_DESI = 1
-    # Idefix usually uses KDV Rate e.g. 10, 20
-    DEFAULT_VAT_RATE = 20
-    
-    for idx, barcode in enumerate(barcodes, 1):
-        # Check for pause/cancel
-        job_state = get_mp_job(job_id)
-        if job_state:
-            if job_state.get('cancel_requested'):
-                append_mp_job_log(job_id, "İşlem iptal edildi", level='warning')
-                break
-            
-            while job_state.get('pause_requested'):
-                append_mp_job_log(job_id, "İşlem duraklatıldı...", level='info')
-                time.sleep(5)
-                job_state = get_mp_job(job_id)
-                if job_state.get('cancel_requested'):
-                    break
-        
-        product = mp_map.get(barcode)
-        if not product:
-            skipped.append({'barcode': barcode, 'reason': 'XML verisi yok'})
-            continue
-        
-        # Blacklist check
-        forbidden_reason = is_product_forbidden(user_id, title=product.get('title'), brand=product.get('brand'), category=product.get('category'))
-        if forbidden_reason:
-            skipped.append({'barcode': barcode, 'reason': f"Yasakli Liste: {forbidden_reason}"})
-            continue
-            
-        try:
-            # Extract product data
-            title = clean_forbidden_words(product.get('title', ''))
-            description = clean_forbidden_words(product.get('description', '') or title)
-            # Ensure description is not empty and reasonably long
-            if not description or len(description) < 10:
-                description = f"{title} - {description}"
-            
-            # Idefix desc max length validation? Usually 20000 chars is fine.
-            
-            top_category = product.get('top_category', '')
-            xml_category = product.get('category', '')
-            brand_name = product.get('brand') or product.get('vendor') or product.get('manufacturer') or ''
-            
-            # Helper for logging
-            def category_log(msg, level='info'):
-                append_mp_job_log(job_id, f"[{barcode[:15]}] {msg}", level=level)
-            
-            # Resolve Brand - Always fallback to saved_brand_id if API fails
-            brand_id = None
-            
-            # Step 1: Try API lookup if brand_name exists
-            if brand_name:
-                # Search brand dynamically
-                b_res = client.search_brand_by_name(brand_name)
-                if b_res:
-                    brand_id = b_res['id']
-                    category_log(f"Marka '{brand_name}' API ile bulundu: {brand_id}")
-            
-            # Step 2: Fallback to saved default brand ID from settings
-            if not brand_id and saved_brand_id:
-                brand_id = saved_brand_id
-                category_log(f"Varsayılan marka ID kullanılıyor: {saved_brand_id}")
-            
-            # Step 3: Skip if still no brand
-            if not brand_id:
-                 skipped.append({'barcode': barcode, 'reason': 'Marka ID bulunamadı (Ayarlardan varsayılan marka tanımlayın)'})
-                 continue
-
-            # Resolve Category
-            category_id = resolve_idefix_category(title, xml_category, log_callback=category_log if idx <= 5 else None)
-            if not category_id:
-                skipped.append({'barcode': barcode, 'reason': 'Kategori eşleşmedi'})
-                continue
-            
-            # Price & Stock
-            base_price = to_float(product.get('price', 0))
-            stock = to_int(product.get('quantity', 0))
-            
-            if base_price <= 0:
-                skipped.append({'barcode': barcode, 'reason': 'Fiyat 0'})
-                continue
-            
-            sale_price = round(base_price * multiplier, 2)
-            # List price usually a bit higher or same
-            list_price = round(sale_price * 1.10, 2) 
-
-            # Images - Idefix expects [{url: "..."}] format
-            raw_images = product.get('images', [])
-            product_images = []
-            for img in raw_images:
-                url = None
-                if isinstance(img, dict): url = img.get('url')
-                elif isinstance(img, str): url = img
-                if url: product_images.append({"url": url})
-            
-            # Create Product Payload (per Idefix API docs)
-            # Endpoint: /pim/pool/{vendorId}/create
-            item_payload = {
-                "barcode": barcode,
-                "title": title[:200] if title else f"Ürün {barcode}",  # Required - cannot be null
-                "productMainId": barcode,  # Required - use barcode as unique ID
-                "description": description[:5000] if description else title[:200],
-                "brandId": brand_id,
-                "categoryId": category_id,
-                "price": sale_price,       # Satış Fiyatı (Kdv Dahil)
-                "comparePrice": list_price,# Liste Fiyatı
-                "vatRate": DEFAULT_VAT_RATE,
-                "vendorStockCode": product.get('stock_code', barcode)[:50],
-                "inventoryQuantity": stock,
-                "desi": DEFAULT_DESI,
-                "deliveryDuration": 3,  # Default 3 days
-                "deliveryType": "regular",
-                "images": product_images[:10]  # Max 10 images
-            }
-            
-            # Attributes? fast_list_products might accept 'attributes' list if mandatory?
-            # Outline for simple fast listing usually doesn't require deep attribute mapping if not strict.
-            # But I'll check if we need to add attributes.
-            # For now, minimal payload.
-            
-            products_to_send.append(item_payload)
-            
-            if idx % 10 == 0:
-                append_mp_job_log(job_id, f"{idx}/{total} ürün hazırlandı...")
-                
-        except Exception as e:
-            failures.append({'barcode': barcode, 'reason': str(e)})
-            append_mp_job_log(job_id, f"Hata {barcode}: {e}", level='error')
-            
-    append_mp_job_log(job_id, f"Hazırlanan ürün: {len(products_to_send)}, Atlanan: {len(skipped)}")
-    
-    if not products_to_send:
-        skip_reasons = {}
-        for s in skipped:
-            r = s.get('reason', '?')
-            skip_reasons[r] = skip_reasons.get(r, 0) + 1
-        append_mp_job_log(job_id, f"Atlama nedenleri: {skip_reasons}", level='warning')
-        return {'success': True, 'count': 0, 'message': 'Gönderilecek geçerli ürün oluşturulamadı.', 'skipped': skipped}
-
-    # Send in chunks using create_product API (per user request)
-    chunk_size = 20
-    total_sent = 0
-    main_batch_id = None
-    
-    for chunk in chunked(products_to_send, chunk_size):
-        try:
-            resp = client.create_product(chunk)
-            # Response: { "batchRequestId": "...", "products": [...] }
-            batch_id = resp.get('batchRequestId')
-            if batch_id:
-                if not main_batch_id: main_batch_id = batch_id
-                append_mp_job_log(job_id, f"Parti gönderildi. Batch ID: {batch_id}")
-                total_sent += len(chunk)
-            else:
-                append_mp_job_log(job_id, f"Parti gönderildi fakat Batch ID dönmedi: {str(resp)[:200]}")
-                total_sent += len(chunk)
-                 
-        except Exception as e:
-            append_mp_job_log(job_id, f"API İstek Hatası: {e}", level='error')
-            
-    return {
-        'success': True,
-        'count': total_sent,
-        'batch_id': main_batch_id,
-        'skipped': skipped,
-        'message': f"{total_sent} ürün için işlem başlatıldı."
-    }
 
 def perform_idefix_batch_update(job_id: str, items: List[Dict[str, Any]], user_id: int = None) -> Dict[str, Any]:
     """
