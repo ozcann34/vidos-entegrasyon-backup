@@ -44,7 +44,6 @@ class N11Client:
     def check_connection(self) -> bool:
         """Bağlantıyı test et"""
         try:
-        try:
             # Try REST first
             url = f"{self.BASE_URL}/shipmentPackages?page=0&size=1"
             response = self.session.get(url, timeout=30)
