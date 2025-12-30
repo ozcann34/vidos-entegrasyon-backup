@@ -467,6 +467,11 @@
                     </div>
                     <div class="form-text">XML'de marka yoksa bu marka kullanılır.</div>
                   </div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-bold">Varsayılan Marka ID</label>
+                    <input class="form-control" id="HB_BRAND_ID" name="HB_BRAND_ID" value="{{ settings.HB_BRAND_ID }}"
+                      readonly>
+                  </div>
                   <div class="col-12 mt-3">
                     <button type="submit" class="btn btn-success"><i class="bi bi-save me-2"></i> Kaydet</button>
                     <button type="button" class="btn btn-outline-primary ms-2" onclick="testConnection('hepsiburada')">
@@ -1002,8 +1007,10 @@
           resultId = 'PAZARAMA_BRAND_ID';
           apiUrl = '/api/pazarama/search_brand';
         } else if (id === 'searchHepsiburadaBrand' || id === 'searchHBBrand') {
-          // Check if HB button ID is correct in HTML or we should match by context
-          // In HTML it's not present for HB yet? Let's check HTML again.
+          mp = 'Hepsiburada';
+          inputId = 'HB_BRAND_NAME';
+          resultId = 'HB_BRAND_ID';
+          apiUrl = '/api/hepsiburada/search_brand';
         } else if (id === 'searchN11Brand') {
           mp = 'N11';
           inputId = 'N11_DEFAULT_BRAND';

@@ -443,6 +443,8 @@ def resolve_pazarama_brand(client: PazaramaClient, brand_name: str, log_callback
 
     # Try Diğer
     if key != "diğer":
+        if log_callback:
+            log_callback(f"⚠️ Marka bulunamadı: '{brand_name}', 'Diğer' markasına düşülüyor.", level='warning')
         return resolve_pazarama_brand(client, "Diğer", log_callback)
     
     # Fallback
@@ -1719,4 +1721,49 @@ def sync_pazarama_products(user_id: int, job_id: Optional[str] = None) -> Dict[s
             append_mp_job_log(job_id, err_msg, level='error')
         db.session.rollback()
         return {'success': False, 'message': err_msg}
+
+def perform_pazarama_batch_update(job_id: str, items: List[Dict[str, Any]], user_id: int = None) -> Dict[str, Any]:
+    """
+    Batch update Pazarama stock/price from local data.
+    items: [{'barcode': '...', 'stock': 10, 'price': 100.0}, ...]
+    """
+    try:
+        from app.services.job_queue import append_mp_job_log
+        client = get_pazarama_client(user_id=user_id)
+        append_mp_job_log(job_id, f"Pazarama toplu güncelleme başlatıldı. {len(items)} ürün.")
+        
+        stock_updates = []
+        price_updates = []
+        
+        for item in items:
+            if 'stock' in item:
+                stock_updates.append({'code': item['barcode'], 'stockCount': int(item['stock'])})
+            if 'price' in item:
+                price_updates.append({
+                    'code': item['barcode'], 
+                    'listPrice': float(item['price']),
+                    'salePrice': float(item['price'])
+                })
+        
+        total_sent = 0
+        from app.utils.helpers import chunked
+        
+        if stock_updates:
+            for chunk in chunked(stock_updates, 25):
+                client.update_stock(chunk)
+                total_sent += len(chunk)
+                append_mp_job_log(job_id, f"✅ {total_sent}/{len(stock_updates)} stok gönderildi.")
+                time.sleep(2)
+                
+        if price_updates:
+            total_sent = 0
+            for chunk in chunked(price_updates, 25):
+                client.update_price(chunk)
+                total_sent += len(chunk)
+                append_mp_job_log(job_id, f"✅ {total_sent}/{len(price_updates)} fiyat gönderildi.")
+                time.sleep(2)
+                
+        return {'success': True, 'count': len(items)}
+    except Exception as e:
+        return {'success': False, 'message': str(e)}
 

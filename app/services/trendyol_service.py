@@ -1816,3 +1816,40 @@ def perform_trendyol_product_update(barcode: str, data: Dict[str, Any]) -> Dict[
             
     return {'success': success, 'message': ' | '.join(messages)}
 
+def perform_trendyol_batch_update(job_id: str, items: List[Dict[str, Any]], user_id: int = None) -> Dict[str, Any]:
+    """
+    Batch update Trendyol stock/price from local data.
+    items: [{'barcode': '...', 'stock': 10, 'price': 100.0}, ...]
+    """
+    try:
+        from app.services.job_queue import append_mp_job_log
+        client = get_trendyol_client(user_id=user_id)
+        append_mp_job_log(job_id, f"Trendyol toplu güncelleme başlatıldı. {len(items)} ürün.")
+        
+        payload = []
+        for item in items:
+            p = {'barcode': item['barcode'], 'currencyType': 'TRY'}
+            if 'stock' in item:
+                p['quantity'] = int(item['stock'])
+            if 'price' in item:
+                # Trendyol uses salePrice and listPrice. For bulk update we use same for both usually.
+                p['salePrice'] = float(item['price'])
+                p['listPrice'] = float(item['price'])
+            payload.append(p)
+            
+        if not payload:
+            return {'success': False, 'message': 'Güncellenecek veri bulunamadı.'}
+            
+        # Send in chunks of 50
+        total_sent = 0
+        from app.utils.helpers import chunked
+        for chunk in chunked(payload, 50):
+            client.update_price_inventory(chunk)
+            total_sent += len(chunk)
+            append_mp_job_log(job_id, f"✅ {total_sent}/{len(payload)} ürün gönderildi.")
+            time.sleep(1)
+            
+        return {'success': True, 'count': total_sent}
+    except Exception as e:
+        return {'success': False, 'message': str(e)}
+

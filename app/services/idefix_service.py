@@ -1657,6 +1657,43 @@ def perform_idefix_send_all(job_id: str, xml_source_id: Any, user_id: int = None
     
     if not all_barcodes:
         return {'success': False, 'message': 'XML kaynağında ürün bulunamadı.', 'count': 0}
+
+def perform_idefix_batch_update(job_id: str, items: List[Dict[str, Any]], user_id: int = None) -> Dict[str, Any]:
+    """
+    Batch update Idefix stock/price from local data.
+    items: [{'barcode': '...', 'stock': 10, 'price': 100.0}, ...]
+    """
+    try:
+        from app.services.job_queue import append_mp_job_log
+        client = get_idefix_client(user_id=user_id)
+        append_mp_job_log(job_id, f"Idefix toplu güncelleme başlatıldı. {len(items)} ürün.")
+        
+        formatted_items = []
+        for item in items:
+            f_item = {'barcode': item['barcode']}
+            if 'stock' in item:
+                f_item['stockCount'] = int(item['stock'])
+            if 'price' in item:
+                f_item['salePrice'] = float(item['price'])
+                f_item['listPrice'] = float(item['price'])
+            formatted_items.append(f_item)
+            
+        if not formatted_items:
+             return {'success': False, 'message': 'Güncellenecek veri bulunamadı.'}
+             
+        # Idefix client.update_inventory_and_price handles chunking internally or just take all?
+        # Usually it's better to chunk here too
+        total_sent = 0
+        from app.utils.helpers import chunked
+        for chunk in chunked(formatted_items, 50):
+            client.update_inventory_and_price(chunk)
+            total_sent += len(chunk)
+            append_mp_job_log(job_id, f"✅ {total_sent}/{len(formatted_items)} ürün gönderildi.")
+            time.sleep(1)
+            
+        return {'success': True, 'count': total_sent}
+    except Exception as e:
+        return {'success': False, 'message': str(e)}
     
     append_mp_job_log(job_id, f"Toplam {len(all_barcodes)} ürün bulundu. Gönderim başlıyor...")
     

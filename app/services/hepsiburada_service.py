@@ -292,12 +292,20 @@ def perform_hepsiburada_batch_update(job_id: str, items: List[Dict[str, Any]], u
         total_sent = 0
         from app.utils.helpers import chunked
         for chunk in chunked(payload, 50):
-            client.upload_products(chunk)
-            total_sent += len(chunk)
-            append_mp_job_log(job_id, f"{total_sent}/{len(payload)} ürün gönderildi.")
+            try:
+                res = client.upload_products(chunk)
+                total_sent += len(chunk)
+                append_mp_job_log(job_id, f"✅ {len(chunk)} ürün gönderildi. (Toplam: {total_sent}/{len(payload)})")
+                
+                # Check for individual item status if possible via HB (usually it's async but check Response if available)
+                # HB returns status code 202 and a tracking ID.
+                # If we have errors at this stage, they are usually authentication or schema errors.
+            except Exception as batch_err:
+                append_mp_job_log(job_id, f"❌ Chunk gönderim hatası: {str(batch_err)}", level='error')
+            
             time.sleep(1)
             
-        append_mp_job_log(job_id, "Hepsiburada güncelleme işlemi tamamlandı.")
+        append_mp_job_log(job_id, f"Hepsiburada güncelleme işlemi tamamlandı. Toplam {total_sent} ürün iletildi.")
         return {'success': True, 'count': total_sent}
         
     except Exception as e:
@@ -360,5 +368,14 @@ def sync_hepsiburada_products(user_id: int) -> Dict[str, Any]:
                 
         return {'success': True, 'count': total_synced}
     except Exception as e:
-        logging.error(f"Hepsiburada senkronizasyon hatası: {str(e)}")
         return {'success': False, 'message': str(e)}
+
+def create_hepsiburada_catalog_request(product_data: Dict[str, Any], user_id: int = None):
+    """
+    [PREPARATION] Basic structure for Hepsiburada Catalog API (Product Creation)
+    HB Catalog API is complex and requires specific attribute mapping.
+    This function will eventually generate the JSON payload for 'POST /product/create'
+    """
+    # Placeholder structure for Phase 2
+    # To be used for creating brand new products on HB instead of just listings
+    pass

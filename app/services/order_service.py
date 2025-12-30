@@ -13,6 +13,7 @@ from app.services.pazarama_service import get_pazarama_client
 
 from app.services.hepsiburada_service import get_hepsiburada_client
 from app.services.idefix_service import get_idefix_client
+from app.services.bug_z_service import BugZService
 
 # Hepsiburada status mapping
 # Valid statuses: Listed, Unavailable, Created, UnPacked, Packed, Shipped, Delivered, UnDelivered, Cancelled, Returned
@@ -96,11 +97,22 @@ def _process_hepsiburada_order(data: Dict[str, Any], user_id: int = None):
     date_str = data.get("createdAt")
     if date_str:
         try:
-            existing.created_at = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-        except:
+            # Handle various ISO formats from HB
+            dt_clean = date_str.replace("Z", "+00:00")
+            if "." in dt_clean: # Handle microseconds if present
+                parts = dt_clean.split(".")
+                dt_clean = parts[0] + "+" + parts[1].split("+")[1]
+            existing.created_at = datetime.fromisoformat(dt_clean)
+        except Exception as e:
+            logging.warning(f"HB Date parse error ({date_str}): {e}")
             existing.created_at = datetime.utcnow()
-    else:
-        existing.created_at = datetime.utcnow()
+    
+    # Save before triggering BUG-Z to ensure items/customer relationship
+    db.session.add(existing)
+    db.session.commit()
+    
+    # Trigger BUG-Z forward
+    _trigger_bugz_push(existing, user_id)
     
     existing.updated_at = datetime.utcnow()
     
@@ -402,6 +414,9 @@ def _process_n11_order(data: Dict[str, Any], user_id: int = None):
             db.session.add(item)
         db.session.commit()
 
+    # Trigger BUG-Z forward
+    _trigger_bugz_push(existing, user_id)
+
 
 def sync_trendyol_orders(days_back: int = 30, user_id: int = None) -> Dict[str, Any]:
     """
@@ -559,6 +574,10 @@ def _process_trendyol_order(data: Dict[str, Any], user_id: int = None) -> bool:
                 existing.items.append(item)
             
         db.session.commit()
+        
+        # Trigger BUG-Z forward
+        _trigger_bugz_push(existing, user_id)
+        
         return True
         
     except Exception as e:
@@ -664,64 +683,58 @@ def _process_pazarama_order(data: Dict[str, Any], user_id: int = None) -> bool:
         # Doc says: 3 -> ?
         
         if existing:
-            # Update status
-            return True
-            
-        order = Order(
-            user_id=user_id,
-            order_number=str(order_number),
-            marketplace='pazarama',
-            customer_name=f"{data.get('customerName', '')}",
-            total_price=float(data.get('orderAmount', 0) if data.get('orderAmount') else 0),
-            status=status,
-            created_at=datetime.utcnow(),
-            raw_data=json.dumps(data),
-            cargo_code=str(data.get('cargoTrackingNumber') or data.get('shipmentTrackingNumber') or '')
-        )
+            # Update status if changed
+            if existing.status != status:
+                existing.status = status
+                existing.updated_at = datetime.utcnow()
+            order = existing
+        else:
+            order = Order(
+                user_id=user_id,
+                order_number=str(order_number),
+                marketplace='pazarama',
+                customer_name=f"{data.get('customerName', '')}",
+                total_price=float(data.get('orderAmount', 0) if data.get('orderAmount') else 0),
+                status=status,
+                created_at=datetime.utcnow(),
+                raw_data=json.dumps(data),
+                cargo_code=str(data.get('cargoTrackingNumber') or data.get('shipmentTrackingNumber') or '')
+            )
+            db.session.add(order)
         
-        db.session.add(order)
         db.session.commit()
+
+        # Process Items
+        items_data = data.get('items') or data.get('orderItems') or data.get('lines') or []
+        
+        # Simple policy: recreate items if not present
+        if not order.items:
+            for p_item in items_data:
+                try:
+                    oi = OrderItem(order_id=order.id)
+                    oi.product_name = p_item.get('productName') or p_item.get('name') or "Pazarama Ürünü"
+                    oi.quantity = int(p_item.get('quantity', 1))
+                    price_val = p_item.get('listPrice') or p_item.get('price') or p_item.get('unitPrice') or 0
+                    oi.unit_price = float(price_val)
+                    oi.barcode = p_item.get('barcode') or p_item.get('stockCode') or p_item.get('code')
+                    
+                    if oi.barcode:
+                        local_prod = Product.query.filter_by(barcode=oi.barcode).first()
+                        if local_prod:
+                            oi.product_id = local_prod.id
+                    db.session.add(oi)
+                except Exception as ie:
+                    logging.error(f"Pazarama item parse error: {ie}")
+            db.session.commit()
+
+        # Trigger BUG-Z forward
+        _trigger_bugz_push(order, user_id)
+
         return True
     except Exception as e:
         logging.error(f"Pazarama process error: {e}")
+        db.session.rollback()
         return False
-        
-    # Process Items
-    # Pazarama structure: usually 'items' or 'orderItems'
-    items_data = data.get('items') or data.get('orderItems') or data.get('lines') or []
-    
-    if existing.items:
-        # If order exists, we might want to update status or check for changes.
-        # For simplicity, we skip item re-creation if they exist, or strictly sync if needed.
-        # But let's assume if items exist, we verified them.
-        pass
-    else:
-        for p_item in items_data:
-            try:
-                # Pazarama Item Fields (Approximate based on standards)
-                # orderItemId, stockCode, barcode, quantity, price, productName
-                
-                oi = OrderItem(order_id=existing.id if existing else order.id)
-                oi.product_name = p_item.get('productName') or p_item.get('name') or "Pazarama Ürünü"
-                oi.quantity = int(p_item.get('quantity', 1))
-                # Price might be unitPrice or price
-                price_val = p_item.get('listPrice') or p_item.get('price') or p_item.get('unitPrice') or 0
-                oi.unit_price = float(price_val)
-                oi.barcode = p_item.get('barcode') or p_item.get('stockCode') or p_item.get('code')
-                
-                # Try to link local product
-                if oi.barcode:
-                    local_prod = Product.query.filter_by(barcode=oi.barcode).first()
-                    if local_prod:
-                        oi.product_id = local_prod.id
-                
-                db.session.add(oi)
-            except Exception as ie:
-                logging.error(f"Pazarama item parse error: {ie}")
-                
-        db.session.commit()
-
-    return True
 
 def sync_all_users_orders():
     """
@@ -865,5 +878,34 @@ def get_orders(user_id: int, page: int = 1, per_page: int = 20, marketplace: Opt
 
     return query.paginate(page=page, per_page=per_page, error_out=False)
 
+
 def get_order_detail(order_id: int):
     return Order.query.get_or_404(order_id)
+
+
+def _trigger_bugz_push(order, user_id=None):
+    """
+    Triggers the BUG-Z order creation if the user has configured it.
+    """
+    try:
+        if not user_id:
+            user_id = order.user_id
+            
+        if not user_id:
+            return
+
+        from app.models import User
+        user = User.query.get(user_id)
+        if not user:
+            return
+
+        # Check if BUG-Z integration is configured
+        # Note: BugZService checks for api_key and api_secret in settings.
+        bugz = BugZService(user)
+        
+        if bugz.is_configured():
+            logger.info(f"Triggering BUG-Z push for order {order.order_number} (User: {user_id})")
+            bugz.create_order(order)
+            
+    except Exception as e:
+        logger.error(f"Error in _trigger_bugz_push: {e}")

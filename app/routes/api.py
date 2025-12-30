@@ -1195,11 +1195,34 @@ def api_product_bulk_update(marketplace):
         from app.services.n11_service import bulk_update_n11_stock_price
         res = bulk_update_n11_stock_price(items)
         return jsonify(res)
-        
-    # Placeholder for others
-    # if marketplace == 'trendyol': ...
     
-    return jsonify({'success': True, 'updated': len(items), 'message': f'{marketplace} için toplu güncelleme (Simülasyon)'})
+    # Bulk Update Logic for other marketplaces
+    from app.services.job_queue import submit_mp_job
+    
+    job_type = f'{marketplace}_bulk_update'
+    
+    if marketplace == 'trendyol':
+        from app.services.trendyol_service import perform_trendyol_batch_update
+        job_func = lambda jid: perform_trendyol_batch_update(jid, items, user_id=current_user.id)
+    elif marketplace == 'hepsiburada':
+        from app.services.hepsiburada_service import perform_hepsiburada_batch_update
+        job_func = lambda jid: perform_hepsiburada_batch_update(jid, items, user_id=current_user.id)
+    elif marketplace == 'pazarama':
+        from app.services.pazarama_service import perform_pazarama_batch_update
+        job_func = lambda jid: perform_pazarama_batch_update(jid, items, user_id=current_user.id)
+    elif marketplace == 'idefix':
+        from app.services.idefix_service import perform_idefix_batch_update
+        job_func = lambda jid: perform_idefix_batch_update(jid, items, user_id=current_user.id)
+    else:
+        return jsonify({'success': False, 'message': f'{marketplace} henüz desteklenmiyor.'}), 400
+        
+    job_id = submit_mp_job(job_type, marketplace, job_func, params={'item_count': len(items)})
+    
+    return jsonify({
+        'success': True, 
+        'job_id': job_id, 
+        'message': f'{marketplace} için {len(items)} ürün güncelleniyor...'
+    })
 
 # ---------------- Order Sync API Endpoints ----------------
 @api_bp.route('/api/orders/sync/<marketplace>', methods=['POST'])
@@ -1437,26 +1460,6 @@ def api_n11_send_all():
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
-
-
-@api_bp.route('/api/n11/search_brand', methods=['POST'])
-def api_n11_search_brand():
-    try:
-        data = request.json or {}
-        brand_name = data.get('brand_name')
-        if not brand_name:
-            return jsonify({'success': False, 'message': 'Marka adı gerekli'}), 400
-            
-        from app.services.n11_service import search_n11_brand
-        result = search_n11_brand(brand_name)
-        
-        if result:
-            return jsonify({'success': True, 'brand': result})
-        else:
-            return jsonify({'success': False, 'message': 'Marka bulunamadı'}), 404
-            
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
 
 @api_bp.route('/api/pazarama/send_all', methods=['POST'])
 @login_required
@@ -1931,6 +1934,27 @@ def api_hepsiburada_search_brand():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
+@api_bp.route('/api/n11/search_brand', methods=['POST'])
+@login_required
+def api_n11_search_brand_unique():
+    """Search for an N11 brand by name."""
+    try:
+        data = request.get_json()
+        brand_name = data.get('brand_name', '').strip()
+        if not brand_name:
+            return jsonify({'success': False, 'message': 'Marka adı gereklidir'}), 400
+        
+        from app.services.n11_service import search_n11_brand
+        result = search_n11_brand(brand_name, user_id=current_user.id)
+        
+        if result:
+            return jsonify({'success': True, 'brand': result})
+        
+        return jsonify({'success': False, 'message': 'Marka bulunamadı'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
 
 # --- Cache Clear Endpoints ---
 
@@ -2039,10 +2063,12 @@ def api_test_connection(marketplace):
             client = get_hepsiburada_client()
             # HB API check
             try:
-                # If get_product_count works, creds are fine
-                cnt = client.get_product_count()
-                success = True
-                message = f"Hepsiburada bağlantısı başarılı. (Ürün: {cnt})"
+                # If check_connection works (it tests multiple endpoints), creds are fine
+                is_ok, check_msg = client.check_connection()
+                success = is_ok
+                message = check_msg if is_ok else f"Hepsiburada hatası: {check_msg}"
+                if is_ok:
+                    message = f"Hepsiburada bağlantısı başarılı. {check_msg}"
             except Exception as e:
                 message = f"Hepsiburada hatası: {str(e)}"
                 
