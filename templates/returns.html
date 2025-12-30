@@ -218,15 +218,14 @@
 
         function updateStats(data) {
             document.getElementById('totalCount').textContent = data.length;
-            document.getElementById('pendingCount').textContent = data.filter(d =>
-                d.status.toLowerCase().includes('bekliyor') ||
-                d.status.toLowerCase().includes('waiting') ||
-                d.status.toLowerCase().includes('pending')
-            ).length;
-            document.getElementById('approvedCount').textContent = data.filter(d =>
-                d.status.toLowerCase().includes('onay') ||
-                d.status.toLowerCase().includes('approved')
-            ).length;
+            document.getElementById('pendingCount').textContent = data.filter(d => {
+                const s = (d.status || '').toLowerCase();
+                return s.includes('bekliyor') || s.includes('waiting') || s.includes('pending');
+            }).length;
+            document.getElementById('approvedCount').textContent = data.filter(d => {
+                const s = (d.status || '').toLowerCase();
+                return s.includes('onay') || s.includes('approved');
+            }).length;
         }
 
         function renderRow(item) {
@@ -237,9 +236,10 @@
                 'n11': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/N11.com_logo.svg/1024px-N11.com_logo.svg.png'
             };
 
-            const statusColor = item.status.toLowerCase().includes('onay') || item.status.toLowerCase().includes('approved') ? 'success' :
-                item.status.toLowerCase().includes('bekliyor') || item.status.toLowerCase().includes('waiting') || item.status.toLowerCase().includes('pending') ? 'warning' :
-                    item.status.toLowerCase().includes('red') || item.status.toLowerCase().includes('reject') ? 'danger' : 'secondary';
+            const s = (item.status || '').toLowerCase();
+            const statusColor = s.includes('onay') || s.includes('approved') ? 'success' :
+                s.includes('bekliyor') || s.includes('waiting') || s.includes('pending') ? 'warning' :
+                    s.includes('red') || s.includes('reject') ? 'danger' : 'secondary';
 
             const canAction = statusColor === 'warning';
 

@@ -27,6 +27,9 @@ class N11Client:
             "appSecret": self.api_secret,
             "appkey": self.api_key,
             "appsecret": self.api_secret,
+            "apiKey": self.api_key,
+            "apiSecret": self.api_secret,
+            "Authorization": f"Basic {self.api_key}:{self.api_secret}", # Some REST variants use basic or custom auth
             "Content-Type": "application/json",
             "Accept": "application/json"
         }
@@ -49,7 +52,8 @@ class N11Client:
             # REST Auth Test: Try a simple GET on product-query or orders
             # Some environments prefer CamelCase or all-lowercase headers.
             # We already send both in __init__, but let's try a real call.
-            url = f"{self.PRODUCT_BASE_URL}/product-query?page=0&size=1"
+            # shipmentPackages is usually more widely authorized than product-query for base integration keys
+            url = f"{self.BASE_URL}/shipmentPackages?page=0&size=1"
             response = self.session.get(url, timeout=30)
             
             if response.status_code == 200:
@@ -553,6 +557,54 @@ class N11Client:
         except Exception as e:
             logging.error(f"N11 reject_claim error: {e}")
             return {"success": False, "error": str(e)}
+
+    def get_questions(self, page: int = 0, size: int = 100) -> Dict[str, Any]:
+        """
+        Fetch product questions from N11 (SOAP).
+        """
+        url = "https://api.n11.com/ws/ProductQuestionService.wsdl"
+        xml = f"""<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:n11="http://www.n11.com/ws/schemas">
+           <soapenv:Header/>
+           <soapenv:Body>
+              <n11:GetProductQuestionListRequest>
+                 <auth>
+                    <appKey>{self.api_key}</appKey>
+                    <appSecret>{self.api_secret}</appSecret>
+                 </auth>
+                 <currentPage>{page}</currentPage>
+                 <pageSize>{size}</pageSize>
+              </n11:GetProductQuestionListRequest>
+           </soapenv:Body>
+        </soapenv:Envelope>"""
+        
+        headers = {"Content-Type": "text/xml; charset=utf-8", "SOAPAction": "GetProductQuestionList"}
+        
+        try:
+            response = self.session.post(url, data=xml, headers=headers, timeout=30)
+            response.raise_for_status()
+            
+            import xml.etree.ElementTree as ET
+            # Simplified parsing
+            content = response.content
+            # Remove namespaces for easier find
+            content_clean = content.replace(b' xmlns="http://www.n11.com/ws/schemas"', b'')
+            root = ET.fromstring(content_clean)
+            
+            questions = []
+            q_list = root.findall(".//productQuestionList/productQuestion")
+            for q in q_list:
+                questions.append({
+                    "id": q.findtext("id"),
+                    "text": q.findtext("question"),
+                    "user": q.findtext("userName"),
+                    "createdDate": q.findtext("createDate"),
+                    "answered": q.findtext("answer") is not None,
+                    "product": {"title": q.findtext("productName")}
+                })
+            return {"questions": questions, "total": len(questions)}
+        except Exception as e:
+            logging.error(f"N11 get_questions error: {e}")
+            return {"questions": [], "error": str(e)}
 
     def get_claims(self, page: int = 0, size: int = 50) -> Dict[str, Any]:
         """

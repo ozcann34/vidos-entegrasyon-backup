@@ -368,7 +368,7 @@ def api_trendyol_fetch_brands():
          try:
             from app.services.trendyol_service import get_trendyol_client, _BRAND_CACHE
             client = get_trendyol_client()
-            brands = client.get_brands(size=5000) # Fetch many
+            brands = client.get_brands(size=2000) # Fetch many (Max 2000 per Trendyol error)
             # Update cache
             _BRAND_CACHE['by_id'] = {str(b['id']): b['name'] for b in brands}
             _BRAND_CACHE['by_name'] = {b['name'].lower(): b['id'] for b in brands}
@@ -2085,16 +2085,16 @@ def api_test_connection(marketplace):
             success = client.check_connection()
             message = "N11 bağlantısı başarılı." if success else "N11 bağlantı hatası (Yetkilendirme sorunu)."
 
-        elif marketplace == 'idefix':
-            from app.services.idefix_service import get_idefix_client
-            client = get_idefix_client()
+        elif marketplace == 'trendyol':
+            from app.services.trendyol_service import get_trendyol_client
+            client = get_trendyol_client()
             try:
-                # Idefix check
-                client.get_token() # explicit token fetch
+                # Use a safer endpoint: Brands (usually available on all keys)
+                client.get_all_brands(size=1) 
                 success = True
-                message = "İdefix bağlantısı başarılı."
+                message = "Trendyol bağlantısı başarılı."
             except Exception as e:
-                 message = f"İdefix hatası: {str(e)}"
+                message = f"Trendyol hatası: {str(e)}"
 
         elif marketplace == 'ikas':
             from app.services.ikas_service import get_ikas_service

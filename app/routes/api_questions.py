@@ -104,9 +104,10 @@ def get_questions():
 
     # Sort by date descending
     try:
-        questions.sort(key=lambda x: str(x.get('date') or ''), reverse=True)
-    except:
-        pass
+        # Filter out invalid dates
+        questions.sort(key=lambda x: str(x.get('date') or '0'), reverse=True)
+    except Exception as se:
+        logger.warning(f"Sort questions error: {se}")
 
     return jsonify({'success': True, 'data': questions})
 

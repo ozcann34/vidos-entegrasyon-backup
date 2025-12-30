@@ -895,6 +895,37 @@ class TrendyolClient:
 
 
 
+    def get_questions(
+        self, 
+        page: int = 0, 
+        size: int = 50,
+        status: Optional[str] = "WAITING_FOR_ANSWER",
+        barcode: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Fetch customer questions from Trendyol.
+        status: 'WAITING_FOR_ANSWER', 'ANSWERED', 'REJECTED'
+        """
+        url = f"https://api.trendyol.com/sapigw/suppliers/{self.seller_id}/questions"
+        params = {"page": page, "size": size}
+        if status: params["status"] = status
+        if barcode: params["barcode"] = barcode
+        
+        resp = self.session.get(url, auth=self.auth, params=params, timeout=self.timeout)
+        resp.raise_for_status()
+        return resp.json()
+
+    def answer_question(self, question_id: int, text: str) -> Dict[str, Any]:
+        """
+        Answer a customer question.
+        """
+        url = f"https://api.trendyol.com/sapigw/suppliers/{self.seller_id}/questions/{question_id}/answers"
+        payload = {"text": text}
+        
+        resp = self.session.post(url, auth=self.auth, json=payload, timeout=self.timeout)
+        resp.raise_for_status()
+        return resp.json() if resp.text else {"success": True}
+
     def get_product_count(self) -> int:
         """
         Get total product count from Trendyol.

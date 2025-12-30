@@ -55,8 +55,13 @@ def sync_hepsiburada_orders(days_back: int = 30, user_id: int = None) -> Dict[st
     
     try:
         # Fetch generic last 100-200 orders
-        resp = client.get_orders(size=200)
-        orders = resp.get("items") or []
+        if isinstance(resp, list):
+            orders = resp
+        elif isinstance(resp, dict):
+            orders = resp.get("items") or resp.get("data") or []
+        else:
+            orders = []
+            
         logging.info(f"Hepsiburada fetched {len(orders)} orders")
         
         for item in orders:
@@ -795,6 +800,12 @@ def sync_all_orders(user_id: int = None):
         results['n11'] = sync_n11_orders(user_id=user_id)
     except Exception as e:
         results['n11'] = {"error": str(e)}
+
+    # Hepsiburada
+    try:
+        results['hepsiburada'] = sync_hepsiburada_orders(user_id=user_id)
+    except Exception as e:
+        results['hepsiburada'] = {"error": str(e)}
         
     return results
 
