@@ -104,7 +104,14 @@ class PazaramaClient:
                     if raise_for_status:
                         response.raise_for_status()
                     return response
-                if response.status_code == 401 and attempt < retry:
+                if response.status_code in {403, 429} and attempt < retry:
+                    wait_time = 5 * (attempt + 1)  # 5, 10, 15 seconds
+                    logging.warning("Pazarama rate limit (429). Waiting %ds...", wait_time)
+                    time.sleep(wait_time)
+                    continue
+                if raise_for_status and response.status_code >= 400:
+                    response.raise_for_status()
+                return response
             except Exception as exc:
                 last_exc = exc
                 wait_for = 5 * (attempt + 1)  # 5, 10, 15 seconds
