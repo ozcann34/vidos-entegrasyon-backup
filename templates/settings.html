@@ -847,7 +847,8 @@
                 return JSON.parse(text);
               } catch (e) {
                 console.error("JSON parse error. Response was:", text);
-                throw new Error("Sunucu geçersiz bir yanıt döndürdü (JSON değil).");
+                const snippet = text.substring(0, 200) + "...";
+                throw new Error("Sunucu geçersiz bir yanıt döndürdü (JSON değil). Yanıt özeti: " + snippet);
               }
             })
             .then(data => {

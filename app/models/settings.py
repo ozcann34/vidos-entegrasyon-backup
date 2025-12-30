@@ -44,7 +44,7 @@ class Setting(db.Model):
                 db.session.add(Setting(key=k, value=v, user_id=user_id))
             
             db.session.commit()
-            print(f"Setting saved - {k}: {v}")
+            # print(f"Setting saved - {k}: {v}")
             return True
         except Exception as e:
             print(f"Error saving setting {k}: {str(e)}")

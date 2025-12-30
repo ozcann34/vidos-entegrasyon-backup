@@ -1008,7 +1008,9 @@ def fetch_and_cache_categories(user_id: int = None) -> Dict[str, Any]:
         logger.info(f"[IDEFIX] Total {len(flattened_categories)} LEAF categories found and processed.")
         
         # Save to settings
-        Setting.set("IDEFIX_CATEGORY_TREE", json.dumps(flattened_categories, ensure_ascii=False), user_id=user_id)
+        json_data = json.dumps(flattened_categories, ensure_ascii=False)
+        logger.info(f"[IDEFIX] Saving {len(flattened_categories)} flattened categories. Data size: {len(json_data)} bytes.")
+        Setting.set("IDEFIX_CATEGORY_TREE", json_data, user_id=user_id)
         
         return {
             "success": True,
