@@ -839,7 +839,7 @@
       const btn = document.getElementById(btnId);
       if (btn) {
         btn.addEventListener('click', function () {
-          Swal.fire({ title: 'Kategoriler Çekiliyor...', didOpen: () => Swal.showLoading() });
+          Swal.fire({ title: 'İstek Gönderiliyor...', didOpen: () => Swal.showLoading() });
           fetch(url, { method: 'POST' })
             .then(async r => {
               const text = await r.text();
@@ -852,7 +852,12 @@
               }
             })
             .then(data => {
-              Swal.fire(data.success ? 'Başarılı' : 'Hata', data.message, data.success ? 'success' : 'error');
+              if (data.success && data.job_id) {
+                // Background job started - monitor it
+                monitorBackgroundJob(data.job_id);
+              } else {
+                Swal.fire(data.success ? 'Başarılı' : 'Hata', data.message, data.success ? 'success' : 'error');
+              }
             })
             .catch(e => {
               console.error("Fetch error:", e);
@@ -860,6 +865,70 @@
             });
         });
       }
+    }
+
+    function monitorBackgroundJob(jobId) {
+      let pollCount = 0;
+      const swalInstance = Swal.fire({
+        title: 'İşlem Başlatıldı',
+        html: '<div class="text-start"><p id="job-status">Hazırlanıyor...</p><div class="progress mb-2"><div id="job-progress" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div></div><pre id="job-logs" style="font-size: 11px; max-height: 150px; overflow-y: auto; background: #eee; padding: 5px;"></pre></div>',
+        showConfirmButton: false,
+        allowOutsideClick: false,
+        didOpen: () => {
+          const poll = () => {
+            fetch(`/api/job/status/${jobId}`)
+              .then(r => r.json())
+              .then(data => {
+                if (!data.success) {
+                  Swal.fire('Hata', data.message, 'error');
+                  return;
+                }
+
+                const status = data.status;
+                const progress = data.progress || {};
+                const logs = data.logs || [];
+                const res = data.result || {};
+
+                // Update UI
+                const statusEl = document.getElementById('job-status');
+                const progressEl = document.getElementById('job-progress');
+                const logsEl = document.getElementById('job-logs');
+
+                if (statusEl) statusEl.innerText = progress.message || `Durum: ${status}`;
+                if (progressEl && progress.current && progress.total) {
+                  const percent = Math.round((progress.current / progress.total) * 100);
+                  progressEl.style.width = percent + '%';
+                } else if (progressEl && progress.current) {
+                  // Generic progress if no total
+                  progressEl.style.width = '100%';
+                }
+
+                if (logsEl && logs.length > 0) {
+                  logsEl.innerText = logs.map(l => `[${l.ts.substring(11, 19)}] ${l.message}`).join('\n');
+                  logsEl.scrollTop = logsEl.scrollHeight;
+                }
+
+                if (status === 'completed') {
+                  Swal.fire('Başarılı', res.message || 'İşlem başarıyla tamamlandı.', 'success')
+                    .then(() => location.reload());
+                } else if (status === 'failed') {
+                  Swal.fire('Hata', data.error || 'İşlem sırasında bir hata oluştu.', 'error');
+                } else if (status === 'cancelled') {
+                  Swal.fire('İptal Edildi', 'İşlem kullanıcı tarafından iptal edildi.', 'warning');
+                } else {
+                  // Continue polling
+                  pollCount++;
+                  setTimeout(poll, 2000);
+                }
+              })
+              .catch(err => {
+                console.error("Polling error:", err);
+                setTimeout(poll, 5000); // Retry later
+              });
+          };
+          poll();
+        }
+      });
     }
 
     bindFetchCategories('fetchCategoriesBtn', '{{ url_for("main.fetch_trendyol_categories") }}');

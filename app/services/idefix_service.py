@@ -958,17 +958,21 @@ items: List[Dict[str, Any]],
             return {'content': [], 'totalElements': 0}
 
 
-def fetch_and_cache_categories(user_id: int = None) -> Dict[str, Any]:
+def fetch_and_cache_categories(user_id: int = None, job_id: str = None) -> Dict[str, Any]:
     """
     Fetch all categories from Idefix (Tree Structure) and cache flattened version.
     """
     from app.models import Setting
     from flask_login import current_user
     import json
+    from app.services.job_queue import append_mp_job_log, update_mp_job
     
     if user_id is None:
         user_id = current_user.id if current_user and current_user.is_authenticated else None
     
+    if job_id:
+        append_mp_job_log(job_id, "İdefix kategori ağacı çekiliyor (Bu işlem 1-2 dakika sürebilir)...")
+        
     try:
         client = get_idefix_client(user_id=user_id)
         logger.info("[IDEFIX] Fetching entire category tree...")
@@ -976,6 +980,9 @@ def fetch_and_cache_categories(user_id: int = None) -> Dict[str, Any]:
         # 1. Fetch Tree
         tree_data = client.get_categories()
         
+        if job_id:
+            append_mp_job_log(job_id, "Kategori ağacı alındı, işleniyor...")
+            
         # 2. Flatten Tree (Iterative approach to avoid recursion limit)
         flattened_categories = []
         stack = []
@@ -988,14 +995,24 @@ def fetch_and_cache_categories(user_id: int = None) -> Dict[str, Any]:
             stack = list(tree_data['data'])
         else:
             logger.error(f"[IDEFIX] Unexpected category response format: {type(tree_data)}")
+            if job_id:
+                append_mp_job_log(job_id, "HATA: API geçersiz format döndürdü", level='error')
             return {"success": False, "message": "API beklenmeyen bir format döndürdü."}
 
         logger.info(f"[IDEFIX] Starting iterative flattening of {len(stack)} top-level categories...")
         
+        processed_count = 0
+        total_estimate = len(stack) # Minimal estimate
+        
         while stack:
             cat = stack.pop()
+            processed_count += 1
             subs = cat.get('subs', [])
             
+            # Progress update in logs every 500 items to avoid spam
+            if job_id and processed_count % 500 == 0:
+                 update_mp_job(job_id, progress={'current': processed_count, 'message': f'{processed_count} kategori işlendi...'})
+
             # Only add LEAF categories (no subcategories)
             if not subs or len(subs) == 0:
                 flat_cat = {
@@ -1011,12 +1028,17 @@ def fetch_and_cache_categories(user_id: int = None) -> Dict[str, Any]:
                 stack.extend(subs)
             
         logger.info(f"[IDEFIX] Total {len(flattened_categories)} LEAF categories found and processed.")
+        if job_id:
+            append_mp_job_log(job_id, f"Toplam {len(flattened_categories)} alt kategori işlendi. Veritabanına kaydediliyor...")
         
         # Save to settings
         json_data = json.dumps(flattened_categories, ensure_ascii=False)
         logger.info(f"[IDEFIX] Saving {len(flattened_categories)} flattened categories. Data size: {len(json_data)} bytes.")
         Setting.set("IDEFIX_CATEGORY_TREE", json_data, user_id=user_id)
         
+        if job_id:
+            append_mp_job_log(job_id, "Başarıyla kaydedildi.")
+            
         return {
             "success": True,
             "count": len(flattened_categories),

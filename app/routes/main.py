@@ -893,19 +893,25 @@ def fetch_trendyol_brands():
 @main_bp.route("/settings/fetch_idefix_categories", methods=["POST"])
 @login_required
 def fetch_idefix_categories():
-    """Fetch Idefix categories and save to settings."""
+    """Fetch Idefix categories in background."""
     try:
+        from app.services.job_queue import submit_mp_job
         from app.services.idefix_service import fetch_and_cache_categories
-        result = fetch_and_cache_categories()
-        if result.get('success'):
-            flash(result.get('message'), 'success')
-            return jsonify(result)
-        else:
-            return jsonify(result), 500
+        
+        job_id = submit_mp_job(
+            'fetch_categories', 'idefix',
+            lambda jid: fetch_and_cache_categories(job_id=jid),
+            params={'description': 'İdefix kategori listesini güncelle'}
+        )
+        return jsonify({
+            'success': True, 
+            'job_id': job_id,
+            'message': 'Kategori çekme işlemi başlatıldı.'
+        }), 202
     except Exception as e:
         return jsonify({
             'success': False, 
-            'message': f'İdefix kategori çekme hatası: {str(e)}'
+            'message': f'İşlem başlatılamadı: {str(e)}'
         }), 500
 
 @main_bp.route("/settings/fetch_pazarama_categories", methods=["POST"])
