@@ -898,9 +898,12 @@ def fetch_idefix_categories():
         from app.services.job_queue import submit_mp_job
         from app.services.idefix_service import fetch_and_cache_categories
         
+        from flask_login import current_user
+        user_id = current_user.id
+        
         job_id = submit_mp_job(
             'fetch_categories', 'idefix',
-            lambda jid: fetch_and_cache_categories(job_id=jid),
+            lambda jid: fetch_and_cache_categories(user_id=user_id, job_id=jid),
             params={'description': 'İdefix kategori listesini güncelle'}
         )
         return jsonify({

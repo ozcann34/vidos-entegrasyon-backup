@@ -967,8 +967,17 @@ def fetch_and_cache_categories(user_id: int = None, job_id: str = None) -> Dict[
     import json
     from app.services.job_queue import append_mp_job_log, update_mp_job
     
+    if user_id is None and job_id:
+        from app.services.job_queue import get_mp_job
+        job = get_mp_job(job_id)
+        if job and job.get('params'):
+            user_id = job['params'].get('_user_id')
+            
     if user_id is None:
-        user_id = current_user.id if current_user and current_user.is_authenticated else None
+        try:
+            user_id = current_user.id if current_user and current_user.is_authenticated else None
+        except Exception:
+            user_id = None
     
     if job_id:
         append_mp_job_log(job_id, "İdefix kategori ağacı çekiliyor (Bu işlem 1-2 dakika sürebilir)...")
@@ -1061,13 +1070,21 @@ def get_idefix_client(user_id: Optional[int] = None) -> IdefixClient:
         except Exception:
             pass
 
+    if user_id is None:
+        from flask_login import current_user
+        try:
+            actual_user_id = current_user.id if current_user and current_user.is_authenticated else None
+        except Exception:
+            actual_user_id = None
+    else:
+        actual_user_id = user_id
+
     api_key = Setting.get("IDEFIX_API_KEY", "", user_id=actual_user_id)
     api_secret = Setting.get("IDEFIX_API_SECRET", "", user_id=actual_user_id)
     vendor_id = Setting.get("IDEFIX_VENDOR_ID", "", user_id=actual_user_id)
     
     if not api_key or not vendor_id:
-        # No fallback to hardcoded anymore to ensure data isolation.
-        logging.error("[IDEFIX] API Key or Vendor ID not found in settings for user %s", actual_user_id)
+        logging.error("[IDEFIX] API Key or Vendor ID not found in settings for user %s. (Used user_id: %s)", actual_user_id, user_id)
         # Return a client that will fail on requests if keys are missing
         return IdefixClient("", "", "")
     
