@@ -68,8 +68,27 @@ def ensure_idefix_tfidf_ready(user_id: int = None) -> bool:
     """
     Load Idefix categories from settings and prepare TF-IDF if not already done.
     If cache is empty, automatically fetch from API.
+    Uses IDEFIX_CACHE_TIMESTAMP to detect if reload is needed across workers.
     """
     from app.models import Setting
+    global _IDEFIX_CAT_TFIDF
+
+    # Check if we need to reload due to external clear or first load
+    if not hasattr(ensure_idefix_tfidf_ready, 'last_load_ts'):
+        ensure_idefix_tfidf_ready.last_load_ts = 0.0
+
+    db_ts_str = Setting.get("IDEFIX_CACHE_TIMESTAMP", "0", user_id=user_id)
+    try:
+        db_ts = float(db_ts_str)
+    except:
+        db_ts = 0.0
+
+    needs_reload = False
+    if db_ts > ensure_idefix_tfidf_ready.last_load_ts:
+        needs_reload = True
+        # Force clear memory cache if reload needed
+        _IDEFIX_CAT_TFIDF.clear()
+        logger.info(f"[IDEFIX] Cache reload triggered. DB version: {db_ts}, Mem version: {ensure_idefix_tfidf_ready.last_load_ts}")
     
     if _IDEFIX_CAT_TFIDF.get('vectorizer'):
         return True
@@ -81,12 +100,14 @@ def ensure_idefix_tfidf_ready(user_id: int = None) -> bool:
             categories = json.loads(raw)
             if categories:
                 prepare_idefix_tfidf(categories)
+                # Update load timestamp
+                ensure_idefix_tfidf_ready.last_load_ts = time.time()
                 return True
         except Exception as e:
             logger.error(f"Idefix kategori ağacı yüklenirken hata: {e}")
     
-    # If cache is empty, automatically fetch from API
-    logger.info("[IDEFIX] Kategori önbelleği boş, API'den otomatik çekiliyor...")
+    # If cache is still empty, automatically fetch from API
+    logger.info("[IDEFIX] Kategori önbelleği boş veya geçersiz, API'den otomatik çekiliyor...")
     try:
         result = fetch_and_cache_categories(user_id=user_id)
         if result.get('success'):
@@ -95,6 +116,8 @@ def ensure_idefix_tfidf_ready(user_id: int = None) -> bool:
             if raw:
                 categories = json.loads(raw)
                 prepare_idefix_tfidf(categories)
+                # Update load timestamp after successful API fetch
+                ensure_idefix_tfidf_ready.last_load_ts = time.time()
                 logger.info(f"[IDEFIX] {len(categories)} kategori otomatik yüklendi")
                 return True
     except Exception as e:
@@ -1096,6 +1119,7 @@ def clear_idefix_cache(user_id: Optional[int] = None):
     """
     from app.models import Setting, MarketplaceProduct
     from app import db
+    import time
     
     # 1. Reset global TF-IDF cache (this affects all users but is safe since it auto-reloads)
     global _IDEFIX_CAT_TFIDF
@@ -1110,8 +1134,12 @@ def clear_idefix_cache(user_id: Optional[int] = None):
     if user_id:
         Setting.set("IDEFIX_CATEGORY_TREE", "", user_id=user_id)
         
-        # 3. Delete local marketplace products for Idefix
+        # 3. Update cache timestamp in DB to signal all workers to reload
+        Setting.set("IDEFIX_CACHE_TIMESTAMP", str(time.time()), user_id=user_id)
+        
+        # 4. Delete local marketplace products for Idefix
         try:
+            # Consistent lowercase 'idefix'
             MarketplaceProduct.query.filter_by(user_id=user_id, marketplace='idefix').delete()
             db.session.commit()
             logging.info("Idefix marketplace products cleared for user %s", user_id)
@@ -1215,7 +1243,10 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
     # Prepare data objects
     prepared_data_map = {} 
     total_items = len(barcodes)
-    processed = 0
+    def check_cancelled():
+        from app.services.job_queue import get_mp_job
+        job = get_mp_job(job_id)
+        return job and job.get('cancel_requested')
 
     for barcode in barcodes:
         # Check for cancel request
@@ -1502,8 +1533,11 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
     # Send in batches of 20
     batch_size = 20
     total_batches = (len(create_batch_list) + batch_size - 1) // batch_size
-    cancelled = False
-    
+    def check_cancelled():
+        from app.services.job_queue import get_mp_job
+        job = get_mp_job(job_id)
+        return job and job.get('cancel_requested')
+
     for i in range(0, len(create_batch_list), batch_size):
         # Check for cancel request before each batch
         if check_cancelled():

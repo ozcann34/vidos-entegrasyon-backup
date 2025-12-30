@@ -351,29 +351,16 @@
                     <label class="form-label fw-bold">API Secret</label>
                     <input type="text" class="form-control" name="API_SECRET" value="{{ settings.API_SECRET }}">
                   </div>
-                  <div class="col-md-4">
-                    <label class="form-label fw-bold">Fiyat Çarpanı</label>
-                    <div class="input-group">
-                      <span class="input-group-text">x</span>
-                      <input type="number" step="0.01" min="0" class="form-control" name="PRICE_MULTIPLIER"
-                        value="{{ settings.PRICE_MULTIPLIER }}">
-                    </div>
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label fw-bold">Ek Yüzde (%)</label>
-                    <div class="input-group">
-                      <span class="input-group-text">%</span>
-                      <input type="number" step="0.01" class="form-control" name="PRICE_PERCENTAGE"
-                        value="{{ settings.PRICE_PERCENTAGE }}" placeholder="Örn: 10">
-                    </div>
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label fw-bold">Ek Sabit Tutar (TL)</label>
-                    <div class="input-group">
-                      <span class="input-group-text">₺</span>
-                      <input type="number" step="0.01" class="form-control" name="PRICE_FIXED"
-                        value="{{ settings.PRICE_FIXED }}" placeholder="Örn: 50">
-                    </div>
+                  <div class="col-12">
+                    <hr>
+                    <h6>Kademeli Fiyat Kuralları</h6>
+                    <p class="text-muted small">Fiyat aralıklarına göre kar oranı belirleyin. Kural yoksa varsayılan
+                      çarpan kullanılır.</p>
+                    <div id="trendyol_rules_container" class="mb-3"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addPriceRule('trendyol')"><i
+                        class="bi bi-plus-circle me-1"></i> Kural Ekle</button>
+                    <input type="hidden" name="TRENDYOL_PRICE_RULES" id="TRENDYOL_PRICE_RULES_HIDDEN"
+                      value='{{ settings.TRENDYOL_PRICE_RULES }}'>
                   </div>
                   <div class="col-md-6">
                     <label class="form-label fw-bold">Marka Adı</label>
@@ -422,23 +409,14 @@
                       name="HB_MERCHANT_ID" value="{{ settings.HB_MERCHANT_ID }}"></div>
                   <div class="col-md-6"><label class="form-label fw-bold">Service Key (Servis Anahtarı)</label><input
                       class="form-control" name="HB_SERVICE_KEY" value="{{ settings.HB_SERVICE_KEY }}"></div>
-                  <div class="col-md-4">
-                    <label class="form-label fw-bold">Fiyat Çarpanı</label>
-                    <div class="input-group"><span class="input-group-text">x</span><input type="number" step="0.01"
-                        class="form-control" name="HB_PRICE_MULTIPLIER" value="{{ settings.HB_PRICE_MULTIPLIER }}">
-                    </div>
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label fw-bold">Ek Yüzde (%)</label>
-                    <div class="input-group"><span class="input-group-text">%</span><input type="number" step="0.01"
-                        class="form-control" name="HB_PRICE_PERCENTAGE" value="{{ settings.HB_PRICE_PERCENTAGE }}">
-                    </div>
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label fw-bold">Ek Sabit Tutar (TL)</label>
-                    <div class="input-group"><span class="input-group-text">₺</span><input type="number" step="0.01"
-                        class="form-control" name="HB_PRICE_FIXED" value="{{ settings.HB_PRICE_FIXED }}">
-                    </div>
+                  <div class="col-12">
+                    <hr>
+                    <h6>Kademeli Fiyat Kuralları</h6>
+                    <div id="hepsiburada_rules_container" class="mb-3"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                      onclick="addPriceRule('hepsiburada')"><i class="bi bi-plus-circle me-1"></i> Kural Ekle</button>
+                    <input type="hidden" name="HB_PRICE_RULES" id="HB_PRICE_RULES_HIDDEN"
+                      value='{{ settings.HB_PRICE_RULES }}'>
                   </div>
                   <div class="col-md-6">
                     <label class="form-label fw-bold">Varsayılan Marka Adı</label>
@@ -467,23 +445,14 @@
                       name="PAZARAMA_API_KEY" value="{{ settings.PAZARAMA_API_KEY }}"></div>
                   <div class="col-md-4"><label class="form-label fw-bold">API Secret</label><input class="form-control"
                       name="PAZARAMA_API_SECRET" value="{{ settings.PAZARAMA_API_SECRET }}"></div>
-                  <div class="col-md-4">
-                    <label class="form-label fw-bold">Fiyat Çarpanı</label>
-                    <div class="input-group"><span class="input-group-text">x</span><input type="number" step="0.01"
-                        class="form-control" name="PAZARAMA_PRICE_MULTIPLIER"
-                        value="{{ settings.PAZARAMA_PRICE_MULTIPLIER }}"></div>
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label fw-bold">Ek Yüzde (%)</label>
-                    <div class="input-group"><span class="input-group-text">%</span><input type="number" step="0.01"
-                        class="form-control" name="PAZARAMA_PRICE_PERCENTAGE"
-                        value="{{ settings.PAZARAMA_PRICE_PERCENTAGE }}"></div>
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label fw-bold">Ek Sabit Tutar (TL)</label>
-                    <div class="input-group"><span class="input-group-text">₺</span><input type="number" step="0.01"
-                        class="form-control" name="PAZARAMA_PRICE_FIXED" value="{{ settings.PAZARAMA_PRICE_FIXED }}">
-                    </div>
+                  <div class="col-12">
+                    <hr>
+                    <h6>Kademeli Fiyat Kuralları</h6>
+                    <div id="pazarama_rules_container" class="mb-3"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addPriceRule('pazarama')"><i
+                        class="bi bi-plus-circle me-1"></i> Kural Ekle</button>
+                    <input type="hidden" name="PAZARAMA_PRICE_RULES" id="PAZARAMA_PRICE_RULES_HIDDEN"
+                      value='{{ settings.PAZARAMA_PRICE_RULES }}'>
                   </div>
                   <div class="col-md-6">
                     <label class="form-label fw-bold">Marka Adı</label>
@@ -561,26 +530,14 @@
                     </div>
                   </div>
 
-                  <div class="col-md-4 mb-3">
-                    <label class="form-label fw-bold">Fiyat Çarpanı</label>
-                    <div class="input-group"><span class="input-group-text">x</span>
-                      <input type="number" step="0.01" class="form-control" name="IDEFIX_PRICE_MULTIPLIER"
-                        value="{{ settings.IDEFIX_PRICE_MULTIPLIER }}">
-                    </div>
-                  </div>
-                  <div class="col-md-4 mb-3">
-                    <label class="form-label fw-bold">Ek Yüzde (%)</label>
-                    <div class="input-group"><span class="input-group-text">%</span>
-                      <input type="number" step="0.01" class="form-control" name="IDEFIX_PRICE_PERCENTAGE"
-                        value="{{ settings.IDEFIX_PRICE_PERCENTAGE }}">
-                    </div>
-                  </div>
-                  <div class="col-md-4 mb-3">
-                    <label class="form-label fw-bold">Ek Sabit Tutar (TL)</label>
-                    <div class="input-group"><span class="input-group-text">₺</span>
-                      <input type="number" step="0.01" class="form-control" name="IDEFIX_PRICE_FIXED"
-                        value="{{ settings.IDEFIX_PRICE_FIXED }}">
-                    </div>
+                  <div class="col-12">
+                    <hr>
+                    <h6>Kademeli Fiyat Kuralları</h6>
+                    <div id="idefix_rules_container" class="mb-3"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addPriceRule('idefix')"><i
+                        class="bi bi-plus-circle me-1"></i> Kural Ekle</button>
+                    <input type="hidden" name="IDEFIX_PRICE_RULES" id="IDEFIX_PRICE_RULES_HIDDEN"
+                      value='{{ settings.IDEFIX_PRICE_RULES }}'>
                   </div>
 
                   <div class="col-12 mt-3">
@@ -611,29 +568,14 @@
                     <label class="form-label fw-bold">App Secret (Gizli Anahtar)</label>
                     <input class="form-control" name="N11_API_SECRET" value="{{ settings.N11_API_SECRET }}" required>
                   </div>
-                  <div class="col-md-4">
-                    <label class="form-label fw-bold">Fiyat Çarpanı</label>
-                    <div class="input-group">
-                      <span class="input-group-text">x</span>
-                      <input type="number" step="0.01" class="form-control" name="N11_PRICE_MULTIPLIER"
-                        value="{{ settings.N11_PRICE_MULTIPLIER }}">
-                    </div>
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label fw-bold">Ek Yüzde (%)</label>
-                    <div class="input-group">
-                      <span class="input-group-text">%</span>
-                      <input type="number" step="0.01" class="form-control" name="N11_PRICE_PERCENTAGE"
-                        value="{{ settings.N11_PRICE_PERCENTAGE }}">
-                    </div>
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label fw-bold">Ek Sabit Tutar (TL)</label>
-                    <div class="input-group">
-                      <span class="input-group-text">₺</span>
-                      <input type="number" step="0.01" class="form-control" name="N11_PRICE_FIXED"
-                        value="{{ settings.N11_PRICE_FIXED }}">
-                    </div>
+                  <div class="col-12">
+                    <hr>
+                    <h6>Kademeli Fiyat Kuralları</h6>
+                    <div id="n11_rules_container" class="mb-3"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addPriceRule('n11')"><i
+                        class="bi bi-plus-circle me-1"></i> Kural Ekle</button>
+                    <input type="hidden" name="N11_PRICE_RULES" id="N11_PRICE_RULES_HIDDEN"
+                      value='{{ settings.N11_PRICE_RULES }}'>
                   </div>
                   <div class="col-md-6 mt-3">
                     <label class="form-label fw-bold">Varsayılan Marka (Zorunlu İçin)</label>
@@ -1042,6 +984,94 @@
         });
       });
     });
+
+    // --- Dynamic Price Rules Logic ---
+    window.priceRules = {
+      trendyol: [],
+      hepsiburada: [],
+      pazarama: [],
+      idefix: [],
+      n11: []
+    };
+
+    function initPriceRules() {
+      ['trendyol', 'hepsiburada', 'pazarama', 'idefix', 'n11'].forEach(mp => {
+        const hiddenInput = document.getElementById(`${mp.toUpperCase().replace('TRENDYOL', 'TRENDYOL')}${mp === 'hepsiburada' ? 'HB' : (mp === 'trendyol' ? 'TRENDYOL' : mp.toUpperCase())}_PRICE_RULES_HIDDEN`);
+        const containerId = `${mp}_rules_container`;
+
+        // Correction for ID mapping if needed
+        let finalHiddenId = `${mp.toUpperCase()}_PRICE_RULES_HIDDEN`;
+        if (mp === 'hepsiburada') finalHiddenId = 'HB_PRICE_RULES_HIDDEN';
+
+        const realHidden = document.getElementById(finalHiddenId);
+
+        if (realHidden && realHidden.value) {
+          try {
+            window.priceRules[mp] = JSON.parse(realHidden.value);
+          } catch (e) {
+            console.error(`Error parsing ${mp} rules:`, e);
+            window.priceRules[mp] = [];
+          }
+        }
+        renderPriceRules(mp);
+      });
+    }
+
+    window.addPriceRule = function (mp) {
+      window.priceRules[mp].push({ min: 0, max: 1000, percent: 10, fixed: 0 });
+      renderPriceRules(mp);
+      savePriceRules(mp);
+    };
+
+    window.removePriceRule = function (mp, index) {
+      window.priceRules[mp].splice(index, 1);
+      renderPriceRules(mp);
+      savePriceRules(mp);
+    };
+
+    window.updatePriceRule = function (mp, index, field, value) {
+      window.priceRules[mp][index][field] = parseFloat(value) || 0;
+      savePriceRules(mp);
+    };
+
+    function renderPriceRules(mp) {
+      const container = document.getElementById(`${mp}_rules_container`);
+      if (!container) return;
+
+      if (window.priceRules[mp].length === 0) {
+        container.innerHTML = '<div class="alert alert-light py-2 small border text-center">Tanımlı kural yok.</div>';
+        return;
+      }
+
+      let html = '<div class="table-responsive"><table class="table table-sm table-bordered align-middle" style="font-size: 0.85rem;">';
+      html += '<thead class="table-light"><tr><th>Min Fiyat (>=)</th><th>Max Fiyat (<)</th><th>Kâr (%)</th><th>Ek Sabit (TL)</th><th></th></tr></thead><tbody>';
+
+      window.priceRules[mp].forEach((rule, idx) => {
+        html += `<tr>
+                <td><input type="number" step="0.01" class="form-control form-control-sm" value="${rule.min}" onchange="updatePriceRule('${mp}', ${idx}, 'min', this.value)"></td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm" value="${rule.max || 999999}" onchange="updatePriceRule('${mp}', ${idx}, 'max', this.value)"></td>
+                <td><input type="number" step="0.1" class="form-control form-control-sm" value="${rule.percent}" onchange="updatePriceRule('${mp}', ${idx}, 'percent', this.value)"></td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm" value="${rule.fixed || 0}" onchange="updatePriceRule('${mp}', ${idx}, 'fixed', this.value)"></td>
+                <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="removePriceRule('${mp}', ${idx})"><i class="bi bi-x"></i></button></td>
+            </tr>`;
+      });
+
+      html += '</tbody></table></div>';
+      container.innerHTML = html;
+    }
+
+    function savePriceRules(mp) {
+      let finalHiddenId = `${mp.toUpperCase()}_PRICE_RULES_HIDDEN`;
+      if (mp === 'hepsiburada') finalHiddenId = 'HB_PRICE_RULES_HIDDEN';
+
+      const realHidden = document.getElementById(finalHiddenId);
+      if (realHidden) {
+        realHidden.value = JSON.stringify(window.priceRules[mp]);
+      }
+    }
+
+    initPriceRules();
+    // --- End Price Rules Logic ---
 
     // Password Visibility Toggle
     window.togglePassword = function (btn) {

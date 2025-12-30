@@ -32,22 +32,14 @@ def get_marketplace_multiplier(marketplace: str, user_id: Optional[int] = None):
 
 def calculate_price(base_price: float, marketplace: str, user_id: Optional[int] = None, multiplier_override: Optional[float] = None) -> float:
     """
-    Calculate final price based on Multiplier, Percentage, and Fixed Amount.
-    Formula: (Base * Multiplier * (1 + Percent/100)) + Fixed
-    If multiplier_override is provided, it is used instead of the DB setting.
+    Calculate final price based on tiered price rules (ranges).
+    New logic: Looks up rules in [MARKETPLACE]_PRICE_RULES setting (JSON).
+    If no rules found, falls back to legacy Multiplier/Percentage system.
     """
     if base_price <= 0:
         return 0.0
 
-    # 1. Start with Multiplier
-    if multiplier_override is not None and multiplier_override > 0:
-        multiplier = multiplier_override
-    else:
-        multiplier = get_marketplace_multiplier(marketplace, user_id)
-    
-    price = base_price * multiplier
-
-    # Get user_id if needed for other settings
+    # Ensure user_id
     if user_id is None:
         try:
             from flask_login import current_user
@@ -56,7 +48,53 @@ def calculate_price(base_price: float, marketplace: str, user_id: Optional[int] 
         except Exception:
             pass
 
-    # Define keys for new settings
+    import json
+    # 1. Try NEW Tiered Price Rules
+    rules_key_map = {
+        'trendyol': 'TRENDYOL_PRICE_RULES',
+        'hepsiburada': 'HB_PRICE_RULES',
+        'pazarama': 'PAZARAMA_PRICE_RULES',
+        'idefix': 'IDEFIX_PRICE_RULES',
+        'n11': 'N11_PRICE_RULES',
+    }
+    
+    rules_key = rules_key_map.get(marketplace)
+    if rules_key:
+        rules_json = Setting.get(rules_key, "", user_id=user_id)
+        if rules_json:
+            try:
+                rules = json.loads(rules_json)
+                # Rules format: [{"min": 0, "max": 100, "percent": 30}, ...]
+                applied_rule = None
+                for rule in rules:
+                    rmin = float(rule.get('min', 0))
+                    rmax = float(rule.get('max', 99999999))
+                    if rmin <= base_price < rmax:
+                        applied_rule = rule
+                        break
+                
+                if applied_rule:
+                    percent = float(applied_rule.get('percent', 0))
+                    price = base_price * (1 + (percent / 100.0))
+                    # Fixed amount can still be added on top if defined in rule
+                    fixed_on_top = float(applied_rule.get('fixed', 0))
+                    return round(price + fixed_on_top, 2)
+            except Exception as e:
+                import logging
+                logging.error(f"Error calculating price with rules for {marketplace}: {e}")
+
+    # 2. FALLBACK to Legacy Multiplier/Percentage system
+    # (Existing logic maintained for backward compatibility or if no rules defined)
+    
+    # Start with Multiplier
+    if multiplier_override is not None and multiplier_override > 0:
+        multiplier = multiplier_override
+    else:
+        multiplier = get_marketplace_multiplier(marketplace, user_id)
+    
+    price = base_price * multiplier
+
+    # Percentage
     perc_key_map = {
         'trendyol': 'PRICE_PERCENTAGE',
         'hepsiburada': 'HB_PRICE_PERCENTAGE',
@@ -64,6 +102,7 @@ def calculate_price(base_price: float, marketplace: str, user_id: Optional[int] 
         'idefix': 'IDEFIX_PRICE_PERCENTAGE',
         'n11': 'N11_PRICE_PERCENTAGE',
     }
+    # Fixed Amount
     fixed_key_map = {
         'trendyol': 'PRICE_FIXED',
         'hepsiburada': 'HB_PRICE_FIXED',
@@ -72,25 +111,21 @@ def calculate_price(base_price: float, marketplace: str, user_id: Optional[int] 
         'n11': 'N11_PRICE_FIXED',
     }
 
-    # 2. Add Percentage
     try:
         pkey = perc_key_map.get(marketplace)
         if pkey:
             perc_val = float(Setting.get(pkey, '0', user_id=user_id) or '0')
             if perc_val != 0:
                 price = price * (1 + (perc_val / 100.0))
-    except Exception:
-        pass
+    except Exception: pass
 
-    # 3. Add Fixed Amount
     try:
         fkey = fixed_key_map.get(marketplace)
         if fkey:
             fixed_val = float(Setting.get(fkey, '0', user_id=user_id) or '0')
             if fixed_val != 0:
                 price = price + fixed_val
-    except Exception:
-        pass
+    except Exception: pass
     
     return round(price, 2)
 
