@@ -1198,8 +1198,8 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
         user_id = current_user.id if hasattr(current_user, 'id') else None
     
     
-    # Use provided multiplier
-    multiplier = price_multiplier
+    
+    # Multiplier kaldırıldı - artık GLOBAL_PRICE_RULES kullanılıyor
         
     default_cat_id = Setting.get("IDEFIX_DEFAULT_CATEGORY_ID", "", user_id=user_id)
     default_brand_id = Setting.get("IDEFIX_BRAND_ID", "", user_id=user_id)  # Fallback brand ID
