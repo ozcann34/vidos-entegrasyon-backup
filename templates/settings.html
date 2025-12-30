@@ -459,8 +459,12 @@
                   </div>
                   <div class="col-md-6">
                     <label class="form-label fw-bold">Varsayılan Marka Adı</label>
-                    <input type="text" class="form-control" name="HB_BRAND_NAME" value="{{ settings.HB_BRAND_NAME }}"
-                      placeholder="Örn: Samsung">
+                    <div class="input-group">
+                      <input type="text" class="form-control" id="HB_BRAND_NAME" name="HB_BRAND_NAME"
+                        value="{{ settings.HB_BRAND_NAME }}" placeholder="Örn: Samsung">
+                      <button type="button" class="btn btn-primary" id="searchHBBrand"><i class="bi bi-search"></i>
+                        Bul</button>
+                    </div>
                     <div class="form-text">XML'de marka yoksa bu marka kullanılır.</div>
                   </div>
                   <div class="col-12 mt-3">
@@ -980,15 +984,55 @@
         });
     });
 
-    // Brand Search Mock
+    // Brand Search Logic
     document.querySelectorAll('[id^="search"]').forEach(btn => {
       btn.addEventListener('click', function () {
-        // Specific logic for Idefix search existing?
-        if (this.id === 'searchIdefixBrand' || this.id === 'searchTrendyolBrand') {
-          // Keep existing logic
-        } else {
-          Swal.fire('Bilgi', 'Marka arama özelliği bu pazaryeri için henüz aktif değil.', 'info');
+        const id = this.id;
+        let mp = '';
+        let inputId = '';
+        let resultId = '';
+        let apiUrl = '';
+
+        if (id === 'searchTrendyolBrand') return; // Handled below
+        if (id === 'searchIdefixBrand') return; // Handled below
+
+        if (id === 'searchPazaramaBrand') {
+          mp = 'Pazarama';
+          inputId = 'PAZARAMA_BRAND_NAME';
+          resultId = 'PAZARAMA_BRAND_ID';
+          apiUrl = '/api/pazarama/search_brand';
+        } else if (id === 'searchHepsiburadaBrand' || id === 'searchHBBrand') {
+          // Check if HB button ID is correct in HTML or we should match by context
+          // In HTML it's not present for HB yet? Let's check HTML again.
+        } else if (id === 'searchN11Brand') {
+          mp = 'N11';
+          inputId = 'N11_DEFAULT_BRAND';
+          resultId = 'N11_DEFAULT_BRAND_ID';
+          apiUrl = '/api/n11/search_brand';
         }
+
+        if (!mp) return;
+
+        const name = document.getElementById(inputId).value.trim();
+        if (!name) { Swal.fire('Uyarı', 'Marka adı girin', 'warning'); return; }
+
+        Swal.fire({ title: 'Aranıyor...', didOpen: () => Swal.showLoading() });
+
+        fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ brand_name: name })
+        })
+          .then(r => r.json())
+          .then(j => {
+            if (j.success && (j.brand || j.brand_id)) {
+              const b = j.brand || { id: j.brand_id, name: j.brand_name };
+              document.getElementById(resultId).value = b.id;
+              Swal.fire('Bulundu', `${b.name || b.title || name} (ID: ${b.id})`, 'success');
+            }
+            else Swal.fire('Bulunamadı', j.message || '', 'warning');
+          })
+          .catch(err => Swal.fire('Hata', err.message, 'error'));
       });
     });
 

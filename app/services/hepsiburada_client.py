@@ -445,9 +445,22 @@ class HepsiburadaClient:
         
         return {
             "Authorization": f"Basic {encoded}",
-            "User-Agent": "VidosEntegrasyon/1.0",
+            "User-Agent": f"{m_id}", # Changed from VidosEntegrasyon/1.0 to m_id
             "Accept": "application/json",
             "Content-Type": "application/json"
         }
+
+    def search_brands(self, name: str) -> List[Dict[str, Any]]:
+        """Search for brands by name."""
+        url = f"{self.base_api_url}/product/api/brands/search"
+        params = {"keyword": name}
+        headers = self._get_auth_headers()
+        try:
+            resp = self.session.get(url, headers=headers, params=params, timeout=30)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as e:
+            logging.error(f"HB Brand search error: {e}")
+            return []
 
 

@@ -1901,7 +1901,34 @@ def api_pazarama_search_brand():
             
     except Exception as e:
         logging.error(f"Pazarama brand search error: {str(e)}")
-        return jsonify({'success': False, 'message': f'Hata: {str(e)}'}), 500
+        return jsonify({'success': False, 'message': f'Heta: {str(e)}'}), 500
+
+
+@api_bp.route('/api/hepsiburada/search_brand', methods=['POST'])
+@login_required
+def api_hepsiburada_search_brand():
+    """Search for a Hepsiburada brand by name."""
+    try:
+        data = request.get_json()
+        brand_name = data.get('brand_name', '').strip()
+        if not brand_name:
+            return jsonify({'success': False, 'message': 'Marka adı gereklidir'}), 400
+        
+        from app.services.hepsiburada_service import get_hepsiburada_client
+        client = get_hepsiburada_client()
+        results = client.search_brands(brand_name)
+        
+        if results:
+            # HB returns a list of brands
+            # Try exact match
+            for b in results:
+                if b.get('name', '').lower() == brand_name.lower():
+                    return jsonify({'success': True, 'brand': {'id': b.get('id'), 'name': b.get('name')}})
+            return jsonify({'success': True, 'brand': {'id': results[0].get('id'), 'name': results[0].get('name')}})
+        
+        return jsonify({'success': False, 'message': 'Marka bulunamadı'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 
 
