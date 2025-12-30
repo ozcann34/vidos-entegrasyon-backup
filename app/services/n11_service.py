@@ -5,8 +5,14 @@ import json
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from difflib import get_close_matches
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+# TF-IDF imports (optional, graceful fallback)
+try:
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.metrics.pairwise import cosine_similarity
+    SKLEARN_AVAILABLE = True
+except ImportError:
+    SKLEARN_AVAILABLE = False
+    logger.warning("sklearn yüklü değil, N11 TF-IDF kategori eşleştirme çalışmayacak")
 
 from app import db
 from app.models import Product, Setting

@@ -841,19 +841,30 @@
         btn.addEventListener('click', function () {
           Swal.fire({ title: 'Kategoriler Çekiliyor...', didOpen: () => Swal.showLoading() });
           fetch(url, { method: 'POST' })
-            .then(r => r.json())
+            .then(async r => {
+              const text = await r.text();
+              try {
+                return JSON.parse(text);
+              } catch (e) {
+                console.error("JSON parse error. Response was:", text);
+                throw new Error("Sunucu geçersiz bir yanıt döndürdü (JSON değil).");
+              }
+            })
             .then(data => {
               Swal.fire(data.success ? 'Başarılı' : 'Hata', data.message, data.success ? 'success' : 'error');
             })
-            .catch(e => Swal.fire('Hata', 'İstek hatası: ' + e, 'error'));
+            .catch(e => {
+              console.error("Fetch error:", e);
+              Swal.fire('Hata', 'İstek hatası: ' + e.message, 'error');
+            });
         });
       }
     }
 
     bindFetchCategories('fetchCategoriesBtn', '{{ url_for("main.fetch_trendyol_categories") }}');
     bindFetchCategories('fetchPazaramaCategoriesBtn', '{{ url_for("main.fetch_pazarama_categories") }}');
-    bindFetchCategories('fetchIdefixCategoriesBtn', '/settings/fetch_idefix_categories'); // Note: Endpoint consistency
-    bindFetchCategories('fetchN11DataBtn', '/api/n11/fetch_categories');
+    bindFetchCategories('fetchIdefixCategoriesBtn', '{{ url_for("main.fetch_idefix_categories") }}');
+    bindFetchCategories('fetchN11DataBtn', '{{ url_for("main.fetch_n11_categories") }}');
 
 
     // Generic Fetch Brands
