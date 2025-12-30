@@ -1157,14 +1157,13 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
     from flask_login import current_user
     import time
     
-    # Extract options
-    price_multiplier = to_float(kwargs.get('price_multiplier', 1.0))
+    # Extract options (Multiplier kaldırıldı - artık GLOBAL_PRICE_RULES kullanılıyor)
     default_price_val = to_float(kwargs.get('default_price', 0.0))
     skip_no_barcode = kwargs.get('skip_no_barcode', False)
     skip_no_image = kwargs.get('skip_no_image', False)
     zero_stock_as_one = kwargs.get('zero_stock_as_one', False)
     
-    append_mp_job_log(job_id, f"İdefix gönderim işlemi başlatılıyor... Seçenekler: Çarpan={price_multiplier}, Barkodsuz Atla={skip_no_barcode}")
+    append_mp_job_log(job_id, f"İdefix gönderim işlemi başlatılıyor... Barkodsuz Atla={skip_no_barcode}")
     
     try:
         if not user_id and xml_source_id:
@@ -1248,6 +1247,7 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
         job = get_mp_job(job_id)
         return job and job.get('cancel_requested')
 
+    processed = 0
     for barcode in barcodes:
         # Check for cancel request
         if check_cancelled():
@@ -1302,8 +1302,8 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
              continue
 
         price = float(rec.get('price', 0))
-        # final_price = price * multiplier
-        final_price = calculate_price(price, 'idefix', user_id=user_id, multiplier_override=multiplier)
+        # Artık GLOBAL_PRICE_RULES kullanılıyor (multiplier kaldırıldı)
+        final_price = calculate_price(price, 'idefix', user_id=user_id)
         
         # Resolve brand via API
         brand_name = rec.get('brand') or rec.get('vendor') or ''

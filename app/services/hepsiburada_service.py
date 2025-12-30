@@ -49,8 +49,7 @@ def perform_hepsiburada_send_products(job_id: str, barcodes: List[str], xml_sour
     xml_index = load_xml_source_index(xml_source_id)
     mp_map = xml_index.get('by_barcode') or {}
     
-    # Options from kwargs or defaults
-    multiplier = to_float(kwargs.get('price_multiplier', get_marketplace_multiplier('hepsiburada')))
+    # Options from kwargs or defaults (Multiplier kaldırıldı - artık GLOBAL_PRICE_RULES kullanılıyor)
     default_price = to_float(kwargs.get('default_price', 0))
     title_prefix = kwargs.get('title_prefix', '')
     skip_no_image = kwargs.get('skip_no_image', False)
@@ -119,8 +118,8 @@ def perform_hepsiburada_send_products(job_id: str, barcodes: List[str], xml_sour
             start_price = default_price
             append_mp_job_log(job_id, f"Varsayılan fiyat uygulandı: {barcode}")
 
-        # final_price = round(start_price * multiplier, 2)
-        final_price = calculate_price(start_price, 'hepsiburada', user_id=user_id, multiplier_override=multiplier)
+        # Artık GLOBAL_PRICE_RULES kullanılıyor (multiplier kaldırıldı)
+        final_price = calculate_price(start_price, 'hepsiburada', user_id=user_id)
         stock = to_int(product.get('quantity'))
 
         if stock <= 0 and zero_stock_as_one:

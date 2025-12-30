@@ -768,8 +768,8 @@ def perform_pazarama_sync_prices(job_id: str, xml_source_id: Any, user_id: int =
         if base_price <= 0:
             skipped_zero_price.append(code or stock_code)
             continue
-        # new_price = round(base_price * multiplier, 2)
-        new_price = calculate_price(base_price, 'pazarama', multiplier_override=multiplier)
+        # Artık GLOBAL_PRICE_RULES kullanılıyor (multiplier kaldırıldı)
+        new_price = calculate_price(base_price, 'pazarama', user_id=user_id)
         if new_price <= 0:
             skipped_zero_price.append(code or stock_code)
             continue
@@ -1245,8 +1245,8 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
                 skipped.append({'barcode': barcode, 'reason': 'Fiyat 0'})
                 continue
             
-            # price = round(base_price * multiplier, 2)
-            price = calculate_price(base_price, 'pazarama', user_id=user_id, multiplier_override=multiplier)
+            # Artık GLOBAL_PRICE_RULES kullanılıyor (multiplier kaldırıldı)
+            price = calculate_price(base_price, 'pazarama', user_id=user_id)
             list_price = round(price * 1.05, 2)  # 5% higher for list price
             
             # Images

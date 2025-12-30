@@ -1020,9 +1020,8 @@ def perform_trendyol_sync_prices(job_id: str, xml_source_id: Any, match_by: str 
             skipped_zero_price.append(xml_barcode)
             continue
             
-        # price = round(base_price * multiplier, 2)
-        # price = calculate_price(base_price, 'trendyol')
-        price = calculate_price(base_price, 'trendyol', multiplier_override=multiplier)
+        # Artık GLOBAL_PRICE_RULES kullanılıyor (multiplier kaldırıldı)
+        price = calculate_price(base_price, 'trendyol', user_id=user_id)
         qty = to_int(info.get('quantity'))
         
         updates.append({
@@ -1146,7 +1145,7 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
     default_price = to_float(kwargs.get('default_price', 0))
     price_multiplier = to_float(kwargs.get('price_multiplier', 1.0))
     
-    append_mp_job_log(job_id, f"Seçenekler: Stok0→1={zero_stock_as_one}, Görselsiz atla={skip_no_image}, Çarpan={price_multiplier}, Barkodsuz atla={skip_no_barcode}")
+    append_mp_job_log(job_id, f"Seçenekler: Stok0→1={zero_stock_as_one}, Görselsiz atla={skip_no_image}, Barkodsuz atla={skip_no_barcode}")
     
     xml_index = load_xml_source_index(xml_source_id)
     mp_map = xml_index.get('by_barcode') or {}
@@ -1475,9 +1474,8 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
 
         # Price & Stock
         try:
-            # base_price = float(product.get('price', 0)) * multiplier
-            # base_price = calculate_price(float(product.get('price', 0)), 'trendyol', user_id=user_id)
-            base_price = calculate_price(float(product.get('price', 0)), 'trendyol', user_id=user_id, multiplier_override=multiplier)
+            # Artık GLOBAL_PRICE_RULES kullanılıyor (multiplier kaldırıldı)
+            base_price = calculate_price(float(product.get('price', 0)), 'trendyol', user_id=user_id)
             stock = int(product.get('quantity', 0))
         except:
             base_price = 0
@@ -1490,9 +1488,8 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
         
         # Apply default_price if product price is 0
         if base_price <= 0 and default_price > 0:
-            # base_price = default_price * multiplier
-            # base_price = calculate_price(default_price, 'trendyol', user_id=user_id)
-            base_price = calculate_price(default_price, 'trendyol', user_id=user_id, multiplier_override=multiplier)
+            # Artık GLOBAL_PRICE_RULES kullanılıyor (multiplier kaldırıldı)
+            base_price = calculate_price(default_price, 'trendyol', user_id=user_id)
             append_mp_job_log(job_id, f"Varsayılan fiyat uygulandı: {barcode} → {base_price}")
             
         if base_price <= 0:

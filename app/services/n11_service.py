@@ -496,8 +496,8 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
             # Typically XML service always applies multiplier, but here user might want explicit control.
             # Assuming global multiplier is always active, but if unchecked in Excel, maybe 1.0? 
             # For simplicity, we stick to global multiplier.
-            # price = raw_price * multiplier
-            price = calculate_price(raw_price, 'n11', user_id=user_id, multiplier_override=multiplier)
+            # Artık GLOBAL_PRICE_RULES kullanılıyor (multiplier kaldırıldı)
+            price = calculate_price(raw_price, 'n11', user_id=user_id)
             
             quantity = int(product.get('quantity', 0))
             if quantity <= 0 and send_options.get('zero_stock_as_one'):
