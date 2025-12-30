@@ -7,6 +7,8 @@ from datetime import datetime
 from app.services.pazarama_service import get_pazarama_client
 from app.services.n11_service import get_n11_client
 from app.services.trendyol_service import get_trendyol_client
+from app.services.idefix_service import get_idefix_client
+from app.services.hepsiburada_service import get_hepsiburada_client
 
 api_questions_bp = Blueprint('api_questions', __name__)
 logger = logging.getLogger(__name__)
@@ -102,6 +104,50 @@ def get_questions():
         except Exception as e:
             logger.error(f"N11 fetch questions error: {e}")
 
+    # --- IDEFIX ---
+    if marketplace in ['all', 'idefix']:
+        try:
+            client = get_idefix_client(user_id=user_id)
+            if client:
+                res = client.get_product_questions(page=1, limit=50)
+                content = res.get('questions', [])
+                
+                for item in content:
+                    questions.append({
+                        'id': item.get('id'),
+                        'marketplace': 'idefix',
+                        'product_name': item.get('productTitle') or item.get('productName'),
+                        'image_url': item.get('productImageUrl') or item.get('imageUrl'),
+                        'text': item.get('text') or item.get('questionBody'),
+                        'date': item.get('createdDate') or item.get('createDate'),
+                        'username': item.get('userName') or item.get('customerName'),
+                        'answered': item.get('status') == 'Answered' or item.get('isAnswered') == True
+                    })
+        except Exception as e:
+            logger.error(f"Idefix fetch questions error: {e}")
+
+    # --- HEPSIBURADA ---
+    if marketplace in ['all', 'hepsiburada']:
+        try:
+            client = get_hepsiburada_client(user_id=user_id)
+            if client:
+                res = client.get_product_questions() # Default status=None
+                content = res.get('data', [])
+                
+                for item in content:
+                    questions.append({
+                        'id': item.get('number'), # HB uses 'number' as identifier
+                        'marketplace': 'hepsiburada',
+                        'product_name': item.get('productName'),
+                        'image_url': item.get('imageUrl'),
+                        'text': item.get('text'),
+                        'date': item.get('createdAt'),
+                        'username': item.get('userName'),
+                        'answered': item.get('status') == 'ANSWERED'
+                    })
+        except Exception as e:
+            logger.error(f"Hepsiburada fetch questions error: {e}")
+
     # Sort by date descending
     try:
         # Filter out invalid dates
@@ -145,6 +191,18 @@ def answer_question():
             if res.get('success'):
                 return jsonify({'success': True})
             return jsonify({'success': False, 'message': str(res.get('error') or res.get('raw'))})
+
+        elif marketplace == 'idefix':
+            client = get_idefix_client(user_id=user_id)
+            if not client: raise Exception("İdefix API bilgileri eksik")
+            res = client.answer_product_question(q_id, answer)
+            return jsonify({'success': True, 'response': res})
+
+        elif marketplace == 'hepsiburada':
+            client = get_hepsiburada_client(user_id=user_id)
+            if not client: raise Exception("Hepsiburada API bilgileri eksik")
+            res = client.answer_product_question(q_id, answer) # HB uses question number in URL
+            return jsonify({'success': True, 'response': res})
             
     except Exception as e:
         logger.error(f"Answer error {marketplace}: {e}")

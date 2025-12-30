@@ -15,6 +15,37 @@ class BugZService:
     def is_configured(self):
         return bool(self.api_key and self.api_secret)
 
+    def check_connection(self):
+        """
+        Verify credentials by making a simple metadata or list request.
+        """
+        if not self.is_configured():
+            return {"success": False, "message": "API Key veya API Secret eksik."}
+            
+        import requests
+        headers = {
+            "Content-Type": "application/json",
+            "apikey": self.api_key,
+            "apisecret": self.api_secret,
+            "User-Agent": "Vidos-Integrator/1.0"
+        }
+        
+        try:
+            # Try to fetch orders list as a test (neutral action)
+            url = f"{self.base_url.rstrip('/')}/orders"
+            # Using a small limit if possible to be light
+            params = {"limit": 1}
+            response = requests.get(url, headers=headers, params=params, timeout=15)
+            
+            if response.status_code == 200:
+                return {"success": True, "message": "BUG-Z bağlantısı başarılı."}
+            elif response.status_code == 401:
+                return {"success": False, "message": "API Anahtarı veya Sırrı geçersiz."}
+            else:
+                return {"success": False, "message": f"Bağlantı hatası: HTTP {response.status_code}"}
+        except Exception as e:
+            return {"success": False, "message": f"İstisnai Hata: {str(e)}"}
+
     def create_order(self, vidos_order: Order):
         """
         Maps a Vidos marketplace order to BUG-Z (Quakasoft) API format.

@@ -1446,6 +1446,7 @@ def add_bug_z_xml(user_id):
         return redirect(url_for('admin.bug_z_settings'))
         
     try:
+        logger.info(f"Admin {current_user.email} is adding BUG-Z XML for user {user.email}: {name} ({url})")
         new_xml = SupplierXML(user_id=user.id, name=name, url=url, active=True)
         db.session.add(new_xml)
         db.session.commit()
@@ -1454,13 +1455,16 @@ def add_bug_z_xml(user_id):
         AdminLog.log_action(
             admin_id=current_user.id,
             action='add_bugz_xml',
+            target_user_id=user.id,
             details=f'Added XML for user {user.email}: {name}',
             ip_address=request.remote_addr
         )
         
-        flash(f'{user.email} için XML kaynağı eklendi.', 'success')
+        logger.info(f"Successfully added BUG-Z XML for user {user.email}. ID: {new_xml.id}")
+        flash(f'{user.email} için "{name}" XML kaynağı başarıyla eklendi.', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'Hata: {str(e)}', 'danger')
+        logger.error(f"Error adding BUG-Z XML for {user.email}: {str(e)}")
+        flash(f'XML ekleme hatası: {str(e)}', 'danger')
         
     return redirect(url_for('admin.bug_z_settings'))

@@ -1007,6 +1007,48 @@ items: List[Dict[str, Any]],
                 logger.error(f"[IDEFIX] Response body: {e.response.text}")
             return {'content': [], 'totalElements': 0}
 
+    def get_product_questions(self, page: int = 1, limit: int = 20, barcode: str = None, 
+                             startDate: str = None, endDate: str = None, sort: str = 'newest') -> Dict[str, Any]:
+        """
+        Fetch customer questions from Idefix.
+        GET /pim/vendor/{vendor}/question/filter
+        """
+        url = f"{self.BASE_URL}/pim/vendor/{self.vendor_id}/question/filter"
+        params = {
+            "page": page,
+            "limit": limit,
+            "sort": sort
+        }
+        if barcode: params["barcode"] = barcode
+        if startDate: params["startDate"] = startDate
+        if endDate: params["endDate"] = endDate
+        
+        try:
+            logger.info(f"[IDEFIX] Fetching questions: {params}")
+            resp = self.session.get(url, headers=self._get_headers(), params=params, timeout=30)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as e:
+            logger.error(f"[IDEFIX] get_product_questions error: {e}")
+            return {"questions": [], "totalCount": 0}
+
+    def answer_product_question(self, question_id: Any, answer_body: str) -> Dict[str, Any]:
+        """
+        Answer a customer question.
+        POST /pim/vendor/{vendor}/question/{id}/answer (Hypothetical based on common patterns)
+        """
+        url = f"{self.BASE_URL}/pim/vendor/{self.vendor_id}/question/{question_id}/answer"
+        payload = {"answerBody": answer_body}
+        
+        try:
+            logger.info(f"[IDEFIX] Answering question {question_id}")
+            resp = self.session.post(url, headers=self._get_headers(), json=payload, timeout=30)
+            resp.raise_for_status()
+            return resp.json() if resp.text else {"success": True}
+        except Exception as e:
+            logger.error(f"[IDEFIX] answer_product_question error: {e}")
+            raise
+
 
 def fetch_and_cache_categories(user_id: int = None, job_id: str = None) -> Dict[str, Any]:
     """

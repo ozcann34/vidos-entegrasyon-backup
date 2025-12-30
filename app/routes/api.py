@@ -2098,6 +2098,13 @@ def api_test_connection(marketplace):
             except Exception as e:
                 message = f"İdefix hatası: {str(e)}"
 
+        elif marketplace == 'bugz':
+            from app.services.bug_z_service import BugZService
+            service = BugZService(current_user)
+            res = service.check_connection()
+            success = res.get('success', False)
+            message = res.get('message', "Bağlantı hatası.")
+
         elif marketplace == 'ikas':
             from app.services.ikas_service import get_ikas_service
             service = get_ikas_service(user_id=current_user.id)

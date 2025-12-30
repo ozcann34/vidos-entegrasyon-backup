@@ -336,6 +336,15 @@
                 <i class="bi bi-instagram me-1"></i>Instagram
               </button>
             </li>
+
+            {% if current_user.subscription.plan == 'bug-z-bayilik' or current_user.is_admin %}
+            <li class="nav-item">
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#bugz-pane"
+                style="color: #28a745; font-weight: bold;">
+                <i class="bi bi-gear me-1 text-success"></i> BUG-Z
+              </button>
+            </li>
+            {% endif %}
           </ul>
 
           <div class="tab-content">
@@ -679,6 +688,42 @@
                     <button type="submit" class="btn btn-success"><i class="bi bi-save me-2"></i> Kaydet</button>
                     <button type="button" class="btn btn-outline-primary ms-2" onclick="testConnection('ikas')">
                       <i class="bi bi-wifi me-1"></i> Bağlantı Testi
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+            <!-- BUG-Z -->
+            <div class="tab-pane fade" id="bugz-pane">
+              <form method="POST" action="{{ url_for('main.settings_page') }}">
+                <div class="alert alert-success border-0 shadow-sm mb-3">
+                  <h6 class="alert-heading fw-bold"><i class="bi bi-info-circle me-2"></i>BUG-Z / Quakasoft Entegrasyonu
+                  </h6>
+                  <p class="mb-0 small">
+                    Siparişlerinizin otomatik olarak BUG-Z ERP sistemine aktarılması için API bilgilerinizi
+                    tanımlayınız.
+                  </p>
+                </div>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label fw-bold">BUG-Z API Key</label>
+                    <input type="text" class="form-control" name="BUGZ_API_KEY" value="{{ settings.BUGZ_API_KEY }}"
+                      required>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-bold">BUG-Z API Secret</label>
+                    <input type="text" class="form-control" name="BUGZ_API_SECRET"
+                      value="{{ settings.BUGZ_API_SECRET }}" required>
+                  </div>
+                  <div class="col-md-12">
+                    <label class="form-label fw-bold">API URL</label>
+                    <input type="text" class="form-control" name="BUGZ_API_URL"
+                      value="{{ settings.BUGZ_API_URL or 'https://bug-z.com/api/v2' }}">
+                  </div>
+                  <div class="col-12 mt-3">
+                    <button type="submit" class="btn btn-success"><i class="bi bi-save me-2"></i> Kaydet</button>
+                    <button type="button" class="btn btn-outline-primary ms-2" onclick="testConnection('bugz')">
+                      <i class="bi bi-wifi me-1"></i> Bağlantıyı Test Et
                     </button>
                   </div>
                 </div>

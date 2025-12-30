@@ -654,6 +654,9 @@ def settings_page():
             "IDEFIX_DEFAULT_CATEGORY_ID": Setting.get("IDEFIX_DEFAULT_CATEGORY_ID", "", user_id=user_id),
             "IDEFIX_BARCODE_PREFIX": Setting.get("IDEFIX_BARCODE_PREFIX", "", user_id=user_id),
             "IDEFIX_USE_RANDOM_BARCODE": Setting.get("IDEFIX_USE_RANDOM_BARCODE", "off", user_id=user_id),
+            "BUGZ_API_KEY": Setting.get("BUGZ_API_KEY", "", user_id=user_id),
+            "BUGZ_API_SECRET": Setting.get("BUGZ_API_SECRET", "", user_id=user_id),
+            "BUGZ_API_URL": Setting.get("BUGZ_API_URL", "https://bug-z.com/api/v2", user_id=user_id),
             "INSTAGRAM_ACCESS_TOKEN": Setting.get("INSTAGRAM_ACCESS_TOKEN", "", user_id=user_id),
             "INSTAGRAM_ACCOUNT_ID": Setting.get("INSTAGRAM_ACCOUNT_ID", "", user_id=user_id),
             "CRITICAL_STOCK_LIMIT": Setting.get("CRITICAL_STOCK_LIMIT", "3", user_id=user_id),
@@ -696,6 +699,7 @@ def settings_page():
             "IDEFIX_API_KEY", "IDEFIX_VENDOR_ID", "IDEFIX_API_SECRET", "IDEFIX_PRICE_MULTIPLIER",
             "IDEFIX_BRAND_NAME", "IDEFIX_BRAND_ID", "IDEFIX_DEFAULT_CATEGORY_ID",
             "IDEFIX_BARCODE_PREFIX", "IDEFIX_USE_RANDOM_BARCODE",
+            "BUGZ_API_KEY", "BUGZ_API_SECRET", "BUGZ_API_URL",
             "INSTAGRAM_ACCESS_TOKEN", "INSTAGRAM_ACCOUNT_ID",
             "CRITICAL_STOCK_LIMIT",
             

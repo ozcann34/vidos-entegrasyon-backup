@@ -478,4 +478,41 @@ class HepsiburadaClient:
             logging.error(f"HB Brand search error: {e}")
             return []
 
+    def get_product_questions(self, status: str = None, sortBy: int = 0, search: str = None) -> Dict[str, Any]:
+        """
+        Fetch customer questions from Hepsiburada.
+        GET https://api-asktoseller-merchant.hepsiburada.com/api/v1.0/issues
+        """
+        url = "https://api-asktoseller-merchant.hepsiburada.com/api/v1.0/issues"
+        params = {"sortBy": sortBy}
+        if status: params["status"] = status
+        if search: params["search"] = search
+        
+        try:
+            headers = self._get_auth_headers()
+            resp = self.session.get(url, headers=headers, params=params, timeout=20)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as e:
+            logging.error(f"Hepsiburada get_product_questions error: {e}")
+            return {"data": [], "totalCount": 0}
 
+    def answer_product_question(self, question_number: str, answer_text: str) -> Dict[str, Any]:
+        """
+        Answer a customer question on Hepsiburada.
+        POST https://api-asktoseller-merchant.hepsiburada.com/api/v1.0/issues/{number}/answer
+        """
+        url = f"https://api-asktoseller-merchant.hepsiburada.com/api/v1.0/issues/{question_number}/answer"
+        payload = {
+            "Answer": answer_text,
+            "Files": []
+        }
+        
+        try:
+            headers = self._get_auth_headers()
+            resp = self.session.post(url, headers=headers, json=payload, timeout=20)
+            resp.raise_for_status()
+            return resp.json() if resp.text else {"success": True}
+        except Exception as e:
+            logging.error(f"Hepsiburada answer_product_question error: {e}")
+            raise

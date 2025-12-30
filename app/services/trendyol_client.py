@@ -899,7 +899,7 @@ class TrendyolClient:
         self, 
         page: int = 0, 
         size: int = 50,
-        status: Optional[str] = "WAITING_FOR_ANSWER",
+        status: Optional[str] = None,
         barcode: Optional[str] = None
     ) -> Dict[str, Any]:
         """
