@@ -429,35 +429,6 @@ def api_n11_fetch_categories():
         logging.exception("N11 fetch categories error")
         return jsonify({'success': False, 'message': str(e)}), 500
 
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 25, type=int)
-    query = (request.args.get('q') or '').strip().lower()
-
-    q = Product.query.filter_by(user_id=current_user.id)
-    if query:
-        q = q.filter(
-            (Product.title.ilike(f"%{query}%")) | (Product.barcode.ilike(f"%{query}%"))
-        )
-    total = q.count()
-    items_db = q.order_by(Product.id.asc()).offset((page-1)*per_page).limit(per_page).all()
-
-    items = []
-    for p in items_db:
-        try:
-            images = json.loads(p.images_json or "[]")
-            first_image = images[0].get('url') if images else ''
-        except Exception:
-            first_image = ''
-        items.append({
-            "title": p.title,
-            "barcode": p.barcode,
-            "category_path": p.top_category or '',
-            "price": float(p.listPrice or 0),
-            "quantity": int(p.quantity or 0),
-            "images": [first_image] if first_image else []
-        })
-    return jsonify({"total": total, "items": items})
-
 @api_bp.route('/api/xml_source_products', methods=['GET'])
 def api_xml_source_products():
     source_id = request.args.get('source_id', type=int)

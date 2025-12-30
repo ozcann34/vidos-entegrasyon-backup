@@ -976,34 +976,39 @@ def fetch_and_cache_categories(user_id: int = None) -> Dict[str, Any]:
         # 1. Fetch Tree
         tree_data = client.get_categories()
         
-        # 2. Flatten Tree
+        # 2. Flatten Tree (Iterative approach to avoid recursion limit)
         flattened_categories = []
+        stack = []
         
-        def flatten_recursive(cats):
-            for cat in cats:
-                subs = cat.get('subs', [])
-                
-                # Only add LEAF categories (no subcategories)
-                if not subs or len(subs) == 0:
-                    flat_cat = {
-                        'id': cat.get('id'),
-                        'name': cat.get('name'),
-                        'parentId': cat.get('parentId'),
-                        'topCategory': cat.get('topCategory'),
-                        'isLeaf': True
-                    }
-                    flattened_categories.append(flat_cat)
-                else:
-                    # Has subcategories, recurse into them
-                    flatten_recursive(subs)
-                    
         if isinstance(tree_data, list):
-             flatten_recursive(tree_data)
+            stack = list(tree_data)
         elif isinstance(tree_data, dict) and 'content' in tree_data:
-             flatten_recursive(tree_data['content'])
+            stack = list(tree_data['content'])
+        elif isinstance(tree_data, dict) and 'data' in tree_data:
+            stack = list(tree_data['data'])
         else:
             logger.error(f"[IDEFIX] Unexpected category response format: {type(tree_data)}")
             return {"success": False, "message": "API beklenmeyen bir format döndürdü."}
+
+        logger.info(f"[IDEFIX] Starting iterative flattening of {len(stack)} top-level categories...")
+        
+        while stack:
+            cat = stack.pop()
+            subs = cat.get('subs', [])
+            
+            # Only add LEAF categories (no subcategories)
+            if not subs or len(subs) == 0:
+                flat_cat = {
+                    'id': cat.get('id'),
+                    'name': cat.get('name'),
+                    'parentId': cat.get('parentId'),
+                    'topCategory': cat.get('topCategory'),
+                    'isLeaf': True
+                }
+                flattened_categories.append(flat_cat)
+            else:
+                # Has subcategories, add them to stack
+                stack.extend(subs)
             
         logger.info(f"[IDEFIX] Total {len(flattened_categories)} LEAF categories found and processed.")
         
