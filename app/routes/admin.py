@@ -1,4 +1,5 @@
 from datetime import datetime
+import logging
 
 from functools import wraps
 
@@ -17,6 +18,7 @@ from app.services.user_service import ban_user, unban_user, update_subscription,
 # Admin panel at special path
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin-secret-panel')
+logger = logging.getLogger(__name__)
 
 
 
