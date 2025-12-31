@@ -40,6 +40,19 @@
                 </div>
             </div>
 
+            {% if order.admin_note %}
+            <div class="alert alert-info py-2 px-3 mb-3 small">
+                <i class="bi bi-info-circle me-2"></i>
+                {{ order.admin_note|replace('\n', '<br>')|safe }}
+            </div>
+            {% endif %}
+
+            <div class="d-flex gap-2 mb-4">
+                <button class="btn btn-sm btn-primary" onclick="pushToBugZ({{ order.id }})">
+                    <i class="bi bi-cloud-upload me-2"></i>BUG-Z'ye Gönder (ERP Sync)
+                </button>
+            </div>
+
             <hr>
 
             <!-- Order Items -->
@@ -218,4 +231,52 @@
         margin-bottom: 4px;
     }
 </style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function pushToBugZ(orderId) {
+        Swal.fire({
+            title: 'Aktarılıyor...',
+            text: 'Sipariş verileri BUG-Z ERP sistemine gönderiliyor.',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        fetch(`/api/orders/${orderId}/push_to_bugz`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        title: 'Başarılı!',
+                        text: data.message,
+                        icon: 'success'
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Hata!',
+                        text: data.message || 'Sipariş aktarılamadı.',
+                        icon: 'error'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    title: 'Hata!',
+                    text: 'Sistem hatası oluştu. Lütfen bağlantınızı kontrol edin.',
+                    icon: 'error'
+                });
+            });
+    }
+</script>
 {% endblock %}

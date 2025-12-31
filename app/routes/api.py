@@ -180,6 +180,38 @@ def api_xml_sources():
     except Exception as e:
         return jsonify({'success': False, 'message': f'Hata: {str(e)}'}), 500
 
+
+@api_bp.route('/api/orders/<int:order_id>/push_to_bugz', methods=['POST'])
+@login_required
+def api_push_order_to_bugz(order_id):
+    """Manually push an order to BUG-Z ERP."""
+    from app.models.order import Order
+    from app.services.bug_z_service import BugZService
+    
+    order = Order.query.get_or_404(order_id)
+    
+    # Check if order belongs to user
+    if order.user_id != current_user.id:
+        return jsonify({'success': False, 'message': 'Bu işlem için yetkiniz yok.'}), 403
+        
+    try:
+        bugz = BugZService(current_user)
+        if not bugz.is_configured():
+            return jsonify({'success': False, 'message': 'BUG-Z API ayarları (Key/Secret) eksik. Lütfen Ayarlar sayfasından yapılandırın.'}), 400
+            
+        result = bugz.create_order(order)
+        if result.get('success'):
+            return jsonify({
+                'success': True, 
+                'message': f"Sipariş başarıyla BUG-Z sistemine aktarıldı. BUG-Z No: {result.get('bugz_order_code')}",
+                'bugz_order_code': result.get('bugz_order_code')
+            })
+        else:
+            return jsonify({'success': False, 'message': result.get('message', 'Aktarım sırasında bir hata oluştu.')}), 500
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': f"Sistem Hatası: {str(e)}"}), 500
+
 @api_bp.route('/api/xml_sources/<int:source_id>', methods=['DELETE'])
 @login_required
 def api_xml_sources_delete(source_id: int):

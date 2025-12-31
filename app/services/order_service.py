@@ -116,9 +116,6 @@ def _process_hepsiburada_order(data: Dict[str, Any], user_id: int = None):
     db.session.add(existing)
     db.session.commit()
     
-    # Trigger BUG-Z forward
-    _trigger_bugz_push(existing, user_id)
-    
     existing.updated_at = datetime.utcnow()
     
     # Customer
@@ -162,6 +159,9 @@ def _process_hepsiburada_order(data: Dict[str, Any], user_id: int = None):
                 
         db.session.add(oi)
     db.session.commit()
+
+    # Trigger BUG-Z forward
+    _trigger_bugz_push(existing, user_id)
 
 def sync_idefix_orders(days_back: int = 30, user_id: int = None) -> Dict[str, Any]:
     """
@@ -254,6 +254,9 @@ def _process_idefix_order(data: Dict[str, Any], user_id: int = None):
                 oi.product_id = prod.id
         db.session.add(oi)
     db.session.commit()
+
+    # Trigger BUG-Z forward
+    _trigger_bugz_push(existing, user_id)
 
 
 
