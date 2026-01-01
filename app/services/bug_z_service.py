@@ -91,8 +91,8 @@ class BugZService:
             products.append({
                 "code": item.sku or item.barcode, # SKU usually matches BUG-Z product code
                 "name": item.product_name,
-                "price": float(item.unit_price),
-                "tax": float(item.vat_rate) if hasattr(item, 'vat_rate') else 20.0,
+                "price": float(item.unit_price or item.price or 0.0),
+                "tax": float(getattr(item, 'vat_rate', 20.0) or 20.0),
                 "quantity": int(item.quantity)
             })
 

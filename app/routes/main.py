@@ -83,7 +83,7 @@ def get_mp_count(mp_name, u_id):
                 total_api = client.get_product_count()
             elif mp_name == 'n11':
                 from app.services.n11_client import get_n11_client
-                client = get_n11_client()
+                client = get_n11_client(user_id=u_id)
                 if client:
                     total_api = client.get_product_count()
         except Exception as api_err:

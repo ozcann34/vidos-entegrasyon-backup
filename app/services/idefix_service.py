@@ -943,6 +943,7 @@ items: List[Dict[str, Any]],
         """
         limit = kwargs.get('limit') or kwargs.get('size') or 50
         search = kwargs.get('search')
+        pool_state = kwargs.get('pool_state') or kwargs.get('poolState')
         if not self.vendor_id:
             logger.error("[IDEFIX] list_products failed: vendor_id is missing")
             return {'content': [], 'totalElements': 0}

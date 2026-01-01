@@ -1039,14 +1039,32 @@ def api_marketplace_products(marketplace: str):
                 end = start + per_page
                 page_rows = filtered[start:end]
 
-                # Merge details
+                # Merge details (Optimized: Avoid multiple synchronous API calls)
                 items = []
                 for row in page_rows:
                     code = str(row.get('code') or row.get('productCode') or '').strip()
-                    detail = get_cached_pazarama_detail(client, code)
+                    
+                    # Instead of always calling API for details, try to use row data first
+                    # List API usually provides enough for the list view.
+                    title = row.get('displayName') or row.get('name') or code
+                    price = to_float(row.get('salePrice') or row.get('listPrice'))
+                    qty = to_int(row.get('stockCount'))
+                    
+                    # If detail is missing images or other basics, only then consider cache/API
+                    # But for performance in loop, we'll rely on listing data which usually has them.
                     merged = dict(row)
-                    if detail:
-                        merged.update({k:v for k,v in detail.items() if v is not None and k != 'attributes'})
+                    
+                    # images extraction from row
+                    imgs = row.get('images') or []
+                    if not imgs:
+                        # Fallback to detail only if images are missing and we really need them
+                        detail = get_cached_pazarama_detail(client, code)
+                        if detail:
+                            merged.update({k:v for k,v in detail.items() if v is not None and k != 'attributes'})
+                            imgs = merged.get('images') or []
+                            price = to_float(merged.get('salePrice') or merged.get('listPrice') or price)
+                            qty = to_int(merged.get('stockCount') or qty)
+                    
                     
                     # Simplify for UI
                     title = merged.get('displayName') or merged.get('name') or code
@@ -1083,7 +1101,7 @@ def api_marketplace_products(marketplace: str):
 
         elif marketplace.lower() == 'n11':
             try:
-                client = get_n11_client()
+                client = get_n11_client(user_id=current_user.id)
                 if not client:
                      return jsonify({'total': 0, 'items': [], 'error': 'N11 API anahtarları eksik'}), 400
                 
