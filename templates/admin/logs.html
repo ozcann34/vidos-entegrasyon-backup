@@ -7,7 +7,7 @@
     <h1><i class="bi bi-journal-text me-2"></i>İşlem Logları</h1>
 </div>
 
-<div class="admin-card mb-4 p-3 bg-light border">
+<div class="admin-card mb-4 p-3 border">
     <form class="row g-3 align-items-end" method="GET">
         <div class="col-md-3">
             <label class="form-label small text-muted">Admin</label>
@@ -75,9 +75,9 @@
 
                     {% if 'create' in log.action %} {% set badge_class = 'success' %}
                     {% elif 'delete' in log.action or 'ban' in log.action %} {% set badge_class = 'danger' %}
-                    {% elif 'update' in log.action or 'edit' in log.action %} {% set badge_class = 'warning text-dark'
+                    {% elif 'update' in log.action or 'edit' in log.action %} {% set badge_class = 'warning'
                     %}
-                    {% elif 'impersonate' in log.action %} {% set badge_class = 'info text-dark' %}
+                    {% elif 'impersonate' in log.action %} {% set badge_class = 'info' %}
                     {% endif %}
 
                     <span class="badge bg-{{ badge_class }} fw-normal">

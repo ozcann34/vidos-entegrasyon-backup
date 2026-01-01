@@ -215,7 +215,7 @@
 
 <div class="table-responsive shadow-sm card border-0 mb-4" id="listContainer">
   <table class="table table-hover align-middle mb-0">
-    <thead class="bg-light">
+    <thead class="bg-light" style="background: rgba(0,0,0,0.05) !important; color: var(--text);">
       <tr>
         <th style="width: 40px;" class="ps-3"><input id="selectAll" type="checkbox" class="form-check-input"></th>
         <th style="width: 70px;">Görsel</th>
@@ -243,14 +243,14 @@
 <div class="modal fade" id="productDetailModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content border-0 shadow-lg">
-      <div class="modal-header bg-light">
+      <div class="modal-header" style="background: var(--card);">
         <h5 class="modal-title" id="productDetailTitle">Ürün Detayı</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
       </div>
       <div class="modal-body p-4" id="productDetailBody">
         <!-- Content will be injected via JS -->
       </div>
-      <div class="modal-footer bg-light">
+      <div class="modal-footer" style="background: var(--card);">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
       </div>
     </div>
@@ -316,13 +316,13 @@
         <h6 class="fw-bold text-primary mb-3"><i class="bi bi-activity me-2"></i>İşlem Durumu</h6>
         <div class="row g-2 mb-3">
           <div class="col-6">
-            <div class="p-2 border rounded bg-white">
+            <div class="p-2 border rounded" style="background: var(--bg);">
               <div class="text-muted small">Başarılı</div>
               <div class="h5 fw-bold text-success mb-0">${s.success_count}</div>
             </div>
           </div>
           <div class="col-6">
-            <div class="p-2 border rounded bg-white">
+            <div class="p-2 border rounded" style="background: var(--bg);">
               <div class="text-muted small">Hatalı</div>
               <div class="h5 fw-bold text-danger mb-0">${s.fail_count}</div>
             </div>
@@ -344,7 +344,7 @@
           <button class="nav-link py-1" data-bs-toggle="tab" data-bs-target="#skipReport">Atlananlar (${sk.length})</button>
         </li>
       </ul>
-      <div class="tab-content border rounded bg-white overflow-auto" style="max-height: 250px;">
+      <div class="tab-content border rounded overflow-auto" style="max-height: 250px; background: var(--bg);">
         <div class="tab-pane fade show active p-2" id="errorReport">
           ${failures}
         </div>

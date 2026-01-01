@@ -36,7 +36,7 @@
                         </div>
                     </td>
                     <td>
-                        <span class="badge bg-info text-dark">{{ payment.plan|upper }}</span>
+                        <span class="badge bg-info">{{ payment.plan|upper }}</span>
                         <small class="text-muted d-block">{{ payment.billing_cycle }}</small>
                     </td>
                     <td class="fw-bold text-success">
@@ -54,16 +54,16 @@
                         {% if payment.status == 'completed' %}
                         <span class="badge bg-success">Başarılı</span>
                         {% if payment.user.subscription and not payment.user.subscription.is_approved %}
-                        <span class="badge bg-warning text-dark"><i class="bi bi-shield-lock"></i> Onay Bekliyor</span>
+                        <span class="badge bg-warning"><i class="bi bi-shield-lock"></i> Onay Bekliyor</span>
                         {% endif %}
                         {% elif payment.status == 'pending' %}
-                        <span class="badge bg-warning text-dark">Beklemede</span>
+                        <span class="badge bg-warning">Beklemede</span>
                         {% elif payment.status == 'failed' %}
                         <span class="badge bg-danger">Başarısız</span>
                         {% elif payment.status == 'cancelled' %}
                         <span class="badge bg-secondary">İptal</span>
                         {% else %}
-                        <span class="badge bg-light text-dark">{{ payment.status }}</span>
+                        <span class="badge bg-secondary">{{ payment.status }}</span>
                         {% endif %}
                     </td>
                     <td>

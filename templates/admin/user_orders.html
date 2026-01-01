@@ -35,9 +35,9 @@
                     <td class="small font-monospace">{{ order.order_number }}</td>
                     <td>
                         {% if order.marketplace == 'trendyol' %}
-                        <span class="badge bg-warning text-dark">Trendyol</span>
+                        <span class="badge bg-warning">Trendyol</span>
                         {% elif order.marketplace == 'hepsiburada' %}
-                        <span class="badge bg-warning text-dark"
+                        <span class="badge bg-warning"
                             style="background-color: #ff6000 !important; color: white !important;">Hepsiburada</span>
                         {% elif order.marketplace == 'n11' %}
                         <span class="badge bg-danger">N11</span>
@@ -61,7 +61,7 @@
                         {% if 'iptal' in order.status.lower() or 'cancel' in order.status.lower() %}
                         <span class="badge bg-danger">{{ order.status }}</span>
                         {% elif 'iade' in order.status.lower() or 'return' in order.status.lower() %}
-                        <span class="badge bg-warning text-dark">{{ order.status }}</span>
+                        <span class="badge bg-warning">{{ order.status }}</span>
                         {% elif 'teslim' in order.status.lower() or 'deliver' in order.status.lower() %}
                         <span class="badge bg-success">{{ order.status }}</span>
                         {% elif 'kargo' in order.status.lower() or 'ship' in order.status.lower() %}
@@ -80,7 +80,7 @@
                 </tr>
                 <tr class="collapse" id="orderJson{{ order.id }}">
                     <td colspan="7">
-                        <div class="card card-body bg-light">
+                        <div class="card card-body bg-dark border-secondary">
                             <pre class="small mb-0"
                                 style="max-height: 200px; overflow-y: auto;">{{ order.raw_data_json }}</pre>
                         </div>

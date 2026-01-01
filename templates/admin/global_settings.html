@@ -28,10 +28,12 @@
                         <div class="row g-3">
                             {% for key, label in features.items() %}
                             <div class="col-md-6 col-lg-4">
-                                <div class="card h-100 border-0 shadow-sm bg-light rounded-4 hover-lift">
+                                <div class="card h-100 border shadow-sm rounded-4 hover-lift"
+                                    style="background: var(--card);">
                                     <div class="card-body p-3 d-flex flex-column justify-content-between">
                                         <div class="d-flex align-items-center mb-3">
-                                            <div class="p-2 rounded-circle bg-white shadow-sm me-3 text-primary">
+                                            <div
+                                                class="p-2 rounded-circle bg-primary bg-opacity-10 shadow-sm me-3 text-primary">
                                                 {% if 'trendyol' in key %}<i class="bi bi-shop fs-4"></i>
                                                 {% elif 'pazarama' in key %}<i class="bi bi-basket fs-4"></i>
                                                 {% elif 'assistant' in key %}<i class="bi bi-robot fs-4"></i>

@@ -311,6 +311,14 @@ body {
   /* IE and Edge */
 }
 
+/* Badge Text Color Fix for Dark Mode */
+[data-theme="dark"] .badge.bg-warning,
+[data-theme="dark"] .badge.bg-info,
+[data-theme="dark"] .badge.text-dark {
+  color: #0f172a !important;
+  /* Dark Slate Blue for readability */
+}
+
 #sidebar::-webkit-scrollbar {
   display: none;
   /* Chrome, Safari, Opera */

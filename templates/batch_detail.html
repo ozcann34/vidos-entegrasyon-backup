@@ -18,19 +18,19 @@
 
   <div class="row g-3 mb-4">
     <div class="col-md-4">
-      <div class="p-3 border rounded bg-light h-100" style="background: var(--bg) !important;">
+      <div class="p-3 border rounded h-100" style="background: var(--bg) !important;">
         <small class="text-muted d-block mb-1">Pazar Yeri</small>
         <span class="badge bg-dark fs-6">{{ entry.marketplace | upper }}</span>
       </div>
     </div>
     <div class="col-md-4">
-      <div class="p-3 border rounded bg-light h-100" style="background: var(--bg) !important;">
+      <div class="p-3 border rounded h-100" style="background: var(--bg) !important;">
         <small class="text-muted d-block mb-1">Ürün Sayısı</small>
         <span class="fw-bold fs-5">{{ entry.product_count }}</span>
       </div>
     </div>
     <div class="col-md-4">
-      <div class="p-3 border rounded bg-light h-100" style="background: var(--bg) !important;">
+      <div class="p-3 border rounded h-100" style="background: var(--bg) !important;">
         <small class="text-muted d-block mb-1">Durum</small>
         {% if entry.success %}
         <span class="badge bg-success fs-6"><i class="bi bi-check-circle-fill me-1"></i> Başarılı</span>
@@ -92,7 +92,7 @@
     <div class="card-body p-0">
       <div class="table-responsive">
         <table class="table table-sm table-hover mb-0" style="color: var(--text);">
-          <thead class="table-light" style="background: rgba(0,0,0,0.05);">
+          <thead style="background: rgba(0,0,0,0.05);">
             <tr>
               <th class="ps-3">Barkod / ID</th>
               <th>Hata Nedeni</th>
