@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr" data-bs-theme="dark">
+<html lang="tr" data-bs-theme="light">
 
 <head>
     <meta charset="UTF-8">
@@ -172,7 +172,7 @@
         <div class="auth-main">
             <div class="auth-form-wrapper">
                 <div class="mb-5">
-                    <h2 class="fw-bold text-white mb-2">Yeni Hesap Oluşturun</h2>
+                    <h2 class="fw-bold mb-2">Yeni Hesap Oluşturun</h2>
                     <p class="text-muted">Vidos dünyasına profesyonel bir adım atın.</p>
                 </div>
 
@@ -181,12 +181,12 @@
                     style="background: rgba(129, 140, 248, 0.05); border: 1px solid rgba(129, 140, 248, 0.2);">
                     <div>
                         <div class="text-muted small">Seçilen Plan</div>
-                        <div class="fw-bold text-white">{{ plan_details.name }}</div>
+                        <div class="fw-bold text-dark">{{ plan_details.name }}</div>
                     </div>
                     <div class="text-end">
                         <div class="text-primary fw-bold">₺{{ '{:,.0f}'.format(plan_details.price).replace(',', '.')
                             }}/ay</div>
-                        <a href="{{ url_for('main.landing_page') }}#pricing" class="small text-muted">Planı değiştir</a>
+                        <a href="{{ url_for('main.index') }}#pricing" class="small text-muted">Planı değiştir</a>
                     </div>
                 </div>
                 {% endif %}
