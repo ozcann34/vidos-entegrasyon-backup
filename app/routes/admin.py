@@ -9,7 +9,7 @@ from flask_login import login_required, current_user
 
 from app import db
 
-from app.models import User, Subscription, AdminLog, Announcement, UserActivityLog, Payment
+from app.models import User, Subscription, AdminLog, Announcement, UserActivityLog, Payment, ContactMessage
 
 from app.services.user_service import ban_user, unban_user, update_subscription, get_all_users
 
