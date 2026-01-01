@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="tr" data-bs-theme="dark">
 
 <head>
     <meta charset="UTF-8">
@@ -7,102 +7,63 @@
     <title>Güvenli Ödeme Onayı - Vidos</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
     <style>
-        :root {
-            --primary-color: #4f46e5;
-            --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-        }
-
         body {
-            background: var(--bg-gradient);
             min-height: 100vh;
             display: flex;
             align-items: center;
+            justify-content: center;
             font-family: 'Inter', sans-serif;
+            margin: 0;
         }
 
         .checkout-container {
             max-width: 500px;
             width: 100%;
-            margin: auto;
             padding: 20px;
-        }
-
-        .card {
-            border: none;
-            border-radius: 24px;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            overflow: hidden;
+            z-index: 10;
         }
 
         .card-header {
-            background: white;
-            border-bottom: 1px solid #f1f5f9;
+            background: transparent !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
             padding: 30px 30px 10px;
             text-align: center;
         }
 
-        .shopier-badge {
-            height: 25px;
-            margin-bottom: 15px;
-        }
-
         .form-control {
-            border-radius: 12px;
-            padding: 12px 15px;
-            border: 1px solid #e2e8f0;
-            background: #f8fafc;
-        }
-
-        .form-control:focus {
-            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
-            border-color: var(--primary-color);
+            background: rgba(255, 255, 255, 0.05) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            color: #fff !important;
+            border-radius: 12px !important;
         }
 
         .btn-pay {
-            background: var(--primary-color);
-            color: white;
-            border: none;
-            border-radius: 16px;
-            padding: 16px;
-            font-weight: 700;
-            width: 100%;
-            transition: all 0.3s ease;
-            font-size: 1.1rem;
-        }
-
-        .btn-pay:hover {
-            background: #4338ca;
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.4);
-            color: white;
+            background: var(--gradient-primary) !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 16px !important;
+            padding: 16px !important;
+            font-weight: 700 !important;
+            width: 100% !important;
         }
 
         .price-tag {
-            background: #f0fdf4;
-            color: #166534;
-            padding: 15px;
-            border-radius: 16px;
-            text-align: center;
-            margin: 20px 0;
-            border: 1px solid #bbf7d0;
-        }
-
-        .back-link {
-            text-align: center;
-            margin-top: 20px;
-            color: #64748b;
-            text-decoration: none;
-            display: block;
-            font-size: 0.9rem;
+            background: rgba(22, 163, 74, 0.1) !important;
+            color: #4ade80 !important;
+            padding: 15px !important;
+            border-radius: 16px !important;
+            text-align: center !important;
+            margin: 20px 0 !important;
+            border: 1px solid rgba(22, 163, 74, 0.2) !important;
         }
     </style>
 </head>
 
-<body>
-
+<body class="mesh-bg">
     <div class="checkout-container">
-        <div class="card">
+        <div class="card glass-card">
             <div class="card-header">
                 <img src="https://www.shopier.com/images/shopier_logo_main.png" alt="Shopier" class="shopier-badge">
                 <h4 class="fw-bold text-dark">Güvenli Ödeme Adımı</h4>
@@ -136,8 +97,8 @@
                         <div class="h3 mb-0 fw-bold">₺{{ "%.2f"|format(price) }}</div>
                     </div>
 
-                    <button type="submit" class="btn btn-pay">
-                        <i class="fas fa-shield-alt me-2"></i>Şimdi Ödemeye Geç
+                    <button type="submit" class="btn btn-pay primary-glow">
+                        <i class="fas fa-shield-alt me-2"></i>Şimdi Güvenle Öde
                     </button>
 
                     <a href="{{ url_for('payment.payment_page') }}" class="back-link">

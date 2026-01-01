@@ -24,25 +24,60 @@
 
 [data-theme="dark"] {
   --bg: #0a0a0f;
-  --card: #13131a;
-  --text: #ffffff;
-  --muted: #a8a8b3;
+  --bg-deep: #050508;
+  --card: rgba(255, 255, 255, 0.03);
+  --card-border: rgba(255, 255, 255, 0.08);
+  --text: #f8fafc;
+  --muted: #94a3b8;
   --primary: #6366f1;
-  --primary-600: #4f46e5;
-  --primary-light: #818cf8;
+  --primary-glow: rgba(99, 102, 241, 0.5);
   --accent: #ec4899;
-  --accent-light: #f472b6;
+  --accent-glow: rgba(236, 72, 153, 0.5);
   --success: #22c55e;
   --warning: #f59e0b;
   --danger: #ef4444;
   --border: rgba(255, 255, 255, 0.1);
-  --shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  --shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
   --sidebar-bg: #0a0a0f;
-  --sidebar-fg: #ffffff;
-  --input-bg: rgba(255, 255, 255, 0.05);
+  --sidebar-fg: #f8fafc;
+  --input-bg: rgba(255, 255, 255, 0.03);
   --input-border: rgba(255, 255, 255, 0.1);
   --gradient-primary: linear-gradient(135deg, #6366f1 0%, #ec4899 100%);
-  --gradient-secondary: linear-gradient(135deg, #0ea5e9 0%, #8b5cf6 100%);
+  --gradient-mesh: radial-gradient(at 0% 0%, hsla(253, 16%, 7%, 1) 0, transparent 50%),
+    radial-gradient(at 50% 0%, hsla(225, 39%, 30%, 1) 0, transparent 50%),
+    radial-gradient(at 100% 0%, hsla(339, 49%, 30%, 1) 0, transparent 50%);
+}
+
+/* Glassmorphism Helpers */
+.glass-card {
+  background: var(--card) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid var(--card-border) !important;
+  box-shadow: var(--shadow) !important;
+}
+
+.glass-navbar {
+  background: rgba(10, 10, 15, 0.7) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-bottom: 1px solid var(--card-border) !important;
+}
+
+/* Premium Shadows & Glows */
+.premium-shadow {
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6) !important;
+}
+
+.primary-glow {
+  box-shadow: 0 0 20px var(--primary-glow) !important;
+}
+
+/* Mesh Gradient Background */
+.mesh-bg {
+  background-color: #0a0a0f;
+  background-image: var(--gradient-mesh);
+  background-attachment: fixed;
 }
 
 /* Global Reset & Base */

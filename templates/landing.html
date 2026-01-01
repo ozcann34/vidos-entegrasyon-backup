@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="tr" data-bs-theme="dark">
 
 <head>
     <meta charset="UTF-8">
@@ -60,10 +60,10 @@
                 E-Ticaret Artık Cebinizde</h1>
             <p class="text-muted mb-4 small">Trendyol'dan Hepsiburada'ya tüm mağazalarınızı tek ekrandan yönetin.</p>
             <div class="mobile-cta d-grid gap-3">
-                <a href="{{ url_for('auth.register') }}" class="btn-primary py-3"
-                    style="border-radius: 15px; font-weight: 700; font-size: 1.1rem; box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);">Hemen
+                <a href="{{ url_for('auth.register') }}" class="btn-primary py-3 primary-glow"
+                    style="border-radius: 15px; font-weight: 700; font-size: 1.1rem;">Hemen
                     Ücretsiz Başla</a>
-                <a href="{{ url_for('auth.login') }}" class="btn-secondary py-3"
+                <a href="{{ url_for('auth.login') }}" class="btn-secondary py-3 glass-card"
                     style="border-radius: 15px; font-weight: 600;">Giriş Yap</a>
             </div>
         </div>
@@ -121,17 +121,17 @@
                 <p class="section-subtitle">Sadece 3 adımda satışlarınızı katlamaya başlayın</p>
 
                 <div class="steps-grid">
-                    <div class="step-card scroll-animate">
+                    <div class="step-card scroll-animate glass-card">
                         <div class="step-number">01</div>
                         <h3>Mağazalarını Bağla</h3>
                         <p>API anahtarlarınla Trendyol, N11 ve diğer mağazalarını saniyeler içinde bağla.</p>
                     </div>
-                    <div class="step-card scroll-animate">
+                    <div class="step-card scroll-animate glass-card">
                         <div class="step-number">02</div>
                         <h3>Ürünlerini Yükle</h3>
                         <p>XML veya Excel ile binlerce ürününü tek tıkla sisteme aktar.</p>
                     </div>
-                    <div class="step-card scroll-animate">
+                    <div class="step-card scroll-animate glass-card">
                         <div class="step-number">03</div>
                         <h3>Otomatik Yönet</h3>
                         <p>Fiyat ve stok güncellemelerini Vidos'a bırak, sen sadece satışlarına odaklan.</p>
@@ -202,7 +202,7 @@
 
             <div class="pricing-grid">
                 <!-- Giriş Paketi -->
-                <div class="pricing-card scroll-animate">
+                <div class="pricing-card scroll-animate glass-card">
                     <h3>Giriş Paketi</h3>
                     <div class="pricing-price">
                         <span class="currency">₺</span><span class="price-val" data-monthly="790"
@@ -222,7 +222,8 @@
                 </div>
 
                 <!-- Ticaret Paketi (Featured) -->
-                <div class="pricing-card featured scroll-animate">
+                <div class="pricing-card featured scroll-animate glass-card primary-glow"
+                    style="border-color: var(--color-primary) !important; border-width: 2px !important;">
                     <span class="pricing-badge">Popüler</span>
                     <h3>Ticaret Paketi</h3>
                     <div class="pricing-price">
@@ -245,7 +246,7 @@
                 </div>
 
                 <!-- Kurumsal Paket -->
-                <div class="pricing-card scroll-animate">
+                <div class="pricing-card scroll-animate glass-card">
                     <h3>Kurumsal Paket</h3>
                     <div class="pricing-price">
                         <span class="currency">₺</span><span class="price-val" data-monthly="2.990"
@@ -268,7 +269,7 @@
                 </div>
 
                 <!-- BUG-Z Bayilik Paketi -->
-                <div class="pricing-card scroll-animate border-primary" style="border-width: 2px;">
+                <div class="pricing-card scroll-animate glass-card" style="border-width: 2px;">
                     <div class="pricing-badge bg-primary">Bayi Özel</div>
                     <h3>BUG-Z Bayilik</h3>
                     <div class="pricing-price">
@@ -284,7 +285,7 @@
                         <li>Dropshipping Desteği</li>
                     </ul>
                     <a href="{{ url_for('auth.register', plan='bug-z-bayilik') }}"
-                        class="btn btn-primary w-100 py-2 rounded-pill fw-bold">Başvuru Yap</a>
+                        class="btn btn-primary w-100 py-2 rounded-pill fw-bold primary-glow">Başvuru Yap</a>
                 </div>
             </div>
         </section>
@@ -294,42 +295,42 @@
             <div class="container">
                 <h2 class="section-title">Sıkça Sorulan Sorular</h2>
                 <div class="faq-grid">
-                    <div class="faq-item scroll-animate">
+                    <div class="faq-item scroll-animate glass-card">
                         <h3>Shopier ile ödeme güvenli mi?</h3>
                         <p>Evet, tüm ödemeler Shopier altyapısı ile 256-bit SSL sertifikalı güvenli ödeme sayfasında
                             gerçekleşir. Kredi kartı bilgileriniz hiçbir şekilde sistemimizde saklanmaz.</p>
                     </div>
-                    <div class="faq-item scroll-animate">
+                    <div class="faq-item scroll-animate glass-card">
                         <h3>Kaç pazaryeri bağlayabilirim?</h3>
                         <p>Seçtiğiniz pakete göre 1'den sınırsıza kadar pazaryeri entegrasyonu sağlayabilirsiniz.</p>
                     </div>
-                    <div class="faq-item scroll-animate">
+                    <div class="faq-item scroll-animate glass-card">
                         <h3>Teknik destek veriyor musunuz?</h3>
                         <p>Evet, tüm paketlerimizde e-posta desteği, üst paketlerimizde ise öncelikli WhatsApp desteği
                             mevcuttur.</p>
                     </div>
-                    <div class="faq-item scroll-animate">
+                    <div class="faq-item scroll-animate glass-card">
                         <h3>Ürün limitim dolduğunda ne olur?</h3>
                         <p>Ürün limitinize yaklaştığınızda sistem sizi uyarır. Dilerseniz paketinizi istediğiniz zaman
                             yükseltebilirsiniz.</p>
                     </div>
-                    <div class="faq-item scroll-animate">
+                    <div class="faq-item scroll-animate glass-card">
                         <h3>XML ile ürün yüklemek nasıl çalışır?</h3>
                         <p>Tedarikçinizden aldığınız XML linkini sisteme eklersiniz. Vidos otomatik olarak ürünleri
                             çeker,
                             kategori eşleştirmesi yapar ve seçtiğiniz pazaryerlerine gönderir.</p>
                     </div>
-                    <div class="faq-item scroll-animate">
+                    <div class="faq-item scroll-animate glass-card">
                         <h3>Stok ve fiyat güncellemeleri otomatik mi?</h3>
                         <p>Evet! Paketinize göre belirlenen aralıklarla (30dk - 24 saat) stok ve fiyatlarınız
                             tüm pazaryerlerinde otomatik güncellenir.</p>
                     </div>
-                    <div class="faq-item scroll-animate">
+                    <div class="faq-item scroll-animate glass-card">
                         <h3>Ücretsiz deneme süresi var mı?</h3>
                         <p>Evet, tüm yeni kullanıcılarımıza 7 günlük ücretsiz deneme süresi sunuyoruz.
                             Kredi kartı bilgisi gerekmez.</p>
                     </div>
-                    <div class="faq-item scroll-animate">
+                    <div class="faq-item scroll-animate glass-card">
                         <h3>İptal ve iade politikanız nedir?</h3>
                         <p>Aylık aboneliklerde istediğiniz zaman iptal edebilirsiniz. Yıllık planlarda
                             ilk 30 gün içinde tam iade garantisi sunuyoruz.</p>
