@@ -10,243 +10,275 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
     <style>
         body {
-            min-height: 100vh;
+            height: 100vh;
+            margin: 0;
+            background: var(--bg);
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+
+        .split-view {
+            height: 100vh;
+            display: flex;
+        }
+
+        .auth-aside {
+            flex: 1;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 60px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .auth-main {
+            width: 700px;
+            /* Wider for register form */
             display: flex;
             align-items: center;
             justify-content: center;
-            font-family: 'Inter', -apple-system, sans-serif;
-            margin: 0;
-            padding: 2rem 0;
+            padding: 40px;
+            background: var(--bg);
+            overflow-y: auto;
         }
 
-        .auth-container {
+        .auth-form-wrapper {
             width: 100%;
-            max-width: 960px;
-            padding: 1.5rem;
-            z-index: 10;
+            max-width: 600px;
+            padding: 40px 0;
         }
 
-        .auth-logo i {
-            font-size: 3rem;
-            background: var(--gradient-primary);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+        .feature-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 24px;
+            color: var(--text);
         }
 
-        .auth-logo h1 {
-            font-size: 1.6rem;
-            font-weight: 800;
-            background: var(--gradient-primary);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+        .feature-icon {
+            width: 40px;
+            height: 40px;
+            background: rgba(129, 140, 248, 0.1);
+            color: #818cf8;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 16px;
+            font-size: 1.2rem;
+        }
+
+        .section-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--primary);
+            font-weight: 700;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .section-title::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+            margin-left: 15px;
+        }
+
+        .form-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--muted);
+            margin-bottom: 8px;
         }
 
         .form-control,
         .form-select {
-            background: rgba(255, 255, 255, 0.05) !important;
-            border: 1px solid rgba(255, 255, 255, 0.1) !important;
-            color: #fff !important;
-            border-radius: 12px !important;
+            background-color: rgba(255, 255, 255, 0.03) !important;
+            border: 1px solid var(--border) !important;
+            padding: 10px 14px !important;
+            border-radius: 8px !important;
+            font-size: 0.9rem !important;
+            color: var(--text) !important;
         }
 
-        .form-control:focus,
-        .form-select:focus {
-            border-color: var(--primary) !important;
-            box-shadow: 0 0 0 4px var(--primary-glow) !important;
+        .btn-auth {
+            background: var(--primary) !important;
+            border: none;
+            padding: 14px !important;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.2s;
         }
 
-        .btn-primary {
-            background: var(--gradient-primary) !important;
-            border: none !important;
-            padding: 0.8rem !important;
-            font-weight: 700 !important;
-            border-radius: 12px !important;
-        }
+        @media (max-width: 1200px) {
+            .auth-aside {
+                display: none;
+            }
 
-        .section-header {
-            color: var(--primary);
-            font-weight: 700;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 1.5rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            padding-bottom: 0.5rem;
-        }
-
-        .plan-badge {
-            background: rgba(99, 102, 241, 0.1);
-            border: 1px solid var(--primary);
-            color: var(--primary);
-            padding: 1rem;
-            border-radius: 15px;
+            .auth-main {
+                width: 100%;
+            }
         }
     </style>
 </head>
 
-<body class="mesh-bg">
-    <div class="auth-container">
-        <div class="auth-card glass-card p-4 p-md-5">
-            <div class="auth-logo">
-                <i class="bi bi-box-seam-fill"></i>
-                <h1>Vidos Entegrasyon</h1>
-                <p class="text-muted mb-0">Yeni hesap oluşturun</p>
+<body>
+    <div class="split-view">
+        <!-- Aside: Trust & Support -->
+        <div class="auth-aside">
+            <div class="mb-5">
+                <a href="/" class="d-flex align-items-center text-decoration-none mb-4">
+                    <img src="{{ url_for('static', filename='logo.png') }}" width="40" class="me-3">
+                    <h2 class="fw-bold text-white mb-0">Vidos</h2>
+                </a>
+                <h1 class="display-6 fw-bold text-white mb-4">Ekosisteme katılın, <br><span
+                        class="text-primary">sınırları aşın.</span></h1>
+                <p class="text-muted fs-5 mb-5">Sadece bir yazılım değil, e-ticaret büyüme ortağınız. 5.000+ satıcı
+                    arasına bugün katılın.</p>
             </div>
 
-            {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-            {% for category, message in messages %}
-            <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show"
-                role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-            {% endfor %}
-            {% endif %}
-            {% endwith %}
-
-            {% if plan_details %}
-            <div class="plan-badge mb-4">
-                <div class="d-flex justify-content-between align-items-center">
+            <div class="features">
+                <div class="feature-item">
+                    <div class="feature-icon"><i class="bi bi-check2-circle"></i></div>
                     <div>
-                        <i class="bi bi-box-seam me-2"></i>
-                        <strong class="text-white">{{ plan_details.name }}</strong> planı seçildi
+                        <div class="fw-bold text-white">Dakikalar İçinde Kurulum</div>
+                        <div class="small text-muted">API anahtarlarınızı girin ve satışa başlayın.</div>
                     </div>
-                    <span class="badge bg-primary py-2 px-3">
-                        {% if billing == 'yearly' %}
-                        ₺{{ '{:,.0f}'.format(plan_details.yearly_price_monthly * 12).replace(',', '.') }} /yıl
-                        {% else %}
-                        ₺{{ '{:,.0f}'.format(plan_details.price).replace(',', '.') }}/ay
-                        {% endif %}
-                    </span>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon"><i class="bi bi-people-fill"></i></div>
+                    <div>
+                        <div class="fw-bold text-white">7/24 Teknik Destek</div>
+                        <div class="small text-muted">Uzman ekibimiz her adımda yanınızda.</div>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon"><i class="bi bi-stars"></i></div>
+                    <div>
+                        <div class="fw-bold text-white">Sürekli Güncelleme</div>
+                        <div class="small text-muted">Pazaryeri değişikliklerine anında uyum.</div>
+                    </div>
                 </div>
             </div>
-            {% endif %}
+        </div>
 
-            <form method="POST" action="{{ url_for('auth.register') }}">
-                <input type="hidden" name="plan" value="{{ selected_plan }}">
-                <input type="hidden" name="billing" value="{{ billing }}">
+        <!-- Main: Register Form -->
+        <div class="auth-main">
+            <div class="auth-form-wrapper">
+                <div class="mb-5">
+                    <h2 class="fw-bold text-white mb-2">Yeni Hesap Oluşturun</h2>
+                    <p class="text-muted">Vidos dünyasına profesyonel bir adım atın.</p>
+                </div>
 
-                <div class="row g-4">
-                    <!-- Sol Kolon: Kişisel ve Giriş Bilgileri -->
-                    <div class="col-md-6 border-end border-white border-opacity-10 pe-md-4">
-                        <h5 class="section-header">Hesap Bilgileri</h5>
-
-                        <div class="row g-2 mb-3">
-                            <div class="col-6">
-                                <div class="form-floating">
-                                    <input type="text" class="form-control" id="first_name" name="first_name"
-                                        placeholder="Ad">
-                                    <label for="first_name"><i class="bi bi-person me-2"></i>Ad</label>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="form-floating">
-                                    <input type="text" class="form-control" id="last_name" name="last_name"
-                                        placeholder="Soyad">
-                                    <label for="last_name"><i class="bi bi-person me-2"></i>Soyad</label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="form-floating mb-3">
-                            <input type="text" class="form-control" id="tc_no" name="tc_no" placeholder="TC Kimlik No"
-                                maxlength="11">
-                            <label for="tc_no"><i class="bi bi-person-vcard me-2"></i>TC Kimlik No</label>
-                        </div>
-
-                        <div class="form-floating">
-                            <input type="email" class="form-control" id="email" name="email" placeholder="Email"
-                                required>
-                            <label for="email"><i class="bi bi-envelope me-2"></i>Email Adresi</label>
-                        </div>
-
-                        <div class="form-floating">
-                            <input type="password" class="form-control" id="password" name="password"
-                                placeholder="Şifre" required minlength="6">
-                            <label for="password"><i class="bi bi-lock me-2"></i>Şifre</label>
-                        </div>
-                        <p class="password-requirements"><i class="bi bi-info-circle me-1"></i>En az 6 karakter</p>
-
-                        <div class="form-floating mb-3">
-                            <input type="password" class="form-control" id="password_confirm" name="password_confirm"
-                                placeholder="Şifre Tekrar" required>
-                            <label for="password_confirm"><i class="bi bi-lock-fill me-2"></i>Şifre Tekrar</label>
-                        </div>
+                {% if plan_details %}
+                <div class="p-3 rounded-3 mb-5 d-flex justify-content-between align-items-center"
+                    style="background: rgba(129, 140, 248, 0.05); border: 1px solid rgba(129, 140, 248, 0.2);">
+                    <div>
+                        <div class="text-muted small">Seçilen Plan</div>
+                        <div class="fw-bold text-white">{{ plan_details.name }}</div>
                     </div>
-
-                    <!-- Sağ Kolon: Firma ve Adres Bilgileri -->
-                    <div class="col-md-6 ps-md-4">
-                        <h5 class="section-header">Firma ve İletişim Detayları</h5>
-
-                        <div class="form-floating mb-3">
-                            <input type="text" class="form-control" id="company_title" name="company_title"
-                                placeholder="Firma Ünvanı">
-                            <label for="company_title"><i class="bi bi-building me-2"></i>Firma Ünvanı</label>
-                        </div>
-
-                        <div class="row g-2 mb-3">
-                            <div class="col-6">
-                                <div class="form-floating">
-                                    <input type="text" class="form-control" id="tax_office" name="tax_office"
-                                        placeholder="Vergi Dairesi">
-                                    <label for="tax_office" style="font-size: 0.85rem;"><i
-                                            class="bi bi-bank me-1"></i>V. Dairesi</label>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="form-floating">
-                                    <input type="text" class="form-control" id="tax_no" name="tax_no"
-                                        placeholder="Vergi No">
-                                    <label for="tax_no" style="font-size: 0.85rem;"><i
-                                            class="bi bi-receipt me-1"></i>Vergi No</label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="form-floating mb-3">
-                            <input type="tel" class="form-control" id="phone" name="phone" placeholder="Telefon">
-                            <label for="phone"><i class="bi bi-telephone me-2"></i>Telefon</label>
-                        </div>
-
-                        <h5 class="section-header">Adres Bilgileri</h5>
-
-                        <div class="row g-2 mb-2">
-                            <div class="col-6">
-                                <div class="form-floating">
-                                    <input type="text" class="form-control" id="city" name="city" placeholder="İl">
-                                    <label for="city"><i class="bi bi-geo-alt me-2"></i>İl</label>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="form-floating">
-                                    <input type="text" class="form-control" id="district" name="district"
-                                        placeholder="İlçe">
-                                    <label for="district"><i class="bi bi-geo me-2"></i>İlçe</label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="form-floating">
-                            <textarea class="form-control" placeholder="Açık Adres" id="address" name="address"
-                                style="height: 80px"></textarea>
-                            <label for="address"><i class="bi bi-map me-2"></i>Açık Adres</label>
-                        </div>
-                    </div>
-
-                    <div class="col-12 mt-4 text-center">
-                        <button type="submit" class="btn btn-primary btn-lg w-100 primary-glow">
-                            <i class="bi bi-person-plus me-2"></i>Hemen Kayıt Ol
-                        </button>
+                    <div class="text-end">
+                        <div class="text-primary fw-bold">₺{{ '{:,.0f}'.format(plan_details.price).replace(',', '.')
+                            }}/ay</div>
+                        <a href="{{ url_for('main.landing_page') }}#pricing" class="small text-muted">Planı değiştir</a>
                     </div>
                 </div>
-            </form>
+                {% endif %}
 
-            <div class="auth-links">
-                <span class="text-muted">Zaten hesabınız var mı?</span>
-                <a href="{{ url_for('auth.login') }}" class="ms-1 fw-semibold">Giriş Yapın</a>
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category if category != 'message' else 'info' }} border-0 bg-opacity-10 py-3 mb-4"
+                    style="background-color: rgba(239, 68, 68, 0.1); color: #f87171; border-radius: 10px;">
+                    <i class="bi bi-exclamation-circle me-2"></i> {{ message }}
+                </div>
+                {% endfor %}
+                {% endif %}
+                {% endwith %}
+
+                <form method="POST" action="{{ url_for('auth.register') }}">
+                    <input type="hidden" name="plan" value="{{ selected_plan }}">
+                    <input type="hidden" name="billing" value="{{ billing }}">
+
+                    <!-- Bölüm 1: Kişisel Bilgiler -->
+                    <div class="section-title">Kişisel Bilgiler</div>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Adınız</label>
+                            <input type="text" class="form-control" name="first_name" placeholder="Örn: Can" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Soyadınız</label>
+                            <input type="text" class="form-control" name="last_name" placeholder="Örn: Yılmaz" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">TC Kimlik No</label>
+                            <input type="text" class="form-control" name="tc_no" maxlength="11"
+                                placeholder="11 haneli TC No">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">E-posta</label>
+                            <input type="email" class="form-control" name="email" placeholder="can@sirket.com" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Şifre</label>
+                            <input type="password" class="form-control" name="password" placeholder="En az 6 karakter"
+                                required minlength="6">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Şifre Tekrar</label>
+                            <input type="password" class="form-control" name="password_confirm"
+                                placeholder="Tekrar girin" required>
+                        </div>
+                    </div>
+
+                    <!-- Bölüm 2: Firma Bilgileri -->
+                    <div class="section-title">Firma & Adres</div>
+                    <div class="row g-3 mb-5">
+                        <div class="col-md-12">
+                            <label class="form-label">Firma Ünvanı</label>
+                            <input type="text" class="form-control" name="company_title"
+                                placeholder="Tam şirket ünvanı">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Vergi Dairesi</label>
+                            <input type="text" class="form-control" name="tax_office">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Vergi No</label>
+                            <input type="text" class="form-control" name="tax_no">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Şehir</label>
+                            <input type="text" class="form-control" name="city">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">İlçe</label>
+                            <input type="text" class="form-control" name="district">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Açık Adres</label>
+                            <textarea class="form-control" name="address" rows="2"
+                                placeholder="Sokak, No, Kat..."></textarea>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary d-block w-100 btn-auth mb-4">
+                        Hesabımı Oluştur
+                    </button>
+                </form>
+
+                <div class="text-center pb-5">
+                    <span class="text-muted small">Zaten hesabınız var mı?</span>
+                    <a href="{{ url_for('auth.login') }}"
+                        class="small text-primary fw-bold text-decoration-none ms-1">Giriş yapın</a>
+                </div>
             </div>
         </div>
     </div>

@@ -10,112 +10,214 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
     <style>
         body {
-            min-height: 100vh;
+            height: 100vh;
+            margin: 0;
+            background: var(--bg);
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+
+        .split-view {
+            height: 100vh;
+            display: flex;
+        }
+
+        .auth-aside {
+            flex: 1;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 80px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .auth-aside::before {
+            content: "";
+            position: absolute;
+            top: -20%;
+            right: -20%;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
+            opacity: 0.1;
+        }
+
+        .auth-main {
+            width: 480px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-family: 'Inter', -apple-system, sans-serif;
-            margin: 0;
+            padding: 40px;
+            background: var(--bg);
         }
 
-        .auth-container {
+        .auth-form-wrapper {
             width: 100%;
-            max-width: 440px;
-            padding: 1.5rem;
-            z-index: 10;
+            max-width: 380px;
         }
 
-        .auth-logo i {
-            font-size: 3.5rem;
-            background: var(--gradient-primary);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            filter: drop-shadow(0 0 10px var(--primary-glow));
+        .feature-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 24px;
+            color: var(--text);
         }
 
-        .auth-logo h1 {
-            font-size: 1.75rem;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-            background: var(--gradient-primary);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+        .feature-icon {
+            width: 40px;
+            height: 40px;
+            background: rgba(129, 140, 248, 0.1);
+            color: #818cf8;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 16px;
+            font-size: 1.2rem;
+        }
+
+        .form-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--muted);
+            margin-bottom: 8px;
         }
 
         .form-control {
-            background: rgba(255, 255, 255, 0.05) !important;
-            border: 1px solid rgba(255, 255, 255, 0.1) !important;
-            color: #fff !important;
-            border-radius: 12px !important;
+            background-color: rgba(255, 255, 255, 0.03) !important;
+            border: 1px solid var(--border) !important;
+            padding: 12px 16px !important;
+            border-radius: 8px !important;
+            font-size: 0.95rem !important;
         }
 
-        .form-control:focus {
-            border-color: var(--primary) !important;
-            box-shadow: 0 0 0 4px var(--primary-glow) !important;
+        .btn-auth {
+            background: var(--primary) !important;
+            border: none;
+            padding: 12px !important;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.2s;
         }
 
-        .btn-primary {
-            background: var(--gradient-primary) !important;
-            border: none !important;
-            padding: 0.8rem !important;
-            font-weight: 700 !important;
-            border-radius: 12px !important;
+        .btn-auth:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        @media (max-width: 991px) {
+            .auth-aside {
+                display: none;
+            }
+
+            .auth-main {
+                width: 100%;
+            }
         }
     </style>
 </head>
 
-<body class="mesh-bg">
-    <div class="auth-container">
-        <div class="auth-card glass-card p-4 p-md-5">
-            <div class="auth-logo mb-4 text-center">
-                <i class="bi bi-box-seam-fill"></i>
-                <h1>Vidos Entegrasyon</h1>
-                <p class="text-muted mb-0">Hesabınıza giriş yapın</p>
+<body>
+    <div class="split-view">
+        <!-- Aside: Branding & Values -->
+        <div class="auth-aside">
+            <div class="mb-5">
+                <a href="/" class="d-flex align-items-center text-decoration-none mb-4">
+                    <img src="{{ url_for('static', filename='logo.png') }}" width="40" class="me-3">
+                    <h2 class="fw-bold text-white mb-0" style="letter-spacing: -1px;">Vidos</h2>
+                </a>
+                <h1 class="display-5 fw-bold text-white mb-4">Pazaryeri yönetimi artık <span class="text-primary">çok
+                        daha profesyonel.</span></h1>
+                <p class="text-muted fs-5 mb-5">Vidos ile tüm operasyonunuzu tek bir SaaS panelinden, Stripe
+                    standartlarında bir deneyimle yönetin.</p>
             </div>
 
-            {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-            {% for category, message in messages %}
-            <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show"
-                role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-            {% endfor %}
-            {% endif %}
-            {% endwith %}
-
-            <form method="POST" action="{{ url_for('auth.login') }}">
-                <div class="form-floating">
-                    <input type="email" class="form-control" id="email" name="email" placeholder="Email" required
-                        autofocus>
-                    <label for="email"><i class="bi bi-envelope me-2"></i>Email Adresi</label>
-                </div>
-
-                <div class="form-floating">
-                    <input type="password" class="form-control" id="password" name="password" placeholder="Şifre"
-                        required>
-                    <label for="password"><i class="bi bi-lock me-2"></i>Şifre</label>
-                </div>
-
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="remember" name="remember">
-                        <label class="form-check-label text-muted" for="remember">Beni hatırla</label>
+            <div class="features">
+                <div class="feature-item">
+                    <div class="feature-icon"><i class="bi bi-lightning-charge-fill"></i></div>
+                    <div>
+                        <div class="fw-bold text-white">Yüksek Performans</div>
+                        <div class="small text-muted">Binlerce ürünü saniyeler içinde senkronize edin.</div>
                     </div>
-                    <a href="{{ url_for('auth.forgot_password') }}" class="text-muted small">Şifremi unuttum</a>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon"><i class="bi bi-shield-lock-fill"></i></div>
+                    <div>
+                        <div class="fw-bold text-white">Güvenli Altyapı</div>
+                        <div class="small text-muted">Tüm pazaryeri verileriniz en üst düzeyde korunur.</div>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon"><i class="bi bi-graph-up-arrow"></i></div>
+                    <div>
+                        <div class="fw-bold text-white">Gelişmiş Analitik</div>
+                        <div class="small text-muted">Satışlarınızı ve stok durumunuzu anlık takip edin.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main: Form -->
+        <div class="auth-main">
+            <div class="auth-form-wrapper">
+                <div class="d-lg-none text-center mb-5">
+                    <img src="{{ url_for('static', filename='logo.png') }}" width="60" class="mb-3">
+                    <h3 class="fw-bold text-white">Vidos Entegrasyon</h3>
                 </div>
 
-                <button type="submit" class="btn btn-primary btn-lg primary-glow">
-                    <i class="bi bi-box-arrow-in-right me-2"></i>Giriş Yap
-                </button>
-            </form>
+                <div class="mb-5">
+                    <h2 class="fw-bold text-white mb-2">Hoş Geldiniz</h2>
+                    <p class="text-muted">Lütfen devam etmek için hesabınıza giriş yapın.</p>
+                </div>
 
-            <div class="auth-links">
-                <span class="text-muted">Hesabınız yok mu?</span>
-                <a href="{{ url_for('auth.register') }}" class="ms-1 fw-semibold">Kayıt Olun</a>
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category if category != 'message' else 'info' }} border-0 bg-opacity-10 py-3 mb-4"
+                    style="background-color: rgba(239, 68, 68, 0.1); color: #f87171; border-radius: 10px;">
+                    <i class="bi bi-exclamation-circle me-2"></i> {{ message }}
+                </div>
+                {% endfor %}
+                {% endif %}
+                {% endwith %}
+
+                <form method="POST" action="{{ url_for('auth.login') }}">
+                    <div class="mb-3">
+                        <label class="form-label">Email Adresi</label>
+                        <input type="email" class="form-control" name="email" placeholder="ad@sirket.com" required
+                            autofocus>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <label class="form-label">Şifre</label>
+                            <a href="{{ url_for('auth.forgot_password') }}"
+                                class="small text-primary text-decoration-none">Şifremi unuttum</a>
+                        </div>
+                        <input type="password" class="form-control" name="password" placeholder="••••••••" required>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="remember" name="remember">
+                            <label class="form-check-label text-muted small" for="remember">Beni 30 gün boyunca
+                                hatırla</label>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary d-block w-100 btn-auth mb-4">
+                        Giriş Yap
+                    </button>
+                </form>
+
+                <div class="text-center">
+                    <span class="text-muted small">Hesabınız yok mu?</span>
+                    <a href="{{ url_for('auth.register') }}"
+                        class="small text-primary fw-bold text-decoration-none ms-1">Şimdi ücretsiz başlayın</a>
+                </div>
             </div>
         </div>
     </div>

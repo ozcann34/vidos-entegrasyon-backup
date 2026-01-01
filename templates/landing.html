@@ -48,68 +48,99 @@
             </div>
         </nav>
 
-        <!-- Mobile-Only Hero (Clean & App-like) -->
-        <div class="mobile-hero d-lg-none text-center p-4" style="padding-top: 100px !important;">
-            <div class="mobile-hero-icon mb-4">
-                <div class="icon-blob">
-                    <img src="{{ url_for('static', filename='logo.png') }}" width="80">
+        <!-- SaaS Hero Section -->
+        <header class="hero-section text-center position-relative">
+            <div class="container position-relative" style="z-index: 2;">
+                <div class="badge-pill mb-3 animate__animated animate__fadeInDown">
+                    <span class="badge bg-primary-light text-primary fw-bold px-3 py-2 rounded-pill"
+                        style="background: rgba(129, 140, 248, 0.1); color: var(--color-primary-light);">Yeni: AI
+                        Destekli Entegrasyon v2.0</span>
                 </div>
-            </div>
-            <h1 class="fw-bold mb-3"
-                style="font-size: 2.2rem; background: var(--gradient-primary); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">
-                E-Ticaret Artık Cebinizde</h1>
-            <p class="text-muted mb-4 small">Trendyol'dan Hepsiburada'ya tüm mağazalarınızı tek ekrandan yönetin.</p>
-            <div class="mobile-cta d-grid gap-3">
-                <a href="{{ url_for('auth.register') }}" class="btn-primary py-3 primary-glow"
-                    style="border-radius: 15px; font-weight: 700; font-size: 1.1rem;">Hemen
-                    Ücretsiz Başla</a>
-                <a href="{{ url_for('auth.login') }}" class="btn-secondary py-3 glass-card"
-                    style="border-radius: 15px; font-weight: 600;">Giriş Yap</a>
-            </div>
-        </div>
+                <h1 class="display-3 fw-bold mb-4 animate__animated animate__fadeInUp">
+                    E-Ticaret Operasyonunuzu <br><span class="text-gradient">Profesyonelce</span> Yönetin
+                </h1>
+                <p class="lead text-muted mb-5 mx-auto animate__animated animate__fadeInUp"
+                    style="max-width: 700px; font-size: 1.2rem;">
+                    Trendyol, N11, Pazarama ve daha fazlası... Tüm süreçlerinizi yüksek performanslı bir SaaS paneli ile
+                    tek noktadan senkronize edin.
+                </p>
+                <div
+                    class="d-flex flex-column flex-md-row justify-content-center gap-3 mb-5 animate__animated animate__fadeInUp">
+                    <a href="{{ url_for('auth.register') }}"
+                        class="btn btn-primary btn-lg px-5 py-3 rounded-3 shadow-lg primary-glow">
+                        Ücretsiz Başlayın <i class="bi bi-arrow-right ms-2"></i>
+                    </a>
+                    <a href="#features" class="btn btn-outline-light btn-lg px-5 py-3 rounded-3">
+                        Özellikleri Keşfet
+                    </a>
+                </div>
 
-        <!-- Desktop Hero Section -->
-        <section class="hero d-none d-lg-block" id="home">
-            <div class="hero-container">
-                <div class="hero-content">
-                    <h1>E-Ticaret Entegrasyonlarınızı <span class="text-gradient">Tek Platformda</span> Yönetin</h1>
-                    <p class="subtitle">
-                        Trendyol, n11, Pazarama, Hepsiburada ve İdefix... Tüm pazaryeri entegrasyonlarınızı
-                        kolayca yönetin, ürünlerinizi senkronize edin ve satışlarınızı artırın.
-                    </p>
-                    <div class="cta-buttons">
-                        <a href="#pricing" class="btn-primary">Ücretsiz Başlayın</a>
-                        <a href="#features" class="btn-secondary">Özellikleri Keşfet</a>
-                        <a href="#" class="btn-secondary" id="hero-install-btn"
-                            style="display: none; background: rgba(99, 102, 241, 0.1); border: 1px solid #6366f1; color: #6366f1;">
-                            <i class="bi bi-download me-2"></i> Uygulamayı Yükle
-                        </a>
+                <!-- Product Mockup -->
+                <div class="mockup-container mx-auto animate__animated animate__zoomIn">
+                    <div class="mockup-header d-flex align-items-center px-3">
+                        <div class="mockup-dots d-flex gap-1">
+                            <span style="width: 8px; height: 8px; background: #ff5f56; border-radius: 50%;"></span>
+                            <span style="width: 8px; height: 8px; background: #ffbd2e; border-radius: 50%;"></span>
+                            <span style="width: 8px; height: 8px; background: #27c93f; border-radius: 50%;"></span>
+                        </div>
+                    </div>
+                    <div class="mockup-body d-flex">
+                        <div class="col-3 border-end border-white border-opacity-10 p-3 d-none d-md-block"
+                            style="background: rgba(255,255,255,0.02);">
+                            <div class="mb-3 rounded"
+                                style="height: 20px; width: 100%; background: var(--color-primary); opacity: 0.2;">
+                            </div>
+                            <div class="mb-2 rounded"
+                                style="height: 10px; width: 80%; background: rgba(255,255,255,0.05);"></div>
+                            <div class="mb-2 rounded"
+                                style="height: 10px; width: 90%; background: rgba(255,255,255,0.05);"></div>
+                            <div class="mb-2 rounded"
+                                style="height: 10px; width: 75%; background: rgba(255,255,255,0.05);"></div>
+                        </div>
+                        <div class="col p-4 text-start">
+                            <div class="row g-3 mb-4">
+                                <div class="col-4">
+                                    <div class="rounded-3 p-3"
+                                        style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); height: 80px;">
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="rounded-3 p-3"
+                                        style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); height: 80px;">
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="rounded-3 p-3"
+                                        style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); height: 80px;">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="rounded-4 overflow-hidden"
+                                style="background: rgba(255,255,255,0.02); height: 200px; border: 1px solid rgba(255,255,255,0.05);">
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="hero-image scroll-animate">
-                    <img src="{{ url_for('static', filename='hero.png') }}" alt="Vidos Dashboard">
-                    <!-- Updated floating cards -->
-                    <div class="floating-card card-1">🚀 Ömür Boyu Güncelleme</div>
-                    <div class="floating-card card-2">📦 Otomatik Senkronizasyon</div>
-                </div>
             </div>
-        </section>
+        </header>
 
-        <!-- Marketplaces Slider -->
-        <section class="marketplaces">
-            <div class="slider-container">
-                <div class="slider-track">
-                    <div class="slide">TRENDYOL</div>
-                    <div class="slide">N11</div>
-                    <div class="slide">PAZARAMA</div>
-                    <div class="slide">HEPSİBURADA</div>
-                    <div class="slide">İDEFİX</div>
-                    <!-- Duplicate for infinite scroll -->
-                    <div class="slide">TRENDYOL</div>
-                    <div class="slide">N11</div>
-                    <div class="slide">PAZARAMA</div>
-                    <div class="slide">HEPSİBURADA</div>
-                    <div class="slide">İDEFİX</div>
+        <!-- Logo Loop (Trusted By) -->
+        <section class="trusted-by py-5 border-bottom border-white border-opacity-5">
+            <div class="logo-marquee overflow-hidden">
+                <div class="logo-track d-flex align-items-center gap-5">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Trendyol_logo.svg/2560px-Trendyol_logo.svg.png"
+                        height="25" class="grayscale">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Hepsiburada.com_logo.svg/2560px-Hepsiburada.com_logo.svg.png"
+                        height="25" class="grayscale">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Trendyol_logo.svg/2560px-Trendyol_logo.svg.png"
+                        height="25" class="grayscale">
+                    <img src="https://st-pazarama.mncdn.com/Content/images/logo.png" height="25" class="grayscale">
+                    <img src="https://st-pazarama.mncdn.com/Content/images/logo.png" height="25" class="grayscale">
+                    <!-- Second set for infinity -->
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Trendyol_logo.svg/2560px-Trendyol_logo.svg.png"
+                        height="25" class="grayscale">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Hepsiburada.com_logo.svg/2560px-Hepsiburada.com_logo.svg.png"
+                        height="25" class="grayscale">
                 </div>
             </div>
         </section>

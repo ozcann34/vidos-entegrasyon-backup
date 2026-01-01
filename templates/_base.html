@@ -156,15 +156,16 @@
     <!-- Sidebar Overlay -->
     <div id="sidebar-overlay" class="sidebar-overlay d-lg-none"></div>
 
-    <div id="sidebar" class="d-flex flex-column p-3">
-        <div class="text-center mb-4">
-            <img src="{{ url_for('static', filename='logo.png') }}" width="120" class="img-fluid mb-2">
-            <h5 class="fw-bold text-white mb-0">Vidos Entegrasyon</h5>
+    <div id="sidebar" class="d-flex flex-column">
+        <div class="sidebar-header px-4 py-4 mb-3 border-bottom border-white border-opacity-5">
+            <a href="{{ url_for('main.dashboard') }}" class="d-flex align-items-center text-decoration-none">
+                <img src="{{ url_for('static', filename='logo.png') }}" width="28" class="me-2 rounded-1">
+                <span class="fw-bold text-white fs-5 tracking-tight">Vidos</span>
+            </a>
         </div>
         <ul class="nav nav-pills flex-column mb-auto">
             <!-- GRUP: ANALİZ -->
-            <li class="nav-section-title px-3 mb-2 mt-2 small text-uppercase text-white-50 fw-bold"
-                style="font-size: 0.7rem; letter-spacing: 1px;">Analiz</li>
+            <li class="nav-section-title">Genel</li>
             <li class="nav-item">
                 <a href="{{ url_for('main.dashboard') }}"
                     class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}" aria-current="page">
@@ -173,8 +174,7 @@
             </li>
 
             <!-- GRUP: ÜRÜNLER -->
-            <li class="nav-section-title px-3 mb-2 mt-4 small text-uppercase text-white-50 fw-bold"
-                style="font-size: 0.7rem; letter-spacing: 1px;">Ürün Yönetimi</li>
+            <li class="nav-section-title">Ürün Yönetimi</li>
             <li class="nav-item">
                 <a href="{{ url_for('main.xml_urunler') }}"
                     class="nav-link {% if request.endpoint == 'main.xml_urunler' %}active{% endif %}">
@@ -207,8 +207,7 @@
             </li>
 
             <!-- GRUP: PAZARYERLERİ -->
-            <li class="nav-section-title px-3 mb-2 mt-4 small text-uppercase text-white-50 fw-bold"
-                style="font-size: 0.7rem; letter-spacing: 1px;">Pazar Yerleri</li>
+            <li class="nav-section-title">Pazar Yerleri</li>
             <li class="nav-item">
                 {% set pm_list = {'trendyol': 'Trendyol', 'hepsiburada': 'Hepsiburada', 'n11': 'N11', 'pazarama':
                 'Pazarama', 'idefix': 'İdefix', 'ikas': 'İkas'} %}
@@ -235,9 +234,8 @@
 
 
             <!-- GRUP: İŞLEMLER -->
-            <!-- GRUP: YENİ YAPILANDIRMA -->
-            <li class="nav-section-title px-3 mb-2 mt-4 small text-uppercase text-white-50 fw-bold"
-                style="font-size: 0.7rem; letter-spacing: 1px;">Operasyon</li>
+            <!-- GRUP: OPERASYON -->
+            <li class="nav-section-title">Operasyon</li>
 
             <!-- 1. Pazaryeri İşlemleri -->
             <li class="nav-item">
@@ -455,132 +453,106 @@
         </div>
         {% endif %}
 
-        <!-- Hızlı Erişim Butonları -->
-        <div class="quick-actions-bar d-flex gap-2">
-            <a href="{{ url_for('main.auto_sync_page') }}" class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm">
-                <i class="bi bi-arrow-repeat me-1"></i> Stokları Güncelle
-            </a>
+        <!-- Modern SaaS Top Bar -->
+        <header class="vidos-top-bar d-flex justify-content-between align-items-center px-4">
+            <!-- Left: Breadcrumbs -->
+            <div class="d-flex align-items-center">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}"
+                                class="text-muted text-decoration-none">Vidos</a></li>
+                        <li class="breadcrumb-item active text-white" aria-current="page">{% block page_name %}Panel{%
+                            endblock %}</li>
+                    </ol>
+                </nav>
+            </div>
 
-            <!-- Devam Eden İşlemler Butonu (Sadece aktif job varsa göster) -->
-            <button id="resumeJobBtn"
-                class="btn btn-sm btn-success rounded-pill px-3 shadow-sm animate__animated animate__pulse animate__infinite"
-                style="display: none;" onclick="resumeActiveJob()">
-                <i class="bi bi-play-circle-fill me-1"></i> Devam Eden İşlem
-            </button>
+            <!-- Center: Search (SaaS Style) -->
+            <div class="top-bar-search d-none d-md-flex align-items-center px-3 rounded-pill">
+                <i class="bi bi-search text-muted me-2 small"></i>
+                <input type="text" placeholder="Hızlı ara... (Ctrl+K)" class="bg-transparent border-0 text-white small"
+                    style="outline: none; width: 200px;">
+            </div>
 
-            {% if current_user.is_admin %}
-            <a href="{{ url_for('main.batch_logs') }}"
-                class="btn btn-sm btn-white bg-white text-dark border rounded-pill px-3 shadow-sm">
-                <i class="bi bi-list-task me-1"></i> Loglar
-            </a>
-            {% endif %}
-            <a href="{{ url_for('main.questions_page') }}"
-                class="btn btn-sm btn-white bg-white text-dark border rounded-pill px-3 shadow-sm">
-                <i class="bi bi-chat-dots me-1"></i> Sorular
-            </a>
-            <a href="{{ url_for('support.index') }}"
-                class="btn btn-sm btn-white bg-white text-dark border rounded-pill px-3 shadow-sm">
-                <i class="bi bi-life-preserver me-1"></i> Destek
-            </a>
-        </div>
-
-        <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <!-- Right: Actions & Profile -->
             <div class="d-flex align-items-center gap-3">
-                <h3 class="mb-0 fs-4 fw-bold text-gradient-indigo">{% block page_title %}Sayfa Başlığı{% endblock %}
-                </h3>
-            </div>
-
-            <div class="d-flex align-items-center gap-3 flex-grow-1 justify-content-end">
-
-                <!-- Arama Çubuğu -->
-                <div class="d-none d-md-block position-relative" style="min-width: 250px;">
-                    <input type="text" id="menuSearch" class="form-control form-control-sm rounded-pill ps-4"
-                        placeholder="Menülerde ara... (Ctrl+K)">
-                    <i class="bi bi-search position-absolute text-muted"
-                        style="left: 10px; top: 50%; transform: translateY(-50%); font-size: 0.8rem;"></i>
-                </div>
-
-                <!-- Bildirimler -->
-                <div class="dropdown d-none d-lg-block">
-                    <button class="btn btn-link text-muted position-relative p-0 me-2" type="button"
-                        data-bs-toggle="dropdown">
-                        <i class="bi bi-bell fs-5"></i>
-                        <span
-                            class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle">
-                            <span class="visually-hidden">Bildirim</span>
-                        </span>
+                <!-- Notifications -->
+                <div class="dropdown">
+                    <button class="btn border-0 p-1 text-muted hover-white position-relative" data-bs-toggle="dropdown">
+                        <i class="bi bi-bell-fill fs-5"></i>
+                        <span class="position-absolute top-0 start-100 translate-middle p-1 bg-primary rounded-circle"
+                            style="margin-top: 5px; margin-left: -5px;"></span>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="width: 300px;">
-                        <li>
-                            <h6 class="dropdown-header">Bildirimler</h6>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-white border-opacity-10 mt-3"
+                        style="width: 320px; background: var(--sidebar-bg); border-radius: 12px;">
+                        <li class="px-3 py-2 border-bottom border-white border-opacity-5">
+                            <span class="fw-bold small text-white">Bildirimler</span>
                         </li>
-                        {% if active_announcements %}
-                        {% for ann in active_announcements[:5] %}
-                        <li>
-                            <a class="dropdown-item py-2 border-bottom" href="#">
-                                <div class="fw-bold small">{{ ann.title }}</div>
-                                <div class="text-muted" style="font-size: 0.7rem;">{{ ann.content[:60] }}{% if
-                                    ann.content|length > 60 %}...{% endif %}</div>
-                                <div class="text-muted extra-small" style="font-size: 0.6rem;">{{
-                                    ann.created_at.strftime('%d.%m.%Y %H:%M') }}</div>
-                            </a>
-                        </li>
-                        {% endfor %}
-                        {% else %}
-                        <li>
-                            <div class="text-center text-muted small py-3">Yeni bildirim yok.</div>
-                        </li>
-                        {% endif %}
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-                        <li><a class="dropdown-item text-center small text-primary" href="#">Tümünü Gör</a></li>
+                        <div class="notification-list" style="max-height: 300px; overflow-y: auto;">
+                            {% if active_announcements %}
+                            {% for ann in active_announcements[:5] %}
+                            <li>
+                                <a class="dropdown-item py-3 border-bottom border-white border-opacity-5" href="#">
+                                    <div class="fw-bold small text-white">{{ ann.title }}</div>
+                                    <div class="text-muted extra-small mt-1">{{ ann.content[:60] }}...</div>
+                                </a>
+                            </li>
+                            {% endfor %}
+                            {% else %}
+                            <li class="text-center py-4 text-muted small">Her şey güncel.</li>
+                            {% endif %}
+                        </div>
                     </ul>
                 </div>
-                <!-- User Menu -->
-                {% if current_user.is_authenticated %}
-                <div class="dropdown d-none d-lg-block">
-                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button"
-                        data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-person-circle me-1"></i>
-                        {{ current_user.full_name or current_user.email.split('@')[0] }}
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><span class="dropdown-item-text text-muted small">{{ current_user.email }}</span></li>
-                        {% if current_user.subscription %}
-                        <li><span class="dropdown-item-text">
-                                <span
-                                    class="badge bg-{{ 'success' if current_user.subscription.plan == 'enterprise' else 'primary' if current_user.subscription.plan == 'pro' else 'secondary' }}">
-                                    {{ current_user.subscription.plan_display_name }}
-                                </span>
-                            </span></li>
-                        {% endif %}
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-                        {% if current_user.is_admin %}
-                        <li><a class="dropdown-item text-danger" href="{{ url_for('admin.dashboard') }}"><i
-                                    class="bi bi-shield-lock me-2"></i>Admin Panel</a></li>
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-                        {% endif %}
-                        <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}"><i
-                                    class="bi bi-box-arrow-right me-2"></i>Çıkış Yap</a></li>
-                    </ul>
-                </div>
-                {% endif %}
 
-                <button id="themeToggle" class="btn btn-outline-secondary btn-sm btn-animated" type="button"
-                    title="Tema Değiştir">
-                    <i class="bi bi-sun-fill" id="themeIcon"></i>
+                <!-- Theme -->
+                <button id="themeToggle" class="btn border-0 p-1 text-muted hover-white">
+                    <i class="bi bi-sun-fill fs-5"></i>
                 </button>
+
+                <!-- User Dropdown -->
+                <div class="dropdown">
+                    <button
+                        class="btn d-flex align-items-center gap-2 border-white border-opacity-10 rounded-pill p-1 ps-2 pe-3"
+                        data-bs-toggle="dropdown" style="background: rgba(255,255,255,0.03);">
+                        <img src="{{ url_for('static', filename='logo.png') }}" width="24" class="rounded-circle">
+                        <span class="text-white small fw-bold d-none d-sm-inline">{{ current_user.full_name or 'Hesabım'
+                            }}</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-white border-opacity-10 mt-2"
+                        style="background: var(--sidebar-bg); border-radius: 12px; min-width: 220px;">
+                        <li class="px-3 py-2 border-bottom border-white border-opacity-5">
+                            <div class="text-white fw-bold small">{{ current_user.email }}</div>
+                            <div class="badge bg-primary-glow text-primary mt-1" style="font-size: 0.6rem;">{{
+                                current_user.subscription.plan_display_name if current_user.subscription else 'Ücretsiz'
+                                }}</div>
+                        </li>
+                        <li><a class="dropdown-item py-2 small" href="{{ url_for('main.settings_page') }}"><i
+                                    class="bi bi-person me-2"></i> Profil Ayarları</a></li>
+                        <li><a class="dropdown-item py-2 small" href="{{ url_for('support.index') }}"><i
+                                    class="bi bi-life-preserver me-2"></i> Destek Al</a></li>
+                        {% if current_user.is_admin %}
+                        <li>
+                            <hr class="dropdown-divider border-white border-opacity-5">
+                        </li>
+                        <li><a class="dropdown-item py-2 small text-danger fw-bold"
+                                href="{{ url_for('admin.dashboard') }}"><i class="bi bi-shield-lock me-2"></i> Yönetici
+                                Paneli</a></li>
+                        {% endif %}
+                        <li>
+                            <hr class="dropdown-divider border-white border-opacity-5">
+                        </li>
+                        <li><a class="dropdown-item py-2 small text-danger" href="{{ url_for('auth.logout') }}"><i
+                                    class="bi bi-box-arrow-right me-2"></i> Güvenli Çıkış</a></li>
+                    </ul>
+                </div>
             </div>
+        </header>
+        <div class="vidos-content-area">
+            {% block content %}{% endblock %}
         </div>
-
-        {% block content %}{% endblock %}
-
     </div>
+
 
     <!-- Bootstrap Bundle with Popper (Loaded at the end) -->
 
