@@ -184,10 +184,28 @@ def contact():
         message = request.form.get('message')
         
         from app.services.email_service import send_contact_form_email
-        if send_contact_form_email(name, email, subject, message):
+        from app.models.contact import ContactMessage
+        
+        # Save to database
+        try:
+            new_message = ContactMessage(
+                name=name,
+                email=email,
+                subject=subject,
+                message=message
+            )
+            db.session.add(new_message)
+            db.session.commit()
+            
+            # Optional: Send email notification to admin or user
+            # send_contact_form_email(name, email, subject, message)
+            
             flash('Mesajınız başarıyla iletildi. En kısa sürede dönüş yapacağız.', 'success')
-        else:
+        except Exception as e:
+            db.session.rollback()
+            logging.error(f"Contact form error: {e}")
             flash('Mesaj gönderilirken bir hata oluştu. Lütfen daha sonra tekrar deneyin.', 'danger')
+            
         return redirect(url_for('main.contact'))
         
     return render_template('contact.html')

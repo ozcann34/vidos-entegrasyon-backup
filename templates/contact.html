@@ -3,83 +3,111 @@
 {% block title %}İletişim{% endblock %}
 
 {% block legal_content %}
-<h1>İletişim</h1>
-<p class="section-subtitle">Size yardımcı olmaktan mutluluk duyarız.</p>
+<div class="row g-5">
+    <div class="col-lg-5">
+        <div class="pe-lg-4">
+            <h1 class="display-5 fw-bold mb-4">İletişim</h1>
+            <p class="lead text-muted mb-5">Sorularınız, önerileriniz veya işbirliği talepleriniz için bize ulaşın.
+                Ekibimiz en kısa sürede size dönüş yapacaktır.</p>
 
-<div class="row g-4 mt-4">
-    <div class="col-lg-6">
-        <h3>İletişim Bilgileri</h3>
-        <div style="margin-bottom: var(--spacing-md);">
-            <strong>📞 Telefon:</strong><br>
-            <a href="tel:8505323870"
-                style="color: var(--color-primary); text-decoration: none; font-size: 1.2rem; font-weight: 700;">850 532
-                3870</a>
-        </div>
-        <div style="margin-bottom: var(--spacing-md);">
-            <strong>✉️ E-posta:</strong><br>
-            <a href="mailto:destek@vidos.com.tr"
-                style="color: var(--color-primary); text-decoration: none;">destek@vidos.com.tr</a>
-        </div>
-        <div style="margin-bottom: var(--spacing-md);">
-            <strong>📍 Adres:</strong><br>
-            <p>SANAYİ MAH. KANARYA CAD. NO: 1 İÇ KAPI NO: 2<br>GÜNGÖREN / İSTANBUL</p>
-        </div>
+            <div class="d-flex flex-column gap-4">
+                <div class="d-flex align-items-center">
+                    <div class="icon-square bg-primary bg-opacity-10 text-primary rounded-3 p-3 me-3">
+                        <i class="bi bi-telephone fs-4"></i>
+                    </div>
+                    <div>
+                        <small class="text-muted d-block mb-1">Telefon</small>
+                        <a href="tel:08505323870" class="h5 text-decoration-none text-body fw-bold">0850 532 3870</a>
+                    </div>
+                </div>
 
-        <div style="margin-top: var(--spacing-2xl);">
-            <h3>Sosyal Medya</h3>
-            <div style="display: flex; gap: 20px; font-size: 1.5rem;">
-                <a href="https://instagram.com/vidosentegrasyon" target="_blank" title="Instagram"
-                    style="text-decoration: none;">📷</a>
-                <a href="https://twitter.com/vidosentegrasyon" target="_blank" title="Twitter (X)"
-                    style="text-decoration: none;">🐦</a>
-                <a href="https://youtube.com/@vidosentegrasyon" target="_blank" title="YouTube"
-                    style="text-decoration: none;">🎬</a>
+                <div class="d-flex align-items-center">
+                    <div class="icon-square bg-primary bg-opacity-10 text-primary rounded-3 p-3 me-3">
+                        <i class="bi bi-envelope fs-4"></i>
+                    </div>
+                    <div>
+                        <small class="text-muted d-block mb-1">E-posta</small>
+                        <a href="mailto:destek@vidos.com.tr"
+                            class="h5 text-decoration-none text-body fw-bold">destek@vidos.com.tr</a>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-center">
+                    <div class="icon-square bg-primary bg-opacity-10 text-primary rounded-3 p-3 me-3">
+                        <i class="bi bi-geo-alt fs-4"></i>
+                    </div>
+                    <div>
+                        <small class="text-muted d-block mb-1">Adres</small>
+                        <span class="h6 mb-0 d-block">SANAYİ MAH. KANARYA CAD. NO: 1 <br>İÇ KAPI NO: 2 GÜNGÖREN /
+                            İSTANBUL</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-5 pt-4 border-top">
+                <h5 class="mb-4">Bizi Takip Edin</h5>
+                <div class="d-flex gap-3">
+                    <a href="https://instagram.com/vidosentegrasyon" target="_blank"
+                        class="btn btn-outline-secondary btn-icon rounded-circle">
+                        <i class="bi bi-instagram"></i>
+                    </a>
+                    <a href="https://twitter.com/vidosentegrasyon" target="_blank"
+                        class="btn btn-outline-secondary btn-icon rounded-circle">
+                        <i class="bi bi-twitter-x"></i>
+                    </a>
+                    <a href="https://youtube.com/@vidosentegrasyon" target="_blank"
+                        class="btn btn-outline-secondary btn-icon rounded-circle">
+                        <i class="bi bi-youtube"></i>
+                    </a>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="col-lg-6">
-        <div style="background: #f8fafc; padding: 2rem; border-radius: 1.5rem; border: 1px solid #e2e8f0;">
-            <h3 style="margin-top: 0;">Bize Mesaj Gönderin</h3>
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-lg p-4 p-md-5 rounded-4 glass-card bg-body">
+            <h3 class="fw-bold mb-4">Bize Mesaj Gönderin</h3>
 
             {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
             {% for category, message in messages %}
             <div
-                style="padding: 1rem; margin-bottom: 1rem; border-radius: 0.5rem; background: {{ '#dcfce7' if category == 'success' else '#fee2e2' }}; color: {{ '#166534' if category == 'success' else '#991b1b' }};">
-                {{ message }}
+                class="alert alert-{{ category if category != 'message' else 'info' }} border-0 rounded-3 py-3 mb-4 d-flex align-items-center">
+                <i
+                    class="bi bi-{{ 'check-circle-fill' if category == 'success' else 'exclamation-circle-fill' }} me-2 fs-5"></i>
+                <div>{{ message }}</div>
             </div>
             {% endfor %}
             {% endif %}
             {% endwith %}
 
             <form action="{{ url_for('main.contact') }}" method="POST">
-                <div style="margin-bottom: 1rem;">
-                    <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Adınız
-                        Soyadınız</label>
-                    <input type="text" name="name" required
-                        style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #cbd5e1;">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small fw-bold">ADINIZ SOYADINIZ</label>
+                        <input type="text" name="name" class="form-control form-control-lg bg-light border-0" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small fw-bold">E-POSTA ADRESİNİZ</label>
+                        <input type="email" name="email" class="form-control form-control-lg bg-light border-0"
+                            required>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label text-muted small fw-bold">KONU</label>
+                        <input type="text" name="subject" class="form-control form-control-lg bg-light border-0"
+                            required>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label text-muted small fw-bold">MESAJINIZ</label>
+                        <textarea name="message" rows="5" class="form-control form-control-lg bg-light border-0"
+                            required></textarea>
+                    </div>
+                    <div class="col-12 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg w-100 py-3 rounded-3 fw-bold">
+                            <i class="bi bi-send-fill me-2"></i> Mesajı Gönder
+                        </button>
+                    </div>
                 </div>
-                <div style="margin-bottom: 1rem;">
-                    <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">E-posta
-                        Adresiniz</label>
-                    <input type="email" name="email" required
-                        style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #cbd5e1;">
-                </div>
-                <div style="margin-bottom: 1rem;">
-                    <label
-                        style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Konu</label>
-                    <input type="text" name="subject" required
-                        style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #cbd5e1;">
-                </div>
-                <div style="margin-bottom: 1.5rem;">
-                    <label
-                        style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Mesajınız</label>
-                    <textarea name="message" rows="4" required
-                        style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #cbd5e1;"></textarea>
-                </div>
-                <button type="submit"
-                    style="width: 100%; background: #6366f1; color: white; padding: 0.75rem; border: none; border-radius: 0.5rem; font-weight: 700; cursor: pointer;">Gönder</button>
             </form>
         </div>
     </div>

@@ -49,7 +49,7 @@ def login():
                 return render_template('auth/login.html')
             
             login_user(user, remember=bool(remember))
-            flash(f'Hoş geldiniz, {user.full_name or user.email}!', 'success')
+            # flash(f'Hoş geldiniz, {user.full_name or user.email}!', 'success') - Removed as requested
             
             # Redirect logic
             if not user.is_email_verified and not user.is_admin:

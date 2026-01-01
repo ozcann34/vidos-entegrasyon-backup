@@ -1,0 +1,88 @@
+{% extends "admin/_base.html" %}
+
+{% block title %}Müşteri İletişimleri{% endblock %}
+
+{% block admin_content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2 class="h4 mb-0">Müşteri İletişimleri</h2>
+        <p class="text-muted">İletişim formundan gelen mesajlar.</p>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-4">Tarih</th>
+                        <th>Gönderen</th>
+                        <th>Email</th>
+                        <th>Konu</th>
+                        <th>Mesaj</th>
+                        <th>Durum</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for msg in messages %}
+                    <tr>
+                        <td class="ps-4 text-muted small" style="white-space: nowrap;">
+                            {{ msg.created_at.strftime('%d.%m.%Y %H:%M') }}
+                        </td>
+                        <td class="fw-medium">{{ msg.name }}</td>
+                        <td>
+                            <a href="mailto:{{ msg.email }}" class="text-decoration-none">{{ msg.email }}</a>
+                        </td>
+                        <td>{{ msg.subject }}</td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal"
+                                data-bs-target="#msgModal{{ msg.id }}">
+                                Oku
+                            </button>
+
+                            <!-- Modal -->
+                            <div class="modal fade" id="msgModal{{ msg.id }}" tabindex="-1">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">{{ msg.subject }}</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <p><strong>Gönderen:</strong> {{ msg.name }} &lt;{{ msg.email }}&gt;</p>
+                                            <p><strong>Tarih:</strong> {{ msg.created_at.strftime('%d.%m.%Y %H:%M') }}
+                                            </p>
+                                            <hr>
+                                            <p style="white-space: pre-wrap;">{{ msg.message }}</p>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <a href="mailto:{{ msg.email }}" class="btn btn-primary">Yanıtla</a>
+                                            <button type="button" class="btn btn-secondary"
+                                                data-bs-dismiss="modal">Kapat</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            {% if msg.is_read %}
+                            <span class="badge bg-light text-muted border">Okundu</span>
+                            {% else %}
+                            <span class="badge bg-primary bg-opacity-10 text-primary">Yeni</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5 text-muted">
+                            Henüz hiç mesaj yok.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

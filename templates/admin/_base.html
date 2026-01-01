@@ -317,6 +317,13 @@
                 </a>
             </li>
             <li>
+                <a href="{{ url_for('admin.communications') }}"
+                    class="{% if request.endpoint == 'admin.communications' %}active{% endif %}">
+                    <i class="bi bi-envelope-paper"></i>
+                    Müşteri İletişimleri
+                </a>
+            </li>
+            <li>
                 <a href="{{ url_for('admin.logs') }}"
                     class="{% if request.endpoint == 'admin.logs' %}active{% endif %}">
                     <i class="bi bi-journal-text"></i>

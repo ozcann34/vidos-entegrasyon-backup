@@ -68,6 +68,14 @@ def super_admin_required(f):
 
 
 
+@admin_bp.route('/communications')
+@login_required
+@admin_required
+def communications():
+    """List contact form messages."""
+    messages = ContactMessage.query.order_by(ContactMessage.created_at.desc()).all()
+    return render_template('admin/communications.html', messages=messages)
+
 @admin_bp.route('/')
 
 @admin_required
@@ -384,7 +392,7 @@ def delete_user_route(user_id):
     try:
 
         # Delete related data
-        from app.models import Product, Order, SupplierXML, BatchLog, Payment, MarketplaceProduct, Notification, UserActivityLog, SupportTicket, Expense, AdminLog, Setting, ExcelFile, Blacklist, AutoSync, PushSubscription
+        from app.models import Product, Order, SupplierXML, BatchLog, Payment, MarketplaceProduct, Notification, UserActivityLog, SupportTicket, Expense, AdminLog, Setting, ExcelFile, Blacklist, AutoSync, PushSubscription, Subscription, ContactMessage
 
         # 1. Product & Catalog Data
         MarketplaceProduct.query.filter_by(user_id=user_id).delete()
