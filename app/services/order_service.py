@@ -151,11 +151,13 @@ def _process_hepsiburada_order(data: Dict[str, Any], user_id: int = None):
              
         oi.barcode = item.get("merchantSku") or item.get("sku")
         
-        # Link product
         if oi.barcode:
             prod = Product.query.filter_by(barcode=oi.barcode).first()
             if prod:
                 oi.product_id = prod.id
+        
+        # VAT Rate
+        oi.vat_rate = float(item.get("vatRate", 20.0))
                 
         db.session.add(oi)
     db.session.commit()
@@ -581,6 +583,10 @@ def _process_trendyol_order(data: Dict[str, Any], user_id: int = None) -> bool:
                      prod = Product.query.filter_by(barcode=item.barcode).first()
                      if prod:
                          item.product_id = prod.id
+                
+                # VAT Rate (Trendyol usually provides 'vatRate' in line items)
+                item.vat_rate = float(line.get('vatRate', 20.0))
+                
                 existing.items.append(item)
             
         db.session.commit()

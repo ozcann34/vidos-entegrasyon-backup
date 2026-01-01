@@ -110,8 +110,10 @@ class BugZService:
             if response.status_code == 200 and res_json.get("code") == "SUCCESS":
                 # Save the BUG-Z order number back to our DB if possible
                 bugz_code = res_json.get("result", {}).get("code")
-                # Store it in a hidden setting or note for now
-                vidos_order.admin_note = f"BUG-Z Sipariş No: {bugz_code}\n{vidos_order.admin_note or ''}"
+                # Store it in a hidden setting or note for now, avoid double entry
+                if not vidos_order.admin_note or f"BUG-Z Sipariş No: {bugz_code}" not in vidos_order.admin_note:
+                    vidos_order.admin_note = f"BUG-Z Sipariş No: {bugz_code}\n{vidos_order.admin_note or ''}"
+                
                 from app import db
                 db.session.commit()
                 

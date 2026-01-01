@@ -35,6 +35,7 @@ class Order(db.Model):
 
     # Raw JSON data for debugging/fallback
     raw_data = db.Column(db.Text, nullable=True)
+    admin_note = db.Column(db.Text, nullable=True) # Admin/System notes (e.g. BUG-Z code)
 
     items = db.relationship('OrderItem', backref='order', cascade='all, delete-orphan')
     
@@ -60,6 +61,7 @@ class OrderItem(db.Model):
     quantity = db.Column(db.Integer, default=1)
     price = db.Column(db.Float, default=0.0)  # Line item total price
     unit_price = db.Column(db.Float, default=0.0)
+    vat_rate = db.Column(db.Float, default=20.0) # KDV Oranı
     currency = db.Column(db.String(3), default='TRY')
     
     status = db.Column(db.String(50), default='Active') # Active, Cancelled, Returned
