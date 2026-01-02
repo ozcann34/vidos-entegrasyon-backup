@@ -320,20 +320,52 @@ def fetch_all_n11_products(job_id: Optional[str] = None, user_id: int = None) ->
     all_products = []
     page = 0
     size = 100
+    total_elements = -1
+    total_pages = -1
     
     while True:
         try:
             response = client.get_products(page=page, size=size)
-            if not response or 'content' not in response: break
+            if not response or 'content' not in response:
+                logger.warning(f"[N11] Sayfa {page} cevabında 'content' bulunamadı.")
+                break
+                
             products = response['content']
-            if not products: break
+            
+            # First page: capture totals
+            if page == 0:
+                total_elements = int(response.get('totalElements', -1))
+                total_pages = int(response.get('totalPages', -1))
+                if job_id: append_mp_job_log(job_id, f"N11'de toplam {total_elements} ürün bulundu ({total_pages} sayfa).")
+                logger.info(f"[N11] Total items: {total_elements}, Pages: {total_pages}")
+
+            if not products:
+                logger.info(f"[N11] Sayfa {page} boş, döngü sonlandırılıyor.")
+                break
                 
             all_products.extend(products)
-            if len(products) < size: break
+            logger.info(f"[N11] Page {page} fetched: {len(products)} items. Total so far: {len(all_products)}")
+            
+            if len(products) < size: 
+                break
+                
             page += 1
+            if total_pages > 0 and page >= total_pages:
+                break
+                
             time.sleep(0.2)
         except Exception as e:
+            msg = f"N11 ürün çekme hatası (Sayfa {page}): {str(e)}"
+            logger.error(msg)
+            if job_id: append_mp_job_log(job_id, msg, level='error')
+            # If it's the first page, we stop. If later, we might have partial results.
             break
+            
+    # Verification
+    if total_elements > 0 and len(all_products) < total_elements:
+        warn_msg = f"DİKKAT: N11'de {total_elements} ürün var denildi ancak {len(all_products)} ürün çekilebildi!"
+        logger.warning(warn_msg)
+        if job_id: append_mp_job_log(job_id, warn_msg, level='warning')
             
     return all_products
 
@@ -1326,14 +1358,19 @@ def sync_n11_products(user_id: int, job_id: Optional[str] = None) -> Dict[str, A
             if job_id: append_mp_job_log(job_id, msg, level='warning')
             return {'success': False, 'message': msg}
 
+        # Check totalElements (requires fetch_all_n11_products to be updated, which we just did)
+        # However, we don't have totalElements here easily unless we returned it.
+        # Let's assume if we got > 0 products, we proceed, but we check for abnormal gaps later.
+
         if job_id:
             append_mp_job_log(job_id, f"N11 API'den {len(products)} ürün çekildi. Veritabanına işleniyor...")
 
         remote_barcodes = []
         for p in products:
-            # N11 specific fields
-            # sellerCode is usually used as barcode in our system, if not, use barcode field
-            barcode = p.get('sellerCode') or p.get('barcode', 'N/A')
+            barcode = p.get('sellerCode') or p.get('barcode')
+            if not barcode:
+                # If no barcode/sellerCode, try to use n11Id as a last resort to keep it unique
+                barcode = f"N11-{p.get('n11ProductId') or p.get('id')}"
             remote_barcodes.append(barcode)
             
             existing = db.session.query(MarketplaceProduct).filter_by(
@@ -1342,18 +1379,14 @@ def sync_n11_products(user_id: int, job_id: Optional[str] = None) -> Dict[str, A
                 barcode=barcode
             ).first()
             
-            # Stock logic: N11 uses stockItems usually
             qty = 0
             price = 0.0
             stock_items = p.get('stockItems', [])
             if isinstance(stock_items, list) and stock_items:
-                # Use first variant or sum? Usually N11 products are single or have stockItems
                 for si in stock_items:
                     qty += int(si.get('quantity', 0))
-                    # Use last price found or similar
                     price = float(si.get('sellerStockCodePrice') or si.get('price', 0))
             else:
-                 # Backup fields
                  qty = int(p.get('quantity', 0))
                  price = float(p.get('salePrice') or p.get('listPrice', 0))
 
@@ -1371,31 +1404,49 @@ def sync_n11_products(user_id: int, job_id: Optional[str] = None) -> Dict[str, A
             existing.sale_price = price
             existing.stock_code = p.get('sellerCode')
             
-            # Durum Eşitleme: Aktif / Pasif
             n11_status = p.get('productStatus')
             existing.status = 'Aktif' if n11_status == 'Active' else 'Pasif'
             existing.on_sale = (n11_status == 'Active')
             
-            # Additional fields if model has them
             if hasattr(existing, 'brand'):
-                existing.brand = p.get('brand', {}).get('name')
+                brand_data = p.get('brand')
+                if isinstance(brand_data, dict):
+                    existing.brand = brand_data.get('name')
+                else:
+                    existing.brand = str(brand_data) if brand_data else None
+
             if hasattr(existing, 'category_name'):
-                existing.category_name = p.get('category', {}).get('name')
+                cat_data = p.get('category')
+                if isinstance(cat_data, dict):
+                    existing.category_name = cat_data.get('name')
+                else:
+                    existing.category_name = str(cat_data) if cat_data else None
             
-            # Images
             images = p.get('images', [])
             if images and isinstance(images, list):
                  existing.image_url = images[0].get('url') if isinstance(images[0], dict) else images[0]
 
         db.session.commit()
         
-        # Cleanup: products no longer on remote
-        deleted_count = db.session.query(MarketplaceProduct).filter(
-            MarketplaceProduct.user_id == user_id,
-            MarketplaceProduct.marketplace == 'n11',
-            ~MarketplaceProduct.barcode.in_(remote_barcodes)
-        ).delete(synchronize_session=False)
-        db.session.commit()
+        # Safe Cleanup: Only delete if we didn't have a massive failure during fetch
+        # Let's count current products for this user/marketplace
+        current_count = db.session.query(MarketplaceProduct).filter_by(user_id=user_id, marketplace='n11').count()
+        
+        # If remote_barcodes is much smaller than current_count, and we didn't expect it, abort deletion
+        # (e.g. if we had 1000 items and now only 10, it looks suspicious)
+        # Note: remote_barcodes reflects what we just fetched.
+        if current_count > 50 and len(remote_barcodes) < (current_count * 0.5):
+            warn_msg = f"N11 Temizlik İptal Edildi: Veritabanında {current_count} ürün var ancak sadece {len(remote_barcodes)} ürün çekilebildi. Güvenlik nedeniyle silme işlemi yapılmadı."
+            logger.warning(f"[N11] {warn_msg}")
+            if job_id: append_mp_job_log(job_id, warn_msg, level='warning')
+            deleted_count = 0
+        else:
+            deleted_count = db.session.query(MarketplaceProduct).filter(
+                MarketplaceProduct.user_id == user_id,
+                MarketplaceProduct.marketplace == 'n11',
+                ~MarketplaceProduct.barcode.in_(remote_barcodes)
+            ).delete(synchronize_session=False)
+            db.session.commit()
 
         final_msg = f"N11 senkronizasyonu tamamlandı: {len(products)} güncellendi, {deleted_count} silindi."
         logger.info(f"[N11] {final_msg}")
