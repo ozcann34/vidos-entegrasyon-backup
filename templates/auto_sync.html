@@ -41,10 +41,16 @@
                     </div>
                 </div>
 
-                <div class="alert alert-light border-0 small text-muted mb-0">
+                <div class="alert alert-light border-0 small text-muted mb-3">
                     <i class="bi bi-shield-check me-2 text-success"></i>
                     <a href="{{ url_for('sync_exceptions.index') }}" class="text-decoration-none fw-bold">İstisna
                         Listesi</a>'ndeki ürünlere dokunulmaz.
+                </div>
+
+                <div class="d-grid">
+                    <button class="btn btn-outline-primary manual-sync-btn" data-marketplace="{{ key }}">
+                        <i class="bi bi-arrow-repeat me-1"></i> Test: Şimdi Senkronize Et
+                    </button>
                 </div>
             </div>
         </div>
@@ -144,7 +150,6 @@
                 });
             } else {
                 Swal.fire('Hata', data.message || 'Ayarlar kaydedilemedi', 'error');
-                // Revert UI on error
                 document.getElementById('order-sync-toggle').checked = !enabled;
             }
         } catch (error) {
@@ -162,26 +167,14 @@
             if (data.success && data.settings) {
                 data.settings.forEach(setting => {
                     syncSettings[setting.marketplace] = setting;
-                    const toggleEl = document.getElementById(`sync-toggle-${setting.marketplace}`);
-                    const intervalEl = document.querySelector(`.sync-interval[data-marketplace="${setting.marketplace}"]`);
-                    const lastSyncEl = document.querySelector(`.last-sync-time[data-marketplace="${setting.marketplace}"]`);
+                    const card = document.querySelector(`.marketplace-card[data-marketplace="${setting.marketplace}"]`);
+                    if (!card) return;
+
+                    const toggleEl = card.querySelector('.sync-enable');
+                    const xmlSelect = card.querySelector('.xml-source-select');
 
                     if (toggleEl) toggleEl.checked = setting.enabled;
-                    const xmlSelect = document.querySelector(`.sync-xml-source[data-marketplace="${setting.marketplace}"]`);
-                    const matchSelect = document.querySelector(`.sync-match-by[data-marketplace="${setting.marketplace}"]`);
-                    if (intervalEl) {
-                        intervalEl.value = setting.sync_interval_minutes;
-                    }
-                    if (xmlSelect) {
-                        xmlSelect.value = setting.xml_source_id || '';
-                    }
-                    if (matchSelect) {
-                        matchSelect.value = setting.match_by || 'barcode';
-                    }
-                    if (lastSyncEl && setting.last_sync) {
-                        const date = new Date(setting.last_sync);
-                        lastSyncEl.innerHTML = `<small class="text-success">${date.toLocaleString('tr-TR')}</small>`;
-                    }
+                    if (xmlSelect) xmlSelect.value = setting.xml_source_id || '';
                 });
             }
         } catch (err) {
@@ -190,17 +183,13 @@
     }
 
     async function toggleSync(marketplace, enabled) {
-        const intervalEl = document.querySelector(`.sync-interval[data-marketplace="${marketplace}"]`);
-        const xmlSelect = document.querySelector(`.sync-xml-source[data-marketplace="${marketplace}"]`);
-        const matchSelect = document.querySelector(`.sync-match-by[data-marketplace="${marketplace}"]`);
-
-        const interval = parseInt(intervalEl?.value || 60);
+        const card = document.querySelector(`.marketplace-card[data-marketplace="${marketplace}"]`);
+        const xmlSelect = card ? card.querySelector('.xml-source-select') : null;
         const xmlSourceId = xmlSelect ? xmlSelect.value : null;
-        const matchBy = matchSelect ? matchSelect.value : 'barcode';
 
         if (enabled && !xmlSourceId) {
             Swal.fire('Uyarı', 'Lütfen senkronizasyon için bir XML kaynağı seçiniz.', 'warning');
-            const toggleEl = document.getElementById(`sync-toggle-${marketplace}`);
+            const toggleEl = document.getElementById(`enable_${marketplace}`);
             if (toggleEl) toggleEl.checked = false;
             return;
         }
@@ -212,15 +201,22 @@
                 body: JSON.stringify({
                     marketplace,
                     enabled,
-                    interval_minutes: interval,
+                    interval_minutes: 180, // Fixed 3 hours
                     xml_source_id: xmlSourceId,
-                    match_by: matchBy
+                    match_by: 'auto'
                 })
             });
             const data = await resp.json();
 
             if (data.success) {
-                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: data.message, showConfirmButton: false, timer: 3000 });
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: data.message,
+                    showConfirmButton: false,
+                    timer: 3000
+                });
                 loadSettings();
             } else {
                 throw new Error(data.message || 'İşlem başarısız');
@@ -228,88 +224,27 @@
         } catch (err) {
             console.error('Toggle error:', err);
             Swal.fire('Hata', err.message, 'error');
-            const toggleEl = document.getElementById(`sync-toggle-${marketplace}`);
+            const toggleEl = document.getElementById(`enable_${marketplace}`);
             if (toggleEl) toggleEl.checked = !enabled;
         }
     }
 
-    function showProgress(marketplace) {
-        const progressSection = document.querySelector(`.sync-progress-section[data-marketplace="${marketplace}"]`);
-        if (progressSection) progressSection.classList.remove('d-none');
-    }
-
-    function hideProgress(marketplace) {
-        const progressSection = document.querySelector(`.sync-progress-section[data-marketplace="${marketplace}"]`);
-        if (progressSection) progressSection.classList.add('d-none');
-    }
-
-    function updateProgress(marketplace, current, total, message = '', eta = '') {
-        const card = document.querySelector(`.marketplace-card[data-marketplace="${marketplace}"]`);
-        if (!card) return;
-
-        const progressBar = card.querySelector('.sync-progress-bar');
-        const progressText = card.querySelector('.sync-progress-text');
-        const progressMessage = card.querySelector('.sync-progress-message');
-        const progressEta = card.querySelector('.sync-progress-eta');
-
-        const percent = total > 0 ? Math.round((current / total) * 100) : 0;
-
-        if (progressBar) {
-            progressBar.style.width = `${percent}%`;
-            progressBar.textContent = `${percent}%`;
-        }
-        if (progressText) progressText.textContent = message || `${current} / ${total}`;
-        if (progressMessage) progressMessage.textContent = message || `${current} / ${total} ürün`;
-        if (progressEta) progressEta.textContent = eta || '—';
-    }
-
-    async function pollJobStatus(jobId, marketplace) {
-        if (!jobId || !activeJobs[marketplace]) return;
-
-        try {
-            const resp = await fetch(`/api/job/status/${jobId}`);
-            const data = await resp.json();
-
-            if (!data.success) {
-                delete activeJobs[marketplace];
-                hideProgress(marketplace);
-                return;
-            }
-
-            const status = data.status;
-            const progress = data.progress || {};
-
-            // Update progress
-            updateProgress(
-                marketplace,
-                progress.current || 0,
-                progress.total || 0,
-                progress.message || '',
-                progress.eta || ''
-            );
-
-            // Check if job is complete
-            if (status === 'completed' || status === 'failed') {
-                delete activeJobs[marketplace];
-                setTimeout(() => {
-                    hideProgress(marketplace);
-                    loadLogs();
-                    loadSettings();
-                }, 2000);
-            } else if (activeJobs[marketplace]) {
-                // Continue polling
-                setTimeout(() => pollJobStatus(jobId, marketplace), 2000);
-            }
-        } catch (err) {
-            console.error('Poll error:', err);
-            delete activeJobs[marketplace];
-            hideProgress(marketplace);
-        }
-    }
-
     async function triggerManualSync(marketplace) {
+        const card = document.querySelector(`.marketplace-card[data-marketplace="${marketplace}"]`);
+        const xmlSelect = card ? card.querySelector('.xml-source-select') : null;
+        const xmlSourceId = xmlSelect ? xmlSelect.value : null;
+
+        if (!xmlSourceId) {
+            Swal.fire('Uyarı', 'Lütfen önce bir XML kaynağı seçiniz.', 'warning');
+            return;
+        }
+
         try {
-            const resp = await fetch(`/api/auto_sync/trigger/${marketplace}`, { method: 'POST' });
+            const resp = await fetch(`/api/auto_sync/trigger/${marketplace}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ xml_source_id: xmlSourceId })
+            });
             const data = await resp.json();
 
             if (data.success) {
@@ -321,13 +256,8 @@
                     showConfirmButton: false,
                     timer: 2000
                 });
-
-                // Show progress and start polling
-                if (data.job_id) {
-                    activeJobs[marketplace] = data.job_id;
-                    showProgress(marketplace);
-                    setTimeout(() => pollJobStatus(data.job_id, marketplace), 1000);
-                }
+                // Refresh logs after a short delay
+                setTimeout(loadLogs, 3000);
             } else {
                 throw new Error(data.message || 'İşlem başarısız');
             }
@@ -353,7 +283,6 @@
                 const date = new Date(log.timestamp);
                 const statusBadge = log.success ? '<span class="badge bg-success">Başarılı</span>' : '<span class="badge bg-danger">Hatalı</span>';
 
-                // Parse details if string
                 let details = log.details_json;
                 if (typeof details === 'string') {
                     try { details = JSON.parse(details); } catch (e) { }
@@ -365,14 +294,14 @@
                     : '<span class="text-muted">-</span>';
 
                 return `<tr>
-                    <td><strong>${marketplaces[log.marketplace] || log.marketplace}</strong></td>
-                    <td><small>${date.toLocaleString('tr-TR')}</small></td>
-                    <td class="text-center">${log.products_updated}</td>
-                    <td class="text-center">${log.stock_changes}</td>
-                    <td class="text-center">${log.price_changes}</td>
-                    <td>${statusBadge}</td>
-                    <td class="text-center">${detailBtn}</td>
-                </tr>`;
+                        <td><strong>${marketplaces[log.marketplace] || log.marketplace}</strong></td>
+                        <td><small>${date.toLocaleString('tr-TR')}</small></td>
+                        <td class="text-center">${log.products_updated}</td>
+                        <td class="text-center">${log.stock_changes}</td>
+                        <td class="text-center">${log.price_changes}</td>
+                        <td>${statusBadge}</td>
+                        <td class="text-center">${detailBtn}</td>
+                    </tr>`;
             }).join('');
         } catch (err) {
             console.error('Error loading logs:', err);
@@ -388,36 +317,35 @@
                 const stockClass = d.stock_changed ? 'text-danger fw-bold' : '';
                 const priceClass = d.price_changed ? 'text-danger fw-bold' : '';
                 return `<tr>
-                    <td>${d.barcode}</td>
-                    <td>${d.old_stock} <i class="bi bi-arrow-right small text-muted"></i> <span class="${stockClass}">${d.new_stock}</span></td>
-                    <td>${d.old_price} <i class="bi bi-arrow-right small text-muted"></i> <span class="${priceClass}">${d.new_price}</span></td>
-                    <td>${d.stock_changed ? '<span class="badge bg-warning text-dark">Stok</span>' : ''}</td>
-                    <td>${d.price_changed ? '<span class="badge bg-info text-dark">Fiyat</span>' : ''}</td>
-                </tr>`;
+                        <td>${d.barcode}</td>
+                        <td>${d.old_stock} <i class="bi bi-arrow-right small text-muted"></i> <span class="${stockClass}">${d.new_stock}</span></td>
+                        <td>${d.old_price} <i class="bi bi-arrow-right small text-muted"></i> <span class="${priceClass}">${d.new_price}</span></td>
+                        <td>${d.stock_changed ? '<span class="badge bg-warning text-dark">Stok</span>' : ''}</td>
+                        <td>${d.price_changed ? '<span class="badge bg-info text-dark">Fiyat</span>' : ''}</td>
+                    </tr>`;
             }).join('');
         }
         new bootstrap.Modal(document.getElementById('logDetailsModal')).show();
     };
 
     document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('.sync-toggle').forEach(toggle => {
+        // Sync toggles
+        document.querySelectorAll('.sync-enable').forEach(toggle => {
             toggle.addEventListener('change', (e) => toggleSync(e.target.dataset.marketplace, e.target.checked));
         });
 
-        // Listeners for config changes
-        ['sync-interval', 'sync-xml-source', 'sync-match-by'].forEach(cls => {
-            document.querySelectorAll('.' + cls).forEach(el => {
-                el.addEventListener('change', (e) => {
-                    const mp = e.target.dataset.marketplace;
-                    const toggleEl = document.getElementById(`sync-toggle-${mp}`);
-                    // Only auto-update if it's already enabled? Or always save?
-                    // Let's always save, but if enabled, it will restart job.
-                    // If disabled, it just saves config (via same endpoint with enabled=false).
-                    toggleSync(mp, toggleEl ? toggleEl.checked : false);
-                });
+        // XML source changes
+        document.querySelectorAll('.xml-source-select').forEach(select => {
+            select.addEventListener('change', (e) => {
+                const mp = e.target.dataset.marketplace;
+                const toggleEl = document.getElementById(`enable_${mp}`);
+                if (toggleEl && toggleEl.checked) {
+                    toggleSync(mp, true);
+                }
             });
         });
 
+        // Manual sync buttons
         document.querySelectorAll('.manual-sync-btn').forEach(btn => {
             btn.addEventListener('click', (e) => triggerManualSync(e.target.closest('button').dataset.marketplace));
         });
@@ -426,21 +354,26 @@
         if (logFilter) {
             logFilter.addEventListener('change', (e) => loadLogs(e.target.value || null));
         }
+
+        // Order sync toggles
+        const orderToggle = document.getElementById('order-sync-toggle');
+        if (orderToggle) orderToggle.addEventListener('change', saveOrderSettings);
+
+        const orderInterval = document.getElementById('order-sync-interval');
+        if (orderInterval) orderInterval.addEventListener('change', saveOrderSettings);
+
         // Initialize
         loadOrderSettings();
         loadSettings();
         loadLogs();
 
-        // Event Listeners for Order Sync
-        document.getElementById('order-sync-toggle').addEventListener('change', saveOrderSettings);
-        document.getElementById('order-sync-interval').addEventListener('change', saveOrderSettings);
-
+        // Auto refresh logs
         setInterval(() => {
             const filter = document.getElementById('logMarketplaceFilter');
             loadLogs(filter ? filter.value : null);
         }, 30000);
     });
-     }) ();
+    }) ();
 </script>
 
 <style>
