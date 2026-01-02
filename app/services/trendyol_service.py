@@ -1070,30 +1070,7 @@ def perform_trendyol_sync_prices(job_id: str, xml_source_id: Any, match_by: str 
     return summary
 
 
-def perform_trendyol_sync_all(job_id: str, xml_source_id: Any, match_by: str = 'barcode', user_id: int = None) -> Dict[str, Any]:
-    """
-    Trendyol için hem stok hem fiyat eşitleme (birleşik)
-    Trendyol'da aslında update_price_inventory tek çağrıda hem stok hem fiyat günceller,
-    bu yüzden tekli sync fonksiyonları zaten her ikisini de yapıyor.
-    Bu fonksiyon sadece UI tutarlılığı için.
-    """
-    append_mp_job_log(job_id, "Stok ve fiyat eşitleme başlatılıyor...")
-    
-    # Trendyol uses same endpoint for both, so just call sync_prices which includes quantity
-    append_mp_job_log(job_id, ">>> STOK VE FİYAT EŞITLEME BAŞLADI <<<")
-    result = {}
-    try:
-        result = perform_trendyol_sync_prices(job_id, xml_source_id, match_by=match_by, user_id=user_id)
-        append_mp_job_log(job_id, f"Eşitleme tamamlandı: {result.get('updated_count', 0)} güncellendi")
-    except Exception as e:
-        append_mp_job_log(job_id, f"Eşitleme hatası: {str(e)}", level='error')
-        result = {'success': False, 'error': str(e), 'updated_count': 0}
-    
-    # Add combined info to result
-    result['message'] = f"Stok ve fiyat: {result.get('updated_count', 0)} ürün güncellendi"
-    
-    append_mp_job_log(job_id, "Stok ve fiyat eşitleme tamamlandı.")
-    return result
+
 
 
 def ensure_tfidf_ready():
