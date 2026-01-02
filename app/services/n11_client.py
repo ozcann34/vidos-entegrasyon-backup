@@ -23,16 +23,20 @@ class N11Client:
         self.api_key = str(api_key).strip() if api_key else ""
         self.api_secret = str(api_secret).strip() if api_secret else ""
         self.headers = {
-            "appKey": self.api_key,
-            "appSecret": self.api_secret,
+            "appkey": self.api_key,
+            "appsecret": self.api_secret,
             "Content-Type": "application/json",
-            "Accept": "application/json"
+            "Accept": "application/json",
+            "User-Agent": "Vidos-Integrator/1.0"
         }
         # Masked logging of credentials for diagnostics
         masked_key = f"{self.api_key[:4]}...{self.api_key[-4:]}" if len(self.api_key) > 8 else "***"
         masked_secret = f"{self.api_secret[:4]}...{self.api_secret[-4:]}" if len(self.api_secret) > 8 else "***"
-        logging.info(f"[N11Client] Initialized with Key: {masked_key}, Secret: {masked_secret}")
+        logging.info(f"[N11Client] Initialized. Key: {masked_key}, Secret: {masked_secret}")
+        
         self.session = requests.Session()
+        # Ensure session headers use the correct casing
+        self.session.headers.clear()
         self.session.headers.update(self.headers)
         
         # Patch session.request
@@ -118,9 +122,6 @@ class N11Client:
             return {}
 
     def get_products(self, page: int = 0, size: int = 20, sale_status: str = None) -> Dict[str, Any]:
-        """
-        Fetch products using Product Query REST API
-        """
         url = f"{self.PRODUCT_BASE_URL}/product-query"
         params = {
             "page": page,
@@ -129,9 +130,20 @@ class N11Client:
         if sale_status:
             params["saleStatus"] = sale_status
             
-        response = self.session.get(url, params=params, timeout=30)
-        response.raise_for_status()
-        return response.json()
+        try:
+            # Masked header log for final check
+            h = self.session.headers
+            logging.info(f"[N11Client] Request Headers Keys: {list(h.keys())}")
+            
+            response = self.session.get(url, params=params, timeout=30)
+            if response.status_code != 200:
+                logging.error(f"[N11Client] GET {url} failed with {response.status_code}. Response: {response.text}")
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            if hasattr(e, 'response') and e.response is not None:
+                logging.error(f"[N11Client] Error Body: {e.response.text}")
+            raise
 
     def get_product_count(self) -> int:
         """Get total count of products. Raises on auth error."""
@@ -503,7 +515,7 @@ class N11Client:
         # Payload: { "payload": { "integrator": "...", "skus": [...] } }
         payload = {
             "payload": {
-                "integrator": "Vidos",
+                "integrator": "VidosEntegrasyon",
                 "skus": items
             }
         }
