@@ -12,9 +12,14 @@
             <p class="text-muted small mb-0 mt-1">Bu listedeki ürünler otomatik senkronizasyon ve sıfırlama
                 işlemlerinden hariç tutulur.</p>
         </div>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addExceptionModal">
-            <i class="bi bi-plus-lg me-1"></i> Yeni Ekle
-        </button>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#uploadExcelModal">
+                <i class="bi bi-file-earmark-excel me-1"></i> Excel'den Aktar
+            </button>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addExceptionModal">
+                <i class="bi bi-plus-lg me-1"></i> Yeni Ekle
+            </button>
+        </div>
     </div>
 
     <div class="card shadow-sm border-0 rounded-4 mb-4">
@@ -46,6 +51,56 @@
                 </div>
                 <h5 class="text-muted">Liste Boş</h5>
                 <p class="text-muted small">Henüz hariç tutulan ürün eklenmemiş.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Excel Modal -->
+<div class="modal fade" id="uploadExcelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title h6 fw-bold">Excel'den Toplu Yükle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="uploadExcelForm">
+                    <div class="mb-3">
+                        <label class="form-label small text-muted text-uppercase fw-bold">Excel Dosyası</label>
+                        <input type="file" class="form-control" id="excelFile" accept=".xlsx,.xls" required>
+                        <div class="form-text">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Excel dosyanız <strong>Stok Kodu</strong> ve/veya <strong>Barkod</strong> sütunları
+                            içermelidir.
+                        </div>
+                    </div>
+                    <div class="alert alert-light border small">
+                        <strong>Örnek Format:</strong><br>
+                        <table class="table table-sm table-bordered mt-2 mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Stok Kodu</th>
+                                    <th>Barkod</th>
+                                    <th>Not</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>STK-001</td>
+                                    <td>8690000001</td>
+                                    <td>Özel ürün</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                <button type="button" class="btn btn-light rounded-3" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-primary rounded-3 px-4" onclick="uploadExcel()">
+                    <i class="bi bi-upload me-1"></i> Yükle
+                </button>
             </div>
         </div>
     </div>
@@ -203,6 +258,61 @@
             } catch (error) {
                 Swal.fire('Hata', 'Silme işlemi başarısız.', 'error');
             }
+        }
+    }
+
+    async function uploadExcel() {
+        const fileInput = document.getElementById('excelFile');
+        const file = fileInput.files[0];
+
+        if (!file) {
+            Swal.fire('Uyarı', 'Lütfen bir Excel dosyası seçin.', 'warning');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            // Show loading
+            Swal.fire({
+                title: 'Yükleniyor...',
+                text: 'Excel dosyası işleniyor',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            const response = await fetch('/api/sync-exceptions/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            Swal.close();
+
+            if (result.success) {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('uploadExcelModal'));
+                modal.hide();
+                document.getElementById('uploadExcelForm').reset();
+                loadExceptions();
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Başarılı!',
+                    html: `<strong>${result.added}</strong> kayıt eklendi.<br>
+                           ${result.skipped ? `<small class="text-muted">${result.skipped} kayıt zaten mevcut (atlandı)</small>` : ''}`,
+                    timer: 3000,
+                    showConfirmButton: true
+                });
+            } else {
+                Swal.fire('Hata', result.message || 'Yükleme başarısız.', 'error');
+            }
+        } catch (error) {
+            console.error('Upload error:', error);
+            Swal.fire('Hata', 'Bir sorun oluştu.', 'error');
         }
     }
 </script>

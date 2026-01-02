@@ -40,7 +40,6 @@ MARKETPLACES = {
     'hepsiburada': 'Hepsiburada',
     'n11': 'N11',
     'idefix': 'İdefix',
-    'amazon': 'Amazon',
     'ikas': 'İkas',
 }
 
