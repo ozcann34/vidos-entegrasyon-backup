@@ -13,8 +13,27 @@ def index():
 @sync_exceptions_bp.route('/api/sync-exceptions', methods=['GET'])
 @login_required
 def get_exceptions():
-    exceptions = SyncException.query.filter_by(user_id=current_user.id).all()
-    return jsonify([e.to_dict() for e in exceptions])
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)
+    
+    # Limit per_page to reasonable values
+    per_page = min(max(per_page, 10), 200)
+    
+    query = SyncException.query.filter_by(user_id=current_user.id)
+    total = query.count()
+    
+    exceptions = query.order_by(SyncException.created_at.desc())\
+        .offset((page - 1) * per_page)\
+        .limit(per_page)\
+        .all()
+    
+    return jsonify({
+        'items': [e.to_dict() for e in exceptions],
+        'total': total,
+        'page': page,
+        'per_page': per_page,
+        'pages': (total + per_page - 1) // per_page
+    })
 
 @sync_exceptions_bp.route('/api/sync-exceptions', methods=['POST'])
 @login_required

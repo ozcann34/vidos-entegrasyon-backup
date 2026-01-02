@@ -13,6 +13,12 @@
                 işlemlerinden hariç tutulur.</p>
         </div>
         <div class="d-flex gap-2">
+            <button class="btn btn-outline-danger" onclick="deleteSelected()" id="deleteSelectedBtn" disabled>
+                <i class="bi bi-trash me-1"></i> Seçilenleri Sil
+            </button>
+            <button class="btn btn-outline-danger" onclick="deleteAll()">
+                <i class="bi bi-trash-fill me-1"></i> Tümünü Sil
+            </button>
             <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#uploadExcelModal">
                 <i class="bi bi-file-earmark-excel me-1"></i> Excel'den Aktar
             </button>
@@ -28,8 +34,11 @@
                 <table class="table table-hover align-middle mb-0" id="exceptionsTable">
                     <thead class="bg-light dark-bg-dark-subtle">
                         <tr>
-                            <th class="ps-4">Değer (Stok Kodu/Barkod)</th>
-                            <th>Tür</th>
+                            <th class="ps-4" style="width: 50px;">
+                                <input type="checkbox" class="form-check-input" id="selectAll">
+                            </th>
+                            <th>Stok Kodu</th>
+                            <th>Barkod</th>
                             <th>Not</th>
                             <th>Eklenme Tarihi</th>
                             <th class="text-end pe-4">İşlem</th>
@@ -39,6 +48,9 @@
                         <!-- JS ile doldurulacak -->
                     </tbody>
                 </table>
+            </div>
+            <div id="pagination" class="d-flex justify-content-between align-items-center p-3 border-top">
+                <!-- Pagination will be inserted here -->
             </div>
             <div id="loading" class="text-center py-5">
                 <div class="spinner-border text-primary" role="status">
@@ -143,47 +155,156 @@
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', loadExceptions);
+    let currentPage = 1;
+    let selectedIds = new Set();
 
-    async function loadExceptions() {
+    document.addEventListener('DOMContentLoaded', () => {
+        loadExceptions();
+
+        // Select all checkbox handler
+        document.getElementById('selectAll').addEventListener('change', function () {
+            const checkboxes = document.querySelectorAll('.exception-checkbox');
+            checkboxes.forEach(cb => {
+                cb.checked = this.checked;
+                if (this.checked) {
+                    selectedIds.add(parseInt(cb.value));
+                } else {
+                    selectedIds.delete(parseInt(cb.value));
+                }
+            });
+            updateDeleteButton();
+        });
+    });
+
+    function updateDeleteButton() {
+        const btn = document.getElementById('deleteSelectedBtn');
+        btn.disabled = selectedIds.size === 0;
+        btn.innerHTML = selectedIds.size > 0
+            ? `<i class="bi bi-trash me-1"></i> Seçilenleri Sil (${selectedIds.size})`
+            : '<i class="bi bi-trash me-1"></i> Seçilenleri Sil';
+    }
+
+    function handleCheckboxChange(checkbox, id) {
+        if (checkbox.checked) {
+            selectedIds.add(id);
+        } else {
+            selectedIds.delete(id);
+            document.getElementById('selectAll').checked = false;
+        }
+        updateDeleteButton();
+    }
+
+    async function loadExceptions(page = 1) {
         const tbody = document.querySelector('#exceptionsTable tbody');
         const loading = document.getElementById('loading');
         const emptyState = document.getElementById('emptyState');
+        const paginationDiv = document.getElementById('pagination');
 
         tbody.innerHTML = '';
         loading.classList.remove('d-none');
         emptyState.classList.add('d-none');
+        paginationDiv.innerHTML = '';
+
+        currentPage = page;
 
         try {
-            const response = await fetch('/api/sync-exceptions');
+            const response = await fetch(`/api/sync-exceptions?page=${page}&per_page=50`);
             const data = await response.json();
 
             loading.classList.add('d-none');
 
-            if (data.length === 0) {
+            if (data.items.length === 0 && page === 1) {
                 emptyState.classList.remove('d-none');
                 return;
             }
 
-            data.forEach(item => {
+            // Group items by note and date (assuming same upload batch has same note)
+            const grouped = {};
+            data.items.forEach(item => {
+                const key = `${item.note || ''}_${item.created_at}`;
+                if (!grouped[key]) {
+                    grouped[key] = {
+                        stock_code: null,
+                        barcode: null,
+                        note: item.note,
+                        created_at: item.created_at,
+                        ids: []
+                    };
+                }
+
+                if (item.match_type === 'stock_code') {
+                    grouped[key].stock_code = item.value;
+                    grouped[key].ids.push(item.id);
+                } else {
+                    grouped[key].barcode = item.value;
+                    grouped[key].ids.push(item.id);
+                }
+            });
+
+            // Render rows
+            Object.values(grouped).forEach(group => {
                 const tr = document.createElement('tr');
+                const mainId = group.ids[0];
+
                 tr.innerHTML = `
-                <td class="ps-4 fw-medium text-uppercase">${item.value}</td>
-                <td>
-                    <span class="badge bg-${item.match_type === 'stock_code' ? 'info' : 'warning'} bg-opacity-10 text-${item.match_type === 'stock_code' ? 'info' : 'warning'} rounded-pill px-3">
-                        ${item.match_type === 'stock_code' ? 'Stok Kodu' : 'Barkod'}
-                    </span>
+                <td class="ps-4">
+                    <input type="checkbox" class="form-check-input exception-checkbox" 
+                           value="${group.ids.join(',')}" 
+                           onchange="handleCheckboxChange(this, ${mainId})">
                 </td>
-                <td class="text-muted small">${item.note || '-'}</td>
-                <td class="text-muted small">${item.created_at}</td>
+                <td class="fw-medium text-uppercase">${group.stock_code || '-'}</td>
+                <td class="fw-medium text-uppercase">${group.barcode || '-'}</td>
+                <td class="text-muted small">${group.note || '-'}</td>
+                <td class="text-muted small">${group.created_at}</td>
                 <td class="text-end pe-4">
-                    <button class="btn btn-sm btn-light text-danger border-0 rounded-circle" onclick="deleteException(${item.id})">
+                    <button class="btn btn-sm btn-light text-danger border-0 rounded-circle" 
+                            onclick="deleteException([${group.ids.join(',')}])">
                         <i class="bi bi-trash"></i>
                     </button>
                 </td>
             `;
                 tbody.appendChild(tr);
             });
+
+            // Render pagination
+            if (data.pages > 1) {
+                let paginationHTML = `
+                    <div class="text-muted small">
+                        Toplam ${data.total} kayıt, ${data.pages} sayfa
+                    </div>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                `;
+
+                // Previous button
+                paginationHTML += `
+                    <li class="page-item ${data.page === 1 ? 'disabled' : ''}">
+                        <a class="page-link" href="#" onclick="loadExceptions(${data.page - 1}); return false;">Önceki</a>
+                    </li>
+                `;
+
+                // Page numbers (show max 5)
+                const startPage = Math.max(1, data.page - 2);
+                const endPage = Math.min(data.pages, data.page + 2);
+
+                for (let i = startPage; i <= endPage; i++) {
+                    paginationHTML += `
+                        <li class="page-item ${i === data.page ? 'active' : ''}">
+                            <a class="page-link" href="#" onclick="loadExceptions(${i}); return false;">${i}</a>
+                        </li>
+                    `;
+                }
+
+                // Next button
+                paginationHTML += `
+                    <li class="page-item ${data.page === data.pages ? 'disabled' : ''}">
+                        <a class="page-link" href="#" onclick="loadExceptions(${data.page + 1}); return false;">Sonraki</a>
+                    </li>
+                `;
+
+                paginationHTML += '</ul></nav>';
+                paginationDiv.innerHTML = paginationHTML;
+            }
 
         } catch (error) {
             console.error('Error:', error);
@@ -227,10 +348,13 @@
         }
     }
 
-    async function deleteException(id) {
+    async function deleteException(ids) {
+        // Handle both single ID and array of IDs
+        const idArray = Array.isArray(ids) ? ids : [ids];
+
         const result = await Swal.fire({
             title: 'Emin misiniz?',
-            text: "Bu kayıt silinecek.",
+            text: `${idArray.length} kayıt silinecek.`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Evet, Sil',
@@ -239,17 +363,125 @@
 
         if (result.isConfirmed) {
             try {
-                const response = await fetch(`/api/sync-exceptions/${id}`, {
-                    method: 'DELETE'
+                // Use bulk delete for multiple IDs
+                if (idArray.length > 1) {
+                    const response = await fetch('/api/sync-exceptions/bulk-delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ids: idArray })
+                    });
+                    const res = await response.json();
+
+                    if (res.success) {
+                        loadExceptions(currentPage);
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Silindi',
+                            text: res.message,
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+                    } else {
+                        Swal.fire('Hata', res.message, 'error');
+                    }
+                } else {
+                    // Single delete
+                    const response = await fetch(`/api/sync-exceptions/${idArray[0]}`, {
+                        method: 'DELETE'
+                    });
+                    const res = await response.json();
+
+                    if (res.success) {
+                        loadExceptions(currentPage);
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Silindi',
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+                    } else {
+                        Swal.fire('Hata', res.message, 'error');
+                    }
+                }
+            } catch (error) {
+                Swal.fire('Hata', 'Silme işlemi başarısız.', 'error');
+            }
+        }
+    }
+
+    async function deleteSelected() {
+        if (selectedIds.size === 0) {
+            Swal.fire('Uyarı', 'Lütfen silinecek kayıtları seçin.', 'warning');
+            return;
+        }
+
+        const result = await Swal.fire({
+            title: 'Emin misiniz?',
+            text: `${selectedIds.size} kayıt silinecek.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, Sil',
+            cancelButtonText: 'İptal'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch('/api/sync-exceptions/bulk-delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ids: Array.from(selectedIds) })
                 });
                 const res = await response.json();
 
                 if (res.success) {
-                    loadExceptions();
+                    selectedIds.clear();
+                    document.getElementById('selectAll').checked = false;
+                    loadExceptions(currentPage);
+                    updateDeleteButton();
                     Swal.fire({
                         icon: 'success',
-                        title: 'Silindi',
+                        title: 'Başarılı',
+                        text: res.message,
                         timer: 1500,
+                        showConfirmButton: false
+                    });
+                } else {
+                    Swal.fire('Hata', res.message, 'error');
+                }
+            } catch (error) {
+                Swal.fire('Hata', 'Silme işlemi başarısız.', 'error');
+            }
+        }
+    }
+
+    async function deleteAll() {
+        const result = await Swal.fire({
+            title: 'TÜM KAYITLAR SİLİNECEK!',
+            text: 'Bu işlem geri alınamaz. Emin misiniz?',
+            icon: 'error',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, Tümünü Sil',
+            cancelButtonText: 'İptal',
+            confirmButtonColor: '#dc3545'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch('/api/sync-exceptions/delete-all', {
+                    method: 'POST'
+                });
+                const res = await response.json();
+
+                if (res.success) {
+                    selectedIds.clear();
+                    document.getElementById('selectAll').checked = false;
+                    loadExceptions(1);
+                    updateDeleteButton();
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Başarılı',
+                        text: res.message,
+                        timer: 2000,
                         showConfirmButton: false
                     });
                 } else {
