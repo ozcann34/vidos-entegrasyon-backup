@@ -11,11 +11,11 @@ from app.models import SupplierXML, Product, BatchLog, Setting, AutoSync, SyncLo
 from app.services.job_queue import submit_mp_job, get_mp_job, append_mp_job_log
 from app.services.xml_service import fetch_xml_from_url, load_xml_source_index
 from app.services.trendyol_service import (
-    perform_trendyol_sync_stock, perform_trendyol_sync_prices,
+    perform_trendyol_sync_stock, perform_trendyol_sync_prices, perform_trendyol_sync_all,
     get_trendyol_client, load_trendyol_snapshot
 )
 from app.services.pazarama_service import (
-    perform_pazarama_sync_stock, perform_pazarama_sync_prices,
+    perform_pazarama_sync_stock, perform_pazarama_sync_prices, perform_pazarama_sync_all,
     get_pazarama_client, pazarama_fetch_all_products,
     get_cached_pazarama_detail, clear_pazarama_detail_cache,
     pazarama_build_product_index
@@ -26,8 +26,9 @@ from app.services.n11_service import (
     perform_n11_sync_stock, perform_n11_sync_prices, perform_n11_sync_all
 )
 from app.services.hepsiburada_service import (
-    perform_hepsiburada_send_products, perform_hepsiburada_send_all
+    perform_hepsiburada_send_products, perform_hepsiburada_send_all, perform_hepsiburada_sync_all
 )
+from app.services.idefix_service import perform_idefix_sync_all
 from app.utils.helpers import to_int, to_float
 
 api_bp = Blueprint('api', __name__)
@@ -1792,13 +1793,20 @@ def api_send_all():
 
         # HEPSIBURADA
         elif marketplace == 'hepsiburada':
-             from app.services.hepsiburada_service import perform_hepsiburada_send_all
-             job_id = submit_mp_job('hepsiburada_send_all', 'hepsiburada', 
-                lambda jid: perform_hepsiburada_send_all(jid, xml_source_id, user_id=user_id),
+             from app.services.hepsiburada_service import perform_hepsiburada_sync_all
+             job_id = submit_mp_job('hepsiburada_sync_all', 'hepsiburada', 
+                lambda jid: perform_hepsiburada_sync_all(jid, xml_source_id, user_id=user_id),
+                params={'xml_source_id': xml_source_id, 'user_id': user_id})
+
+        # IDEFIX
+        elif marketplace == 'idefix':
+             from app.services.idefix_service import perform_idefix_sync_all
+             job_id = submit_mp_job('idefix_sync_all', 'idefix', 
+                lambda jid: perform_idefix_sync_all(jid, xml_source_id, user_id=user_id),
                 params={'xml_source_id': xml_source_id, 'user_id': user_id})
 
         else:
-            return jsonify({'success': False, 'message': 'Pazaryeri desteklenmiyor.'}), 400
+             return jsonify({'success': False, 'message': f'Desteklenmeyen pazaryeri: {marketplace}'}), 400
 
         return jsonify({
             'success': True, 
