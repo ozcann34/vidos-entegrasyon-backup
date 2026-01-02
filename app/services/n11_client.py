@@ -25,11 +25,13 @@ class N11Client:
         self.headers = {
             "appKey": self.api_key,
             "appSecret": self.api_secret,
-            "appkey": self.api_key,
-            "appsecret": self.api_secret,
             "Content-Type": "application/json",
             "Accept": "application/json"
         }
+        # Masked logging of credentials for diagnostics
+        masked_key = f"{self.api_key[:4]}...{self.api_key[-4:]}" if len(self.api_key) > 8 else "***"
+        masked_secret = f"{self.api_secret[:4]}...{self.api_secret[-4:]}" if len(self.api_secret) > 8 else "***"
+        logging.info(f"[N11Client] Initialized with Key: {masked_key}, Secret: {masked_secret}")
         self.session = requests.Session()
         self.session.headers.update(self.headers)
         
@@ -698,7 +700,12 @@ def get_n11_client(user_id: int = None):
             user_id = None
     
     api_key = Setting.get("N11_API_KEY", user_id=user_id)
+    if not api_key and user_id:
+        api_key = Setting.get("N11_API_KEY", user_id=None)
+        
     api_secret = Setting.get("N11_API_SECRET", user_id=user_id)
+    if not api_secret and user_id:
+        api_secret = Setting.get("N11_API_SECRET", user_id=None)
     
     if not api_key or not api_secret:
         return None
