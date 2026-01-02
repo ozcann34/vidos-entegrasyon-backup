@@ -1771,6 +1771,7 @@ def sync_trendyol_with_xml_diff(job_id: str, xml_source_id: Any, user_id: int = 
     # Updated to use Stock Code & Exclusion List
     
     # 1. Fetch Remote Inventory
+    update_mp_job(job_id, progress={'current': 5, 'total': 100, 'message': 'Trendyol ürünleri çekiliyor...'})
     remote_items = fetch_all_trendyol_products(job_id=job_id, user_id=user_id)
     # Map STOCK CODE -> Item (Trendyol 'stockCode' is the vendor stock code)
     remote_stock_map = {}
@@ -1783,6 +1784,7 @@ def sync_trendyol_with_xml_diff(job_id: str, xml_source_id: Any, user_id: int = 
     append_mp_job_log(job_id, f"Trendyol hesabınızda {len(remote_stock_codes)} stok kodlu ürün bulundu.")
 
     # 2. Load XML
+    update_mp_job(job_id, progress={'current': 20, 'total': 100, 'message': 'XML verisi analiz ediliyor...'})
     from app.services.xml_service import load_xml_source_index
     xml_index = load_xml_source_index(xml_source_id)
     # Use the new by_stock_code index
@@ -1847,11 +1849,17 @@ def sync_trendyol_with_xml_diff(job_id: str, xml_source_id: Any, user_id: int = 
             })
         
         # Batch send 0 stock updates
+        total_to_zero = len(to_zero_stock_codes)
         for chunk in chunked(zero_payload, 100):
             try:
+                update_mp_job(job_id, progress={
+                    'current': zeroed_count,
+                    'total': total_to_zero,
+                    'message': f'Stok sıfırlanıyor: {zeroed_count}/{total_to_zero}'
+                })
                 client.update_price_inventory(chunk)
                 zeroed_count += len(chunk)
-                append_mp_job_log(job_id, f"✅ {zeroed_count}/{len(to_zero_stock_codes)} ürün stoğu sıfırlandı.")
+                append_mp_job_log(job_id, f"✅ {zeroed_count}/{total_to_zero} ürün stoğu sıfırlandı.")
                 time.sleep(1)
             except Exception as e:
                 append_mp_job_log(job_id, f"Sıfırlama hatası (chunk): {e}", level='error')
@@ -1906,11 +1914,17 @@ def sync_trendyol_with_xml_diff(job_id: str, xml_source_id: Any, user_id: int = 
             })
             
         # Batch send updates
+        total_to_update = len(final_matched)
         for chunk in chunked(items_to_update, 100):
             try:
+                update_mp_job(job_id, progress={
+                    'current': updated_count,
+                    'total': total_to_update,
+                    'message': f'Fiyat/Stok güncelleniyor: {updated_count}/{total_to_update}'
+                })
                 client.update_price_inventory(chunk)
                 updated_count += len(chunk)
-                append_mp_job_log(job_id, f"✅ {updated_count}/{len(final_matched)} eşleşen ürün güncellendi.")
+                append_mp_job_log(job_id, f"✅ {updated_count}/{total_to_update} eşleşen ürün güncellendi.")
                 time.sleep(0.5)
             except Exception as e:
                 append_mp_job_log(job_id, f"Güncelleme hatası (chunk): {e}", level='error')

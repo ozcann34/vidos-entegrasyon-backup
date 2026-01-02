@@ -2330,6 +2330,42 @@ def api_auto_sync_trigger(marketplace: str):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
+@api_bp.route('/api/job/status/<job_id>', methods=['GET'])
+def api_job_status(job_id: str):
+    """İş durumunu ve ilerlemesini sorgula"""
+    try:
+        from app.services.job_queue import get_mp_job
+        job = get_mp_job(job_id)
+        if not job:
+            return jsonify({'success': False, 'message': 'İş bulunamadı'}), 404
+        
+        return jsonify({
+            'success': True,
+            'status': job.get('status'),
+            'progress': job.get('progress', {}),
+            'error': job.get('error'),
+            'marketplace': job.get('marketplace')
+        })
+    except Exception as e:
+        logging.exception(f"Error fetching job status for {job_id}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@api_bp.route('/api/job/control/<job_id>/<action>', methods=['POST'])
+def api_job_control(job_id: str, action: str):
+    """İşi kontrol et (cancel, pause, resume)"""
+    try:
+        from app.services.job_queue import control_mp_job
+        if action not in ('cancel', 'pause', 'resume'):
+            return jsonify({'success': False, 'message': 'Geçersiz işlem'}), 400
+        
+        success = control_mp_job(job_id, action)
+        return jsonify({'success': success})
+    except Exception as e:
+        logging.exception(f"Error controlling job {job_id}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
 @api_bp.route('/api/auto_sync/logs', methods=['GET'])
 def api_auto_sync_logs():
     """Senkronizasyon loglarını getir"""

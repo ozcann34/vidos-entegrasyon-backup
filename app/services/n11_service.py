@@ -944,8 +944,19 @@ def perform_n11_batch_update(job_id: str, items: List[Dict[str, Any]], user_id: 
         
     total_sent = 0
     # N11 limit is often 100
-    for idx, chunk in enumerate(_chunks(n11_items, 100), start=1):
+    chunks = list(_chunks(n11_items, 100))
+    total_chunks = len(chunks)
+    
+    for idx, chunk in enumerate(chunks, start=1):
         try:
+            from app.services.job_queue import update_mp_job
+            progress_percent = int((idx / total_chunks) * 100)
+            update_mp_job(job_id, progress={
+                'current': total_sent,
+                'total': len(n11_items),
+                'message': f'N11 güncelleniyor: {total_sent}/{len(n11_items)}'
+            })
+
             resp = client.update_products_price_and_stock(chunk)
             # Response usually contains 'taskId' if async, or result list if sync.
             # Assuming standard behavior update_products_price_and_stock returns info.
@@ -987,6 +998,8 @@ def sync_n11_with_xml_diff(job_id: str, xml_source_id: Any, user_id: int = None,
     # Updated to use Stock Code & Exclusion List
     
     # 1. Fetch Remote Inventory
+    from app.services.job_queue import update_mp_job
+    update_mp_job(job_id, progress={'current': 5, 'total': 100, 'message': 'N11 ürünleri çekiliyor...'})
     remote_items = fetch_all_n11_products(job_id=job_id, user_id=user_id)
     # Map STOCK CODE -> Item (because matching is now based on Stock Code)
     remote_stock_map = {}
@@ -999,6 +1012,7 @@ def sync_n11_with_xml_diff(job_id: str, xml_source_id: Any, user_id: int = None,
     append_mp_job_log(job_id, f"N11 hesabınızda toplam {len(remote_stock_codes)} stok kodlu ürün tespit edildi.")
 
     # 2. Load XML
+    update_mp_job(job_id, progress={'current': 20, 'total': 100, 'message': 'XML verisi analiz ediliyor...'})
     from app.services.xml_service import load_xml_source_index
     xml_index = load_xml_source_index(xml_source_id)
     # Use the new by_stock_code index

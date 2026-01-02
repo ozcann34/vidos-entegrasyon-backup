@@ -47,6 +47,23 @@
                         Listesi</a>'ndeki ürünlere dokunulmaz.
                 </div>
 
+                <!-- Live Progress Section -->
+                <div class="sync-progress-section d-none mb-3" data-marketplace="{{ key }}">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="small fw-bold text-primary sync-progress-message">Hazırlanıyor...</span>
+                        <span class="small text-muted sync-progress-percent">0%</span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated sync-progress-bar"
+                            role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <div class="d-flex justify-content-between mt-1">
+                        <span class="sync-progress-text x-small text-muted" style="font-size: 0.75rem;">0 / 0
+                            ürün</span>
+                        <span class="sync-progress-eta x-small text-muted" style="font-size: 0.75rem;">—</span>
+                    </div>
+                </div>
+
                 <div class="d-grid">
                     <button class="btn btn-outline-primary manual-sync-btn" data-marketplace="{{ key }}">
                         <i class="bi bi-arrow-repeat me-1"></i> Test: Şimdi Senkronize Et
@@ -101,7 +118,6 @@
 </div>
 
 {% endblock %}
-
 {% block scripts %}
 <script>
     (function () {
@@ -110,6 +126,60 @@
     let syncSettings = {};
     let activeJobs = {}; // Track active job IDs per marketplace
 
+    // --- Persistence Helpers ---
+    function saveActiveJob(marketplace, jobId) {
+        const jobs = JSON.parse(localStorage.getItem('vidos_active_sync_jobs') || '{}');
+        jobs[marketplace] = jobId;
+        localStorage.setItem('vidos_active_sync_jobs', JSON.stringify(jobs));
+        activeJobs[marketplace] = jobId;
+    }
+
+    function removeActiveJob(marketplace) {
+        const jobs = JSON.parse(localStorage.getItem('vidos_active_sync_jobs') || '{}');
+        delete jobs[marketplace];
+        localStorage.setItem('vidos_active_sync_jobs', JSON.stringify(jobs));
+        delete activeJobs[marketplace];
+    }
+
+    function getPersistedJobs() {
+        return JSON.parse(localStorage.getItem('vidos_active_sync_jobs') || '{}');
+    }
+
+    // --- Progress UI Helpers ---
+    function showProgress(marketplace) {
+        const progressSection = document.querySelector(`.sync-progress-section[data-marketplace="${marketplace}"]`);
+        if (progressSection) progressSection.classList.remove('d-none');
+        const btn = document.querySelector(`.manual-sync-btn[data-marketplace="${marketplace}"]`);
+        if (btn) btn.disabled = true;
+    }
+
+    function hideProgress(marketplace) {
+        const progressSection = document.querySelector(`.sync-progress-section[data-marketplace="${marketplace}"]`);
+        if (progressSection) progressSection.classList.add('d-none');
+        const btn = document.querySelector(`.manual-sync-btn[data-marketplace="${marketplace}"]`);
+        if (btn) btn.disabled = false;
+    }
+
+    function updateProgress(marketplace, data) {
+        const progressSection = document.querySelector(`.sync-progress-section[data-marketplace="${marketplace}"]`);
+        if (!progressSection) return;
+
+        const progress = data.progress || {};
+        const percent = progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
+
+        const bar = progressSection.querySelector('.sync-progress-bar');
+        const percentText = progressSection.querySelector('.sync-progress-percent');
+        const messageText = progressSection.querySelector('.sync-progress-message');
+        const detailText = progressSection.querySelector('.sync-progress-text');
+        const etaText = progressSection.querySelector('.sync-progress-eta');
+
+        if (bar) bar.style.width = percent + '%';
+        if (percentText) percentText.textContent = percent + '%';
+        if (messageText) messageText.textContent = progress.message || 'İşleniyor...';
+        if (detailText) detailText.textContent = `${progress.current || 0} / ${progress.total || 0} ürün`;
+        if (etaText) etaText.textContent = progress.eta || '—';
+    }
+
     // --- Order Sync Functions ---
     async function loadOrderSettings() {
         try {
@@ -117,8 +187,10 @@
             const data = await response.json();
             if (data.success) {
                 const settings = data.settings;
-                document.getElementById('order-sync-toggle').checked = settings.enabled;
-                document.getElementById('order-sync-interval').value = settings.interval;
+                const toggle = document.getElementById('order-sync-toggle');
+                const interval = document.getElementById('order-sync-interval');
+                if (toggle) toggle.checked = settings.enabled;
+                if (interval) interval.value = settings.interval;
             }
         } catch (error) {
             console.error("Order settings load error:", error);
@@ -126,14 +198,18 @@
     }
 
     async function saveOrderSettings() {
-        const enabled = document.getElementById('order-sync-toggle').checked;
-        const interval = document.getElementById('order-sync-interval').value;
+        const toggle = document.getElementById('order-sync-toggle');
+        const interval = document.getElementById('order-sync-interval');
+        if (!toggle || !interval) return;
+
+        const enabled = toggle.checked;
+        const intervalVal = interval.value;
 
         try {
             const response = await fetch('/api/auto_sync/orders/settings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ enabled, interval })
+                body: JSON.stringify({ enabled, interval: intervalVal })
             });
             const data = await response.json();
 
@@ -150,7 +226,7 @@
                 });
             } else {
                 Swal.fire('Hata', data.message || 'Ayarlar kaydedilemedi', 'error');
-                document.getElementById('order-sync-toggle').checked = !enabled;
+                toggle.checked = !enabled;
             }
         } catch (error) {
             console.error("Save error:", error);
@@ -229,6 +305,42 @@
         }
     }
 
+    async function pollJobStatus(jobId, marketplace) {
+        if (!activeJobs[marketplace] || activeJobs[marketplace] !== jobId) return;
+
+        try {
+            const resp = await fetch(`/api/job/status/${jobId}`);
+            const data = await resp.json();
+
+            if (!data.success) {
+                removeActiveJob(marketplace);
+                hideProgress(marketplace);
+                return;
+            }
+
+            updateProgress(marketplace, data);
+
+            if (data.status === 'completed' || data.status === 'failed' || data.status === 'cancelled') {
+                if (data.status === 'failed') {
+                    Swal.fire('Hata', `${marketplaces[marketplace] || marketplace} senkronizasyonu başarısız oldu: ${data.error || 'Bilinmeyen hata'}`, 'error');
+                }
+
+                setTimeout(() => {
+                    removeActiveJob(marketplace);
+                    hideProgress(marketplace);
+                    loadLogs();
+                    loadSettings();
+                }, 2000);
+            } else {
+                setTimeout(() => pollJobStatus(jobId, marketplace), 2000);
+            }
+        } catch (err) {
+            console.error('Polling error:', err);
+            // Don't stop on single error, maybe temporary network issue
+            setTimeout(() => pollJobStatus(jobId, marketplace), 5000);
+        }
+    }
+
     async function triggerManualSync(marketplace) {
         const card = document.querySelector(`.marketplace-card[data-marketplace="${marketplace}"]`);
         const xmlSelect = card ? card.querySelector('.xml-source-select') : null;
@@ -247,7 +359,7 @@
             });
             const data = await resp.json();
 
-            if (data.success) {
+            if (data.success && data.job_id) {
                 Swal.fire({
                     toast: true,
                     position: 'top-end',
@@ -256,8 +368,12 @@
                     showConfirmButton: false,
                     timer: 2000
                 });
-                // Refresh logs after a short delay
-                setTimeout(loadLogs, 3000);
+
+                saveActiveJob(marketplace, data.job_id);
+                showProgress(marketplace);
+                pollJobStatus(data.job_id, marketplace);
+
+                setTimeout(loadLogs, 5000);
             } else {
                 throw new Error(data.message || 'İşlem başarısız');
             }
@@ -310,6 +426,7 @@
 
     window.showLogDetails = function (details) {
         const tbody = document.getElementById('logDetailsTableBody');
+        if (!tbody) return;
         if (!details || details.length === 0) {
             tbody.innerHTML = '<tr><td colspan="5" class="text-center">Detay bulunamadı</td></tr>';
         } else {
@@ -325,7 +442,8 @@
                     </tr>`;
             }).join('');
         }
-        new bootstrap.Modal(document.getElementById('logDetailsModal')).show();
+        const modal = document.getElementById('logDetailsModal');
+        if (modal) new bootstrap.Modal(modal).show();
     };
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -366,6 +484,14 @@
         loadOrderSettings();
         loadSettings();
         loadLogs();
+
+        // Resume persisted jobs
+        const persistedJobs = getPersistedJobs();
+        for (const [mp, jobId] of Object.entries(persistedJobs)) {
+            activeJobs[mp] = jobId;
+            showProgress(mp);
+            pollJobStatus(jobId, mp);
+        }
 
         // Auto refresh logs
         setInterval(() => {
