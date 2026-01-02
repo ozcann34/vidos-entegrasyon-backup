@@ -453,15 +453,6 @@ def excel_products_page():
 def xml_urunler():
     return render_template("xml_products.html")
 
-@main_bp.route("/operations/xml_updates")
-@login_required
-def xml_updates():
-    if not current_user.has_plan_feature('add_xml_source'):
-        flash('Bu özellik paketinizde kısıtlıdır.', 'danger')
-        return redirect(url_for('main.dashboard'))
-        
-    xml_sources = SupplierXML.query.filter_by(user_id=current_user.id).order_by(SupplierXML.id.desc()).all()
-    return render_template("operations/xml_updates.html", xml_sources=xml_sources)
 
 @main_bp.route("/api/dashboard/stats")
 @login_required

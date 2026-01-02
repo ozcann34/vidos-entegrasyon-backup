@@ -1,5 +1,4 @@
-<!doctype html>
-<html lang="tr">
+<html lang="tr" data-bs-theme="dark">
 
 <head>
     <meta charset="utf-8">
@@ -21,6 +20,9 @@
     <link rel="manifest" href="/static/manifest.json">
     <!-- Custom CSS -->
     <link href="{{ url_for('static', filename='app.css') }}" rel="stylesheet">
+    {% if os.path.exists(os.path.join(current_app.static_folder, 'app_dark_mode_patch.css')) %}
+    <!-- Removing this in next step as part of cleanup -->
+    {% endif %}
 
 
     {% block head_scripts %}{% endblock %}
@@ -288,13 +290,6 @@
                         </a>
                     </li>
                     {% endif %}
-                    <!-- XML Updates restored for BUG-Z users -->
-                    <li>
-                        <a href="{{ url_for('main.xml_updates') }}"
-                            class="nav-link py-2 fs-6 {% if request.endpoint == 'main.xml_updates' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
-                            <i class="bi bi-caret-right-fill me-1 small"></i> XML Güncellemeleri
-                        </a>
-                    </li>
                     {% if current_user.has_plan_feature('add_excel_source') %}
                     <li>
                         <a href="{{ url_for('products.bulk_update') }}"
@@ -824,105 +819,108 @@
 
     <script>
         (function () {
-            const root = document.documentElement;
-            const stored = localStorage.getItem('vidos_theme');
-            if (stored) { root.setAttribute('data-theme', stored); }
-            const btn = document.getElementById('themeToggle');
-            const icon = document.getElementById('themeIcon');
+            const html = document.documentElement;
+            const themeToggle = document.getElementById('themeToggle');
+            const themeIcon = document.getElementById('themeIcon');
 
-            function refreshIcon() {
-                const isDark = root.getAttribute('data-theme') === 'dark';
-                if (icon) icon.className = isDark ? 'bi bi-moon-fill' : 'bi bi-sun-fill';
-            }
-
-            refreshIcon();
-
-            if (btn) {
-                btn.addEventListener('click', function () {
-                    const cur = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-                    root.setAttribute('data-theme', cur);
-                    localStorage.setItem('vidos_theme', cur);
-                    refreshIcon();
-                });
-            }
-
-            // Menu Search Logic
-            const searchInput = document.getElementById('menuSearch');
-            if (searchInput) {
-                searchInput.addEventListener('input', function (e) {
-                    const term = e.target.value.toLowerCase();
-                    const links = document.querySelectorAll('#sidebar .nav-link');
-                    links.forEach(link => {
-                        const text = link.textContent.toLowerCase();
-                        if (text.includes(term)) {
-                            link.style.display = 'block';
-                            link.closest('li').style.display = 'block';
-                        } else {
-                            if (term.length > 0) {
-                                if (!text.includes(term)) {
-                                    link.closest('li').style.display = 'none';
-                                }
-                            } else {
-                                link.closest('li').style.display = 'block';
-                            }
-                        }
-                    });
-                    // Show headers back if search empty
-                    const headers = document.querySelectorAll('#sidebar .nav-item.border-top');
-                    if (term.length > 0) {
-                        headers.forEach(h => h.style.display = 'none');
-                    } else {
-                        headers.forEach(h => h.style.display = 'block');
-                    }
-                });
-
-                // Ctrl+K to focus
-                document.addEventListener('keydown', function (e) {
-                    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-                        e.preventDefault();
-                        searchInput.focus();
-                    }
-                });
-            }
-
-            // Resume Active Job Function
-            window.resumeActiveJob = function () {
-                const jobId = localStorage.getItem('activeJobId');
-                if (jobId) {
-                    showJobWidget(jobId);
-                } else {
-                    alert('Devam eden işlem bulunamadı.');
-                }
-            };
-
-            // Show resume button if there's an active job
-            function checkAndShowResumeButton() {
-                const resumeBtn = document.getElementById('resumeJobBtn');
-                if (resumeBtn) {
-                    const activeJobId = localStorage.getItem('activeJobId');
-                    if (activeJobId) {
-                        // Önce job'un gerçekten aktif olup olmadığını kontrol et
-                        fetch(`/api/mp_jobs/${activeJobId}`)
-                            .then(res => res.ok ? res.json() : null)
-                            .then(data => {
-                                if (data && !data.error) {
-                                    const status = data.status;
-                                    if (status === 'running' || status === 'queued' || status === 'pausing') {
-                                        resumeBtn.style.display = 'block';
-                                    }
-                                }
-                            })
-                            .catch(() => {
-                                // Job bulunamazsa localStorage'ı temizle
-                                localStorage.removeItem('activeJobId');
-                            });
-                    }
+            function updateTheme(theme) {
+                html.setAttribute('data-bs-theme', theme);
+                localStorage.setItem('vidos_theme', theme);
+                if (themeIcon) {
+                    themeIcon.className = theme === 'dark' ? 'bi bi-moon-stars-fill' : 'bi bi-sun-fill text-warning';
                 }
             }
 
-            // Sayfa yüklendiğinde kontrol et
-            checkAndShowResumeButton();
+            // Init
+            const savedTheme = localStorage.getItem('vidos_theme') || 'dark';
+            updateTheme(savedTheme);
+
+            if (themeToggle) {
+                themeToggle.addEventListener('click', () => {
+                    const current = html.getAttribute('data-bs-theme');
+                    const next = current === 'dark' ? 'light' : 'dark';
+                    updateTheme(next);
+                });
+            }
         })();
+    </script>
+    <!-- Menu Search Logic -->
+    const searchInput = document.getElementById('menuSearch');
+    if (searchInput) {
+    searchInput.addEventListener('input', function (e) {
+    const term = e.target.value.toLowerCase();
+    const links = document.querySelectorAll('#sidebar .nav-link');
+    links.forEach(link => {
+    const text = link.textContent.toLowerCase();
+    if (text.includes(term)) {
+    link.style.display = 'block';
+    link.closest('li').style.display = 'block';
+    } else {
+    if (term.length > 0) {
+    if (!text.includes(term)) {
+    link.closest('li').style.display = 'none';
+    }
+    } else {
+    link.closest('li').style.display = 'block';
+    }
+    }
+    });
+    // Show headers back if search empty
+    const headers = document.querySelectorAll('#sidebar .nav-item.border-top');
+    if (term.length > 0) {
+    headers.forEach(h => h.style.display = 'none');
+    } else {
+    headers.forEach(h => h.style.display = 'block');
+    }
+    });
+
+    // Ctrl+K to focus
+    document.addEventListener('keydown', function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    searchInput.focus();
+    }
+    });
+    }
+
+    // Resume Active Job Function
+    window.resumeActiveJob = function () {
+    const jobId = localStorage.getItem('activeJobId');
+    if (jobId) {
+    showJobWidget(jobId);
+    } else {
+    alert('Devam eden işlem bulunamadı.');
+    }
+    };
+
+    // Show resume button if there's an active job
+    function checkAndShowResumeButton() {
+    const resumeBtn = document.getElementById('resumeJobBtn');
+    if (resumeBtn) {
+    const activeJobId = localStorage.getItem('activeJobId');
+    if (activeJobId) {
+    // Önce job'un gerçekten aktif olup olmadığını kontrol et
+    fetch(`/api/mp_jobs/${activeJobId}`)
+    .then(res => res.ok ? res.json() : null)
+    .then(data => {
+    if (data && !data.error) {
+    const status = data.status;
+    if (status === 'running' || status === 'queued' || status === 'pausing') {
+    resumeBtn.style.display = 'block';
+    }
+    }
+    })
+    .catch(() => {
+    // Job bulunamazsa localStorage'ı temizle
+    localStorage.removeItem('activeJobId');
+    });
+    }
+    }
+    }
+
+    // Sayfa yüklendiğinde kontrol et
+    checkAndShowResumeButton();
+    })();
     </script>
 
     <!-- Chatbot Widget -->

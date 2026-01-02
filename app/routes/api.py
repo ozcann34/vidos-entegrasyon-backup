@@ -1394,6 +1394,7 @@ def api_trendyol_send_auto():
         if not barcodes:
             return jsonify({'success': False, 'message': 'Ürün seçilmedi.'}), 400
 
+        user_id = current_user.id
         from app.services.trendyol_service import perform_trendyol_send_products
         
         job_id = submit_mp_job(
@@ -1554,8 +1555,10 @@ def api_pazarama_send_all():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @api_bp.route('/api/idefix/send_all', methods=['POST'])
+@login_required
 def api_idefix_send_all():
     try:
+        user_id = current_user.id
         payload = request.get_json(force=True) or {}
         xml_source_id = payload.get('source_id')
         
@@ -1578,8 +1581,8 @@ def api_idefix_send_all():
         job_id = submit_mp_job(
             'idefix_send_all',
             'idefix',
-            lambda job_id: perform_idefix_send_all(job_id, xml_source_id, **send_options),
-            params={'xml_source_id': xml_source_id, **send_options},
+            lambda job_id: perform_idefix_send_all(job_id, xml_source_id, user_id=user_id, **send_options),
+            params={'xml_source_id': xml_source_id, 'user_id': user_id, **send_options},
         )
         return jsonify({'success': True, 'job_id': job_id, 'batch_id': job_id}), 202
     except Exception as e:
@@ -2291,25 +2294,27 @@ def api_auto_sync_toggle():
 
 
 @api_bp.route('/api/auto_sync/trigger/<marketplace>', methods=['POST'])
+@login_required
 def api_auto_sync_trigger(marketplace: str):
     """Manuel senkronizasyon tetikle"""
     try:
         if marketplace not in MARKETPLACES:
             return jsonify({'success': False, 'message': 'Geçersiz pazaryeri'}), 400
         
+        user_id = current_user.id
         from app.services.auto_sync_service import sync_marketplace_products
         
         # Arka planda çalıştır
         def sync_task(job_id):
             from flask import current_app
             with current_app.app_context():
-                return sync_marketplace_products(marketplace, user_id=current_user.id, job_id=job_id)
+                return sync_marketplace_products(marketplace, user_id=user_id, job_id=job_id)
         
         job_id = submit_mp_job(
             f'manual_sync_{marketplace}',
             marketplace,
             sync_task,
-            params={'marketplace': marketplace}
+            params={'marketplace': marketplace, 'user_id': user_id}
         )
         
         return jsonify({
