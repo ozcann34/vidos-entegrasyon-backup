@@ -122,12 +122,14 @@ def upload_sync_exceptions():
             elif 'not' in col or 'note' in col or 'açıklama' in col:
                 note_col = col
         
+        
+        # PERFORMANCE FIX: Fetch ALL existing exceptions for this user ONCE (not per row!)
+        existing_exceptions = SyncException.query.filter_by(user_id=current_user.id).all()
+        existing_set = {(e.match_type, e.value) for e in existing_exceptions}
+        
         added = 0
         skipped = 0
-        
-        # Batch process for better performance
-        batch_size = 100
-        batch = []
+        new_exceptions = []  # Collect all new items for bulk insert
         
         for index, row in df.iterrows():
             stock_code = str(row.get(stock_code_col, '')).strip() if stock_code_col and pd.notna(row.get(stock_code_col)) else ''
@@ -138,54 +140,41 @@ def upload_sync_exceptions():
             if not stock_code and not barcode:
                 continue
             
-            # Try to add stock code if exists
+            # Check stock code
             if stock_code:
-                existing = SyncException.query.filter_by(
-                    user_id=current_user.id,
-                    match_type='stock_code',
-                    value=stock_code
-                ).first()
-                
-                if not existing:
-                    exc = SyncException(
+                key = ('stock_code', stock_code)
+                if key not in existing_set:
+                    new_exceptions.append(SyncException(
                         user_id=current_user.id,
                         match_type='stock_code',
                         value=stock_code,
                         note=note or None
-                    )
-                    db.session.add(exc)
+                    ))
+                    existing_set.add(key)  # Prevent duplicates within same upload
                     added += 1
                 else:
                     skipped += 1
             
-            # Try to add barcode if exists and different from stock code
+            # Check barcode (if different from stock code)
             if barcode and barcode != stock_code:
-                existing = SyncException.query.filter_by(
-                    user_id=current_user.id,
-                    match_type='barcode',
-                    value=barcode
-                ).first()
-                
-                if not existing:
-                    exc = SyncException(
+                key = ('barcode', barcode)
+                if key not in existing_set:
+                    new_exceptions.append(SyncException(
                         user_id=current_user.id,
                         match_type='barcode',
                         value=barcode,
                         note=note or None
-                    )
-                    db.session.add(exc)
+                    ))
+                    existing_set.add(key)
                     added += 1
                 else:
                     skipped += 1
-            
-            # Commit in batches for performance
-            if len(batch) >= batch_size:
-                db.session.commit()
-                batch = []
         
-        # Commit remaining
-        if batch:
-            db.session.commit()
+        # Bulk insert all new exceptions at once
+        if new_exceptions:
+            db.session.bulk_save_objects(new_exceptions)
+        
+        db.session.commit()
         
         return jsonify({
             'success': True,
