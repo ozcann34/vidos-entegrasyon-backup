@@ -184,13 +184,11 @@
             : '<i class="bi bi-trash me-1"></i> Seçilenleri Sil';
     }
 
-    function handleCheckboxChange(checkbox, ids) {
-        const idArray = ids.toString().split(',').map(id => parseInt(id));
-
+    function handleCheckboxChange(checkbox, id) {
         if (checkbox.checked) {
-            idArray.forEach(id => selectedIds.add(id));
+            selectedIds.add(id);
         } else {
-            idArray.forEach(id => selectedIds.delete(id));
+            selectedIds.delete(id);
             document.getElementById('selectAll').checked = false;
         }
         updateDeleteButton();
@@ -210,7 +208,7 @@
         currentPage = page;
 
         try {
-            const response = await fetch(`/api/sync-exceptions?page=${page}&per_page=200`);
+            const response = await fetch(`/api/sync-exceptions?page=${page}&per_page=50`);
             const data = await response.json();
 
             loading.classList.add('d-none');
@@ -220,48 +218,27 @@
                 return;
             }
 
-            // Group items by note and created_at to show stock code and barcode together
-            const grouped = {};
+            // Render each record as its own row
             data.items.forEach(item => {
-                // Group by note and date (items added together will have similar timestamp)
-                const key = `${item.note || 'no-note'}_${item.created_at}`;
-                if (!grouped[key]) {
-                    grouped[key] = {
-                        stock_code: null,
-                        barcode: null,
-                        note: item.note,
-                        created_at: item.created_at,
-                        ids: []
-                    };
-                }
-
-                if (item.match_type === 'stock_code') {
-                    grouped[key].stock_code = item.value;
-                } else {
-                    grouped[key].barcode = item.value;
-                }
-                grouped[key].ids.push(item.id);
-            });
-
-            // Render grouped rows
-            Object.values(grouped).forEach(group => {
                 const tr = document.createElement('tr');
-                const allIds = group.ids.join(',');
+
+                // Show value in appropriate column based on match_type
+                const stockCode = item.match_type === 'stock_code' ? item.value : '-';
+                const barcode = item.match_type === 'barcode' ? item.value : '-';
 
                 tr.innerHTML = `
                 <td class="ps-4">
                     <input type="checkbox" class="form-check-input exception-checkbox" 
-                           value="${allIds}" 
-                           data-ids="${allIds}"
-                           onchange="handleCheckboxChange(this, '${allIds}')">
+                           value="${item.id}" 
+                           onchange="handleCheckboxChange(this, ${item.id})">
                 </td>
-                <td class="fw-medium text-uppercase">${group.stock_code || '-'}</td>
-                <td class="fw-medium text-uppercase">${group.barcode || '-'}</td>
-                <td class="text-muted small">${group.note || '-'}</td>
-                <td class="text-muted small">${group.created_at}</td>
+                <td class="fw-medium text-uppercase">${stockCode}</td>
+                <td class="fw-medium text-uppercase">${barcode}</td>
+                <td class="text-muted small">${item.note || '-'}</td>
+                <td class="text-muted small">${item.created_at}</td>
                 <td class="text-end pe-4">
                     <button class="btn btn-sm btn-light text-danger border-0 rounded-circle" 
-                            onclick="deleteMultiple('${allIds}')">
+                            onclick="deleteException(${item.id})">
                         <i class="bi bi-trash"></i>
                     </button>
                 </td>
