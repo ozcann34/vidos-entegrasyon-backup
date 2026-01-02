@@ -218,47 +218,27 @@
                 return;
             }
 
-            // Group items by note and date (assuming same upload batch has same note)
-            const grouped = {};
+            // Render rows - show each item as is
             data.items.forEach(item => {
-                const key = `${item.note || ''}_${item.created_at}`;
-                if (!grouped[key]) {
-                    grouped[key] = {
-                        stock_code: null,
-                        barcode: null,
-                        note: item.note,
-                        created_at: item.created_at,
-                        ids: []
-                    };
-                }
-
-                if (item.match_type === 'stock_code') {
-                    grouped[key].stock_code = item.value;
-                    grouped[key].ids.push(item.id);
-                } else {
-                    grouped[key].barcode = item.value;
-                    grouped[key].ids.push(item.id);
-                }
-            });
-
-            // Render rows
-            Object.values(grouped).forEach(group => {
                 const tr = document.createElement('tr');
-                const mainId = group.ids[0];
+
+                // Determine which column to show value in
+                const stockCode = item.match_type === 'stock_code' ? item.value : '-';
+                const barcode = item.match_type === 'barcode' ? item.value : '-';
 
                 tr.innerHTML = `
                 <td class="ps-4">
                     <input type="checkbox" class="form-check-input exception-checkbox" 
-                           value="${group.ids.join(',')}" 
-                           onchange="handleCheckboxChange(this, ${mainId})">
+                           value="${item.id}" 
+                           onchange="handleCheckboxChange(this, ${item.id})">
                 </td>
-                <td class="fw-medium text-uppercase">${group.stock_code || '-'}</td>
-                <td class="fw-medium text-uppercase">${group.barcode || '-'}</td>
-                <td class="text-muted small">${group.note || '-'}</td>
-                <td class="text-muted small">${group.created_at}</td>
+                <td class="fw-medium text-uppercase">${stockCode}</td>
+                <td class="fw-medium text-uppercase">${barcode}</td>
+                <td class="text-muted small">${item.note || '-'}</td>
+                <td class="text-muted small">${item.created_at}</td>
                 <td class="text-end pe-4">
                     <button class="btn btn-sm btn-light text-danger border-0 rounded-circle" 
-                            onclick="deleteException([${group.ids.join(',')}])">
+                            onclick="deleteException(${item.id})">
                         <i class="bi bi-trash"></i>
                     </button>
                 </td>
@@ -348,13 +328,10 @@
         }
     }
 
-    async function deleteException(ids) {
-        // Handle both single ID and array of IDs
-        const idArray = Array.isArray(ids) ? ids : [ids];
-
+    async function deleteException(id) {
         const result = await Swal.fire({
             title: 'Emin misiniz?',
-            text: `${idArray.length} kayıt silinecek.`,
+            text: 'Bu kayıt silinecek.',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Evet, Sil',
@@ -363,47 +340,24 @@
 
         if (result.isConfirmed) {
             try {
-                // Use bulk delete for multiple IDs
-                if (idArray.length > 1) {
-                    const response = await fetch('/api/sync-exceptions/bulk-delete', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ ids: idArray })
-                    });
-                    const res = await response.json();
+                const response = await fetch(`/api/sync-exceptions/${id}`, {
+                    method: 'DELETE'
+                });
+                const res = await response.json();
 
-                    if (res.success) {
-                        loadExceptions(currentPage);
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Silindi',
-                            text: res.message,
-                            timer: 1500,
-                            showConfirmButton: false
-                        });
-                    } else {
-                        Swal.fire('Hata', res.message, 'error');
-                    }
+                if (res.success) {
+                    loadExceptions(currentPage);
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Silindi',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
                 } else {
-                    // Single delete
-                    const response = await fetch(`/api/sync-exceptions/${idArray[0]}`, {
-                        method: 'DELETE'
-                    });
-                    const res = await response.json();
-
-                    if (res.success) {
-                        loadExceptions(currentPage);
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Silindi',
-                            timer: 1500,
-                            showConfirmButton: false
-                        });
-                    } else {
-                        Swal.fire('Hata', res.message, 'error');
-                    }
+                    Swal.fire('Hata', res.message, 'error');
                 }
             } catch (error) {
+                console.error('Delete error:', error);
                 Swal.fire('Hata', 'Silme işlemi başarısız.', 'error');
             }
         }

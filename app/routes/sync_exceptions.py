@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required, current_user
 from app import db
 from app.models.sync_exception import SyncException
+import logging
 
 sync_exceptions_bp = Blueprint('sync_exceptions', __name__)
 
@@ -86,11 +87,59 @@ def delete_exception(id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
+@sync_exceptions_bp.route('/api/sync-exceptions/bulk-delete', methods=['POST'])
+@login_required
+def bulk_delete_exceptions():
+    """Seçilen kayıtları sil"""
+    try:
+        data = request.get_json()
+        ids = data.get('ids', [])
+        
+        if not ids:
+            return jsonify({'success': False, 'message': 'Silinecek kayıt seçilmedi'}), 400
+        
+        # Delete only user's own records
+        deleted = SyncException.query.filter(
+            SyncException.id.in_(ids),
+            SyncException.user_id == current_user.id
+        ).delete(synchronize_session=False)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'deleted': deleted,
+            'message': f'{deleted} kayıt silindi'
+        })
+    except Exception as e:
+        logging.exception("Bulk delete error")
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@sync_exceptions_bp.route('/api/sync-exceptions/delete-all', methods=['POST'])
+@login_required
+def delete_all_exceptions():
+    """Tüm kayıtları sil"""
+    try:
+        deleted = SyncException.query.filter_by(user_id=current_user.id).delete()
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'deleted': deleted,
+            'message': f'{deleted} kayıt silindi'
+        })
+    except Exception as e:
+        logging.exception("Delete all error")
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
 @sync_exceptions_bp.route('/api/sync-exceptions/upload', methods=['POST'])
 @login_required
 def upload_sync_exceptions():
     """Excel dosyasından toplu istisna yükleme"""
-    import logging
     try:
         if 'file' not in request.files:
             return jsonify({'success': False, 'message': 'Dosya bulunamadı'}), 400
