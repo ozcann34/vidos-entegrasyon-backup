@@ -984,27 +984,59 @@ def sync_n11_with_xml_diff(job_id: str, xml_source_id: Any, user_id: int = None,
     
     client = get_n11_client(user_id=user_id)
     
+    # Updated to use Stock Code & Exclusion List
+    
     # 1. Fetch Remote Inventory
     remote_items = fetch_all_n11_products(job_id=job_id, user_id=user_id)
-    remote_barcodes = {item.get('sellerCode') for item in remote_items if item.get('sellerCode')}
-    append_mp_job_log(job_id, f"N11 hesabınızda toplam {len(remote_barcodes)} ürün tespit edildi.")
+    # Map STOCK CODE -> Item (because matching is now based on Stock Code)
+    remote_stock_map = {}
+    for item in remote_items:
+        sc = item.get('sellerCode')
+        if sc:
+            remote_stock_map[sc.strip()] = item
+            
+    remote_stock_codes = set(remote_stock_map.keys())
+    append_mp_job_log(job_id, f"N11 hesabınızda toplam {len(remote_stock_codes)} stok kodlu ürün tespit edildi.")
 
     # 2. Load XML
     from app.services.xml_service import load_xml_source_index
     xml_index = load_xml_source_index(xml_source_id)
-    xml_map = xml_index.get('by_barcode') or {}
-    xml_barcodes = set(xml_map.keys())
+    # Use the new by_stock_code index
+    xml_map = xml_index.get('by_stock_code') or {}
+    xml_stock_codes = set(xml_map.keys())
+    
+    # Load Exclusions
+    from app.models.sync_exception import SyncException
+    exclusions = SyncException.query.filter_by(user_id=user_id).all()
+    excluded_values = {e.value.strip() for e in exclusions}
+    if excluded_values:
+        append_mp_job_log(job_id, f"⚠️ {len(excluded_values)} ürün 'Hariç Listesi'nde, işlem yapılmayacak.")
 
     # 3. Find Diff
-    to_zero = remote_barcodes - xml_barcodes
+    to_zero_candidates = remote_stock_codes - xml_stock_codes
+    
+    # Filter Exclusions from Zeroing
+    to_zero = []
+    skipped_zero_count = 0
+    for sc in to_zero_candidates:
+        if sc in excluded_values:
+            skipped_zero_count += 1
+            continue
+        to_zero.append(sc)
+        
     append_mp_job_log(job_id, f"XML'de OLMAYAN {len(to_zero)} ürün N11'de sıfırlanıyor.")
+    if skipped_zero_count > 0:
+        append_mp_job_log(job_id, f"🛡️ {skipped_zero_count} ürün harici listede olduğu için SIFIRLANMADI.")
     
     zeroed_count = 0
     if to_zero:
         items_to_zero = []
-        for bc in to_zero:
+        for sc in to_zero:
+            # We need barcode (sellerCode is technically stock code in N11 context usually)
+            # But the remote_stock_map keys are sellerCodes.
+            # Assuming sellerCode is the identifier used for updates.
             items_to_zero.append({
-                'barcode': bc,
+                'barcode': sc, # N11 Batch Update uses 'barcode' key but maps it to sellerCode internally often
                 'stock': 0
             })
         
@@ -1013,19 +1045,54 @@ def sync_n11_with_xml_diff(job_id: str, xml_source_id: Any, user_id: int = None,
         zeroed_count = z_res.get('updated_count', 0)
         append_mp_job_log(job_id, f"✅ {zeroed_count} ürün başarıyla sıfırlandı.")
 
-    # 4. Standard Sync (Update/Create)
-    append_mp_job_log(job_id, "XML'deki ürünler güncelleniyor...")
-    # Get all barcodes from XML to sync normally
-    barcodes_to_sync = list(xml_barcodes)
+    # 4. Lightweight Sync for Matched Products (Stock Code Match)
+    matched_stock_codes = remote_stock_codes & xml_stock_codes
     
-    # N11 handles updates via batch_update
-    # We can reuse perform_n11_sync_all's core logic or delegating
-    # For now, let's just use perform_n11_send_products if applicable, 
-    # but N11 auto-sync usually means price/stock update for existing.
+    # Filter Exclusions from Updates
+    final_matched = []
+    skipped_update_count = 0
+    for sc in matched_stock_codes:
+        if sc in excluded_values:
+            skipped_update_count += 1
+            continue
+        final_matched.append(sc)
+        
+    append_mp_job_log(job_id, f"Eşleşen {len(final_matched)} ürün için fiyat/stok güncellemesi yapılıyor...")
+    if skipped_update_count > 0:
+        append_mp_job_log(job_id, f"🛡️ {skipped_update_count} ürün harici listede olduğu için GÜNCELLENMEDİ.")
     
-    # Actually, for N11, perform_n11_sync_all used to do both.
-    # We will let perform_n11_send_products handle the rest (it does create/update)
-    sync_res = perform_n11_send_products(job_id, barcodes_to_sync, xml_source_id, user_id=user_id, **kwargs)
+    updated_count = 0
+    if final_matched:
+        items_to_update = []
+        for sc in final_matched:
+            xml_info = xml_map.get(sc)
+            if not xml_info: continue
+            
+            # Stock
+            qty = to_int(xml_info.get('quantity'), 0)
+            
+            # Price
+            base_price = to_float(xml_info.get('price'), 0.0)
+            final_price = calculate_price(base_price, 'n11', user_id=user_id)
+            
+            items_to_update.append({
+                'barcode': sc, # Using Stock Code as Identifier
+                'stock': qty,
+                'price': final_price
+            })
+        
+        if items_to_update:
+            u_res = perform_n11_batch_update(job_id, items_to_update, user_id=user_id)
+            updated_count = u_res.get('updated_count', 0)
+            append_mp_job_log(job_id, f"✅ {updated_count} eşleşen ürün güncellendi.")
+
+    sync_res = {
+        'success': True,
+        'updated_count': updated_count,
+        'zeroed_count': zeroed_count,
+        'total_xml': len(xml_stock_codes),
+        'total_remote': len(remote_stock_codes)
+    }
     
     sync_res['zeroed_count'] = zeroed_count
     totalTime = time.time() - startTime

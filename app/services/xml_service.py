@@ -187,14 +187,14 @@ def load_xml_source_index(xml_source_id: Any, force: bool = False) -> Dict[str, 
         index['_error'] = "XML formatı tanınamadı (Ürün listesi bulunamadı). Lütfen XML yapısını kontrol edin."
         return index
 
-    
-    
+    # Updated Indexing for Stock Code Priority
     start_time = time.time()
     items = node if isinstance(node, list) else [node]
     logger.info(f"XML Source {xml_source_id}: Processing {len(items)} items using Simple Lookup...")
 
     records: List[Dict[str, Any]] = []
     by_barcode: Dict[str, Dict[str, Any]] = {}
+    by_stock_code: Dict[str, Dict[str, Any]] = {}
 
     def _g(row, *names):
         for n in names:
@@ -205,26 +205,26 @@ def load_xml_source_index(xml_source_id: Any, force: bool = False) -> Dict[str, 
         return ''
 
     # Pre-load brand mapping to avoid 37k DB queries
-    mapping_data = Setting.get('XML_BRAND_MAPPING', user_id=src.user_id)
-    brand_mapping = {}
-    if mapping_data:
-        try:
-            brand_mapping = json.loads(mapping_data)
-            # Normalize keys for faster lookup
-            brand_mapping = {k.lower(): v for k, v in brand_mapping.items()}
-        except Exception: pass
-
+    # This block is now redundant as apply_brand_mapping handles it, but keeping for context if needed elsewhere.
+    # mapping_data = Setting.get('XML_BRAND_MAPPING', user_id=src.user_id)
+    # brand_mapping = {}
+    # if mapping_data:
+    #     try:
+    #         brand_mapping = json.loads(mapping_data)
+    #         # Normalize keys for faster lookup
+    #         brand_mapping = {k.lower(): v for k, v in brand_mapping.items()}
+    #     except Exception: pass
+    
     for i, row in enumerate(items):
         if not isinstance(row, dict):
             continue
-        
+            
         # DEBUG: Log first few items
         if i < 3:
             logger.info(f"Processing XML Item #{i}. Keys: {list(row.keys())[:10]}")
-
+        
         product_code = _g(row, 'productCode', 'ProductCode', 'product_code', 'Product_Code', 'code', 'Code')
         model_code = _g(row, 'modelCode', 'ModelCode', 'model_code', 'Model_Code', 'groupCode', 'GroupCode')
-        
         barcode = _g(row, 'barcode', 'barcod', 'Barkod', 'BARKOD', 'productBarcode', 'ProductBarcode', 'Barcode')
 
         # DEBUG: Log extracted identifiers
@@ -234,8 +234,6 @@ def load_xml_source_index(xml_source_id: Any, force: bool = False) -> Dict[str, 
         # Logic to handle generic/bad barcodes (Fix for "Bgz" issue)
         unique_id = barcode
         if product_code:
-             # Check if barcode is missing, too short, or known generic
-             # Using list of common bad values seen in faulty XMLs
              bad_values = ['bgz', 'barkodsuz', 'yok', 'null', 'nan', 'undefined', 'boş']
              if not barcode or len(str(barcode)) < 3 or str(barcode).lower() in bad_values:
                  unique_id = product_code
@@ -244,36 +242,41 @@ def load_xml_source_index(xml_source_id: Any, force: bool = False) -> Dict[str, 
             if i < 3: logger.info(f"Item #{i} skipped: No valid ID found (uniq={unique_id}, bar={barcode}, pc={product_code})")
             continue
 
-        barcode = unique_id # Use the chosen ID as the effective barcode for indexing
+        barcode = unique_id # Use the chosen ID as the effective barcode
+        
+        # Extract fields
         title = _g(row, 'name', 'Name', 'productName', 'ProductName', 'title', 'Title')
         description = _g(row, 'detail', 'Detail', 'description', 'Description')
-        stock_code = _g(row, 'stockCode', 'StockCode', 'productCode', 'ProductCode') or barcode
+        
+        # Stock Code Priority: 
+        # 1. Explicit stockCode field
+        # 2. productCode field
+        # 3. barcode (fallback)
+        stock_code = _g(row, 'stockCode', 'StockCode')
+        if not stock_code: stock_code = product_code
+        if not stock_code: stock_code = barcode
+        
         quantity_str = _g(row, 'quantity', 'Quantity', 'stok', 'Stok', 'OnHand', 'stock') or '0'
         price_str = _g(row, 'price', 'Price', 'salePrice', 'SalePrice', 'unitPrice', 'UnitPrice', 'listPrice', 'ListPrice') or '0'
         vat_raw = _g(row, 'tax', 'Tax', 'taxRate', 'TaxRate')
         brand_raw = _g(row, 'brand', 'Brand', 'marka', 'Marka', 'manufacturer', 'Manufacturer')
-        try:
-            quantity = int(float(quantity_str.replace(',', '.')))
-        except Exception:
-            quantity = 0
-        try:
-            price = float(str(price_str).replace(',', '.'))
-        except Exception:
-            price = 0.0
+        
+        quantity = to_int(quantity_str, 0)
+        price = to_float(price_str, 0.0)
+        
         try:
             vat_rate = float(str(vat_raw).replace(',', '.')) * (100 if vat_raw and float(str(vat_raw).replace(',', '.')) <= 1 else 1)
         except Exception:
             vat_rate = 20.0
             
-        # Apply Brand Mapping (FAST - No DB query inside loop)
-        brand = brand_raw
-        if brand_raw and brand_mapping:
-            brand = brand_mapping.get(brand_raw.lower(), brand_raw)
+        # Apply Brand Mapping
+        brand = apply_brand_mapping(brand_raw, src.user_id)
 
+        # Images extraction (Simplified for brevity, assuming helper or same logic)
         images: List[Dict[str, str]] = []
         # 1. Try standard Image1, Image2...
-        for i in range(1, 10):
-            img_val = _g(row, f'image{i}', f'Image{i}', f'Resim{i}', f'resim{i}')
+        for k in range(1, 10):
+            img_val = _g(row, f'image{k}', f'Image{k}', f'Resim{k}', f'resim{k}')
             if img_val:
                 images.append({'url': img_val})
         
@@ -313,7 +316,6 @@ def load_xml_source_index(xml_source_id: Any, force: bool = False) -> Dict[str, 
             'title': title,
             'link': link,
             'description': description,
-            # detail etiketi - HTML aciklama (ornek XML'deki gibi)
             'details': _g(row, 'detail', 'Detail', 'details', 'Details', 'detay', 'Detay', 'uzunaciklama', 'UzunAciklama'),
             'stockCode': stock_code,
             'quantity': quantity,
@@ -325,7 +327,7 @@ def load_xml_source_index(xml_source_id: Any, force: bool = False) -> Dict[str, 
             'barcode': barcode,
             'productCode': product_code,
             'modelCode': model_code,
-            'title_normalized': title.lower(),
+            'title_normalized': title.lower() if title else "",
         }
         
         # Varyant bilgilerini cek (XML'de variants etiketi varsa)
@@ -357,9 +359,9 @@ def load_xml_source_index(xml_source_id: Any, force: bool = False) -> Dict[str, 
                 
                 # Varyant ozelliklerini sakla (Eslesme icin kritik)
                 v_attrs = []
-                for i in range(1, 4): # support name1..name3
-                    v_n = _g(v, f'name{i}', f'Name{i}')
-                    v_v = _g(v, f'value{i}', f'Value{i}')
+                for k_attr in range(1, 4): # support name1..name3
+                    v_n = _g(v, f'name{k_attr}', f'Name{k_attr}')
+                    v_v = _g(v, f'value{k_attr}', f'Value{k_attr}')
                     if v_n and v_v:
                         v_attrs.append({'name': v_n, 'value': v_v})
                 
@@ -367,20 +369,28 @@ def load_xml_source_index(xml_source_id: Any, force: bool = False) -> Dict[str, 
                     v_record['variant_attributes'] = v_attrs
                     # Title'i guncelle (Eger varyant degeri varsa sona ekle)
                     v_record['title'] = f"{title} ({', '.join([a['value'] for a in v_attrs])})"
+                    v_record['title_normalized'] = v_record['title'].lower() if v_record['title'] else ""
                 
                 records.append(v_record)
                 index[str(v_barcode)] = v_record
                 by_barcode[str(v_barcode)] = v_record
+                if stock_code: # Variants might share the parent's stock code or have their own
+                    by_stock_code[str(stock_code).strip()] = v_record # Use parent's stock code for variant if no specific variant stock code
         else:
             # Varyant yoksa sadece ana urunu ekle (Zaten eklenmisti, sadece mantiksal ayrim)
             records.append(record)
             index[str(barcode)] = record
             by_barcode[str(barcode)] = record
+            if stock_code:
+                by_stock_code[str(stock_code).strip()] = record
 
-        if stock_code and stock_code != barcode:
-            index[f'stock::{stock_code.lower()}'] = record
+        # The original code had this outside the variant block, which is fine for the main record.
+        # For variants, we want to ensure the variant record is indexed by stock_code if applicable.
+        # if stock_code and stock_code != barcode:
+        #     index[f'stock::{stock_code.lower()}'] = record
     index['__records__'] = records
     index['by_barcode'] = by_barcode
+    index['by_stock_code'] = by_stock_code # New Index
     
     logger.info(f"XML Source {xml_source_id}: Finished processing {len(records)} records in {time.time() - start_time:.2f} seconds.")
 

@@ -1768,27 +1768,62 @@ def sync_trendyol_with_xml_diff(job_id: str, xml_source_id: Any, user_id: int = 
     startTime = time.time()
     append_mp_job_log(job_id, "Trendyol Akıllı Senkronizasyon (Diff Sync) başlatıldı.")
     
+    # Updated to use Stock Code & Exclusion List
+    
     # 1. Fetch Remote Inventory
-    remote_items = fetch_all_trendyol_inventory(user_id, job_id=job_id)
-    remote_barcodes = {item['barcode'] for item in remote_items if item['barcode']}
-    append_mp_job_log(job_id, f"Trendyol hesabınızda toplam {len(remote_barcodes)} farklı barkod tespit edildi.")
+    remote_items = fetch_all_trendyol_products(job_id=job_id, user_id=user_id)
+    # Map STOCK CODE -> Item (Trendyol 'stockCode' is the vendor stock code)
+    remote_stock_map = {}
+    for item in remote_items:
+        sc = item.get('stockCode')
+        if sc:
+            remote_stock_map[sc.strip()] = item
+            
+    remote_stock_codes = set(remote_stock_map.keys())
+    append_mp_job_log(job_id, f"Trendyol hesabınızda {len(remote_stock_codes)} stok kodlu ürün bulundu.")
 
-    # 2. Load XML Data
+    # 2. Load XML
+    from app.services.xml_service import load_xml_source_index
     xml_index = load_xml_source_index(xml_source_id)
-    xml_map = xml_index.get('by_barcode') or {}
-    xml_barcodes = set(xml_map.keys())
-    append_mp_job_log(job_id, f"XML kaynağında {len(xml_barcodes)} barkod bulundu.")
+    # Use the new by_stock_code index
+    xml_map = xml_index.get('by_stock_code') or {}
+    xml_stock_codes = set(xml_map.keys()) # XML Stock Codes
+    append_mp_job_log(job_id, f"XML kaynağında {len(xml_stock_codes)} stok kodlu ürün bulundu.")
+
+    # Load Exclusions
+    from app.models.sync_exception import SyncException
+    exclusions = SyncException.query.filter_by(user_id=user_id).all()
+    excluded_values = {e.value.strip() for e in exclusions}
+    if excluded_values:
+        append_mp_job_log(job_id, f"⚠️ {len(excluded_values)} ürün 'Hariç Listesi'nde, işlem yapılmayacak.")
 
     # 3. Find Diff: Products in Trendyol but NOT in XML
-    to_zero_barcodes = remote_barcodes - xml_barcodes
-    append_mp_job_log(job_id, f"XML'de bulunmayan {len(to_zero_barcodes)} ürün tespit edildi. Bunların stokları 0 yapılacaktır.")
+    to_zero_candidates = remote_stock_codes - xml_stock_codes
+    
+    # Filter Exclusions from Zeroing
+    to_zero_stock_codes = []
+    skipped_zero_count = 0
+    for sc in to_zero_candidates:
+        if sc in excluded_values:
+            skipped_zero_count += 1
+            continue
+        to_zero_stock_codes.append(sc)
+    
+    append_mp_job_log(job_id, f"XML'de bulunmayan {len(to_zero_stock_codes)} ürün tespit edildi. Stokları 0 yapılacaktır.")
+    if skipped_zero_count > 0:
+        append_mp_job_log(job_id, f"🛡️ {skipped_zero_count} ürün harici listede olduğu için SIFIRLANMADI.")
 
     # 4. Zero out missing products
     client = get_trendyol_client(user_id=user_id)
     zeroed_count = 0
-    if to_zero_barcodes:
+    if to_zero_stock_codes:
         zero_payload = []
-        for barcode in to_zero_barcodes:
+        for sc in to_zero_stock_codes:
+            # We need the barcode for the update payload ideally, but fetch_all_trendyol_products items have 'barcode' too.
+            # Let's retrieve barcode from our map
+            item = remote_stock_map.get(sc)
+            barcode = item.get('barcode') if item else sc # Fallback to sc if barcode missing (unlikely if fetched)
+            
             zero_payload.append({
                 'barcode': barcode,
                 'quantity': 0,
@@ -1800,22 +1835,70 @@ def sync_trendyol_with_xml_diff(job_id: str, xml_source_id: Any, user_id: int = 
             try:
                 client.update_price_inventory(chunk)
                 zeroed_count += len(chunk)
-                append_mp_job_log(job_id, f"✅ {zeroed_count}/{len(to_zero_barcodes)} ürün stoğu sıfırlandı.")
+                append_mp_job_log(job_id, f"✅ {zeroed_count}/{len(to_zero_stock_codes)} ürün stoğu sıfırlandı.")
                 time.sleep(1)
             except Exception as e:
                 append_mp_job_log(job_id, f"Sıfırlama hatası (chunk): {e}", level='error')
 
-    # 5. Update existing products from XML
-    # We only update barcodes that are actually on Trendyol to avoid creation errors if user didn't want 'Send All'
-    # Actually, usually users want to sync everything in XML to MP. 
-    # But for "Sync", we focus on matching.
+    # 5. Lightweight Sync for Matched Products (Stock Code Match)
+    matched_stock_codes = remote_stock_codes & xml_stock_codes
     
-    barcodes_to_sync = xml_barcodes # Every item in XML will be pushed/updated
-    append_mp_job_log(job_id, "XML verileri Trendyol'a aktarılıyor/güncelleniyor...")
+    # Filter Exclusions from Updates
+    final_matched = []
+    skipped_update_count = 0
+    for sc in matched_stock_codes:
+        if sc in excluded_values:
+            skipped_update_count += 1
+            continue
+        final_matched.append(sc)
+
+    append_mp_job_log(job_id, f"Eşleşen {len(final_matched)} ürün için fiyat/stok güncellemesi yapılıyor...")
+    if skipped_update_count > 0:
+        append_mp_job_log(job_id, f"🛡️ {skipped_update_count} ürün harici listede olduğu için GÜNCELLENMEDİ.")
     
-    # Delegate to the existing sender logic which handles categories, brands, price rules etc.
-    # Note: perform_trendyol_send_products handles batching internally.
-    sync_res = perform_trendyol_send_products(job_id, list(barcodes_to_sync), xml_source_id, user_id=user_id, **kwargs)
+    updated_count = 0
+    if final_matched:
+        update_payload = []
+        for sc in final_matched:
+            xml_info = xml_map.get(sc)
+            if not xml_info: continue
+            
+            # Retrieve barcode for update payload
+            item = remote_stock_map.get(sc)
+            barcode = item.get('barcode') if item else sc
+
+            # Stock
+            qty = to_int(xml_info.get('quantity'), 0)
+            
+            # Price
+            base_price = to_float(xml_info.get('price'), 0.0)
+            final_price = calculate_price(base_price, 'trendyol', user_id=user_id)
+            
+            update_payload.append({
+                'barcode': barcode,
+                'quantity': qty,
+                'salePrice': final_price,
+                'listPrice': final_price, 
+                'currencyType': 'TRY'
+            })
+            
+        # Batch send updates
+        for chunk in chunked(update_payload, 100):
+            try:
+                client.update_price_inventory(chunk)
+                updated_count += len(chunk)
+                append_mp_job_log(job_id, f"✅ {updated_count}/{len(final_matched)} eşleşen ürün güncellendi.")
+                time.sleep(0.5)
+            except Exception as e:
+                append_mp_job_log(job_id, f"Güncelleme hatası (chunk): {e}", level='error')
+
+    sync_res = {
+        'success': True,
+        'updated_count': updated_count,
+        'zeroed_count': zeroed_count,
+        'total_xml': len(xml_stock_codes),
+        'total_remote': len(remote_stock_codes)
+    }
     
     sync_res['zeroed_count'] = zeroed_count
     totalTime = time.time() - startTime

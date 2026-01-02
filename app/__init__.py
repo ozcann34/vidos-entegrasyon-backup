@@ -77,6 +77,9 @@ def create_app(config_name='default'):
     from app.routes.api_questions import api_questions_bp
     app.register_blueprint(api_questions_bp)
 
+    from app.routes.sync_exceptions import sync_exceptions_bp
+    app.register_blueprint(sync_exceptions_bp)
+    
     from app.routes.api_returns import api_returns_bp
     app.register_blueprint(api_returns_bp)
     

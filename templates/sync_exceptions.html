@@ -1,0 +1,209 @@
+{% extends "_base.html" %}
+
+{% block title %}Senkronizasyon İstisnaları{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800 dark-text-white">
+                <i class="bi bi-shield-lock-fill me-2 text-primary"></i>Senkronizasyon İstisnaları
+            </h1>
+            <p class="text-muted small mb-0 mt-1">Bu listedeki ürünler otomatik senkronizasyon ve sıfırlama
+                işlemlerinden hariç tutulur.</p>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addExceptionModal">
+            <i class="bi bi-plus-lg me-1"></i> Yeni Ekle
+        </button>
+    </div>
+
+    <div class="card shadow-sm border-0 rounded-4 mb-4">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="exceptionsTable">
+                    <thead class="bg-light dark-bg-dark-subtle">
+                        <tr>
+                            <th class="ps-4">Değer (Stok Kodu/Barkod)</th>
+                            <th>Tür</th>
+                            <th>Not</th>
+                            <th>Eklenme Tarihi</th>
+                            <th class="text-end pe-4">İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody class="border-top-0">
+                        <!-- JS ile doldurulacak -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="loading" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Yükleniyor...</span>
+                </div>
+            </div>
+            <div id="emptyState" class="text-center py-5 d-none">
+                <div class="display-1 text-muted opacity-25 mb-3">
+                    <i class="bi bi-list-check"></i>
+                </div>
+                <h5 class="text-muted">Liste Boş</h5>
+                <p class="text-muted small">Henüz hariç tutulan ürün eklenmemiş.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Modal -->
+<div class="modal fade" id="addExceptionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title h6 fw-bold">Yeni İstisna Ekle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="addExceptionForm">
+                    <div class="mb-3">
+                        <label class="form-label small text-muted text-uppercase fw-bold">Eşleşme Tipi</label>
+                        <select class="form-select" name="match_type">
+                            <option value="stock_code" selected>Stok Kodu (Önerilen)</option>
+                            <option value="barcode">Barkod</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small text-muted text-uppercase fw-bold">Değer</label>
+                        <input type="text" class="form-control" name="value" placeholder="Örn: STK-123456" required>
+                        <div class="form-text">Tam eşleşme aranır. Büyük/küçük harf duyarlı değildir.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small text-muted text-uppercase fw-bold">Not (Opsiyonel)</label>
+                        <input type="text" class="form-control" name="note" placeholder="Örn: Mağaza özel ürün">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                <button type="button" class="btn btn-light rounded-3" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-primary rounded-3 px-4" onclick="saveException()">Kaydet</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', loadExceptions);
+
+    async function loadExceptions() {
+        const tbody = document.querySelector('#exceptionsTable tbody');
+        const loading = document.getElementById('loading');
+        const emptyState = document.getElementById('emptyState');
+
+        tbody.innerHTML = '';
+        loading.classList.remove('d-none');
+        emptyState.classList.add('d-none');
+
+        try {
+            const response = await fetch('/api/sync-exceptions');
+            const data = await response.json();
+
+            loading.classList.add('d-none');
+
+            if (data.length === 0) {
+                emptyState.classList.remove('d-none');
+                return;
+            }
+
+            data.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                <td class="ps-4 fw-medium text-uppercase">${item.value}</td>
+                <td>
+                    <span class="badge bg-${item.match_type === 'stock_code' ? 'info' : 'warning'} bg-opacity-10 text-${item.match_type === 'stock_code' ? 'info' : 'warning'} rounded-pill px-3">
+                        ${item.match_type === 'stock_code' ? 'Stok Kodu' : 'Barkod'}
+                    </span>
+                </td>
+                <td class="text-muted small">${item.note || '-'}</td>
+                <td class="text-muted small">${item.created_at}</td>
+                <td class="text-end pe-4">
+                    <button class="btn btn-sm btn-light text-danger border-0 rounded-circle" onclick="deleteException(${item.id})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            `;
+                tbody.appendChild(tr);
+            });
+
+        } catch (error) {
+            console.error('Error:', error);
+            loading.innerHTML = '<div class="text-danger">Yükleme hatası!</div>';
+        }
+    }
+
+    async function saveException() {
+        const form = document.getElementById('addExceptionForm');
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+
+        try {
+            const response = await fetch('/api/sync-exceptions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('addExceptionModal'));
+                modal.hide();
+                form.reset();
+                loadExceptions();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Başarılı',
+                    text: 'Kayıt eklendi.',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+            } else {
+                Swal.fire('Hata', result.message, 'error');
+            }
+        } catch (error) {
+            Swal.fire('Hata', 'Bir sorun oluştu.', 'error');
+        }
+    }
+
+    async function deleteException(id) {
+        const result = await Swal.fire({
+            title: 'Emin misiniz?',
+            text: "Bu kayıt silinecek.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, Sil',
+            cancelButtonText: 'İptal'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch(`/api/sync-exceptions/${id}`, {
+                    method: 'DELETE'
+                });
+                const res = await response.json();
+
+                if (res.success) {
+                    loadExceptions();
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Silindi',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                } else {
+                    Swal.fire('Hata', res.message, 'error');
+                }
+            } catch (error) {
+                Swal.fire('Hata', 'Silme işlemi başarısız.', 'error');
+            }
+        }
+    }
+</script>
+{% endblock %}

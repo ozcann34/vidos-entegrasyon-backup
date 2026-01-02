@@ -1075,10 +1075,22 @@ def sync_idefix_with_xml_diff(job_id: str, xml_source_id: Any, user_id: int = No
     
     client = get_idefix_client(user_id=user_id)
     
-    # 1. Fetch Pool items (Idefix stores all states in Pool)
+    # Updated to use Stock Code & Exclusion List
+    
+    # 1. Fetch Pool items
     pool_items = client.get_full_pool_list()
-    remote_barcodes = {item['barcode'] for item in pool_items if item.get('barcode')}
-    append_mp_job_log(job_id, f"Idefix hesabınızda toplam {len(remote_barcodes)} ürün (havuz dahil) tespit edildi.")
+    # Map STOCK CODE -> Item (Using 'barcode' or 'stockCode' from pool depending on what represents the vendor code)
+    # Idefix pool items usually have 'barcode' and 'stockCode' (often same).
+    # Since XML matching is now stock-code based, we'll map remote stock codes.
+    remote_stock_map = {}
+    for item in pool_items:
+        # Check stock code first, fallback to barcode if stock code is missing or empty
+        sc = item.get('stockCode') or item.get('barcode')
+        if sc:
+            remote_stock_map[sc.strip()] = item
+            
+    remote_stock_codes = set(remote_stock_map.keys())
+    append_mp_job_log(job_id, f"Idefix hesabınızda toplam {len(remote_stock_codes)} stok kodlu ürün (havuz dahil) tespit edildi.")
 
     # 2. Check for waiting_vendor_approve and approve them
     waiting_approves = [item['barcode'] for item in pool_items if item.get('poolState') == 'waiting_vendor_approve']
@@ -1090,33 +1102,108 @@ def sync_idefix_with_xml_diff(job_id: str, xml_source_id: Any, user_id: int = No
 
     # 3. Load XML
     xml_index = load_xml_source_index(xml_source_id)
-    xml_map = xml_index.get('by_barcode') or {}
-    xml_barcodes = set(xml_map.keys())
-    
+    # Use the new by_stock_code index
+    xml_map = xml_index.get('by_stock_code') or {}
+    xml_stock_codes = set(xml_map.keys()) # XML Stock Codes
+    append_mp_job_log(job_id, f"XML kaynağında {len(xml_stock_codes)} stok kodlu ürün bulundu.")
+
+    # Load Exclusions
+    from app.models.sync_exception import SyncException
+    exclusions = SyncException.query.filter_by(user_id=user_id).all()
+    excluded_values = {e.value.strip() for e in exclusions}
+    if excluded_values:
+        append_mp_job_log(job_id, f"⚠️ {len(excluded_values)} ürün 'Hariç Listesi'nde, işlem yapılmayacak.")
+
     # 4. Find Diff (Missing in XML)
-    to_zero = remote_barcodes - xml_barcodes
-    append_mp_job_log(job_id, f"XML'de OLMAYAN {len(to_zero)} ürün Idefix'te sıfırlanıyor.")
-    
+    to_zero_candidates = remote_stock_codes - xml_stock_codes
+
+    # Filter Exclusions from Zeroing
+    to_zero_stock_codes = []
+    skipped_zero_count = 0
+    for sc in to_zero_candidates:
+        if sc in excluded_values:
+            skipped_zero_count += 1
+            continue
+        to_zero_stock_codes.append(sc)
+        
+    append_mp_job_log(job_id, f"XML'de OLMAYAN {len(to_zero_stock_codes)} ürün Idefix'te sıfırlanıyor.")
+    if skipped_zero_count > 0:
+        append_mp_job_log(job_id, f"🛡️ {skipped_zero_count} ürün harici listede olduğu için SIFIRLANMADI.")
+
     zeroed_count = 0
-    if to_zero:
+    if to_zero_stock_codes:
         zero_payload = []
-        for bc in to_zero:
-            zero_payload.append({'barcode': bc, 'inventoryQuantity': 0, 'price': 0})
+        for sc in to_zero_stock_codes:
+            # Need barcode for API usually
+            item = remote_stock_map.get(sc)
+            barcode = item.get('barcode') if item else sc
+            zero_payload.append({'barcode': barcode, 'inventoryQuantity': 0, 'price': 0})
         
         for chunk in chunked(zero_payload, 100):
             try:
                 # Inventory update for Idefix
-                # Using update_inventory_and_price (Catalog API)
-                # Remapped to Kurus is handled inside update_inventory_and_price
                 client.update_inventory_and_price(chunk)
                 zeroed_count += len(chunk)
-                append_mp_job_log(job_id, f"✅ {zeroed_count}/{len(to_zero)} ürün sıfırlandı.")
+                append_mp_job_log(job_id, f"✅ {zeroed_count}/{len(to_zero_stock_codes)} ürün sıfırlandı.")
             except Exception as e:
                 append_mp_job_log(job_id, f"Sıfırlama hatası: {e}", level='error')
 
-    # 5. Sync Existing/New
-    sync_res = perform_idefix_send_products(job_id, list(xml_barcodes), xml_source_id, user_id=user_id, **kwargs)
-    sync_res['zeroed_count'] = zeroed_count
+    # 5. Lightweight Sync for Matched Products (Stock Code Match)
+    matched_stock_codes = remote_stock_codes & xml_stock_codes
+    
+    # Filter Exclusions from Updates
+    final_matched = []
+    skipped_update_count = 0
+    for sc in matched_stock_codes:
+        if sc in excluded_values:
+            skipped_update_count += 1
+            continue
+        final_matched.append(sc)
+    
+    append_mp_job_log(job_id, f"Eşleşen {len(final_matched)} ürün için fiyat/stok güncellemesi yapılıyor...")
+    if skipped_update_count > 0:
+        append_mp_job_log(job_id, f"🛡️ {skipped_update_count} ürün harici listede olduğu için GÜNCELLENMEDİ.")
+    
+    updated_count = 0
+    if final_matched:
+        update_payload = []
+        for sc in final_matched:
+            xml_info = xml_map.get(sc)
+            if not xml_info: continue
+            
+            # Need barcode for update payload
+            item = remote_stock_map.get(sc)
+            barcode = item.get('barcode') if item else sc
+            
+            # Stock
+            qty = to_int(xml_info.get('quantity'), 0)
+            
+            # Price
+            base_price = to_float(xml_info.get('price'), 0.0)
+            final_price = calculate_price(base_price, 'idefix', user_id=user_id)
+            
+            update_payload.append({
+                'barcode': barcode,
+                'inventoryQuantity': qty,
+                'price': final_price,
+                'comparePrice': final_price
+            })
+            
+        for chunk in chunked(update_payload, 100):
+            try:
+                client.update_inventory_and_price(chunk)
+                updated_count += len(chunk)
+                append_mp_job_log(job_id, f"✅ {updated_count}/{len(final_matched)} eşleşen ürün güncellendi.")
+            except Exception as e:
+                append_mp_job_log(job_id, f"Güncelleme hatası: {e}", level='error')
+
+    sync_res = {
+        'success': True,
+        'updated_count': updated_count,
+        'zeroed_count': zeroed_count,
+        'total_xml': len(xml_stock_codes),
+        'total_remote': len(remote_stock_codes)
+    }
     
     append_mp_job_log(job_id, f"Idefix senkronizasyon tamamlandı. Süre: {time.time()-startTime:.1f}s")
     return sync_res

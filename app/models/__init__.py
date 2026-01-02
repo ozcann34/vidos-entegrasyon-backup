@@ -15,3 +15,4 @@ from .support import SupportTicket, SupportMessage
 from .expense import Expense
 from app.models.notification import Notification, PushSubscription
 from app.models.contact import ContactMessage
+from app.models.sync_exception import SyncException
