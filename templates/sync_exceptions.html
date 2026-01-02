@@ -184,11 +184,13 @@
             : '<i class="bi bi-trash me-1"></i> Seçilenleri Sil';
     }
 
-    function handleCheckboxChange(checkbox, id) {
+    function handleCheckboxChange(checkbox, ids) {
+        const idArray = ids.toString().split(',').map(id => parseInt(id));
+
         if (checkbox.checked) {
-            selectedIds.add(id);
+            idArray.forEach(id => selectedIds.add(id));
         } else {
-            selectedIds.delete(id);
+            idArray.forEach(id => selectedIds.delete(id));
             document.getElementById('selectAll').checked = false;
         }
         updateDeleteButton();
@@ -218,27 +220,48 @@
                 return;
             }
 
-            // Render rows - show each item as is
+            // Group items by note and created_at to show stock code and barcode together
+            const grouped = {};
             data.items.forEach(item => {
-                const tr = document.createElement('tr');
+                // Group by note and date (items added together will have similar timestamp)
+                const key = `${item.note || 'no-note'}_${item.created_at}`;
+                if (!grouped[key]) {
+                    grouped[key] = {
+                        stock_code: null,
+                        barcode: null,
+                        note: item.note,
+                        created_at: item.created_at,
+                        ids: []
+                    };
+                }
 
-                // Determine which column to show value in
-                const stockCode = item.match_type === 'stock_code' ? item.value : '-';
-                const barcode = item.match_type === 'barcode' ? item.value : '-';
+                if (item.match_type === 'stock_code') {
+                    grouped[key].stock_code = item.value;
+                } else {
+                    grouped[key].barcode = item.value;
+                }
+                grouped[key].ids.push(item.id);
+            });
+
+            // Render grouped rows
+            Object.values(grouped).forEach(group => {
+                const tr = document.createElement('tr');
+                const allIds = group.ids.join(',');
 
                 tr.innerHTML = `
                 <td class="ps-4">
                     <input type="checkbox" class="form-check-input exception-checkbox" 
-                           value="${item.id}" 
-                           onchange="handleCheckboxChange(this, ${item.id})">
+                           value="${allIds}" 
+                           data-ids="${allIds}"
+                           onchange="handleCheckboxChange(this, '${allIds}')">
                 </td>
-                <td class="fw-medium text-uppercase">${stockCode}</td>
-                <td class="fw-medium text-uppercase">${barcode}</td>
-                <td class="text-muted small">${item.note || '-'}</td>
-                <td class="text-muted small">${item.created_at}</td>
+                <td class="fw-medium text-uppercase">${group.stock_code || '-'}</td>
+                <td class="fw-medium text-uppercase">${group.barcode || '-'}</td>
+                <td class="text-muted small">${group.note || '-'}</td>
+                <td class="text-muted small">${group.created_at}</td>
                 <td class="text-end pe-4">
                     <button class="btn btn-sm btn-light text-danger border-0 rounded-circle" 
-                            onclick="deleteException(${item.id})">
+                            onclick="deleteMultiple('${allIds}')">
                         <i class="bi bi-trash"></i>
                     </button>
                 </td>
@@ -325,6 +348,46 @@
             }
         } catch (error) {
             Swal.fire('Hata', 'Bir sorun oluştu.', 'error');
+        }
+    }
+
+    async function deleteMultiple(idsStr) {
+        const ids = idsStr.split(',').map(id => parseInt(id));
+
+        const result = await Swal.fire({
+            title: 'Emin misiniz?',
+            text: `${ids.length} kayıt silinecek.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, Sil',
+            cancelButtonText: 'İptal'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch('/api/sync-exceptions/bulk-delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ids: ids })
+                });
+                const res = await response.json();
+
+                if (res.success) {
+                    loadExceptions(currentPage);
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Silindi',
+                        text: res.message,
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                } else {
+                    Swal.fire('Hata', res.message, 'error');
+                }
+            } catch (error) {
+                console.error('Delete error:', error);
+                Swal.fire('Hata', 'Silme işlemi başarısız.', 'error');
+            }
         }
     }
 
