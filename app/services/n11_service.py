@@ -1005,6 +1005,9 @@ def sync_n11_with_xml_diff(job_id: str, xml_source_id: Any, user_id: int = None,
     xml_map = xml_index.get('by_stock_code') or {}
     xml_stock_codes = set(xml_map.keys())
     
+    # Fallback map: by_barcode
+    xml_barcode_map = xml_index.get('by_barcode') or {}
+    
     # Load Exclusions
     from app.models.sync_exception import SyncException
     exclusions = SyncException.query.filter_by(user_id=user_id).all()
@@ -1012,41 +1015,57 @@ def sync_n11_with_xml_diff(job_id: str, xml_source_id: Any, user_id: int = None,
     if excluded_values:
         append_mp_job_log(job_id, f"⚠️ {len(excluded_values)} ürün 'Hariç Listesi'nde, işlem yapılmayacak.")
 
-    # 3. Find Diff
-    to_zero_candidates = remote_stock_codes - xml_stock_codes
+    # 3. Find Diff & Fallback Matching
+    to_zero_candidates = []
+    matched_stock_codes = []
     
-    # Filter Exclusions from Zeroing
-    to_zero = []
-    skipped_zero_count = 0
-    for sc in to_zero_candidates:
-        if sc in excluded_values:
-            skipped_zero_count += 1
+    processed_remotes = set()
+    
+    for remote_sc in remote_stock_codes:
+        if remote_sc in excluded_values:
             continue
-        to_zero.append(sc)
-        
-    append_mp_job_log(job_id, f"XML'de OLMAYAN {len(to_zero)} ürün N11'de sıfırlanıyor.")
-    if skipped_zero_count > 0:
-        append_mp_job_log(job_id, f"🛡️ {skipped_zero_count} ürün harici listede olduğu için SIFIRLANMADI.")
+            
+        # Priority 1: Stock Code Match
+        if remote_sc in xml_map:
+            matched_stock_codes.append(remote_sc)
+            processed_remotes.add(remote_sc)
+            continue
+            
+        # Priority 2: Fallback Match (Stock Code matches XML Barcode)
+        if remote_sc in xml_barcode_map:
+            # This is a fallback match!
+            matched_stock_codes.append(remote_sc)
+            # We must ensure we use the barcode-mapped item later for updates
+            # (The update loop will need to handle this lookup)
+            processed_remotes.add(remote_sc)
+            continue
+            
+        # If neither, it's a candidate for zeroing
+        to_zero_candidates.append(remote_sc)
+
+    # Filter Exclusions from Zeroing (Already handled by loop above effectively, but let's be safe)
+    # Actually, the loop skips exclusions completely, so they are neither matched nor zeroed. Correct.
     
-    zeroed_count = 0
-    if to_zero:
-        items_to_zero = []
-        for sc in to_zero:
-            # We need barcode (sellerCode is technically stock code in N11 context usually)
-            # But the remote_stock_map keys are sellerCodes.
-            # Assuming sellerCode is the identifier used for updates.
-            items_to_zero.append({
-                'barcode': sc, # N11 Batch Update uses 'barcode' key but maps it to sellerCode internally often
+    items_to_zero = []
+    for sc in to_zero_candidates:
+        # One last check just in case logic changes
+        if sc not in excluded_values:
+             items_to_zero.append({
+                'barcode': sc, 
                 'stock': 0
             })
-        
+
+    append_mp_job_log(job_id, f"XML'de OLMAYAN {len(items_to_zero)} ürün N11'de sıfırlanıyor.")
+    
+    zeroed_count = 0
+    if items_to_zero:
         # Use perform_n11_batch_update for zeroing
         z_res = perform_n11_batch_update(job_id, items_to_zero, user_id=user_id)
         zeroed_count = z_res.get('updated_count', 0)
         append_mp_job_log(job_id, f"✅ {zeroed_count} ürün başarıyla sıfırlandı.")
 
-    # 4. Lightweight Sync for Matched Products (Stock Code Match)
-    matched_stock_codes = remote_stock_codes & xml_stock_codes
+    # 4. Lightweight Sync for Matched Products
+    # matched_stock_codes contains SCs that exist in XML (either as SC or Barcode)
     
     # Filter Exclusions from Updates
     final_matched = []
@@ -1065,7 +1084,13 @@ def sync_n11_with_xml_diff(job_id: str, xml_source_id: Any, user_id: int = None,
     if final_matched:
         items_to_update = []
         for sc in final_matched:
+            # Try Primary Match
             xml_info = xml_map.get(sc)
+            
+            # Try Fallback Match
+            if not xml_info:
+                xml_info = xml_barcode_map.get(sc)
+            
             if not xml_info: continue
             
             # Stock
@@ -1076,7 +1101,7 @@ def sync_n11_with_xml_diff(job_id: str, xml_source_id: Any, user_id: int = None,
             final_price = calculate_price(base_price, 'n11', user_id=user_id)
             
             items_to_update.append({
-                'barcode': sc, # Using Stock Code as Identifier
+                'barcode': sc, # Using Stock Code as Identifier for N11 Update
                 'stock': qty,
                 'price': final_price
             })

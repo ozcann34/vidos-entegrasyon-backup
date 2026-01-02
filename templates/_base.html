@@ -271,7 +271,7 @@
             <!-- 2. Güncelleme Seçenekleri -->
             <li class="nav-item">
                 {% set update_ops_active = (request.endpoint in ['main.auto_sync_page', 'main.xml_updates',
-                'products.bulk_update']) %}
+                'products.bulk_update', 'sync_exceptions.index']) %}
                 <a href="#updateOpsSubmenu" data-bs-toggle="collapse"
                     aria-expanded="{{ 'true' if update_ops_active else 'false' }}"
                     class="nav-link dropdown-toggle text-white {% if not update_ops_active %}collapsed{% endif %}">
@@ -284,6 +284,12 @@
                         <a href="{{ url_for('main.auto_sync_page') }}"
                             class="nav-link py-2 fs-6 {% if request.endpoint == 'main.auto_sync_page' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
                             <i class="bi bi-caret-right-fill me-1 small"></i> Otomatik Senk.
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('sync_exceptions.index') }}"
+                            class="nav-link py-2 fs-6 {% if request.endpoint == 'sync_exceptions.index' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
+                            <i class="bi bi-caret-right-fill me-1 small"></i> Senk. İstisnaları
                         </a>
                     </li>
                     {% endif %}

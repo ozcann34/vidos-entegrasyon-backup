@@ -1105,6 +1105,10 @@ def sync_idefix_with_xml_diff(job_id: str, xml_source_id: Any, user_id: int = No
     # Use the new by_stock_code index
     xml_map = xml_index.get('by_stock_code') or {}
     xml_stock_codes = set(xml_map.keys()) # XML Stock Codes
+    
+    # Fallback map: by_barcode
+    xml_barcode_map = xml_index.get('by_barcode') or {}
+    
     append_mp_job_log(job_id, f"XML kaynağında {len(xml_stock_codes)} stok kodlu ürün bulundu.")
 
     # Load Exclusions
@@ -1114,17 +1118,31 @@ def sync_idefix_with_xml_diff(job_id: str, xml_source_id: Any, user_id: int = No
     if excluded_values:
         append_mp_job_log(job_id, f"⚠️ {len(excluded_values)} ürün 'Hariç Listesi'nde, işlem yapılmayacak.")
 
-    # 4. Find Diff (Missing in XML)
-    to_zero_candidates = remote_stock_codes - xml_stock_codes
-
-    # Filter Exclusions from Zeroing
+    # 4. Find Diff & Fallback Matching
     to_zero_stock_codes = []
-    skipped_zero_count = 0
-    for sc in to_zero_candidates:
-        if sc in excluded_values:
-            skipped_zero_count += 1
+    matched_stock_codes = []
+    
+    processed_remotes = set()
+    
+    for remote_sc in remote_stock_codes:
+        if remote_sc in excluded_values:
             continue
-        to_zero_stock_codes.append(sc)
+            
+        # Priority 1: Stock Code Match
+        if remote_sc in xml_map:
+            matched_stock_codes.append(remote_sc)
+            processed_remotes.add(remote_sc)
+            continue
+            
+        # Priority 2: Fallback Match (Stock Code matches XML Barcode)
+        if remote_sc in xml_barcode_map:
+            # Fallback match to Barcode!
+            matched_stock_codes.append(remote_sc)
+            processed_remotes.add(remote_sc)
+            continue
+            
+        # If neither, it's a candidate for zeroing
+        to_zero_stock_codes.append(remote_sc)
         
     append_mp_job_log(job_id, f"XML'de OLMAYAN {len(to_zero_stock_codes)} ürün Idefix'te sıfırlanıyor.")
     if skipped_zero_count > 0:
@@ -1168,7 +1186,13 @@ def sync_idefix_with_xml_diff(job_id: str, xml_source_id: Any, user_id: int = No
     if final_matched:
         update_payload = []
         for sc in final_matched:
+            # Try Primary Match
             xml_info = xml_map.get(sc)
+            
+            # Try Fallback Match
+            if not xml_info:
+                xml_info = xml_barcode_map.get(sc)
+            
             if not xml_info: continue
             
             # Need barcode for update payload

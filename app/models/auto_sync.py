@@ -56,6 +56,7 @@ class SyncLog(db.Model):
     __tablename__ = "sync_logs"
     
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True) # Added user_id
     marketplace = db.Column(db.String(50), nullable=False)
     timestamp = db.Column(db.String, nullable=False, default=lambda: datetime.utcnow().isoformat())
     products_updated = db.Column(db.Integer, default=0)

@@ -1788,6 +1788,10 @@ def sync_trendyol_with_xml_diff(job_id: str, xml_source_id: Any, user_id: int = 
     # Use the new by_stock_code index
     xml_map = xml_index.get('by_stock_code') or {}
     xml_stock_codes = set(xml_map.keys()) # XML Stock Codes
+    
+    # Fallback map: by_barcode
+    xml_barcode_map = xml_index.get('by_barcode') or {}
+    
     append_mp_job_log(job_id, f"XML kaynağında {len(xml_stock_codes)} stok kodlu ürün bulundu.")
 
     # Load Exclusions
@@ -1797,21 +1801,33 @@ def sync_trendyol_with_xml_diff(job_id: str, xml_source_id: Any, user_id: int = 
     if excluded_values:
         append_mp_job_log(job_id, f"⚠️ {len(excluded_values)} ürün 'Hariç Listesi'nde, işlem yapılmayacak.")
 
-    # 3. Find Diff: Products in Trendyol but NOT in XML
-    to_zero_candidates = remote_stock_codes - xml_stock_codes
-    
-    # Filter Exclusions from Zeroing
+    # 3. Find Diff & Fallback Matching
     to_zero_stock_codes = []
-    skipped_zero_count = 0
-    for sc in to_zero_candidates:
-        if sc in excluded_values:
-            skipped_zero_count += 1
+    matched_stock_codes = []
+    
+    processed_remotes = set()
+    
+    for remote_sc in remote_stock_codes:
+        if remote_sc in excluded_values:
             continue
-        to_zero_stock_codes.append(sc)
+            
+        # Priority 1: Stock Code Match
+        if remote_sc in xml_map:
+            matched_stock_codes.append(remote_sc)
+            processed_remotes.add(remote_sc)
+            continue
+            
+        # Priority 2: Fallback Match (Stock Code matches XML Barcode)
+        if remote_sc in xml_barcode_map:
+            # Fallback match found!
+            matched_stock_codes.append(remote_sc)
+            processed_remotes.add(remote_sc)
+            continue
+            
+        # If neither, it's a candidate for zeroing
+        to_zero_stock_codes.append(remote_sc)
     
     append_mp_job_log(job_id, f"XML'de bulunmayan {len(to_zero_stock_codes)} ürün tespit edildi. Stokları 0 yapılacaktır.")
-    if skipped_zero_count > 0:
-        append_mp_job_log(job_id, f"🛡️ {skipped_zero_count} ürün harici listede olduğu için SIFIRLANMADI.")
 
     # 4. Zero out missing products
     client = get_trendyol_client(user_id=user_id)
@@ -1858,32 +1874,39 @@ def sync_trendyol_with_xml_diff(job_id: str, xml_source_id: Any, user_id: int = 
     
     updated_count = 0
     if final_matched:
-        update_payload = []
+        items_to_update = []
         for sc in final_matched:
+            # Try Primary Match
             xml_info = xml_map.get(sc)
+            
+            # Try Fallback Match
+            if not xml_info:
+                xml_info = xml_barcode_map.get(sc)
+            
             if not xml_info: continue
             
-            # Retrieve barcode for update payload
-            item = remote_stock_map.get(sc)
-            barcode = item.get('barcode') if item else sc
-
             # Stock
             qty = to_int(xml_info.get('quantity'), 0)
             
             # Price
             base_price = to_float(xml_info.get('price'), 0.0)
-            final_price = calculate_price(base_price, 'trendyol', user_id=user_id)
+            final_price = calculate_price(base_price, 'trendyol', user_id=user_id) # Using trendyol specific price logic
             
-            update_payload.append({
+            # Get Remote Barcode (for API call)
+            # Trendyol API needs "barcode" to update
+            remote_item = remote_stock_map.get(sc)
+            barcode = remote_item.get('barcode') if remote_item else sc
+            
+            items_to_update.append({
                 'barcode': barcode,
                 'quantity': qty,
                 'salePrice': final_price,
-                'listPrice': final_price, 
+                'listPrice': final_price,
                 'currencyType': 'TRY'
             })
             
         # Batch send updates
-        for chunk in chunked(update_payload, 100):
+        for chunk in chunked(items_to_update, 100):
             try:
                 client.update_price_inventory(chunk)
                 updated_count += len(chunk)

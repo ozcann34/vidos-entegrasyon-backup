@@ -2244,8 +2244,9 @@ def api_auto_sync_toggle():
     try:
         data = request.get_json() or {}
         marketplace = data.get('marketplace')
+        # Enforce 3-hour interval and auto matching as per new business logic
         enabled = data.get('enabled', False)
-        interval_minutes = data.get('interval_minutes', 60)
+        interval_minutes = 180 # Always 3 hours
         
         if not marketplace or marketplace not in MARKETPLACES:
             return jsonify({'success': False, 'message': 'Geçersiz pazaryeri'}), 400
@@ -2253,12 +2254,13 @@ def api_auto_sync_toggle():
         # AutoSync kaydını güncelle
         auto_sync = AutoSync.get_or_create(marketplace, user_id=current_user.id)
         auto_sync.enabled = enabled
-        auto_sync.sync_interval_minutes = int(interval_minutes)
+        auto_sync.sync_interval_minutes = 180 # Force usage
         auto_sync.updated_at = datetime.utcnow().isoformat()
         db.session.commit()
         
         # Save extended settings (XML Source, Match Strategy)
         xml_source_id = data.get('xml_source_id')
+        # match_by is ignored/forced to 'stock_code' logic implicitly by services
         match_by = data.get('match_by')
         
         if xml_source_id:

@@ -10,66 +10,42 @@
                 <h6 class="card-title mb-0">
                     <i class="bi bi-shop me-2"></i> {{ name }}
                 </h6>
-                <div class="form-check form-switch">
-                    <input class="form-check-input sync-toggle" type="checkbox" role="switch" id="sync-toggle-{{ key }}"
-                        data-marketplace="{{ key }}">
-                </div>
             </div>
-
-            <div class="sync-info">
-                <div class="mb-2">
-                    <small class="text-muted">Son Senkronizasyon:</small>
-                    <div class="last-sync-time" data-marketplace="{{ key }}">
-                        <small class="text-secondary">—</small>
-                    </div>
-                </div>
-
-                <div class="mb-3">
-                    <small class="text-muted">Senkronizasyon Aralığı:</small>
-                    <div class="input-group input-group-sm">
-                        <input type="number" class="form-control sync-interval" min="10" max="1440" value="60"
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div class="form-check form-switch custom-switch-lg">
+                        <input class="form-check-input sync-enable" type="checkbox" id="enable_{{ key }}"
                             data-marketplace="{{ key }}">
-                        <span class="input-group-text">dakika</span>
+                        <label class="form-check-label fw-bold ms-2" for="enable_{{ key }}">
+                            Otomatik Senkronizasyon
+                        </label>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge bg-light text-secondary border rounded-pill px-3 py-2">
+                            <i class="bi bi-clock-history me-1"></i> Her 3 Saatte Bir
+                        </span>
                     </div>
                 </div>
 
-                <div class="mb-3">
-                    <small class="text-muted">XML Kaynağı:</small>
-                    <select class="form-select form-select-sm sync-xml-source" data-marketplace="{{ key }}">
-                        <option value="">Seçiniz</option>
+                <div class="mb-4">
+                    <label class="form-label text-muted small text-uppercase fw-bold">XML Kaynağı</label>
+                    <select class="form-select xml-source-select" data-marketplace="{{ key }}">
+                        <option value="">Seçiniz...</option>
                         {% for src in xml_sources %}
                         <option value="{{ src.id }}">{{ src.name }}</option>
                         {% endfor %}
                     </select>
-                </div>
-
-                <div class="mb-3">
-                    <small class="text-muted">Eşleşme Tipi:</small>
-                    <select class="form-select form-select-sm sync-match-by" data-marketplace="{{ key }}">
-                        <option value="barcode">Barkod</option>
-                        <option value="stock_code">Stok Kodu</option>
-                    </select>
-                </div>
-
-                <!-- Progress Section (Hidden by default) -->
-                <div class="sync-progress-section mb-3 d-none" data-marketplace="{{ key }}">
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <small class="text-muted">İlerleme:</small>
-                        <small class="sync-progress-text fw-bold">0 / 0</small>
-                    </div>
-                    <div class="progress mb-1" style="height: 10px;">
-                        <div class="sync-progress-bar progress-bar progress-bar-striped progress-bar-animated"
-                            role="progressbar" style="width: 0%; background-color: var(--primary);">0%</div>
-                    </div>
-                    <div class="d-flex justify-content-between">
-                        <small class="text-muted sync-progress-message">Hazırlanıyor...</small>
-                        <small class="text-muted sync-progress-eta">—</small>
+                    <div class="form-text small mt-2">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Eşleşme Otomatik Olarak Yapılır: <strong>Stok Kodu > Barkod</strong>
                     </div>
                 </div>
 
-                <button class="btn btn-sm btn-outline-primary w-100 manual-sync-btn" data-marketplace="{{ key }}">
-                    <i class="bi bi-play-fill me-1"></i> Şimdi Senkronize Et
-                </button>
+                <div class="alert alert-light border-0 small text-muted mb-0">
+                    <i class="bi bi-shield-check me-2 text-success"></i>
+                    <a href="{{ url_for('sync_exceptions.index') }}" class="text-decoration-none fw-bold">İstisna
+                        Listesi</a>'ndeki ürünlere dokunulmaz.
+                </div>
             </div>
         </div>
     </div>

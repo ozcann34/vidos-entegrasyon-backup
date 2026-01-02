@@ -125,7 +125,7 @@ def sync_marketplace_products(marketplace: str, user_id: int, job_id: Optional[s
         if job_id:
             update_mp_job(job_id, progress={'current': 100, 'total': 100, 'message': 'Tamamlandı'})
         
-        _save_sync_log(marketplace, result, error_message=sync_res.get('message') if not result['success'] else None)
+        _save_sync_log(marketplace, result, error_message=sync_res.get('message') if not result['success'] else None, user_id=user_id)
         
         # Update last sync time
         if sync_record:
@@ -143,11 +143,12 @@ def sync_marketplace_products(marketplace: str, user_id: int, job_id: Optional[s
     return result
 
 
-def _save_sync_log(marketplace: str, result: Dict[str, Any], error_message: Optional[str] = None):
+def _save_sync_log(marketplace: str, result: Dict[str, Any], error_message: Optional[str] = None, user_id: int = None):
     """Senkronizasyon logunu kaydet"""
     try:
         log = SyncLog(
             marketplace=marketplace,
+            user_id=user_id, # Save user_id
             products_updated=result.get('products_updated', 0),
             stock_changes=result.get('stock_changes', 0),
             price_changes=result.get('price_changes', 0),
