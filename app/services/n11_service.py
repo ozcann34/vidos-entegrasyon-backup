@@ -976,17 +976,62 @@ def perform_n11_batch_update(job_id: str, items: List[Dict[str, Any]], user_id: 
     append_mp_job_log(job_id, "İşlem tamamlandı.")
     return result
 
-        if qty < 0: qty = 0
-        items_to_update.append({
-            'barcode': barcode,
-            'stock': qty
-        })
+
+def sync_n11_with_xml_diff(job_id: str, xml_source_id: Any, user_id: int = None, **kwargs) -> Dict[str, Any]:
+    """Smart Sync for N11 (Diff Logic)"""
+    startTime = time.time()
+    append_mp_job_log(job_id, "N11 Akıllı Senkronizasyon (Diff Sync) başlatıldı.")
+    
+    client = get_n11_client(user_id=user_id)
+    
+    # 1. Fetch Remote Inventory
+    remote_items = fetch_all_n11_products(job_id=job_id, user_id=user_id)
+    remote_barcodes = {item.get('sellerCode') for item in remote_items if item.get('sellerCode')}
+    append_mp_job_log(job_id, f"N11 hesabınızda toplam {len(remote_barcodes)} ürün tespit edildi.")
+
+    # 2. Load XML
+    from app.services.xml_service import load_xml_source_index
+    xml_index = load_xml_source_index(xml_source_id)
+    xml_map = xml_index.get('by_barcode') or {}
+    xml_barcodes = set(xml_map.keys())
+
+    # 3. Find Diff
+    to_zero = remote_barcodes - xml_barcodes
+    append_mp_job_log(job_id, f"XML'de OLMAYAN {len(to_zero)} ürün N11'de sıfırlanıyor.")
+    
+    zeroed_count = 0
+    if to_zero:
+        items_to_zero = []
+        for bc in to_zero:
+            items_to_zero.append({
+                'barcode': bc,
+                'stock': 0
+            })
         
-    if not items_to_update:
-        return {'success': False, 'message': 'Güncellenecek ürün bulunamadı.', 'updated_count': 0}
-        
-    append_mp_job_log(job_id, f"{len(items_to_update)} ürün için stok güncellemeleri hazırlanıyor...")
-    return perform_n11_batch_update(job_id, items_to_update)
+        # Use perform_n11_batch_update for zeroing
+        z_res = perform_n11_batch_update(job_id, items_to_zero, user_id=user_id)
+        zeroed_count = z_res.get('updated_count', 0)
+        append_mp_job_log(job_id, f"✅ {zeroed_count} ürün başarıyla sıfırlandı.")
+
+    # 4. Standard Sync (Update/Create)
+    append_mp_job_log(job_id, "XML'deki ürünler güncelleniyor...")
+    # Get all barcodes from XML to sync normally
+    barcodes_to_sync = list(xml_barcodes)
+    
+    # N11 handles updates via batch_update
+    # We can reuse perform_n11_sync_all's core logic or delegating
+    # For now, let's just use perform_n11_send_products if applicable, 
+    # but N11 auto-sync usually means price/stock update for existing.
+    
+    # Actually, for N11, perform_n11_sync_all used to do both.
+    # We will let perform_n11_send_products handle the rest (it does create/update)
+    sync_res = perform_n11_send_products(job_id, barcodes_to_sync, xml_source_id, user_id=user_id, **kwargs)
+    
+    sync_res['zeroed_count'] = zeroed_count
+    totalTime = time.time() - startTime
+    append_mp_job_log(job_id, f"Akıllı senkronizasyon tamamlandı. (Süre: {totalTime:.1f}s)")
+    
+    return sync_res
 
 def perform_n11_sync_prices(job_id: str, xml_source_id: Any, user_id: int = None) -> Dict[str, Any]:
     """
@@ -1026,42 +1071,9 @@ def perform_n11_sync_prices(job_id: str, xml_source_id: Any, user_id: int = None
 def perform_n11_sync_all(job_id: str, xml_source_id: Any, match_by: str = 'barcode', user_id: int = None) -> Dict[str, Any]:
     """
     Sync BOTH stock and prices from XML to N11.
+    Now uses Diff Sync logic.
     """
-    from app.services.xml_service import load_xml_source_index
-    from app.utils.helpers import to_int, to_float, get_marketplace_multiplier
-    
-    append_mp_job_log(job_id, "N11 tam eşitleme (Stok + Fiyat) başlatılıyor...")
-    xml_index = load_xml_source_index(xml_source_id)
-    mp_map = xml_index.get('by_barcode') or {}
-    multiplier = get_marketplace_multiplier('n11')
-    
-    if not mp_map:
-        return {'success': False, 'message': 'XML kaynağında ürün bulunamadı.', 'updated_count': 0}
-        
-    items_to_update = []
-    
-    for barcode, info in mp_map.items():
-        qty = to_int(info.get('quantity'))
-        if qty < 0: qty = 0
-        
-        base_price = to_float(info.get('price'))
-        
-        item = {
-            'barcode': barcode,
-            'stock': qty
-        }
-        
-        if base_price > 0:
-            price = round(base_price * multiplier, 2)
-            item['price'] = price
-            
-        items_to_update.append(item)
-        
-    if not items_to_update:
-        return {'success': False, 'message': 'Güncellenecek ürün bulunamadı.', 'updated_count': 0}
-        
-    append_mp_job_log(job_id, f"{len(items_to_update)} ürün için güncellemeler hazırlanıyor...")
-    return perform_n11_batch_update(job_id, items_to_update, user_id=user_id)
+    return sync_n11_with_xml_diff(job_id, xml_source_id, user_id=user_id)
 
 
 def perform_n11_product_update(barcode: str, data: Dict[str, Any], user_id: int = None) -> Dict[str, Any]:
