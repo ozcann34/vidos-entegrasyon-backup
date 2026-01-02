@@ -20,9 +20,6 @@
     <link rel="manifest" href="/static/manifest.json">
     <!-- Custom CSS -->
     <link href="{{ url_for('static', filename='app.css') }}" rel="stylesheet">
-    {% if os.path.exists(os.path.join(current_app.static_folder, 'app_dark_mode_patch.css')) %}
-    <!-- Removing this in next step as part of cleanup -->
-    {% endif %}
 
 
     {% block head_scripts %}{% endblock %}
