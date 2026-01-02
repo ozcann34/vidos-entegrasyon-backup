@@ -840,84 +840,83 @@
                 });
             }
         })();
-    </script>
-    <!-- Menu Search Logic -->
-    const searchInput = document.getElementById('menuSearch');
-    if (searchInput) {
-    searchInput.addEventListener('input', function (e) {
-    const term = e.target.value.toLowerCase();
-    const links = document.querySelectorAll('#sidebar .nav-link');
-    links.forEach(link => {
-    const text = link.textContent.toLowerCase();
-    if (text.includes(term)) {
-    link.style.display = 'block';
-    link.closest('li').style.display = 'block';
-    } else {
-    if (term.length > 0) {
-    if (!text.includes(term)) {
-    link.closest('li').style.display = 'none';
-    }
-    } else {
-    link.closest('li').style.display = 'block';
-    }
-    }
-    });
-    // Show headers back if search empty
-    const headers = document.querySelectorAll('#sidebar .nav-item.border-top');
-    if (term.length > 0) {
-    headers.forEach(h => h.style.display = 'none');
-    } else {
-    headers.forEach(h => h.style.display = 'block');
-    }
-    });
 
-    // Ctrl+K to focus
-    document.addEventListener('keydown', function (e) {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-    e.preventDefault();
-    searchInput.focus();
-    }
-    });
-    }
+        // Menu Search Logic
+        const searchInput = document.getElementById('menuSearch');
+        if (searchInput) {
+            searchInput.addEventListener('input', function (e) {
+                const term = e.target.value.toLowerCase();
+                const links = document.querySelectorAll('#sidebar .nav-link');
+                links.forEach(link => {
+                    const text = link.textContent.toLowerCase();
+                    if (text.includes(term)) {
+                        link.style.display = 'block';
+                        link.closest('li').style.display = 'block';
+                    } else {
+                        if (term.length > 0) {
+                            if (!text.includes(term)) {
+                                link.closest('li').style.display = 'none';
+                            }
+                        } else {
+                            link.closest('li').style.display = 'block';
+                        }
+                    }
+                });
+                // Show headers back if search empty
+                const headers = document.querySelectorAll('#sidebar .nav-item.border-top');
+                if (term.length > 0) {
+                    headers.forEach(h => h.style.display = 'none');
+                } else {
+                    headers.forEach(h => h.style.display = 'block');
+                }
+            });
 
-    // Resume Active Job Function
-    window.resumeActiveJob = function () {
-    const jobId = localStorage.getItem('activeJobId');
-    if (jobId) {
-    showJobWidget(jobId);
-    } else {
-    alert('Devam eden işlem bulunamadı.');
-    }
-    };
+            // Ctrl+K to focus
+            document.addEventListener('keydown', function (e) {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                    e.preventDefault();
+                    searchInput.focus();
+                }
+            });
+        }
 
-    // Show resume button if there's an active job
-    function checkAndShowResumeButton() {
-    const resumeBtn = document.getElementById('resumeJobBtn');
-    if (resumeBtn) {
-    const activeJobId = localStorage.getItem('activeJobId');
-    if (activeJobId) {
-    // Önce job'un gerçekten aktif olup olmadığını kontrol et
-    fetch(`/api/mp_jobs/${activeJobId}`)
-    .then(res => res.ok ? res.json() : null)
-    .then(data => {
-    if (data && !data.error) {
-    const status = data.status;
-    if (status === 'running' || status === 'queued' || status === 'pausing') {
-    resumeBtn.style.display = 'block';
-    }
-    }
-    })
-    .catch(() => {
-    // Job bulunamazsa localStorage'ı temizle
-    localStorage.removeItem('activeJobId');
-    });
-    }
-    }
-    }
+        // Resume Active Job Function
+        window.resumeActiveJob = function () {
+            const jobId = localStorage.getItem('activeJobId');
+            if (jobId) {
+                showJobWidget(jobId);
+            } else {
+                alert('Devam eden işlem bulunamadı.');
+            }
+        };
 
-    // Sayfa yüklendiğinde kontrol et
-    checkAndShowResumeButton();
-    })();
+        // Show resume button if there's an active job
+        function checkAndShowResumeButton() {
+            const resumeBtn = document.getElementById('resumeJobBtn');
+            if (resumeBtn) {
+                const activeJobId = localStorage.getItem('activeJobId');
+                if (activeJobId) {
+                    // Önce job'un gerçekten aktif olup olmadığını kontrol et
+                    fetch(`/api/mp_jobs/${activeJobId}`)
+                        .then(res => res.ok ? res.json() : null)
+                        .then(data => {
+                            if (data && !data.error) {
+                                const status = data.status;
+                                if (status === 'running' || status === 'queued' || status === 'pausing') {
+                                    resumeBtn.style.display = 'block';
+                                }
+                            }
+                        })
+                        .catch(() => {
+                            // Job bulunamazsa localStorage'ı temizle
+                            localStorage.removeItem('activeJobId');
+                        });
+                }
+            }
+        }
+
+        // Sayfa yüklendiğinde kontrol et
+        checkAndShowResumeButton();
     </script>
 
     <!-- Chatbot Widget -->
