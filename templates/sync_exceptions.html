@@ -210,7 +210,7 @@
         currentPage = page;
 
         try {
-            const response = await fetch(`/api/sync-exceptions?page=${page}&per_page=50`);
+            const response = await fetch(`/api/sync-exceptions?page=${page}&per_page=200`);
             const data = await response.json();
 
             loading.classList.add('d-none');
