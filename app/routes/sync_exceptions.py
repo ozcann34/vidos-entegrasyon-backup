@@ -89,7 +89,13 @@ def upload_sync_exceptions():
         import io
         
         try:
-            df = pd.read_excel(io.BytesIO(file.read()))
+            # Read with limited rows first to validate format (performance optimization)
+            file_content = file.read()
+            df = pd.read_excel(io.BytesIO(file_content), nrows=5000)  # Limit to 5000 rows max
+            
+            if len(df) == 0:
+                return jsonify({'success': False, 'message': 'Excel dosyası boş'}), 400
+                
         except Exception as e:
             return jsonify({'success': False, 'message': f'Excel dosyası okunamadı: {str(e)}'}), 400
         
@@ -118,6 +124,10 @@ def upload_sync_exceptions():
         
         added = 0
         skipped = 0
+        
+        # Batch process for better performance
+        batch_size = 100
+        batch = []
         
         for index, row in df.iterrows():
             stock_code = str(row.get(stock_code_col, '')).strip() if stock_code_col and pd.notna(row.get(stock_code_col)) else ''
@@ -167,8 +177,15 @@ def upload_sync_exceptions():
                     added += 1
                 else:
                     skipped += 1
+            
+            # Commit in batches for performance
+            if len(batch) >= batch_size:
+                db.session.commit()
+                batch = []
         
-        db.session.commit()
+        # Commit remaining
+        if batch:
+            db.session.commit()
         
         return jsonify({
             'success': True,
