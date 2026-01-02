@@ -313,62 +313,71 @@ def perform_hepsiburada_batch_update(job_id: str, items: List[Dict[str, Any]], u
         append_mp_job_log(job_id, msg, level='error')
         return {'success': False, 'message': msg}
 
-def sync_hepsiburada_products(user_id: int) -> Dict[str, Any]:
-    """Hepsiburada ürünlerini çek ve MarketplaceProduct tablosuna kaydet/güncelle."""
-    try:
-        client = get_hepsiburada_client(user_id=user_id)
-        
-        offset = 0
-        limit = 100
-        total_synced = 0
-        
-        while True:
+def sync_hepsiburada_with_xml_diff(job_id: str, xml_source_id: Any, user_id: int = None, **kwargs) -> Dict[str, Any]:
+    """Smart Sync for Hepsiburada (Diff Logic)"""
+    startTime = time.time()
+    append_mp_job_log(job_id, "Hepsiburada Akıllı Senkronizasyon (Diff Sync) başlatıldı.")
+    
+    client = get_hepsiburada_client(user_id=user_id)
+    
+    # 1. Fetch Remote Inventory
+    remote_items = []
+    offset = 0
+    limit = 100
+    while True:
+        try:
             res = client.get_products(offset=offset, limit=limit)
             items = res.get('items', [])
-            if not items:
-                break
-            
-            for item in items:
-                barcode = item.get('merchantSku')
-                if not barcode:
-                    continue
-                
-                mp_product = MarketplaceProduct.query.filter_by(
-                    user_id=user_id,
-                    marketplace='hepsiburada',
-                    barcode=barcode
-                ).first()
-                
-                if not mp_product:
-                    mp_product = MarketplaceProduct(
-                        user_id=user_id,
-                        marketplace='hepsiburada',
-                        barcode=barcode
-                    )
-                    db.session.add(mp_product)
-                
-                mp_product.title = item.get('productName')
-                mp_product.stock = to_int(item.get('availableStock', 0))
-                
-                price_data = item.get('price', {})
-                mp_product.sale_price = to_float(price_data.get('amount', 0))
-                
-                # Durum Eşitleme
-                # isActive=True/False veya status='ACTIVE' kontrolü
-                is_active = item.get('status') == 'ACTIVE' or item.get('isActive') == True
-                mp_product.on_sale = is_active
-                mp_product.status = 'Aktif' if is_active else 'Pasif'
-                
-            db.session.commit()
-            total_synced += len(items)
+            if not items: break
+            remote_items.extend(items)
+            if len(items) < limit: break
             offset += limit
+            if offset > 50000: break # Safety
+        except Exception as e:
+            append_mp_job_log(job_id, f"Hepsiburada envanter çekme hatası: {e}", level='error')
+            break
             
-            if len(items) < limit:
-                break
-                
-        return {'success': True, 'count': total_synced}
-    except Exception as e:
-        return {'success': False, 'message': str(e)}
+    append_mp_job_log(job_id, f"Hepsiburada hesabınızda toplam {len(remote_items)} ürün tespit edildi.")
+    remote_barcodes = {item.get('merchantSku') for item in remote_items if item.get('merchantSku')}
+
+    # 2. Load XML
+    xml_index = load_xml_source_index(xml_source_id)
+    xml_map = xml_index.get('by_barcode') or {}
+    xml_barcodes = set(xml_map.keys())
+
+    # 3. Find Diff
+    to_zero_barcodes = remote_barcodes - xml_barcodes
+    append_mp_job_log(job_id, f"XML'de OLMAYAN {len(to_zero_barcodes)} ürün Hepsiburada'da sıfırlanıyor.")
+
+    # 4. Zero out missing
+    zeroed_count = 0
+    if to_zero_barcodes:
+        zero_payload = []
+        for bc in to_zero_barcodes:
+            zero_payload.append({
+                "merchantSku": bc,
+                "availableStock": 0,
+                "cargoCompany1": "Yurtiçi Kargo" # Required by HB Listing API
+            })
+        
+        for chunk in chunked(zero_payload, 100):
+            try:
+                client.upload_products(chunk)
+                zeroed_count += len(chunk)
+                append_mp_job_log(job_id, f"✅ {zeroed_count}/{len(to_zero_barcodes)} ürün sıfırlandı.")
+                time.sleep(1)
+            except Exception as e:
+                append_mp_job_log(job_id, f"Sıfırlama hatası: {e}", level='error')
+
+    # 5. Sync Existing/New from XML
+    sync_res = perform_hepsiburada_send_all(job_id, xml_source_id, user_id=user_id, **kwargs)
+    sync_res['zeroed_count'] = zeroed_count
+    
+    append_mp_job_log(job_id, f"Hepsiburada senkronizasyon tamamlandı. Süre: {time.time()-startTime:.1f}s")
+    return sync_res
+
+def perform_hepsiburada_sync_all(job_id: str, xml_source_id: Any, user_id: int = None, **kwargs) -> Dict[str, Any]:
+    return sync_hepsiburada_with_xml_diff(job_id, xml_source_id, user_id=user_id, **kwargs)
 
 def clear_hepsiburada_cache(user_id: int):
     """Placeholder for Hepsiburada cache clear.

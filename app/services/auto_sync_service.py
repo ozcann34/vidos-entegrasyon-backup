@@ -87,23 +87,23 @@ def sync_marketplace_products(marketplace: str, user_id: int, job_id: Optional[s
         
         if marketplace == 'trendyol':
             from app.services.trendyol_service import perform_trendyol_sync_all
-            sync_res = perform_trendyol_sync_all(job_id if job_id else 'auto_sync_temp', xml_source_id, match_by=match_by)
+            sync_res = perform_trendyol_sync_all(job_id if job_id else 'auto_sync_temp', xml_source_id, match_by=match_by, user_id=user_id)
             
         elif marketplace == 'n11':
             from app.services.n11_service import perform_n11_sync_all
-            sync_res = perform_n11_sync_all(job_id if job_id else 'auto_sync_temp', xml_source_id, match_by=match_by)
+            sync_res = perform_n11_sync_all(job_id if job_id else 'auto_sync_temp', xml_source_id, match_by=match_by, user_id=user_id)
             
         elif marketplace == 'pazarama':
             from app.services.pazarama_service import perform_pazarama_sync_all
-            sync_res = perform_pazarama_sync_all(job_id if job_id else 'auto_sync_temp', xml_source_id)
+            sync_res = perform_pazarama_sync_all(job_id if job_id else 'auto_sync_temp', xml_source_id, user_id=user_id)
             
         elif marketplace == 'hepsiburada':
-             from app.services.hepsiburada_service import perform_hepsiburada_send_all
-             sync_res = perform_hepsiburada_send_all(job_id if job_id else 'auto_sync_temp', xml_source_id, user_id=user_id)
+             from app.services.hepsiburada_service import perform_hepsiburada_sync_all
+             sync_res = perform_hepsiburada_sync_all(job_id if job_id else 'auto_sync_temp', xml_source_id, user_id=user_id)
         
         elif marketplace == 'idefix':
-             from app.services.idefix_service import perform_idefix_send_all
-             sync_res = perform_idefix_send_all(job_id if job_id else 'auto_sync_temp', xml_source_id, user_id=user_id)
+             from app.services.idefix_service import perform_idefix_sync_all
+             sync_res = perform_idefix_sync_all(job_id if job_id else 'auto_sync_temp', xml_source_id, user_id=user_id)
 
         else:
             msg = f"Desteklenmeyen pazaryeri: {marketplace}"

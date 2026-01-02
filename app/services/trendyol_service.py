@@ -1739,117 +1739,117 @@ def perform_trendyol_batch_update(job_id: str, items: List[Dict[str, Any]]) -> D
     return result
 
 
-def perform_trendyol_product_update(barcode: str, data: Dict[str, Any]) -> Dict[str, Any]:
+def fetch_all_trendyol_inventory(user_id: int, job_id: Optional[str] = None) -> List[Dict[str, Any]]:
     """
-    Detailed product update for Trendyol.
-    Handles Price/Inventory and Content updates separately.
+    Fetch all products from Trendyol to get current inventory state.
+    Returns: List of dicts {barcode: str, stock: int}
     """
-    client = get_trendyol_client()
-    messages = []
-    success = True
+    client = get_trendyol_client(user_id=user_id)
+    all_remote = []
+    page = 1
+    size = 100
     
-    # 1. Price/Inventory Update
-    if 'salePrice' in data or 'listPrice' in data or 'quantity' in data:
+    if job_id:
+        append_mp_job_log(job_id, "Trendyol üzerindeki tüm ürünleriniz çekiliyor...")
+
+    while True:
         try:
-            payload = {'barcode': barcode, 'currencyType': 'TRY'}
-            if 'quantity' in data:
-                payload['quantity'] = int(data['quantity'])
-            if 'salePrice' in data:
-                 payload['salePrice'] = float(data['salePrice'])
-            if 'listPrice' in data:
-                 payload['listPrice'] = float(data['listPrice'])
+            res = client.list_products(page=page, size=size)
+            items = res.get('content', []) or res.get('items', [])
+            if not items:
+                break
             
-            # Using list wrapper as expected by client
-            client.update_price_inventory([payload])
-            messages.append("Fiyat/Stok güncellendi.")
+            for item in items:
+                all_remote.append({
+                    'barcode': item.get('barcode'),
+                    'stock': item.get('quantity', 0),
+                    'on_sale': item.get('onSale', False)
+                })
+            
+            if job_id:
+                update_mp_job(job_id, progress={'current': len(all_remote), 'total': res.get('totalElements', len(all_remote)), 'message': f"Trendyol'dan {len(all_remote)} ürün alındı..."})
+
+            if len(items) < size:
+                break
+            page += 1
+            if page > 500: break # Safety limit
         except Exception as e:
-            # Don't mark as fail yet, try content
-            messages.append(f"Fiyat/Stok hatası: {e}")
-            if not any(k in data for k in ['title', 'description', 'vatRate', 'stockCode', 'images']):
-                success = False
-
-    # 2. Content Update (Title, Description, VAT, StockCode, Images)
-    content_fields = ['title', 'description', 'vatRate', 'stockCode', 'images']
-    if any(k in data for k in content_fields):
-        try:
-            # Fetch current product info to ensure we have mandatory fields like CategoryId, BrandId
-            current_resp = client.list_products(barcode=barcode, size=1)
-            current_content = current_resp.get('content', []) or current_resp.get('items', [])
+            if job_id:
+                append_mp_job_log(job_id, f"Trendyol envanter çekme hatası (Sayfa {page}): {e}", level='error')
+            break
             
-            if not current_content:
-                 messages.append("Ürün Trendyol'da bulunamadı, içerik güncellenemedi.")
-                 success = False
-            else:
-                curr = current_content[0]
-                
-                # Careful: Trendyol update often replaces the whole object.
-                # Must map 'productMainId', 'brandId', 'categoryId' etc. correctly.
-                
-                update_item = {
-                    'barcode': barcode,
-                    'title': data.get('title', curr.get('title')),
-                    'description': data.get('description', curr.get('description')),
-                    'vatRate': int(data.get('vatRate')) if data.get('vatRate') else curr.get('vatRate'),
-                    'stockCode': data.get('stockCode', curr.get('stockCode')),
-                    'categoryId': curr.get('categoryId'),
-                    'brandId': curr.get('brandId'),
-                    'quantity': int(data.get('quantity')) if data.get('quantity') else curr.get('quantity'),
-                    'salePrice': float(data.get('salePrice')) if data.get('salePrice') else curr.get('salePrice'),
-                    'listPrice': float(data.get('listPrice')) if data.get('listPrice') else curr.get('listPrice'),
-                    'attributes': curr.get('attributes', []), # Preserve attributes
-                    'currencyType': 'TRY'
-                }
-                
-                # Handle images if provided
-                if 'images' in data and isinstance(data['images'], list):
-                     update_item['images'] = [{'url': url} for url in data['images']]
-                else:
-                    # Keep existing images but strip extra fields if needed or just pass as is
-                    update_item['images'] = curr.get('images', [])
+    return all_remote
 
-                client.update_product([update_item])
-                messages.append("İçerik güncellendi (Onay gerekebilir).")
-                
-        except Exception as e:
-            success = False
-            messages.append(f"İçerik güncelleme hatası: {str(e)}")
-            
-    return {'success': success, 'message': ' | '.join(messages)}
+def sync_trendyol_with_xml_diff(job_id: str, xml_source_id: Any, user_id: int = None, **kwargs) -> Dict[str, Any]:
+    """
+    Smart Sync: 
+    1. Fetch ALL Trendyol products.
+    2. Check which Trendyol products are NOT in the XML.
+    3. Set stock to 0 for those missing products.
+    4. Update existing products from XML.
+    """
+    startTime = time.time()
+    append_mp_job_log(job_id, "Trendyol Akıllı Senkronizasyon (Diff Sync) başlatıldı.")
+    
+    # 1. Fetch Remote Inventory
+    remote_items = fetch_all_trendyol_inventory(user_id, job_id=job_id)
+    remote_barcodes = {item['barcode'] for item in remote_items if item['barcode']}
+    append_mp_job_log(job_id, f"Trendyol hesabınızda toplam {len(remote_barcodes)} farklı barkod tespit edildi.")
 
-def perform_trendyol_batch_update(job_id: str, items: List[Dict[str, Any]], user_id: int = None) -> Dict[str, Any]:
-    """
-    Batch update Trendyol stock/price from local data.
-    items: [{'barcode': '...', 'stock': 10, 'price': 100.0}, ...]
-    """
-    try:
-        from app.services.job_queue import append_mp_job_log
-        client = get_trendyol_client(user_id=user_id)
-        append_mp_job_log(job_id, f"Trendyol toplu güncelleme başlatıldı. {len(items)} ürün.")
+    # 2. Load XML Data
+    xml_index = load_xml_source_index(xml_source_id)
+    xml_map = xml_index.get('by_barcode') or {}
+    xml_barcodes = set(xml_map.keys())
+    append_mp_job_log(job_id, f"XML kaynağında {len(xml_barcodes)} barkod bulundu.")
+
+    # 3. Find Diff: Products in Trendyol but NOT in XML
+    to_zero_barcodes = remote_barcodes - xml_barcodes
+    append_mp_job_log(job_id, f"XML'de bulunmayan {len(to_zero_barcodes)} ürün tespit edildi. Bunların stokları 0 yapılacaktır.")
+
+    # 4. Zero out missing products
+    client = get_trendyol_client(user_id=user_id)
+    zeroed_count = 0
+    if to_zero_barcodes:
+        zero_payload = []
+        for barcode in to_zero_barcodes:
+            zero_payload.append({
+                'barcode': barcode,
+                'quantity': 0,
+                'currencyType': 'TRY'
+            })
         
-        payload = []
-        for item in items:
-            p = {'barcode': item['barcode'], 'currencyType': 'TRY'}
-            if 'stock' in item:
-                p['quantity'] = int(item['stock'])
-            if 'price' in item:
-                # Trendyol uses salePrice and listPrice. For bulk update we use same for both usually.
-                p['salePrice'] = float(item['price'])
-                p['listPrice'] = float(item['price'])
-            payload.append(p)
-            
-        if not payload:
-            return {'success': False, 'message': 'Güncellenecek veri bulunamadı.'}
-            
-        # Send in chunks of 50
-        total_sent = 0
-        from app.utils.helpers import chunked
-        for chunk in chunked(payload, 50):
-            client.update_price_inventory(chunk)
-            total_sent += len(chunk)
-            append_mp_job_log(job_id, f"✅ {total_sent}/{len(payload)} ürün gönderildi.")
-            time.sleep(1)
-            
-        return {'success': True, 'count': total_sent}
-    except Exception as e:
-        return {'success': False, 'message': str(e)}
+        # Batch send 0 stock updates
+        for chunk in chunked(zero_payload, 100):
+            try:
+                client.update_price_inventory(chunk)
+                zeroed_count += len(chunk)
+                append_mp_job_log(job_id, f"✅ {zeroed_count}/{len(to_zero_barcodes)} ürün stoğu sıfırlandı.")
+                time.sleep(1)
+            except Exception as e:
+                append_mp_job_log(job_id, f"Sıfırlama hatası (chunk): {e}", level='error')
+
+    # 5. Update existing products from XML
+    # We only update barcodes that are actually on Trendyol to avoid creation errors if user didn't want 'Send All'
+    # Actually, usually users want to sync everything in XML to MP. 
+    # But for "Sync", we focus on matching.
+    
+    barcodes_to_sync = xml_barcodes # Every item in XML will be pushed/updated
+    append_mp_job_log(job_id, "XML verileri Trendyol'a aktarılıyor/güncelleniyor...")
+    
+    # Delegate to the existing sender logic which handles categories, brands, price rules etc.
+    # Note: perform_trendyol_send_products handles batching internally.
+    sync_res = perform_trendyol_send_products(job_id, list(barcodes_to_sync), xml_source_id, user_id=user_id, **kwargs)
+    
+    sync_res['zeroed_count'] = zeroed_count
+    totalTime = time.time() - startTime
+    append_mp_job_log(job_id, f"Akıllı senkronizasyon tamamlandı. (Süre: {totalTime:.1f}s)")
+    
+    return sync_res
+
+def perform_trendyol_sync_all(job_id: str, xml_source_id: Any, match_by: str = 'barcode', user_id: int = None) -> Dict[str, Any]:
+    """
+    Main entry point for auto-sync for Trendyol.
+    Now uses the Diff Sync logic.
+    """
+    return sync_trendyol_with_xml_diff(job_id, xml_source_id, user_id=user_id)
 

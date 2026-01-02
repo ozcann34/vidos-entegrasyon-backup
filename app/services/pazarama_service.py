@@ -884,17 +884,6 @@ def perform_pazarama_sync_all(job_id: str, xml_source_id: Any, user_id: int = No
         append_mp_job_log(job_id, "İşlem iptal edildi.", level='warning')
         return {'success': False, 'message': 'İptal edildi.', 'cancelled': True}
     
-    # First sync stock
-    append_mp_job_log(job_id, ">>> STOK EŞITLEME BAŞLADI <<<")
-    stock_result = {}
-    try:
-        stock_result = perform_pazarama_sync_stock(job_id, xml_source_id, user_id=user_id)
-        append_mp_job_log(job_id, f"Stok eşitleme tamamlandı: {stock_result.get('updated_count', 0)} güncellendi")
-    except Exception as e:
-        append_mp_job_log(job_id, f"Stok eşitleme hatası: {str(e)}", level='error')
-        stock_result = {'success': False, 'error': str(e), 'updated_count': 0}
-    
-    # Check if cancelled during stock sync
     if stock_result.get('cancelled'):
         return stock_result
     

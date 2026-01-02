@@ -976,25 +976,6 @@ def perform_n11_batch_update(job_id: str, items: List[Dict[str, Any]], user_id: 
     append_mp_job_log(job_id, "İşlem tamamlandı.")
     return result
 
-def perform_n11_sync_stock(job_id: str, xml_source_id: Any, user_id: int = None) -> Dict[str, Any]:
-    """
-    Sync ONLY stock quantities from XML to N11.
-    """
-    client = get_n11_client(user_id=user_id)
-    from app.services.xml_service import load_xml_source_index
-    from app.utils.helpers import to_int, get_marketplace_multiplier
-    
-    append_mp_job_log(job_id, "N11 stok eşitleme başlatılıyor...")
-    xml_index = load_xml_source_index(xml_source_id)
-    mp_map = xml_index.get('by_barcode') or {}
-    
-    if not mp_map:
-        return {'success': False, 'message': 'XML kaynağında ürün bulunamadı.', 'updated_count': 0}
-        
-    items_to_update = []
-    
-    for barcode, info in mp_map.items():
-        qty = to_int(info.get('quantity'))
         if qty < 0: qty = 0
         items_to_update.append({
             'barcode': barcode,

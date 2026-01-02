@@ -593,31 +593,122 @@ items: List[Dict[str, Any]],
                 logger.error(f"[IDEFIX] Response body: {e.response.text}")
             raise
             
-    def create_product(self, products: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def get_full_pool_list(self) -> List[Dict[str, Any]]:
         """
-        Create new products on Idefix.
+        Fetch all products from Idefix pool to get current inventory/matching state.
+        Endpoint: /pim/pool/{vendorId}/list
         """
-        if not self.vendor_id:
-            raise ValueError("Idefix vendor_id eksik!")
-            
-        url = f"{self.BASE_URL}/pim/pool/{self.vendor_id}/create"
+        if not self.vendor_id: return []
+        url = f"{self.BASE_URL}/pim/pool/{self.vendor_id}/list"
+        all_items = []
+        page = 1
+        limit = 100
         
-        payload = {"products": products}
-        
-        logger.info(f"[IDEFIX] Creating {len(products)} new products")
-        
+        while True:
+            try:
+                params = {"page": page, "limit": limit}
+                resp = self.session.get(url, headers=self._get_headers(), params=params, timeout=30)
+                resp.raise_for_status()
+                data = resp.json()
+                items = data.get('items', [])
+                if not items: break
+                
+                all_items.extend(items)
+                if len(items) < limit: break
+                page += 1
+                if page > 500: break
+            except Exception as e:
+                logger.error(f"[IDEFIX] Pool list fetch error: {e}")
+                break
+        return all_items
+
+    def approve_pool_item(self, barcode: str) -> Dict[str, Any]:
+        """
+        Approve an item in the pool (waiting_vendor_approve state).
+        Endpoint: /pim/pool/{vendorId}/approve-item
+        """
+        if not self.vendor_id: return {}
+        url = f"{self.BASE_URL}/pim/pool/{self.vendor_id}/approve-item"
+        payload = {"barcodes": [barcode]}
         try:
-            response = self.session.post(url, headers=self._get_headers(), json=payload, timeout=30)
-            response.raise_for_status()
-            result = response.json()
-            logger.info(f"[IDEFIX] Create Product Success! BatchRequestId: {result.get('batchRequestId')}")
-            return result
-        except requests.exceptions.RequestException as e:
-            logger.error(f"[IDEFIX] Failed to create products: {str(e)}")
-            if hasattr(e, 'response') and e.response is not None:
-                logger.error(f"[IDEFIX] Response status: {e.response.status_code}")
-                logger.error(f"[IDEFIX] Response body: {e.response.text}")
-            raise
+            resp = self.session.post(url, headers=self._get_headers(), json=payload, timeout=20)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as e:
+            logger.error(f"[IDEFIX] Pool item approve error for {barcode}: {e}")
+            return {"success": False, "error": str(e)}
+
+def get_idefix_client(user_id: int = None) -> IdefixClient:
+    """Factory to get authenticated client from settings."""
+    if user_id is None:
+        from flask_login import current_user
+        if current_user and current_user.is_authenticated:
+            user_id = current_user.id
+            
+    api_key = Setting.get("IDEFIX_API_KEY", "", user_id=user_id)
+    api_secret = Setting.get("IDEFIX_API_SECRET", "", user_id=user_id)
+    vendor_id = Setting.get("IDEFIX_VENDOR_ID", "", user_id=user_id)
+    
+    if not api_key or not api_secret or not vendor_id:
+        raise ValueError("Idefix API bilgileri eksik. Ayarlar sayfasından giriniz.")
+        
+    return IdefixClient(api_key.strip(), api_secret.strip(), vendor_id.strip())
+
+def sync_idefix_with_xml_diff(job_id: str, xml_source_id: Any, user_id: int = None, **kwargs) -> Dict[str, Any]:
+    """Smart Sync for Idefix (Diff Logic)"""
+    startTime = time.time()
+    append_mp_job_log(job_id, "Idefix Akıllı Senkronizasyon (Diff Sync) başlatıldı.")
+    
+    client = get_idefix_client(user_id=user_id)
+    
+    # 1. Fetch Pool items (Idefix stores all states in Pool)
+    pool_items = client.get_full_pool_list()
+    remote_barcodes = {item['barcode'] for item in pool_items if item.get('barcode')}
+    append_mp_job_log(job_id, f"Idefix hesabınızda toplam {len(remote_barcodes)} ürün (havuz dahil) tespit edildi.")
+
+    # 2. Check for waiting_vendor_approve and approve them
+    waiting_approves = [item['barcode'] for item in pool_items if item.get('poolState') == 'waiting_vendor_approve']
+    if waiting_approves:
+        append_mp_job_log(job_id, f"{len(waiting_approves)} ürün satıcı onayı bekliyor. Otomatik onaylanıyor...")
+        for bc in waiting_approves:
+            client.approve_pool_item(bc)
+        append_mp_job_log(job_id, "Bekleyen ordaş ürün onayları tamamlandı.")
+
+    # 3. Load XML
+    xml_index = load_xml_source_index(xml_source_id)
+    xml_map = xml_index.get('by_barcode') or {}
+    xml_barcodes = set(xml_map.keys())
+    
+    # 4. Find Diff (Missing in XML)
+    to_zero = remote_barcodes - xml_barcodes
+    append_mp_job_log(job_id, f"XML'de OLMAYAN {len(to_zero)} ürün Idefix'te sıfırlanıyor.")
+    
+    zeroed_count = 0
+    if to_zero:
+        zero_payload = []
+        for bc in to_zero:
+            zero_payload.append({'barcode': bc, 'inventoryQuantity': 0, 'price': 0})
+        
+        for chunk in chunked(zero_payload, 100):
+            try:
+                # Inventory update for Idefix
+                # Using update_inventory_and_price (Catalog API)
+                # Remapped to Kurus is handled inside update_inventory_and_price
+                client.update_inventory_and_price(chunk)
+                zeroed_count += len(chunk)
+                append_mp_job_log(job_id, f"✅ {zeroed_count}/{len(to_zero)} ürün sıfırlandı.")
+            except Exception as e:
+                append_mp_job_log(job_id, f"Sıfırlama hatası: {e}", level='error')
+
+    # 5. Sync Existing/New
+    sync_res = perform_idefix_send_products(job_id, list(xml_barcodes), xml_source_id, user_id=user_id, **kwargs)
+    sync_res['zeroed_count'] = zeroed_count
+    
+    append_mp_job_log(job_id, f"Idefix senkronizasyon tamamlandı. Süre: {time.time()-startTime:.1f}s")
+    return sync_res
+
+def perform_idefix_sync_all(job_id: str, xml_source_id: Any, match_by: str = 'barcode', user_id: int = None) -> Dict[str, Any]:
+    return sync_idefix_with_xml_diff(job_id, xml_source_id, user_id=user_id)
 
     def get_orders(self, page: int = 1, **kwargs) -> Dict[str, Any]:
         """
