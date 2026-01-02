@@ -15,11 +15,11 @@ except ImportError:
     logger.warning("sklearn yüklü değil, N11 TF-IDF kategori eşleştirme çalışmayacak")
 
 from app import db
-from app.models import Product, Setting
+from app.models import Product, Setting, MarketplaceProduct
 from flask_login import current_user
 from app.services.n11_client import get_n11_client
 from app.services.job_queue import append_mp_job_log
-from app.utils.helpers import clean_forbidden_words, to_int, to_float, is_product_forbidden, calculate_price
+from app.utils.helpers import clean_forbidden_words, to_int, to_float, is_product_forbidden, calculate_price, chunked
 
 # ---------------------------------------------------
 # N11 Category Caching & Auto Match Globals
@@ -944,7 +944,7 @@ def perform_n11_batch_update(job_id: str, items: List[Dict[str, Any]], user_id: 
         
     total_sent = 0
     # N11 limit is often 100
-    chunks = list(_chunks(n11_items, 100))
+    chunks = list(chunked(n11_items, 100))
     total_chunks = len(chunks)
     
     for idx, chunk in enumerate(chunks, start=1):

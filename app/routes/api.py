@@ -235,39 +235,6 @@ def api_mp_job_detail(job_id: str):
         return jsonify({'error': 'Job bulunamadı'}), 404
     return jsonify(job)
 
-@api_bp.route('/api/job/control', methods=['POST'])
-def api_job_control():
-    """Control a running job (pause/resume/cancel)"""
-    try:
-        payload = request.get_json(force=True) or {}
-        job_id = payload.get('job_id')
-        action = payload.get('action')
-        
-        if not job_id:
-            return jsonify({'success': False, 'message': 'job_id gerekli'}), 400
-        if action not in ('pause', 'resume', 'cancel'):
-            return jsonify({'success': False, 'message': 'Geçersiz action'}), 400
-        
-        from app.services.job_queue import update_mp_job, get_mp_job
-        
-        job = get_mp_job(job_id)
-        if not job:
-            return jsonify({'success': False, 'message': 'Job bulunamadı'}), 404
-        
-        if action == 'pause':
-            update_mp_job(job_id, pause_requested=True)
-            return jsonify({'success': True, 'message': 'Duraklatma isteği gönderildi'})
-        elif action == 'resume':
-            update_mp_job(job_id, pause_requested=False)
-            return jsonify({'success': True, 'message': 'Devam isteği gönderildi'})
-        elif action == 'cancel':
-            update_mp_job(job_id, cancel_requested=True)
-            return jsonify({'success': True, 'message': 'İptal isteği gönderildi'})
-        
-    except Exception as e:
-        logging.exception('Job control hatası')
-        return jsonify({'success': False, 'message': str(e)}), 500
-
 
 @api_bp.route('/api/pazarama/sync_stock', methods=['POST'])
 @login_required
@@ -1588,46 +1555,6 @@ def api_idefix_send_all():
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
-@api_bp.route('/api/job/control', methods=['POST'])
-def api_control_job():
-    try:
-        payload = request.get_json(force=True) or {}
-        job_id = payload.get('job_id')
-        action = payload.get('action') # pause, resume, cancel
-        
-        if not job_id or not action:
-            return jsonify({'success': False, 'message': 'Job ID ve aksiyon gereklidir.'}), 400
-            
-        from app.services.job_queue import control_mp_job
-        success = control_mp_job(job_id, action)
-        
-        if success:
-            return jsonify({'success': True, 'message': f'İşlem {action} yapıldı.'})
-        else:
-            return jsonify({'success': False, 'message': 'İşlem başarısız.'}), 400
-            
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@api_bp.route('/api/job/status/<job_id>', methods=['GET'])
-def api_job_status(job_id):
-    from app.services.job_queue import get_mp_job
-    job = get_mp_job(job_id)
-    if not job:
-        return jsonify({'success': False, 'message': 'Job not found'}), 404
-    
-    return jsonify({
-        'success': True,
-        'status': job.get('status'),
-        'progress': job.get('progress', {}),
-        'logs': job.get('logs', [])[-10:], # Last 10 logs
-        'cancel_requested': job.get('cancel_requested', False),
-        'pause_requested': job.get('pause_requested', False),
-        'result': job.get('result')
-    })
 
 @api_bp.route('/api/send_selected/<marketplace>', methods=['POST'])
 @login_required
@@ -2352,7 +2279,7 @@ def api_job_status(job_id: str):
 
 
 @api_bp.route('/api/job/control/<job_id>/<action>', methods=['POST'])
-def api_job_control(job_id: str, action: str):
+def api_job_action_control(job_id: str, action: str):
     """İşi kontrol et (cancel, pause, resume)"""
     try:
         from app.services.job_queue import control_mp_job
