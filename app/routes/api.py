@@ -2185,6 +2185,8 @@ def api_auto_sync_settings():
             # Load extended settings
             data['xml_source_id'] = Setting.get(f'AUTO_SYNC_XML_SOURCE_{marketplace_key}', user_id=current_user.id)
             data['match_by'] = Setting.get(f'AUTO_SYNC_MATCH_BY_{marketplace_key}', user_id=current_user.id) or 'barcode'
+            data['use_random_barcode'] = Setting.get(f'AUTO_SYNC_USE_RANDOM_BARCODE_{marketplace_key}', user_id=current_user.id) == 'true'
+            data['use_override_barcode'] = Setting.get(f'AUTO_SYNC_USE_OVERRIDE_BARCODE_{marketplace_key}', user_id=current_user.id) == 'true'
             
             settings.append(data)
         
@@ -2228,9 +2230,10 @@ def api_auto_sync_toggle():
             Setting.set(f'AUTO_SYNC_MATCH_BY_{marketplace}', str(match_by), user_id=current_user.id)
         
         # Save Random Barcode Setting
-        # We save it as a setting specific to marketplace auto sync
-        # Logic: If true, generated products will have random barcode
+        use_random_barcode = data.get('use_random_barcode')
+        use_override_barcode = data.get('use_override_barcode')
         Setting.set(f'AUTO_SYNC_USE_RANDOM_BARCODE_{marketplace}', 'true' if use_random_barcode else 'false', user_id=current_user.id)
+        Setting.set(f'AUTO_SYNC_USE_OVERRIDE_BARCODE_{marketplace}', 'true' if use_override_barcode else 'false', user_id=current_user.id)
         
         # Scheduler job'unu ekle veya kaldır
         from app.services.scheduler_service import add_sync_job, remove_sync_job

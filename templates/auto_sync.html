@@ -53,11 +53,18 @@
                 </div>
 
                 <div class="mb-4">
-                    <div class="form-check">
+                    <div class="form-check mb-2">
                         <input class="form-check-input random-barcode-check" type="checkbox"
                             id="random_barcode_{{ key }}" data-marketplace="{{ key }}">
                         <label class="form-check-label small text-muted" for="random_barcode_{{ key }}">
                             Barkodu olmayan ürünler için <strong>13 haneli Rastgele Barkod</strong> oluştur
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input override-barcode-check" type="checkbox"
+                            id="override_barcode_{{ key }}" data-marketplace="{{ key }}">
+                        <label class="form-check-label small text-muted" for="override_barcode_{{ key }}">
+                            Tüm ürünler için <strong>13 haneli Rastgele Barkod</strong> oluştur
                         </label>
                     </div>
                 </div>
@@ -282,22 +289,17 @@
                     const xmlSelect = card.querySelector('.xml-source-select');
                     const intervalSelect = card.querySelector('.interval-select');
                     const rndBarcodeCheck = card.querySelector('.random-barcode-check');
+                    const overrideBarcodeCheck = card.querySelector('.override-barcode-check');
 
                     if (toggleEl) toggleEl.checked = setting.enabled;
                     if (xmlSelect) xmlSelect.value = setting.xml_source_id || '';
                     if (intervalSelect) intervalSelect.value = setting.sync_interval_minutes || 15;
 
-                    // Random Barcode handling (stored in setting.use_random_barcode or we might need to fetch it separately if not in response)
-                    // The API auto_sync_settings returns data.settings list which api.py populates with extended settings
                     if (rndBarcodeCheck) {
-                        // Check if api_auto_sync_settings in api.py adds this field. 
-                        // It currently grabs XML_SOURCE and MATCH_BY. I should update api_auto_sync_settings in api.py too later to return this!
-                        // For now let's hope I updated it? I haven't updated api_auto_sync_settings yet to return use_random_barcode.
-                        // I need to update api.py/api_auto_sync_settings first or now.
-                        // Actually I should update JS now, then backend get later.
-                        // Wait, I can fetch it via separate call or just rely on API update.
-                        // Let's assume API returns it as 'use_random_barcode'.
                         rndBarcodeCheck.checked = setting.use_random_barcode === 'true' || setting.use_random_barcode === true;
+                    }
+                    if (overrideBarcodeCheck) {
+                        overrideBarcodeCheck.checked = setting.use_override_barcode === 'true' || setting.use_override_barcode === true;
                     }
                 });
             }
@@ -321,9 +323,11 @@
         try {
             const intervalSelect = card ? card.querySelector('.interval-select') : null;
             const rndBarcodeCheck = card ? card.querySelector('.random-barcode-check') : null;
+            const overrideBarcodeCheck = card ? card.querySelector('.override-barcode-check') : null;
 
             const intervalVal = intervalSelect ? parseInt(intervalSelect.value) : 15;
             const useRandomBarcode = rndBarcodeCheck ? rndBarcodeCheck.checked : false;
+            const useOverrideBarcode = overrideBarcodeCheck ? overrideBarcodeCheck.checked : false;
 
             const resp = await fetch('/api/auto_sync/toggle', {
                 method: 'POST',
@@ -334,7 +338,8 @@
                     interval_minutes: intervalVal,
                     xml_source_id: xmlSourceId,
                     match_by: 'auto',
-                    use_random_barcode: useRandomBarcode
+                    use_random_barcode: useRandomBarcode,
+                    use_override_barcode: useOverrideBarcode
                 })
             });
             const data = await resp.json();

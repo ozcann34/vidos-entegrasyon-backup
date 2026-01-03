@@ -1506,7 +1506,11 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
         create_items = []
         for xml_item in to_create:
             barcode = xml_item.barcode
-            if src.use_random_barcode:
+            # Check random barcode settings (Global overrides from Auto Sync Menu)
+            use_random_setting = Setting.get(f'AUTO_SYNC_USE_RANDOM_BARCODE_n11', user_id=user_id) == 'true'
+            use_override_setting = Setting.get(f'AUTO_SYNC_USE_OVERRIDE_BARCODE_n11', user_id=user_id) == 'true'
+
+            if use_override_setting or (not barcode and (src.use_random_barcode or use_random_setting)):
                 barcode = generate_random_barcode()
             
             raw = json.loads(xml_item.raw_data)

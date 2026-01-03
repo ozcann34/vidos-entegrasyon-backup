@@ -2441,10 +2441,11 @@ def perform_idefix_direct_push_actions(user_id: int, to_update: List[Any], to_cr
             # Random barkod seçeneği
             barcode = xml_item.barcode
             
-            # Check random barcode setting (Global override from Auto Sync Menu)
+            # Check random barcode settings (Global overrides from Auto Sync Menu)
             use_random_setting = Setting.get(f'AUTO_SYNC_USE_RANDOM_BARCODE_idefix', user_id=user_id) == 'true'
-            
-            if src.use_random_barcode or use_random_setting:
+            use_override_setting = Setting.get(f'AUTO_SYNC_USE_OVERRIDE_BARCODE_idefix', user_id=user_id) == 'true'
+
+            if use_override_setting or (not barcode and (src.use_random_barcode or use_random_setting)):
                 barcode = generate_random_barcode()
             
             # Zorunlu alanları XML'den çek (xml_item.raw_data içerisinde hepsi var)

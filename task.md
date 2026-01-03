@@ -31,6 +31,14 @@
 - [x] Trendyol Questions API entegrasyonu
 - [x] Pazarama: Questions API (getQuestions/answerQuestion) eklendi
 - [x] N11: Questions API (SOAP - GetProductQuestionList/SaveProductAnswer) eklendi
+- [x] Frontend hata düzeltmeleri:
+    - [x] `auto_sync.html` JS sözdizimi hataları giderildi.
+    - [x] `marketplaces` değişken tanımı düzeltildi.
+- [/] İşlem Durumu (Job Widget) Sidebar Entegrasyonu:
+    - [ ] `jobWidget` HTML yapısını sidebar'a taşı
+    - [ ] Stil düzenlemelerini yap (yüzer pencereden sabit panele)
+    - [ ] JavaScript mantığını sidebar içi UI ile uyarla
+    - [ ] Kapatma/Küçültme kontrollerini sidebar uyumlu hale getir
 - [x] Frontend: `templates/questions.html` oluşturuldu ve bağlandı
 - [x] Cevaplama modalı ve başarı bildirimleri (Swal)
 

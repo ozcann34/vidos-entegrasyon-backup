@@ -456,12 +456,6 @@ def xml_urunler():
     return render_template("xml_products.html")
 
 
-@main_bp.route("/barcode-tools")
-@login_required
-def barcode_tools():
-    return render_template('barcode_tools.html')
-
-
 @main_bp.route("/api/dashboard/stats")
 @login_required
 def api_dashboard_stats():
