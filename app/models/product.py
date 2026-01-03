@@ -46,6 +46,8 @@ class SupplierXML(db.Model):
     name = db.Column(db.String, nullable=False)
     url = db.Column(db.Text, nullable=False)
     active = db.Column(db.Boolean, default=True)
+    use_random_barcode = db.Column(db.Boolean, default=False) # Kullanıcı isteğine bağlı random barkod
+    last_cached_at = db.Column(db.DateTime, nullable=True)     # Son cache'lenme zamanı
     created_at = db.Column(db.String, default=lambda: datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
 

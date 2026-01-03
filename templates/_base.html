@@ -618,8 +618,25 @@
                 const widget = document.getElementById('jobWidget');
                 if (widget) {
                     widget.style.display = 'block';
+
+                    // Restore minimized state if exists
+                    const isMinimized = localStorage.getItem('jobWidgetMinimized') === 'true';
+                    const isBodyHidden = localStorage.getItem('jobWidgetBodyHidden') === 'true';
                     const body = document.getElementById('jobWidgetBody');
-                    if (body) body.style.display = 'block';
+
+                    if (body) {
+                        if (isBodyHidden || isMinimized) {
+                            body.style.display = 'none';
+                        } else {
+                            body.style.display = 'block';
+                        }
+                    }
+
+                    if (isMinimized) {
+                        widget.style.width = '200px';
+                    } else {
+                        widget.style.width = '380px';
+                    }
                 }
                 startJobPolling();
             };
@@ -628,13 +645,16 @@
                 const widget = document.getElementById('jobWidget');
                 const body = document.getElementById('jobWidgetBody');
                 if (widget && body) {
-                    // Widget'ı küçült/büyüt
                     if (body.style.display === 'none') {
                         body.style.display = 'block';
                         widget.style.width = '380px';
+                        localStorage.setItem('jobWidgetMinimized', 'false');
+                        localStorage.setItem('jobWidgetBodyHidden', 'false');
                     } else {
                         body.style.display = 'none';
                         widget.style.width = '200px';
+                        localStorage.setItem('jobWidgetMinimized', 'true');
+                        localStorage.setItem('jobWidgetBodyHidden', 'true');
                     }
                 }
             };
@@ -646,9 +666,11 @@
                     if (body.style.display === 'none') {
                         body.style.display = 'block';
                         if (icon) icon.className = 'bi bi-dash-lg';
+                        localStorage.setItem('jobWidgetBodyHidden', 'false');
                     } else {
                         body.style.display = 'none';
                         if (icon) icon.className = 'bi bi-arrows-angle-expand';
+                        localStorage.setItem('jobWidgetBodyHidden', 'true');
                     }
                 }
             };

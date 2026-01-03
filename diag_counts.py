@@ -16,33 +16,27 @@ def debug_db():
     print("--- DB CHECK ---")
     with app.app_context():
         from app.models import MarketplaceProduct
-        tp = MarketplaceProduct.query.filter_by(user_id=1, marketplace='trendyol').count()
-        pz = MarketplaceProduct.query.filter_by(user_id=1, marketplace='pazarama').count()
-        idx = MarketplaceProduct.query.filter_by(user_id=1, marketplace='idefix').count()
-        n11 = MarketplaceProduct.query.filter_by(user_id=1, marketplace='n11').count()
-        print(f"DB Counts: Trendyol={tp}, Pazarama={pz}, Idefix={idx}, N11={n11}")
+        UID = 2
+        tp = MarketplaceProduct.query.filter_by(user_id=UID, marketplace='trendyol').count()
+        pz = MarketplaceProduct.query.filter_by(user_id=UID, marketplace='pazarama').count()
+        idx = MarketplaceProduct.query.filter_by(user_id=UID, marketplace='idefix').count()
+        n11 = MarketplaceProduct.query.filter_by(user_id=UID, marketplace='n11').count()
+        print(f"DB Counts for UID {UID}: Trendyol={tp}, Pazarama={pz}, Idefix={idx}, N11={n11}")
 
 def debug_pazarama():
     print("--- PAZARAMA DEBUG ---")
     with app.app_context():
         try:
-            client = get_pazarama_client(user_id=1)
+            UID = 2
+            client = get_pazarama_client(user_id=UID)
             # Try with larger size
             url = f"https://isortagimapi.pazarama.com/product/products"
-            params = {"Page": 1, "Size": 10}
+            params = {"Page": 1, "Size": 1}
             resp = client._request("GET", url, params=params)
             data = resp.json()
-            print(f"Structure with Size 10: {list(data.keys())}")
-            if 'paging' in data: print("Found PAGING!")
-            if 'totalCount' in data: print(f"Found totalCount: {data['totalCount']}")
-            
-            # Try another endpoint?
-            url2 = "https://isortagimapi.pazarama.com/product/getInventory" # Just a guess
-            try:
-                resp2 = client._request("GET", url2, params={"Page": 1, "Size": 1})
-                print(f"getInventory success. Keys: {list(resp2.json().keys())}")
-            except:
-                print("getInventory failed.")
+            import json
+            print("Full Data Structure:")
+            print(json.dumps({k: (v if not isinstance(v, list) else f"List len {len(v)}") for k,v in data.items()}, indent=2))
         except Exception as e:
             print(f"Pazarama Error: {e}")
 
@@ -50,26 +44,21 @@ def debug_idefix():
     print("\n--- IDEFIX DEBUG ---")
     with app.app_context():
         try:
-            client = get_idefix_client(user_id=1)
-            # Try count endpoint
-            url_count = f"{client.BASE_URL}/pim/pool/{client.vendor_id}/count"
-            try:
-                resp_c = client.session.get(url_count, headers=client._get_headers())
-                print(f"Count endpoint status: {resp_c.status_code}")
-                if resp_c.status_code == 200:
-                    print(f"Count endpoint data: {resp_c.json()}")
-            except:
-                 print("Count endpoint failed.")
-                 
-            # Try summary endpoint?
-            url_sum = f"{client.BASE_URL}/pim/pool/{client.vendor_id}/summary"
-            try:
-                resp_s = client.session.get(url_sum, headers=client._get_headers())
-                print(f"Summary endpoint status: {resp_s.status_code}")
-                if resp_s.status_code == 200:
-                    print(f"Summary endpoint data: {resp_s.json()}")
-            except:
-                 print("Summary endpoint failed.")
+            UID = 2
+            client = get_idefix_client(user_id=UID)
+            print(f"Checking vendor_id: {client.vendor_id}")
+            # Try listing products
+            res = client.list_products(page=0, limit=1)
+            print(f"Idefix totalElements from list_products (no filter): {res.get('totalElements')}")
+            
+            # Check states again
+            POOL_STATES = ["APPROVED", "WAITING_APPROVAL", "REJECTED", "WAITING_CONTENT", "DELETED", "IN_REVISION", "ARCHIVED"]
+            for state in POOL_STATES:
+                try:
+                    r = client.list_products(page=0, limit=1, pool_state=state)
+                    print(f"  State {state}: {r.get('totalElements')}")
+                except:
+                    pass
             
         except Exception as e:
             print(f"Idefix Error: {e}")

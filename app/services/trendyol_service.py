@@ -1950,3 +1950,126 @@ def perform_trendyol_sync_all(job_id: str, xml_source_id: Any, match_by: str = '
     """
     return sync_trendyol_with_xml_diff(job_id, xml_source_id, user_id=user_id)
 
+
+def perform_trendyol_direct_push_actions(user_id: int, to_update: List[Any], to_create: List[Any], to_zero: List[Any], src: Any, job_id: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Trendyol için Direct Push aksiyonlarını gerçekleştirir.
+    """
+    from app.services.job_queue import append_mp_job_log
+    from app.utils.helpers import calculate_price
+    from app.models import MarketplaceProduct, db
+    
+    client = get_trendyol_client(user_id=user_id)
+    res = {'updated_count': 0, 'created_count': 0, 'zeroed_count': 0}
+    
+    # --- 1. GÜNCELLEMELER (Update) ---
+    if to_update:
+        update_items = []
+        for xml_item, local_item in to_update:
+            final_price = calculate_price(xml_item.price, 'trendyol', user_id=user_id)
+            update_items.append({
+                'barcode': local_item.barcode,
+                'quantity': xml_item.quantity,
+                'listPrice': final_price,
+                'salePrice': final_price
+            })
+            
+            if job_id: append_mp_job_log(job_id, f"Güncelleniyor: {xml_item.stock_code} (Stok: {local_item.quantity} -> {xml_item.quantity})")
+            
+            local_item.quantity = xml_item.quantity
+            local_item.sale_price = final_price
+            local_item.last_sync_at = datetime.now()
+
+        try:
+            for batch in chunked(update_items, 100):
+                client.update_price_inventory(batch)
+                res['updated_count'] += len(batch)
+            db.session.commit()
+        except Exception as e:
+            if job_id: append_mp_job_log(job_id, f"Trendyol güncelleme hatası: {str(e)}", level='error')
+
+    # --- 2. YENİ ÜRÜNLER (Create) ---
+    if to_create:
+        from app.services.xml_service import generate_random_barcode
+        create_items = []
+        for xml_item in to_create:
+            barcode = xml_item.barcode
+            if src.use_random_barcode:
+                barcode = generate_random_barcode()
+            
+            raw = json.loads(xml_item.raw_data)
+            
+            # TODO: Trendyol Marka ve Kategori Çözümü (resolve_trendyol_brand vb.)
+            # Şimdilik mevcut match_ functions kullanılabilir
+            brand_id = match_brand_id_for_name_tfidf(raw.get('brand'))
+            cat_id = match_category_id_for_title_tfidf(raw.get('title'))
+            
+            if not brand_id or not cat_id:
+                reason = "Marka bulunamadı" if not brand_id else "Kategori bulunamadı"
+                if job_id: append_mp_job_log(job_id, f"Atlandı ({reason}): {xml_item.stock_code}", level='warning')
+                continue
+
+            final_price = calculate_price(xml_item.price, 'trendyol', user_id=user_id)
+            
+            item = {
+                "barcode": barcode,
+                "title": xml_item.title,
+                "productMainId": raw.get('modelCode') or raw.get('parent_barcode') or xml_item.stock_code,
+                "brandId": int(brand_id),
+                "categoryId": int(cat_id),
+                "quantity": xml_item.quantity,
+                "stockCode": xml_item.stock_code,
+                "description": raw.get('details') or raw.get('description') or xml_item.title,
+                "currencyType": "TRY",
+                "listPrice": final_price,
+                "salePrice": final_price,
+                "vatRate": int(raw.get('vatRate', 20)),
+                "cargoCompanyId": int(Setting.get("TRENDYOL_CARGO_ID", "1", user_id=user_id)),
+                "images": [{"url": img['url']} for img in raw.get('images', []) if img.get('url')],
+                "attributes": [] # TODO: Zorunlu nitelikler
+            }
+            create_items.append((item, xml_item))
+            if job_id: append_mp_job_log(job_id, f"Yeni Ürün Yükleniyor: {xml_item.stock_code} ({xml_item.title[:30]}...)")
+
+        if create_items:
+            try:
+                payloads = [x[0] for x in create_items]
+                client.create_products(payloads)
+                for item_payload, xml_record in create_items:
+                    existing = MarketplaceProduct.query.filter_by(user_id=user_id, marketplace='trendyol', barcode=item_payload['barcode']).first()
+                    if not existing:
+                        new_mp = MarketplaceProduct(
+                            user_id=user_id, marketplace='trendyol', barcode=item_payload['barcode'],
+                            stock_code=xml_record.stock_code, title=xml_record.title,
+                            price=item_payload['listPrice'], sale_price=item_payload['salePrice'],
+                            quantity=xml_record.quantity, status='Pending', on_sale=True
+                        )
+                        db.session.add(new_mp)
+                db.session.commit()
+                res['created_count'] += len(create_items)
+            except Exception as e:
+                if job_id: append_mp_job_log(job_id, f"Trendyol yükleme hatası: {str(e)}", level='error')
+
+    # --- 3. STOK SIFIRLAMA (Zero) ---
+    if to_zero:
+        zero_items = []
+        for local_item in to_zero:
+            zero_items.append({
+                'barcode': local_item.barcode,
+                'quantity': 0,
+                'listPrice': local_item.sale_price,
+                'salePrice': local_item.sale_price
+            })
+            if job_id: append_mp_job_log(job_id, f"Stok Sıfırlanıyor (XML'de yok): {local_item.stock_code}")
+            local_item.quantity = 0
+
+        try:
+            for batch in chunked(zero_items, 100):
+                client.update_price_inventory(batch)
+                res['zeroed_count'] += len(batch)
+            db.session.commit()
+        except Exception as e:
+            if job_id: append_mp_job_log(job_id, f"Trendyol stok sıfırlama hatası: {str(e)}", level='error')
+
+    return res
+

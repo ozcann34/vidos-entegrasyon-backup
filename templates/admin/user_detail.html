@@ -27,7 +27,9 @@
                 {% if user.is_banned %}
                 <span class="badge bg-danger">Banlı</span>
                 {% elif user.is_admin %}
-                <span class="badge badge-admin">Admin</span>
+                <span class="badge badge-admin">
+                    {{ 'Ana Admin' if user.email == 'bugraerkaradeniz34@gmail.com' else 'Destek' }}
+                </span>
                 {% else %}
                 <span class="badge bg-success">Aktif</span>
                 {% endif %}
@@ -143,7 +145,8 @@
             {% endif %}
             {% else %}
             <p class="text-muted text-center mb-0">
-                <i class="bi bi-shield-lock me-2"></i>Admin hesabı
+                <i class="bi bi-shield-lock me-2"></i>{{ 'Ana Admin' if user.email == 'bugraerkaradeniz34@gmail.com'
+                else 'Destek' }} hesabı
             </p>
             {% endif %}
         </div>

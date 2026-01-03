@@ -1463,3 +1463,120 @@ def sync_n11_products(user_id: int, job_id: Optional[str] = None) -> Dict[str, A
         db.session.rollback()
         return {'success': False, 'message': err_msg}
 
+
+def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_create: List[Any], to_zero: List[Any], src: Any, job_id: Optional[str] = None) -> Dict[str, Any]:
+    """
+    N11 için Direct Push aksiyonlarını gerçekleştirir.
+    """
+    from app.services.job_queue import append_mp_job_log
+    from app.utils.helpers import calculate_price, chunked
+    from app.models import MarketplaceProduct, db
+    import json
+    
+    client = get_n11_client(user_id=user_id)
+    res = {'updated_count': 0, 'created_count': 0, 'zeroed_count': 0}
+    
+    # --- 1. GÜNCELLEMELER (Update) ---
+    if to_update:
+        update_items = []
+        for xml_item, local_item in to_update:
+            final_price = calculate_price(xml_item.price, 'n11', user_id=user_id)
+            update_items.append({
+                "sellerCode": local_item.stock_code,
+                "price": final_price,
+                "quantity": xml_item.quantity
+            })
+            if job_id: append_mp_job_log(job_id, f"Güncelleniyor: {xml_item.stock_code} (Stok: {local_item.quantity} -> {xml_item.quantity})")
+            
+            local_item.quantity = xml_item.quantity
+            local_item.sale_price = final_price
+            local_item.last_sync_at = datetime.now()
+
+        try:
+            for batch in chunked(update_items, 100):
+                client.update_products_price_and_stock(batch)
+                res['updated_count'] += len(batch)
+            db.session.commit()
+        except Exception as e:
+            if job_id: append_mp_job_log(job_id, f"N11 güncelleme hatası: {str(e)}", level='error')
+
+    # --- 2. YENİ ÜRÜNLER (Create) ---
+    if to_create:
+        from app.services.xml_service import generate_random_barcode
+        create_items = []
+        for xml_item in to_create:
+            barcode = xml_item.barcode
+            if src.use_random_barcode:
+                barcode = generate_random_barcode()
+            
+            raw = json.loads(xml_item.raw_data)
+            final_price = calculate_price(xml_item.price, 'n11', user_id=user_id)
+            
+            # N11 Rest API product creation payload (basic)
+            # Bu kısım N11'in karmaşık yapısı nedeniyle (kategori özellikleri vb.) 
+            # manuel gönderimdeki mantığı (perform_n11_send_products) temel almalıdır.
+            # Ancak Direct Push için basitleştirilmiş bir yapı sunuyoruz.
+            
+            item = {
+                "sellerCode": xml_item.stock_code,
+                "barcode": barcode,
+                "title": xml_item.title,
+                "subtitle": xml_item.title[:50],
+                "price": final_price,
+                "currencyType": "TL",
+                "stockItems": [{
+                    "sellerStockCode": xml_item.stock_code,
+                    "quantity": xml_item.quantity,
+                    "attributes": []
+                }],
+                "images": [img['url'] for img in raw.get('images', []) if img.get('url')],
+                "description": raw.get('details') or raw.get('description') or xml_item.title,
+                # Mandatory fields usually fetched from settings or matched
+                "preparingDay": 3,
+                "shipmentTemplate": "Varsayılan" 
+            }
+            create_items.append((item, xml_item))
+            if job_id: append_mp_job_log(job_id, f"Yeni Ürün Yükleniyor: {xml_item.stock_code} ({xml_item.title[:30]}...)")
+
+        if create_items:
+            try:
+                payloads = [x[0] for x in create_items]
+                # N11 specific create method call
+                client.create_products(payloads)
+                for item_payload, xml_record in create_items:
+                    existing = MarketplaceProduct.query.filter_by(user_id=user_id, marketplace='n11', stock_code=xml_record.stock_code).first()
+                    if not existing:
+                        new_mp = MarketplaceProduct(
+                            user_id=user_id, marketplace='n11', barcode=item_payload['barcode'],
+                            stock_code=xml_record.stock_code, title=xml_record.title,
+                            price=item_payload['price'], sale_price=item_payload['price'],
+                            quantity=xml_record.stockItems[0]['quantity'], status='Pending', on_sale=True
+                        )
+                        db.session.add(new_mp)
+                db.session.commit()
+                res['created_count'] += len(create_items)
+            except Exception as e:
+                if job_id: append_mp_job_log(job_id, f"N11 yükleme hatası: {str(e)}", level='error')
+
+    # --- 3. STOK SIFIRLAMA (Zero) ---
+    if to_zero:
+        zero_items = []
+        for local_item in to_zero:
+            zero_items.append({
+                "sellerCode": local_item.stock_code,
+                "price": local_item.sale_price,
+                "quantity": 0
+            })
+            if job_id: append_mp_job_log(job_id, f"Stok Sıfırlanıyor (XML'de yok): {local_item.stock_code}")
+            local_item.quantity = 0
+
+        try:
+            for batch in chunked(zero_items, 100):
+                client.update_products_price_and_stock(batch)
+                res['zeroed_count'] += len(batch)
+            db.session.commit()
+        except Exception as e:
+            if job_id: append_mp_job_log(job_id, f"N11 stok sıfırlama hatası: {str(e)}", level='error')
+
+    return res
+

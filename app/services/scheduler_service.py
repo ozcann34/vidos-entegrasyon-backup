@@ -18,13 +18,15 @@ logger = logging.getLogger(__name__)
 
 # Global scheduler instance
 scheduler: BackgroundScheduler = None
+_flask_app: Flask = None
 
 
 def init_scheduler(app: Flask):
     """
     Flask app ile scheduler'ı başlat ve kayıtlı job'ları yükle
     """
-    global scheduler
+    global scheduler, _flask_app
+    _flask_app = app
     
     if scheduler is not None:
         logger.warning("Scheduler already initialized")
@@ -101,13 +103,16 @@ def add_order_sync_job(interval_minutes: int = 60):
         
         # Wrapper to provide context
         def order_sync_wrapper():
-            with current_app.app_context():
-                try:
-                    logger.info("Running Global Order Sync Task...")
-                    sync_all_users_orders()
-                    logger.info("Global Order Sync Task Completed")
-                except Exception as e:
-                    logger.error(f"Global Order Sync Failed: {e}")
+            if _flask_app:
+                with _flask_app.app_context():
+                    try:
+                        logger.info("Running Global Order Sync Task...")
+                        sync_all_users_orders()
+                        logger.info("Global Order Sync Task Completed")
+                    except Exception as e:
+                        logger.error(f"Global Order Sync Failed: {e}")
+            else:
+                logger.error("Flask app instance not found for order sync")
 
         scheduler.add_job(
             func=order_sync_wrapper,
@@ -162,8 +167,11 @@ def add_sync_job(marketplace: str, interval_minutes: int = 60):
         from flask import current_app
         
         def sync_job_wrapper():
-            with current_app.app_context():
-                sync_marketplace_task(marketplace)
+            if _flask_app:
+                with _flask_app.app_context():
+                    sync_marketplace_task(marketplace)
+            else:
+                logger.error(f"Flask app instance not found for {marketplace} sync")
         
         # Job'u ekle veya güncelle
         scheduler.add_job(

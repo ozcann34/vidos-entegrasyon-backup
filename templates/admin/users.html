@@ -51,7 +51,9 @@
                     {% if user.is_banned %}
                     <span class="badge bg-danger">Banlı</span>
                     {% elif user.is_admin %}
-                    <span class="badge badge-admin">Admin</span>
+                    <span class="badge badge-admin">
+                        {{ 'Ana Admin' if user.email == 'bugraerkaradeniz34@gmail.com' else 'Destek' }}
+                    </span>
                     {% elif user.is_active %}
                     <span class="badge bg-success">Aktif</span>
                     {% else %}

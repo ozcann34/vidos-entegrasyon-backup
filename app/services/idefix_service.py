@@ -527,6 +527,37 @@ items: List[Dict[str, Any]],
                 logger.error(f"[IDEFIX] Response status: {e.response.status_code}")
                 logger.error(f"[IDEFIX] Response body: {e.response.text}")
             raise
+
+    def create_products(self, products: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Create new products in Idefix Pool (Ürün Havuzu).
+        Endpoint: POST /pim/pool/{vendorId}/create
+        
+        Mandatory Fields in products:
+        - barcode, title, productMainId, brandId, categoryId, 
+        - inventoryQuantity, vendorStockCode, description, price, vatRate, images
+        """
+        if not self.vendor_id:
+            raise ValueError("Idefix vendor_id eksik!")
+            
+        url = f"{self.BASE_URL}/pim/pool/{self.vendor_id}/create"
+        
+        payload = {"items": products}
+        
+        logger.info(f"[IDEFIX] Creating {len(products)} products in pool")
+        
+        try:
+            response = self.session.post(url, headers=self._get_headers(), json=payload, timeout=60)
+            response.raise_for_status()
+            result = response.json()
+            logger.info(f"[IDEFIX] Create Success! BatchRequestId: {result.get('batchRequestId')}")
+            return result
+        except requests.exceptions.RequestException as e:
+            logger.error(f"[IDEFIX] Failed to create products in pool: {str(e)}")
+            if hasattr(e, 'response') and e.response is not None:
+                logger.error(f"[IDEFIX] Response status: {e.response.status_code}")
+                logger.error(f"[IDEFIX] Response body: {e.response.text}")
+            raise
     
     def query_pool_batch_status(self, batch_request_id: str) -> Dict[str, Any]:
         """
@@ -2292,3 +2323,152 @@ def perform_idefix_batch_update(job_id: str, items: List[Dict[str, Any]], user_i
         msg = f"Idefix batch update hatası: {str(e)}"
         append_mp_job_log(job_id, msg, level='error')
         return {'success': False, 'message': msg}
+
+
+def perform_idefix_direct_push_actions(user_id: int, to_update: List[Any], to_create: List[Any], to_zero: List[Any], src: Any, job_id: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Idefix için Direct Push aksiyonlarını gerçekleştirir.
+    to_update: (xml_item, local_item) listesi
+    to_create: xml_item listesi
+    to_zero: local_item listesi
+    """
+    from app.services.job_queue import append_mp_job_log
+    from app.utils.helpers import calculate_price
+    from app.models import MarketplaceProduct, db
+    
+    client = get_idefix_client(user_id=user_id)
+    res = {'updated_count': 0, 'created_count': 0, 'zeroed_count': 0}
+    
+    # --- 1. GÜNCELLEMELER (Update) ---
+    if to_update:
+        update_items = []
+        for xml_item, local_item in to_update:
+            final_price = calculate_price(xml_item.price, 'idefix', user_id=user_id)
+            update_items.append({
+                'barcode': local_item.barcode, # Veritabanındaki barkodu kullan
+                'price': final_price,
+                'inventoryQuantity': xml_item.quantity
+            })
+            
+            # Canlı Log
+            if job_id: append_mp_job_log(job_id, f"Güncelleniyor: {xml_item.stock_code} (Stok: {local_item.quantity} -> {xml_item.quantity})")
+            
+            # Yerel veritabanını güncelle
+            local_item.quantity = xml_item.quantity
+            local_item.sale_price = final_price
+            local_item.last_sync_at = datetime.now()
+
+        # Idefix toplu güncellemeyi destekler
+        try:
+            from app.utils.helpers import chunked
+            for batch in chunked(update_items, 100):
+                client.update_inventory_and_price(batch)
+                res['updated_count'] += len(batch)
+            db.session.commit()
+        except Exception as e:
+            if job_id: append_mp_job_log(job_id, f"Idefix güncelleme hatası: {str(e)}", level='error')
+
+    # --- 2. YENİ ÜRÜNLER (Create) ---
+    if to_create:
+        from app.services.xml_service import generate_random_barcode
+        create_items = []
+        for xml_item in to_create:
+            # Random barkod seçeneği
+            barcode = xml_item.barcode
+            if src.use_random_barcode:
+                barcode = generate_random_barcode()
+            
+            # Zorunlu alanları XML'den çek (xml_item.raw_data içerisinde hepsi var)
+            raw = json.loads(xml_item.raw_data)
+            
+            # Marka ve Kategori Çözümü
+            brand_id = resolve_idefix_brand(raw.get('brand'), user_id=user_id)
+            cat_id = resolve_idefix_category(raw.get('title'), raw.get('category'), user_id=user_id)
+            
+            if not brand_id or not cat_id:
+                reason = "Marka bulunamadı" if not brand_id else "Kategori bulunamadı"
+                if job_id: append_mp_job_log(job_id, f"Atlandı ({reason}): {xml_item.stock_code}", level='warning')
+                continue
+
+            final_price = calculate_price(xml_item.price, 'idefix', user_id=user_id)
+            
+            item = {
+                "barcode": barcode,
+                "title": xml_item.title,
+                "productMainId": raw.get('modelCode') or raw.get('parent_barcode') or xml_item.stock_code,
+                "brandId": int(brand_id),
+                "categoryId": int(cat_id),
+                "inventoryQuantity": xml_item.quantity,
+                "vendorStockCode": xml_item.stock_code,
+                "description": raw.get('details') or raw.get('description') or xml_item.title,
+                "price": final_price,
+                "vatRate": raw.get('vatRate', 20.0),
+                "images": [img['url'] for img in raw.get('images', []) if img.get('url')]
+            }
+            create_items.append((item, xml_item))
+            
+            if job_id: append_mp_job_log(job_id, f"Yeni Ürün Yükleniyor: {xml_item.stock_code} ({xml_item.title[:30]}...)")
+
+        # Toplu Yükleme
+        if create_items:
+            try:
+                payloads = [x[0] for x in create_items]
+                client.create_products(payloads)
+                
+                # Başarılı ise yerel veritabanına MarketplaceProduct olarak ekle
+                for item_payload, xml_record in create_items:
+                    # Duplicate check
+                    existing = MarketplaceProduct.query.filter_by(user_id=user_id, marketplace='idefix', barcode=item_payload['barcode']).first()
+                    if not existing:
+                        new_mp = MarketplaceProduct(
+                            user_id=user_id,
+                            marketplace='idefix',
+                            barcode=item_payload['barcode'],
+                            stock_code=xml_record.stock_code,
+                            title=xml_record.title,
+                            price=item_payload['price'],
+                            sale_price=item_payload['price'],
+                            quantity=xml_record.quantity,
+                            status='Pending',
+                            on_sale=True
+                        )
+                        db.session.add(new_mp)
+                db.session.commit()
+                res['created_count'] += len(create_items)
+            except Exception as e:
+                if job_id: append_mp_job_log(job_id, f"Idefix yükleme hatası: {str(e)}", level='error')
+
+    # --- 3. STOK SIFIRLAMA (Zero) ---
+    if to_zero:
+        from app.utils.helpers import chunked
+        zero_items = []
+        for local_item in to_zero:
+            zero_items.append({
+                'barcode': local_item.barcode,
+                'price': local_item.sale_price,
+                'inventoryQuantity': 0
+            })
+            if job_id: append_mp_job_log(job_id, f"Stok Sıfırlanıyor (XML'de yok): {local_item.stock_code}")
+            local_item.quantity = 0
+
+        try:
+            for batch in chunked(zero_items, 100):
+                client.update_inventory_and_price(batch)
+                res['zeroed_count'] += len(batch)
+            db.session.commit()
+        except Exception as e:
+            if job_id: append_mp_job_log(job_id, f"Idefix stok sıfırlama hatası: {str(e)}", level='error')
+
+    return res
+
+def resolve_idefix_brand(brand_name: str, user_id: int) -> Optional[int]:
+    """Marka isminden Idefix brandId çözümler."""
+    if not brand_name: return None
+    try:
+        client = get_idefix_client(user_id=user_id)
+        brand = client.search_brand_by_name(brand_name)
+        if brand and brand.get('id'):
+            return int(brand['id'])
+    except Exception:
+        pass
+    return None

@@ -848,6 +848,14 @@ def user_permissions(user_id):
         
         'support_tickets': 'Destek Talepleri',
 
+        'reports': 'Raporlar (Kar/Zarar)',
+
+        'questions': 'Müşteri Soruları',
+
+        'returns': 'İadeler',
+
+        'instagram': 'Instagram Araçları',
+
     }
 
     
@@ -1476,5 +1484,112 @@ def add_bug_z_xml(user_id):
         db.session.rollback()
         logger.error(f"Error adding BUG-Z XML for {user.email}: {str(e)}")
         flash(f'XML ekleme hatası: {str(e)}', 'danger')
+        
+    return redirect(url_for('admin.bug_z_settings'))
+
+@admin_bp.route('/bug_z/delete_xml/<int:xml_id>', methods=['POST'])
+@admin_required
+def delete_bug_z_xml(xml_id):
+    """Delete a specific XML source from a BUG-Z user."""
+    from app.models import SupplierXML
+    xml = SupplierXML.query.get_or_404(xml_id)
+    user_email = xml.user.email
+    xml_name = xml.name or xml.url
+    
+    try:
+        db.session.delete(xml)
+        db.session.commit()
+        
+        AdminLog.log_action(
+            admin_id=current_user.id,
+            action='delete_bugz_xml',
+            target_user_id=xml.user_id,
+            details=f'Deleted XML "{xml_name}" for user {user_email}',
+            ip_address=request.remote_addr
+        )
+        flash(f'"{xml_name}" kaynağı başarıyla silindi.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Silme hatası: {str(e)}', 'danger')
+        
+    return redirect(url_for('admin.bug_z_settings'))
+
+@admin_bp.route('/bug_z/add_xml_to_all', methods=['POST'])
+@admin_required
+def add_bug_z_xml_to_all():
+    """Add an XML source to all BUG-Z plan users at once."""
+    from app.models import Subscription, SupplierXML
+    
+    name = request.form.get('name')
+    url = request.form.get('url')
+    
+    if not name or not url:
+        flash('İsim ve URL gereklidir.', 'danger')
+        return redirect(url_for('admin.bug_z_settings'))
+        
+    try:
+        # Get all users with bug-z-bayilik plan
+        users = User.query.join(Subscription).filter(Subscription.plan == 'bug-z-bayilik').all()
+        
+        count = 0
+        for user in users:
+            # Check if this URL already exists for this user to avoid duplicates
+            exists = SupplierXML.query.filter_by(user_id=user.id, url=url).first()
+            if not exists:
+                new_xml = SupplierXML(user_id=user.id, name=name, url=url, active=True)
+                db.session.add(new_xml)
+                count += 1
+        
+        db.session.commit()
+        
+        AdminLog.log_action(
+            admin_id=current_user.id,
+            action='add_bugz_xml_all',
+            details=f'Added XML "{name}" to {count} users',
+            ip_address=request.remote_addr
+        )
+        
+        flash(f'"{name}" kaynağı {count} kullanıcıya başarıyla eklendi.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Toplu ekleme hatası: {str(e)}', 'danger')
+        
+    return redirect(url_for('admin.bug_z_settings'))
+
+@admin_bp.route('/bug_z/refresh_all', methods=['POST'])
+@admin_required
+def refresh_bug_z_xml_all():
+    """Trigger cache refresh for all XML sources of BUG-Z users."""
+    from app.models import Subscription, SupplierXML
+    from app.services.xml_service import refresh_xml_cache
+    import threading
+    
+    try:
+        # Get all XMLs of users with bug-z-bayilik plan
+        xmls = SupplierXML.query.join(User).join(Subscription).filter(Subscription.plan == 'bug-z-bayilik').all()
+        
+        def run_bulk_refresh(xml_list):
+            with _flask_app.app_context():
+                for xml in xml_list:
+                    try:
+                        logger.info(f"Bulk refreshing BUG-Z XML: {xml.name} (User: {xml.user.email})")
+                        refresh_xml_cache(xml.id)
+                    except Exception as e:
+                        logger.error(f"Error refreshing XML {xml.id}: {e}")
+
+        # Run in background to avoid timeout
+        thread = threading.Thread(target=run_bulk_refresh, args=(xmls,))
+        thread.start()
+        
+        AdminLog.log_action(
+            admin_id=current_user.id,
+            action='refresh_bugz_xml_all',
+            details=f'Triggered background refresh for {len(xmls)} XML sources',
+            ip_address=request.remote_addr
+        )
+        
+        flash(f'{len(xmls)} XML kaynağı için arka planda yenileme başlatıldı.', 'info')
+    except Exception as e:
+        flash(f'Yenileme başlatılamadı: {str(e)}', 'danger')
         
     return redirect(url_for('admin.bug_z_settings'))

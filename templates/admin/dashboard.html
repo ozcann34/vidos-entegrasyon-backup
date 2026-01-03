@@ -70,7 +70,9 @@
                             {% if user.is_banned %}
                             <span class="badge badge-banned">Banlı</span>
                             {% elif user.is_admin %}
-                            <span class="badge badge-admin">Admin</span>
+                            <span class="badge badge-admin">
+                                {{ 'Ana Admin' if user.email == 'bugraerkaradeniz34@gmail.com' else 'Destek' }}
+                            </span>
                             {% else %}
                             <span class="badge badge-active">Aktif</span>
                             {% endif %}

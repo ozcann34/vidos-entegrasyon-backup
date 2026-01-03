@@ -9,9 +9,19 @@
             <div class="card-body p-4">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
-                        <h4 class="mb-1 fw-bold">BUG-Z Bayilik Paket Yönetimi</h4>
+                        <h4 class="mb-1 fw-bold text-admin-primary">BUG-Z Bayilik Paket Yönetimi</h4>
                         <p class="text-muted mb-0">BUG-Z paketi kullanan bayiler için XML kaynağı tanımlayabilirsiniz.
                         </p>
+                    </div>
+                    <div>
+                        <form method="POST" action="{{ url_for('admin.refresh_bug_z_xml_all') }}" class="d-inline">
+                            <button type="submit" class="btn btn-outline-info me-2">
+                                <i class="bi bi-arrow-clockwise me-1"></i> Tüm Kaynakları Yenile
+                            </button>
+                        </form>
+                        <button class="btn btn-admin btn-danger text-white" onclick="openBulkAddModal()">
+                            <i class="bi bi-collection-fill me-1"></i> Tümüne XML Ekle
+                        </button>
                     </div>
                 </div>
 
@@ -62,15 +72,25 @@
                                         </button>
                                         <ul class="dropdown-menu shadow-sm p-2" style="min-width: 250px;">
                                             <li class="dropdown-header border-bottom mb-2 pb-2">XML Kaynakları</li>
-                                            {% for xml in user.supplier_xmls %}
                                             <li class="mb-2">
-                                                <div class="d-flex flex-column px-2">
-                                                    <span class="fw-bold small text-dark">{{ xml.name }}</span>
-                                                    <a href="{{ xml.url }}" target="_blank"
-                                                        class="text-muted small text-truncate" style="max-width: 220px;"
-                                                        title="{{ xml.url }}">
-                                                        {{ xml.url }}
-                                                    </a>
+                                                <div class="d-flex justify-content-between align-items-center px-2">
+                                                    <div class="d-flex flex-column overflow-hidden">
+                                                        <span class="fw-bold small text-dark">{{ xml.name or "İsimsiz
+                                                            Kaynak" }}</span>
+                                                        <a href="{{ xml.url }}" target="_blank"
+                                                            class="text-muted small text-truncate"
+                                                            style="max-width: 180px;" title="{{ xml.url }}">
+                                                            {{ xml.url }}
+                                                        </a>
+                                                    </div>
+                                                    <form method="POST"
+                                                        action="{{ url_for('admin.delete_bug_z_xml', xml_id=xml.id) }}"
+                                                        onsubmit="return confirm('Bu XML kaynağını silmek istediğinize emin misiniz?')">
+                                                        <button type="submit"
+                                                            class="btn btn-sm btn-link text-danger p-0 ms-2">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    </form>
                                                 </div>
                                             </li>
                                             {% else %}
@@ -141,13 +161,52 @@
 <script>
     function openAddXmlModal(userId, userName) {
         document.getElementById('modalUserName').textContent = userName;
-        // Construct the action URL properly
-        // We assume the route pattern is /admin/bug-z/add-xml/<user_id>
         const form = document.getElementById('addXmlForm');
         form.action = "{{ url_for('admin.add_bug_z_xml', user_id=0) }}".replace('0', userId);
 
         const modal = new bootstrap.Modal(document.getElementById('addXmlModal'));
         modal.show();
     }
+
+    function openBulkAddModal() {
+        const modal = new bootstrap.Modal(document.getElementById('bulkAddXmlModal'));
+        modal.show();
+    }
 </script>
+
+<!-- Bulk Add XML Modal -->
+<div class="modal fade" id="bulkAddXmlModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-light border-bottom-0">
+                <h5 class="modal-title section-title mb-0">Tüm Kullanıcılara XML Ekle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin.add_bug_z_xml_to_all') }}">
+                <div class="modal-body p-4">
+                    <div class="alert alert-warning mb-3">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Bu işlem <strong>tüm BUG-Z planı kullanıcılarına</strong> aynı anda XML ekleyecektir.
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">Kaynak Adı</label>
+                        <input type="text" class="form-control" name="name" placeholder="Örn: Global Ürün Havuzu"
+                            required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">XML URL</label>
+                        <input type="url" class="form-control" name="url" placeholder="https://..." required>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 bg-light p-3">
+                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                        data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-sm btn-danger px-4">Tümüne Ekle</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}

@@ -12,12 +12,27 @@
             --admin-primary: #dc3545;
             --admin-gradient: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
             --sidebar-width: 260px;
+            --admin-bg: linear-gradient(135deg, #1a1a1a 0%, #2d1f1f 100%);
+            --admin-text: #ffffff;
+            --admin-card-bg: rgba(255, 255, 255, 0.05);
+            --admin-border: rgba(255, 255, 255, 0.1);
+            --admin-nav-text: rgba(255, 255, 255, 0.7);
+        }
+
+        [data-bs-theme="light"] {
+            --admin-bg: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            --admin-text: #212529;
+            --admin-card-bg: #ffffff;
+            --admin-border: rgba(0, 0, 0, 0.1);
+            --admin-nav-text: rgba(33, 37, 41, 0.8);
         }
 
         body {
             min-height: 100vh;
-            background: linear-gradient(135deg, #1a1a1a 0%, #2d1f1f 100%);
+            background: var(--admin-bg);
+            color: var(--admin-text);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            transition: background 0.3s ease, color 0.3s ease;
         }
 
         .admin-sidebar {
@@ -28,7 +43,7 @@
             height: 100vh;
             background: rgba(0, 0, 0, 0.3);
             backdrop-filter: blur(20px);
-            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            border-right: 1px solid var(--admin-border);
             padding: 1.5rem;
             z-index: 1000;
         }
@@ -38,7 +53,7 @@
             align-items: center;
             gap: 0.75rem;
             padding-bottom: 1.5rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid var(--admin-border);
             margin-bottom: 1.5rem;
         }
 
@@ -74,7 +89,7 @@
             align-items: center;
             gap: 0.75rem;
             padding: 0.75rem 1rem;
-            color: rgba(255, 255, 255, 0.7);
+            color: var(--admin-nav-text);
             text-decoration: none;
             border-radius: 10px;
             transition: all 0.3s ease;
@@ -109,9 +124,9 @@
         }
 
         .stat-card {
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--admin-card-bg);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--admin-border);
             border-radius: 16px;
             padding: 1.5rem;
             transition: all 0.3s ease;
@@ -140,14 +155,14 @@
         }
 
         .stat-card .stat-label {
-            color: rgba(255, 255, 255, 0.6);
+            color: var(--admin-nav-text);
             font-size: 0.9rem;
         }
 
         .admin-card {
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--admin-card-bg);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--admin-border);
             border-radius: 16px;
             padding: 1.5rem;
         }
@@ -162,7 +177,7 @@
 
         .table {
             --bs-table-bg: transparent;
-            --bs-table-border-color: rgba(255, 255, 255, 0.1);
+            --bs-table-border-color: var(--admin-border);
         }
 
         .badge-admin {
@@ -261,9 +276,14 @@
                     <small>ADMIN PANEL</small>
                 </div>
             </div>
-            <button class="btn btn-link text-white d-md-none" id="closeSidebar">
-                <i class="bi bi-x-lg"></i>
-            </button>
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-link text-white p-0 fs-5" id="themeToggle" title="Tema Değiştir">
+                    <i class="bi bi-sun" id="themeIcon"></i>
+                </button>
+                <button class="btn btn-link text-white p-0 d-md-none" id="closeSidebar">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
         </div>
         <hr class="border-secondary mt-2 mb-4 opacity-25">
 
@@ -340,7 +360,7 @@
                 </a>
             </li>
             {% endif %}
-            <li class="mt-4 pt-3" style="border-top: 1px solid rgba(255,255,255,0.1);">
+            <li class="mt-4 pt-3" style="border-top: 1px solid var(--admin-border);">
                 <a href="{{ url_for('main.dashboard') }}">
                     <i class="bi bi-arrow-left"></i>
                     Ana Panele Dön
@@ -388,14 +408,36 @@
         const toggleBtn = document.getElementById('sidebarToggle');
         const closeBtn = document.getElementById('closeSidebar');
 
-        function toggleSidebar() {
-            sidebar.classList.toggle('show');
-            overlay.classList.toggle('show');
-        }
-
         if (toggleBtn) toggleBtn.addEventListener('click', toggleSidebar);
         if (closeBtn) closeBtn.addEventListener('click', toggleSidebar);
         if (overlay) overlay.addEventListener('click', toggleSidebar);
+
+        // Theme Toggle Logic
+        const themeToggle = document.getElementById('themeToggle');
+        const themeIcon = document.getElementById('themeIcon');
+        const html = document.documentElement;
+
+        function setTheme(theme) {
+            html.setAttribute('data-bs-theme', theme);
+            localStorage.setItem('admin-theme', theme);
+            if (theme === 'light') {
+                themeIcon.classList.replace('bi-sun', 'bi-moon-fill');
+                themeToggle.classList.replace('text-white', 'text-dark');
+                if (closeBtn) closeBtn.classList.replace('text-white', 'text-dark');
+            } else {
+                themeIcon.classList.replace('bi-moon-fill', 'bi-sun');
+                themeToggle.classList.replace('text-dark', 'text-white');
+                if (closeBtn) closeBtn.classList.replace('text-dark', 'text-white');
+            }
+        }
+
+        const savedTheme = localStorage.getItem('admin-theme') || 'dark';
+        setTheme(savedTheme);
+
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = html.getAttribute('data-bs-theme');
+            setTheme(currentTheme === 'dark' ? 'light' : 'dark');
+        });
     </script>
     {% block extra_js %}{% endblock %}
 </body>

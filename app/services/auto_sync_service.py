@@ -80,35 +80,24 @@ def sync_marketplace_products(marketplace: str, user_id: int, job_id: Optional[s
             return result
 
         if job_id:
-            update_mp_job(job_id, progress={'current': 10, 'total': 100, 'message': 'Senkronizasyon başlıyor...'})
+            update_mp_job(job_id, progress={'current': 10, 'total': 100, 'message': 'XML Önbelleği yenileniyor...'})
 
-        # Delegate to marketplace specific sync_all functions
-        sync_res = {}
-        
-        if marketplace == 'trendyol':
-            from app.services.trendyol_service import perform_trendyol_sync_all
-            sync_res = perform_trendyol_sync_all(job_id if job_id else 'auto_sync_temp', xml_source_id, match_by=match_by, user_id=user_id)
-            
-        elif marketplace == 'n11':
-            from app.services.n11_service import perform_n11_sync_all
-            sync_res = perform_n11_sync_all(job_id if job_id else 'auto_sync_temp', xml_source_id, match_by=match_by, user_id=user_id)
-            
-        elif marketplace == 'pazarama':
-            from app.services.pazarama_service import perform_pazarama_sync_all
-            sync_res = perform_pazarama_sync_all(job_id if job_id else 'auto_sync_temp', xml_source_id, user_id=user_id)
-            
-        elif marketplace == 'hepsiburada':
-             from app.services.hepsiburada_service import perform_hepsiburada_sync_all
-             sync_res = perform_hepsiburada_sync_all(job_id if job_id else 'auto_sync_temp', xml_source_id, user_id=user_id)
-        
-        elif marketplace == 'idefix':
-             from app.services.idefix_service import perform_idefix_sync_all
-             sync_res = perform_idefix_sync_all(job_id if job_id else 'auto_sync_temp', xml_source_id, user_id=user_id)
+        # 1. XML Önbelleğini Yenile (Eğer çok eskiyse veya otomatik senk ise tazeleyelim)
+        from app.services.xml_service import refresh_xml_cache
+        try:
+            refresh_xml_cache(xml_source_id, job_id=job_id)
+        except Exception as e:
+            logger.error(f"XML Cache refresh failed: {e}")
+            if job_id: append_mp_job_log(job_id, f"XML Önbelleği yenilenemedi: {e}", level='warning')
 
-        else:
-            msg = f"Desteklenmeyen pazaryeri: {marketplace}"
-            result['errors'].append(msg)
-            return result
+        # 2. Direct Push Senkronizasyonunu Çalıştır
+        from app.services.direct_sync_service import DirectSyncService
+        sync_res = DirectSyncService.perform_sync(
+            marketplace=marketplace,
+            user_id=user_id,
+            xml_source_id=xml_source_id,
+            job_id=job_id
+        )
 
         # Map results
         result['success'] = sync_res.get('success', False)

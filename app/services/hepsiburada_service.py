@@ -394,3 +394,119 @@ def create_hepsiburada_catalog_request(product_data: Dict[str, Any], user_id: in
     # Placeholder structure for Phase 2
     # To be used for creating brand new products on HB instead of just listings
     pass
+
+
+def perform_hepsiburada_direct_push_actions(user_id: int, to_update: List[Any], to_create: List[Any], to_zero: List[Any], src: Any, job_id: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Hepsiburada için Direct Push aksiyonlarını gerçekleştirir.
+    Hepsiburada 'Listing API' (inventory-uploads) kullanılarak hem güncelleme hem de (bazı durumlarda) oluşturma yapılır.
+    """
+    import json
+    from datetime import datetime
+    from app.services.job_queue import append_mp_job_log
+    from app.utils.helpers import calculate_price, chunked
+    from app.models import MarketplaceProduct, Setting, db
+    
+    client = get_hepsiburada_client(user_id=user_id)
+    res = {'updated_count': 0, 'created_count': 0, 'zeroed_count': 0}
+    
+    # Varsayılan değerler
+    dispatch_time = int(Setting.get("HEPSIBURADA_DISPATCH_TIME", "3", user_id=user_id))
+    cargo_company = Setting.get("HEPSIBURADA_CARGO_COMPANY", "Hepsijet", user_id=user_id)
+
+    # --- 1. GÜNCELLEMELER (Update) ---
+    if to_update:
+        update_items = []
+        for xml_item, local_item in to_update:
+            final_price = calculate_price(xml_item.price, 'hepsiburada', user_id=user_id)
+            update_items.append({
+                "MerchantSku": local_item.stock_code, # SKU bazlı eşleşme
+                "Barcode": local_item.barcode,
+                "Price": final_price,
+                "AvailableStock": xml_item.quantity,
+                "DispatchTime": dispatch_time,
+                "CargoCompany": cargo_company
+            })
+            
+            if job_id: append_mp_job_log(job_id, f"Güncelleniyor: {xml_item.stock_code} (Stok: {local_item.quantity} -> {xml_item.quantity})")
+            
+            local_item.quantity = xml_item.quantity
+            local_item.sale_price = final_price
+            local_item.last_sync_at = datetime.now()
+
+        try:
+            for batch in chunked(update_items, 100):
+                client.upload_products(batch)
+                res['updated_count'] += len(batch)
+            db.session.commit()
+        except Exception as e:
+            if job_id: append_mp_job_log(job_id, f"Hepsiburada güncelleme hatası: {str(e)}", level='error')
+
+    # --- 2. YENİ ÜRÜNLER (Create) ---
+    if to_create:
+        from app.services.xml_service import generate_random_barcode
+        create_items = []
+        for xml_item in to_create:
+            barcode = xml_item.barcode
+            if src.use_random_barcode:
+                barcode = generate_random_barcode()
+            
+            raw = json.loads(xml_item.raw_data)
+            final_price = calculate_price(xml_item.price, 'hepsiburada', user_id=user_id)
+            
+            # Hepsiburada Listing API üzerinden ürün ekleme (Katalogda varsa eşleşir yoksa pasife düşebilir)
+            item = {
+                "MerchantSku": xml_item.stock_code,
+                "Barcode": barcode,
+                "Price": final_price,
+                "AvailableStock": xml_item.quantity,
+                "DispatchTime": dispatch_time,
+                "CargoCompany": cargo_company,
+                "VaryantGroupID": raw.get('modelCode') or raw.get('parent_barcode') or xml_item.stock_code
+            }
+            create_items.append((item, xml_item))
+            if job_id: append_mp_job_log(job_id, f"Yeni Ürün Yükleniyor: {xml_item.stock_code} ({xml_item.title[:30]}...)")
+
+        if create_items:
+            try:
+                payloads = [x[0] for x in create_items]
+                client.upload_products(payloads)
+                for item_payload, xml_record in create_items:
+                    existing = MarketplaceProduct.query.filter_by(user_id=user_id, marketplace='hepsiburada', stock_code=xml_record.stock_code).first()
+                    if not existing:
+                        new_mp = MarketplaceProduct(
+                            user_id=user_id, marketplace='hepsiburada', barcode=item_payload['Barcode'],
+                            stock_code=xml_record.stock_code, title=xml_record.title,
+                            price=item_payload['Price'], sale_price=item_payload['Price'],
+                            quantity=xml_record.quantity, status='Pending', on_sale=True
+                        )
+                        db.session.add(new_mp)
+                db.session.commit()
+                res['created_count'] += len(create_items)
+            except Exception as e:
+                if job_id: append_mp_job_log(job_id, f"Hepsiburada yükleme hatası: {str(e)}", level='error')
+
+    # --- 3. STOK SIFIRLAMA (Zero) ---
+    if to_zero:
+        zero_items = []
+        for local_item in to_zero:
+            zero_items.append({
+                "MerchantSku": local_item.stock_code,
+                "Barcode": local_item.barcode,
+                "Price": local_item.sale_price,
+                "AvailableStock": 0,
+                "DispatchTime": dispatch_time,
+                "CargoCompany": cargo_company
+            })
+            if job_id: append_mp_job_log(job_id, f"Stok Sıfırlanıyor (XML'de yok): {local_item.stock_code}")
+            local_item.quantity = 0
+
+        try:
+            for batch in chunked(zero_items, 100):
+                client.upload_products(batch)
+                res['zeroed_count'] += len(batch)
+            db.session.commit()
+        except Exception as e:
+            if job_id: append_mp_job_log(job_id, f"Hepsiburada stok sıfırlama hatası: {str(e)}", level='error')
+
+    return res

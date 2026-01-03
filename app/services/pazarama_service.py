@@ -1756,3 +1756,139 @@ def perform_pazarama_batch_update(job_id: str, items: List[Dict[str, Any]], user
     except Exception as e:
         return {'success': False, 'message': str(e)}
 
+
+def perform_pazarama_direct_push_actions(user_id: int, to_update: List[Any], to_create: List[Any], to_zero: List[Any], src: Any, job_id: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Pazarama için Direct Push aksiyonlarını gerçekleştirir.
+    """
+    import json
+    from datetime import datetime
+    from app.services.job_queue import append_mp_job_log
+    from app.utils.helpers import calculate_price, chunked
+    from app.models import MarketplaceProduct, db
+    
+    client = get_pazarama_client(user_id=user_id)
+    res = {'updated_count': 0, 'created_count': 0, 'zeroed_count': 0}
+    
+    # --- 1. GÜNCELLEMELER (Update) ---
+    if to_update:
+        stock_updates = []
+        price_updates = []
+        for xml_item, local_item in to_update:
+            final_price = calculate_price(xml_item.price, 'pazarama', user_id=user_id)
+            
+            # Pazarama stock update
+            stock_updates.append({
+                "code": local_item.barcode,
+                "stockCode": local_item.stock_code,
+                "stockQuantity": xml_item.quantity
+            })
+            
+            # Pazarama price update
+            price_updates.append({
+                "code": local_item.barcode,
+                "stockCode": local_item.stock_code,
+                "listPrice": final_price,
+                "salePrice": final_price,
+                "vatRate": 20 # Default or from XML
+            })
+            
+            if job_id: append_mp_job_log(job_id, f"Güncelleniyor: {xml_item.stock_code} (Stok: {local_item.quantity} -> {xml_item.quantity})")
+            
+            local_item.quantity = xml_item.quantity
+            local_item.sale_price = final_price
+            local_item.last_sync_at = datetime.now()
+
+        try:
+            # Pazarama updates are separate for stock and price
+            for batch in chunked(stock_updates, 100):
+                client.update_stock(batch)
+                res['updated_count'] += len(batch)
+            
+            for batch in chunked(price_updates, 100):
+                client.update_price(batch)
+            
+            db.session.commit()
+        except Exception as e:
+            if job_id: append_mp_job_log(job_id, f"Pazarama güncelleme hatası: {str(e)}", level='error')
+
+    # --- 2. YENİ ÜRÜNLER (Create) ---
+    if to_create:
+        from app.services.xml_service import generate_random_barcode
+        create_items = []
+        for xml_item in to_create:
+            barcode = xml_item.barcode
+            if src.use_random_barcode:
+                barcode = generate_random_barcode()
+            
+            raw = json.loads(xml_item.raw_data)
+            
+            # Marka ve Kategori Çözümü
+            brand_id = resolve_pazarama_brand(client, raw.get('brand'))
+            cat_id = resolve_pazarama_category(client, xml_item.title, raw.get('category'), raw.get('category'), user_id=user_id)
+            
+            if not brand_id or not cat_id:
+                reason = "Marka bulunamadı" if not brand_id else "Kategori bulunamadı"
+                if job_id: append_mp_job_log(job_id, f"Atlandı ({reason}): {xml_item.stock_code}", level='warning')
+                continue
+
+            final_price = calculate_price(xml_item.price, 'pazarama', user_id=user_id)
+            
+            item = {
+                "code": barcode,
+                "stockCode": xml_item.stock_code,
+                "displayName": xml_item.title,
+                "brandId": brand_id,
+                "categoryId": cat_id,
+                "stockQuantity": xml_item.quantity,
+                "listPrice": final_price,
+                "salePrice": final_price,
+                "vatRate": int(raw.get('vatRate', 20)),
+                "description": raw.get('details') or raw.get('description') or xml_item.title,
+                "images": [img['url'] for img in raw.get('images', []) if img.get('url')],
+                "attributes": [] # TODO: Required attributes if any
+            }
+            create_items.append((item, xml_item))
+            if job_id: append_mp_job_log(job_id, f"Yeni Ürün Yükleniyor: {xml_item.stock_code} ({xml_item.title[:30]}...)")
+
+        if create_items:
+            try:
+                payloads = [x[0] for x in create_items]
+                client.create_products(payloads)
+                for item_payload, xml_record in create_items:
+                    existing = MarketplaceProduct.query.filter_by(user_id=user_id, marketplace='pazarama', barcode=item_payload['code']).first()
+                    if not existing:
+                        new_mp = MarketplaceProduct(
+                            user_id=user_id, marketplace='pazarama', barcode=item_payload['code'],
+                            stock_code=xml_record.stock_code, title=xml_record.title,
+                            price=item_payload['listPrice'], sale_price=item_payload['salePrice'],
+                            quantity=xml_record.quantity, status='Pending', on_sale=True
+                        )
+                        db.session.add(new_mp)
+                db.session.commit()
+                res['created_count'] += len(create_items)
+            except Exception as e:
+                if job_id: append_mp_job_log(job_id, f"Pazarama yükleme hatası: {str(e)}", level='error')
+
+    # --- 3. STOK SIFIRLAMA (Zero) ---
+    if to_zero:
+        zero_items = []
+        for local_item in to_zero:
+            zero_items.append({
+                "code": local_item.barcode,
+                "stockCode": local_item.stock_code,
+                "stockQuantity": 0
+            })
+            if job_id: append_mp_job_log(job_id, f"Stok Sıfırlanıyor (XML'de yok): {local_item.stock_code}")
+            local_item.quantity = 0
+
+        try:
+            for batch in chunked(zero_items, 100):
+                client.update_stock(batch)
+                res['zeroed_count'] += len(batch)
+            db.session.commit()
+        except Exception as e:
+            if job_id: append_mp_job_log(job_id, f"Pazarama stok sıfırlama hatası: {str(e)}", level='error')
+
+    return res
+

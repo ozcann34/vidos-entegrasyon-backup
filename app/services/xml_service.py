@@ -205,15 +205,12 @@ def load_xml_source_index(xml_source_id: Any, force: bool = False) -> Dict[str, 
         return ''
 
     # Pre-load brand mapping to avoid 37k DB queries
-    # This block is now redundant as apply_brand_mapping handles it, but keeping for context if needed elsewhere.
-    # mapping_data = Setting.get('XML_BRAND_MAPPING', user_id=src.user_id)
-    # brand_mapping = {}
-    # if mapping_data:
-    #     try:
-    #         brand_mapping = json.loads(mapping_data)
-    #         # Normalize keys for faster lookup
-    #         brand_mapping = {k.lower(): v for k, v in brand_mapping.items()}
-    #     except Exception: pass
+    mapping_data = Setting.get('XML_BRAND_MAPPING', user_id=src.user_id)
+    brand_mapping = {}
+    if mapping_data:
+        try:
+            brand_mapping = json.loads(mapping_data)
+        except Exception: pass
     
     for i, row in enumerate(items):
         if not isinstance(row, dict):
@@ -269,8 +266,8 @@ def load_xml_source_index(xml_source_id: Any, force: bool = False) -> Dict[str, 
         except Exception:
             vat_rate = 20.0
             
-        # Apply Brand Mapping
-        brand = apply_brand_mapping(brand_raw, src.user_id)
+        # Apply Brand Mapping (Pre-loaded to avoid N queries)
+        brand = apply_brand_mapping(brand_raw, src.user_id, mapping_dict=brand_mapping)
 
         # Images extraction (Simplified for brevity, assuming helper or same logic)
         images: List[Dict[str, str]] = []
@@ -410,6 +407,102 @@ def load_xml_source_index(xml_source_id: Any, force: bool = False) -> Dict[str, 
 
     return index
 
+def generate_random_barcode() -> str:
+    """Generate a random 13-digit EAN-like barcode."""
+    import random
+    return "".join([str(random.randint(0, 9)) for _ in range(13)])
+
+def refresh_xml_cache(xml_source_id: int, job_id: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Download XML, parse it, and save to partitioned SQLite database.
+    This is the core of the High-Frequency sync.
+    """
+    from app import db
+    from app.services.xml_db_manager import xml_db_manager, CachedXmlProduct
+    from app.services.job_queue import append_mp_job_log
+    
+    src = SupplierXML.query.get(xml_source_id)
+    if not src:
+        return {'success': False, 'message': 'XML kaynağı bulunamadı.'}
+
+    msg = f"XML Cache yenileniyor: {src.name}"
+    logger.info(f"[XML-CACHE] {msg}")
+    if job_id: append_mp_job_log(job_id, msg)
+
+    try:
+        # 1. Load XML into memory (index format)
+        index = load_xml_source_index(xml_source_id, force=True)
+        if '_error' in index:
+            return {'success': False, 'message': index['_error']}
+            
+        records = index.get('__records__', [])
+        if not records:
+            return {'success': False, 'message': 'XML içerisinde ürün bulunamadı.'}
+
+        # 2. Get partitioned DB session
+        session = xml_db_manager.get_session(xml_source_id)
+        
+        try:
+            # 3. Clear old cache for this source
+            session.query(CachedXmlProduct).delete()
+            
+            # 4. Prepare bulk records
+            bulk_items = []
+            for r in records:
+                bulk_items.append(CachedXmlProduct(
+                    stock_code=r.get('stockCode'),
+                    barcode=r.get('barcode'),
+                    title=r.get('title'),
+                    price=r.get('price', 0.0),
+                    quantity=r.get('quantity', 0),
+                    brand=r.get('brand'),
+                    category=r.get('category'),
+                    images_json=json.dumps(r.get('images', [])),
+                    raw_data=json.dumps(r)
+                ))
+            
+            # 5. Bulk insert (Fast for SQLite)
+            session.bulk_save_objects(bulk_items)
+            session.commit()
+            
+            # 6. Update last_cached_at in main DB
+            src.last_cached_at = datetime.now()
+            db.session.commit()
+            
+            msg = f"XML Cache başarıyla güncellendi. {len(records)} ürün veritabanına işlendi."
+            logger.info(f"[XML-CACHE] {msg}")
+            if job_id: append_mp_job_log(job_id, msg)
+            
+            return {'success': True, 'count': len(records)}
+            
+        except Exception as e:
+            session.rollback()
+            raise e
+        finally:
+            session.close()
+
+    except Exception as e:
+        msg = f"XML Cache yenilenirken hata oluştu: {str(e)}"
+        logger.error(f"[XML-CACHE] {msg}")
+        if job_id: append_mp_job_log(job_id, msg, level='error')
+        return {'success': False, 'message': msg}
+
+def search_xml_cache(xml_source_id: int, stock_code: str) -> Optional[Dict[str, Any]]:
+    """
+    Search for a product in the partitioned XML cache by stock code.
+    """
+    from app.services.xml_db_manager import xml_db_manager, CachedXmlProduct
+    
+    session = xml_db_manager.get_session(xml_source_id)
+    try:
+        product = session.query(CachedXmlProduct).filter_by(stock_code=stock_code).first()
+        if product:
+            # Reconstruct the dict format used by the app
+            return json.loads(product.raw_data)
+        return None
+    finally:
+        session.close()
+
 def lookup_xml_record(xml_index: Dict[str, Dict[str, Any]], code: Optional[str] = None, stock_code: Optional[str] = None, title: Optional[str] = None) -> Optional[Dict[str, Any]]:
     if not xml_index:
         return None
@@ -430,25 +523,29 @@ def lookup_xml_record(xml_index: Dict[str, Dict[str, Any]], code: Optional[str] 
                 return rec
     return None
 
-def apply_brand_mapping(original_brand: str, user_id: int) -> str:
+def apply_brand_mapping(original_brand: str, user_id: int, mapping_dict: Optional[Dict[str, str]] = None) -> str:
     """Apply brand mapping rules for a user."""
     if not original_brand:
         return ""
     
-    mapping_data = Setting.get('XML_BRAND_MAPPING', user_id=user_id)
-    if not mapping_data:
-        return original_brand
+    mapping = mapping_dict
+    if mapping is None:
+        mapping_data = Setting.get('XML_BRAND_MAPPING', user_id=user_id)
+        if not mapping_data:
+            return original_brand
+        try:
+            mapping = json.loads(mapping_data)
+        except Exception:
+            return original_brand
         
-    try:
-        mapping = json.loads(mapping_data)
-        # Check for exact match
-        if original_brand in mapping:
-            return mapping[original_brand]
-        # Check for case-insensitive match
-        for k, v in mapping.items():
-            if k.lower() == original_brand.lower():
-                return v
-    except Exception:
-        pass
+    # Check for exact match
+    if original_brand in mapping:
+        return mapping[original_brand]
         
+    # Check for case-insensitive match
+    orig_lower = original_brand.lower()
+    for k, v in mapping.items():
+        if k.lower() == orig_lower:
+            return v
+            
     return original_brand
