@@ -191,6 +191,244 @@
                 <span class="fw-bold text-white fs-5 tracking-tight">Vidos</span>
             </a>
         </div>
+        <ul class="nav nav-pills flex-column mb-auto">
+            <!-- GRUP: ANALİZ -->
+            <li class="nav-section-title">Genel</li>
+            <li class="nav-item">
+                <a href="{{ url_for('main.dashboard') }}"
+                    class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}" aria-current="page">
+                    <i class="bi bi-speedometer2 me-2"></i> Kontrol Paneli
+                </a>
+            </li>
+
+            <!-- GRUP: ÜRÜNLER -->
+            <li class="nav-section-title">Ürün Yönetimi</li>
+            <li class="nav-item">
+                <a href="{{ url_for('main.xml_urunler') }}"
+                    class="nav-link {% if request.endpoint == 'main.xml_urunler' %}active{% endif %}">
+                    <i class="bi bi-file-earmark-code me-2"></i> XML Ürünleri
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('main.excel_products_page') }}"
+                    class="nav-link {% if request.endpoint == 'main.excel_products_page' %}active{% endif %}">
+                    <i class="bi bi-file-earmark-excel me-2"></i> Excel Ürünleri
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('products.create_product') }}"
+                    class="nav-link {% if request.endpoint == 'products.create_product' %}active{% endif %}">
+                    <i class="bi bi-plus-circle me-2"></i> Manuel Ürün Ekle
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('products.blacklist') }}"
+                    class="nav-link {% if request.endpoint == 'products.blacklist' %}active{% endif %}">
+                    <i class="bi bi-slash-circle me-2"></i> Yasaklı Liste
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('main.instagram_panel') }}"
+                    class="nav-link {% if request.endpoint == 'main.instagram_panel' %}active{% endif %}">
+                    <i class="bi bi-instagram me-2"></i> Instagram Paneli
+                </a>
+            </li>
+
+            <!-- GRUP: PAZARYERLERİ -->
+            <li class="nav-section-title">Pazar Yerleri</li>
+            <li class="nav-item">
+                {% set pm_list = {'trendyol': 'Trendyol', 'hepsiburada': 'Hepsiburada', 'n11': 'N11', 'pazarama':
+                'Pazarama', 'idefix': 'İdefix', 'ikas': 'İkas'} %}
+                {% set mp_active = request.view_args and request.view_args.get('marketplace') in pm_list.keys() %}
+                <a href="#marketplaceSubmenu" data-bs-toggle="collapse"
+                    aria-expanded="{{ 'true' if mp_active else 'false' }}"
+                    class="nav-link dropdown-toggle text-white {% if not mp_active %}collapsed{% endif %}">
+                    <i class="bi bi-shop-window me-2"></i> Mağazalarım
+                </a>
+                <ul class="collapse list-unstyled ps-3 {{ 'show' if mp_active else '' }}" id="marketplaceSubmenu"
+                    data-bs-parent="#sidebar-nav">
+                    {% for key, name in pm_list.items() %}
+                    {% if current_user.is_admin or current_user.has_permission(key) %}
+                    <li>
+                        <a href="{{ url_for('main.marketplace_products_page', marketplace=key) }}"
+                            class="nav-link py-2 fs-6 {% if request.endpoint == 'main.marketplace_products_page' and request.view_args and request.view_args.get('marketplace') == key %}active fw-bold text-white{% else %}text-white-50{% endif %}">
+                            <i class="bi bi-caret-right-fill me-1 small"></i> {{ name }}
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+                </ul>
+            </li>
+
+
+            <!-- GRUP: İŞLEMLER -->
+            <!-- GRUP: OPERASYON -->
+            <li class="nav-section-title">Operasyon</li>
+
+            <!-- 1. Pazaryeri İşlemleri -->
+            <li class="nav-item">
+                {% set pm_ops_active = (request.endpoint in ['main.orders_page', 'main.order_detail',
+                'main.questions_page', 'main.returns_page']) %}
+                <a href="#pmOpsSubmenu" data-bs-toggle="collapse"
+                    aria-expanded="{{ 'true' if pm_ops_active else 'false' }}"
+                    class="nav-link dropdown-toggle text-white {% if not pm_ops_active %}collapsed{% endif %}">
+                    <i class="bi bi-shop me-2"></i> Pazaryeri İşlemleri
+                </a>
+                <ul class="collapse list-unstyled ps-3 {{ 'show' if pm_ops_active else '' }}" id="pmOpsSubmenu"
+                    data-bs-parent="#sidebar-nav">
+                    <li>
+                        <a href="{{ url_for('main.orders_page') }}"
+                            class="nav-link py-2 fs-6 {% if request.endpoint == 'main.orders_page' or request.endpoint == 'main.order_detail' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
+                            <i class="bi bi-caret-right-fill me-1 small"></i> Siparişler
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('main.questions_page') }}"
+                            class="nav-link py-2 fs-6 {% if request.endpoint == 'main.questions_page' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
+                            <i class="bi bi-caret-right-fill me-1 small"></i> Müşteri Soruları
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('main.returns_page') }}"
+                            class="nav-link py-2 fs-6 {% if request.endpoint == 'main.returns_page' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
+                            <i class="bi bi-caret-right-fill me-1 small"></i> İade Talepleri
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+            <!-- 2. Güncelleme Seçenekleri -->
+            <li class="nav-item">
+                {% set update_ops_active = (request.endpoint in ['main.auto_sync_page', 'main.xml_updates',
+                'products.bulk_update', 'sync_exceptions.index']) %}
+                <a href="#updateOpsSubmenu" data-bs-toggle="collapse"
+                    aria-expanded="{{ 'true' if update_ops_active else 'false' }}"
+                    class="nav-link dropdown-toggle text-white {% if not update_ops_active %}collapsed{% endif %}">
+                    <i class="bi bi-arrow-repeat me-2"></i> Güncelleme Seçenekleri
+                </a>
+                <ul class="collapse list-unstyled ps-3 {{ 'show' if update_ops_active else '' }}" id="updateOpsSubmenu"
+                    data-bs-parent="#sidebar-nav">
+                    {% if current_user.has_plan_feature('auto_sync') %}
+                    <li>
+                        <a href="{{ url_for('main.auto_sync_page') }}"
+                            class="nav-link py-2 fs-6 {% if request.endpoint == 'main.auto_sync_page' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
+                            <i class="bi bi-caret-right-fill me-1 small"></i> Otomatik Senk.
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('sync_exceptions.index') }}"
+                            class="nav-link py-2 fs-6 {% if request.endpoint == 'sync_exceptions.index' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
+                            <i class="bi bi-caret-right-fill me-1 small"></i> Senk. İstisnaları
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% if current_user.has_plan_feature('add_excel_source') %}
+                    <li>
+                        <a href="{{ url_for('products.bulk_update') }}"
+                            class="nav-link py-2 fs-6 {% if request.endpoint == 'products.bulk_update' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
+                            <i class="bi bi-caret-right-fill me-1 small"></i> Toplu Güncelleme (Excel)
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </li>
+
+            <!-- 3. Finansal Raporlar -->
+            <li class="nav-item">
+                {% set fin_ops_active = (request.endpoint in ['report.profit_loss_report']) %}
+                <a href="#finOpsSubmenu" data-bs-toggle="collapse"
+                    aria-expanded="{{ 'true' if fin_ops_active else 'false' }}"
+                    class="nav-link dropdown-toggle text-white {% if not fin_ops_active %}collapsed{% endif %}">
+                    <i class="bi bi-cash-stack me-2"></i> Finansal Raporlar
+                </a>
+                <ul class="collapse list-unstyled ps-3 {{ 'show' if fin_ops_active else '' }}" id="finOpsSubmenu"
+                    data-bs-parent="#sidebar-nav">
+                    <li>
+                        <a href="{{ url_for('report.profit_loss_report') }}"
+                            class="nav-link py-2 fs-6 {% if request.endpoint == 'report.profit_loss_report' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
+                            <i class="bi bi-caret-right-fill me-1 small"></i> Kâr / Zarar Analizi
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+            <!-- 4. Diğer İşlemler (Reduced) -->
+            <li class="nav-item">
+                {% set other_ops_active = (request.endpoint in ['main.batch_logs', 'main.batch_detail',
+                'report.error_history']) %}
+                <a href="#otherOpsSubmenu" data-bs-toggle="collapse"
+                    aria-expanded="{{ 'true' if other_ops_active else 'false' }}"
+                    class="nav-link dropdown-toggle text-white {% if not other_ops_active %}collapsed{% endif %}">
+                    <i class="bi bi-lightning-charge me-2"></i> İşlemler
+                </a>
+                <ul class="collapse list-unstyled ps-3 {{ 'show' if other_ops_active else '' }}" id="otherOpsSubmenu"
+                    data-bs-parent="#sidebar-nav">
+                    {% if current_user.has_permission('batch_logs') and current_user.has_plan_feature('batch_logs') %}
+                    <li>
+                        <a href="{{ url_for('main.batch_logs') }}"
+                            class="nav-link py-2 fs-6 {% if request.endpoint == 'main.batch_logs' or request.endpoint == 'main.batch_detail' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
+                            <i class="bi bi-caret-right-fill me-1 small"></i> Batch Logları
+                        </a>
+                    </li>
+                    {% endif %}
+                    <li>
+                        <a href="{{ url_for('report.error_history') }}"
+                            class="nav-link py-2 fs-6 {% if request.endpoint == 'report.error_history' %}active fw-bold text-white{% else %}text-white-50{% endif %}">
+                            <i class="bi bi-caret-right-fill me-1 small"></i> Hata Geçmişi
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+            <!-- GRUP: DESTEK & AYARLAR -->
+            <li class="nav-section-title px-3 mb-2 mt-4 small text-uppercase text-white-50 fw-bold"
+                style="font-size: 0.7rem; letter-spacing: 1px;">Sistem</li>
+            {% if current_user.is_super_admin %}
+            <li class="nav-item">
+                <a href="{{ url_for('admin.global_settings') }}"
+                    class="nav-link {% if request.endpoint == 'admin.global_settings' %}active{% endif %}"
+                    style="background: rgba(220, 53, 69, 0.1); color: #ff4d4d !important;">
+                    <i class="bi bi-gear-wide-connected me-2"></i> Küresel Ayarlar
+                </a>
+            </li>
+            {% endif %}
+            {% if current_user.is_admin or current_user.has_permission('settings') %}
+            <li class="nav-item">
+                <a href="{{ url_for('main.settings_page') }}"
+                    class="nav-link {% if request.endpoint == 'main.settings_page' %}active{% endif %}">
+                    <i class="bi bi-gear me-2"></i> Ayarlar
+                </a>
+            </li>
+            {% endif %}
+            <li class="nav-item">
+                <a href="{{ url_for('support.index') }}"
+                    class="nav-link {% if request.endpoint and 'support' in request.endpoint %}active{% endif %}">
+                    <i class="bi bi-life-preserver me-2"></i> Destek Taleplerim
+                </a>
+            </li>
+            {% if current_user.has_permission('assistant') and current_user.has_plan_feature('vidos_assistant') %}
+            <li class="nav-item">
+                <a href="#" onclick="toggleChatbot(); return false;" class="nav-link text-white">
+                    <i class="bi bi-robot me-2 text-warning"></i> Vidos Asistan
+                </a>
+            </li>
+            {% endif %}
+            <!-- PWA Install Button (Hidden by default) -->
+            <li class="nav-item mt-3" id="pwa-install-item" style="display: none;">
+                <a href="#" id="pwa-install-btn"
+                    class="nav-link bg-gradient-indigo text-white rounded-3 shadow-sm mx-2 py-2 text-center"
+                    style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);">
+                    <i class="bi bi-download me-2 animate__animated animate__bounceIn"></i> Uygulamayı Yükle
+                </a>
+            </li>
+            <li class="nav-item mt-2 text-center" id="pwa-ios-msg" style="display: none;">
+                <small class="text-white-50" style="font-size: 0.65rem;">iOS: Paylaş > Ana Ekrana Ekle</small>
+            </li>
+            <li class="nav-item mt-4 mb-5">
+                <a href="{{ url_for('auth.logout') }}" class="nav-link text-danger">
+                    <i class="bi bi-box-arrow-right me-2"></i> Çıkış Yap
+                </a>
+            </li>
         </ul>
 
         <!-- Sidebar Job Widget (Integrated) -->
@@ -217,7 +455,6 @@
 
                 <div id="jobLogs" class="mb-3 custom-scrollbar"
                     style="max-height: 80px; overflow-y: auto; font-size: 0.7rem; color: rgba(255,255,255,0.4);">
-                    <!-- Logs here -->
                 </div>
 
                 <div class="d-grid gap-2" id="jobControls">
@@ -389,23 +626,157 @@
 
     {% block scripts %}{% endblock %}
 
+    <!-- Floating Job Widget (Global - All Pages) -->
+    <div id="jobWidget" class="card shadow-lg border-0 animate-fade-in"
+        style="position: fixed; bottom: 20px; right: 20px; width: 380px; z-index: 9999; display: none; border-radius: 12px; overflow: hidden;">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-2 border-0"
+            style="background: var(--sidebar-bg) !important;">
+            <h6 class="mb-0 small fw-bold"><i class="bi bi-gear-wide-connected me-2"></i>İşlem Durumu</h6>
+            <div>
+                <button class="btn btn-sm btn-link text-white-50 p-0 me-2 hover-white"
+                    onclick="window.toggleWidgetBody()" title="Küçült/Büyüt"><i class="bi bi-dash-lg"
+                        id="widgetToggleIcon"></i></button>
+                <button class="btn btn-sm btn-link text-white-50 p-0 me-2 hover-white" onclick="window.minimizeWidget()"
+                    title="Simge Durumuna Küçült"><i class="bi bi-dash-circle"></i></button>
+                <button class="btn btn-sm btn-link text-white-50 p-0 hover-white" onclick="window.closeWidget()"
+                    title="Pencereyi Kapat"><i class="bi bi-x-lg"></i></button>
+            </div>
+        </div>
+        <div id="jobWidgetBody" class="card-body p-3" style="background: var(--card);">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span id="jobStatusText" class="badge bg-secondary">İşlem bekleniyor...</span>
+                <span id="jobBatchText" class="small text-muted"></span>
+            </div>
+
+            <div class="progress mb-2" style="height: 8px;">
+                <div id="jobProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+                    role="progressbar" style="width: 0%"></div>
+            </div>
+            <div class="d-flex justify-content-between small text-muted mb-3">
+                <span>İlerleme:</span>
+                <span id="jobProgressText" class="fw-bold">0 / 0</span>
+            </div>
+
+            <div class="card mb-3 border-0 bg-light" style="background: var(--bg) !important;">
+                <div class="card-header py-1 px-2 border-0 small fw-bold text-muted bg-transparent">Son İşlemler</div>
+                <div id="jobLogs" class="card-body p-2"
+                    style="height: 120px; overflow-y: auto; font-size: 0.75rem; color: var(--text);">
+                    <!-- Logs here -->
+                </div>
+            </div>
+
+            <div class="d-grid gap-2">
+                <div class="d-flex justify-content-between gap-2" id="jobControls">
+                    <button id="btnJobPause" class="btn btn-sm btn-warning flex-grow-1"
+                        onclick="window.controlJob('pause')"><i class="bi bi-pause-fill me-1"></i>Duraklat</button>
+                    <button id="btnJobResume" class="btn btn-sm btn-success flex-grow-1 d-none"
+                        onclick="window.controlJob('resume')"><i class="bi bi-play-fill me-1"></i>Devam Et</button>
+                    <button id="btnJobCancel" class="btn btn-sm btn-danger flex-grow-1"
+                        onclick="window.controlJob('cancel')"><i class="bi bi-stop-fill me-1"></i>İptal</button>
+                </div>
+                <button id="btnJobClose" class="btn btn-sm btn-secondary d-none" onclick="window.closeWidget()"><i
+                        class="bi bi-x-lg me-1"></i>Pencereyi Kapat</button>
+                <button id="btnJobView" class="btn btn-sm btn-primary d-none"><i
+                        class="bi bi-eye-fill me-1"></i>Sonuçları Gör</button>
+            </div>
+        </div>
+    </div>
 
     <script>
-        // Global Job Widget Functions (Sidebar Version)
+        // Global Job Widget Functions
         (function () {
             let activeJobId = localStorage.getItem('activeJobId') || null;
             let jobPollInterval = null;
 
             window.showJobWidget = function (jobId) {
-                if (!jobId) return;
                 activeJobId = jobId;
                 localStorage.setItem('activeJobId', jobId);
-
                 const widget = document.getElementById('jobWidget');
                 if (widget) {
-                    widget.style.display = 'block';
+                    // Check if user explicitly closed it
+                    const isClosed = localStorage.getItem('jobWidgetClosed') === 'true';
+
+                    // Restore minimized state if exists
+                    const isMinimized = localStorage.getItem('jobWidgetMinimized') === 'true';
+                    const isBodyHidden = localStorage.getItem('jobWidgetBodyHidden') === 'true';
+
+                    // If closed, don't show unless this is a NEW job call (activeJobId just set)
+                    // But initWidget calls showJobWidget...
+                    // Let's rely on isClosed only if activeJobId hasn't changed?
+                    // For simplicity: If closed, keep closed unless we force show.
+
+                    if (isClosed && !window.forceShowWidget) {
+                        widget.style.display = 'none';
+                    } else {
+                        widget.style.display = 'block';
+                    }
+
+                    const body = document.getElementById('jobWidgetBody');
+
+                    if (body) {
+                        if (isBodyHidden || isMinimized) {
+                            body.style.display = 'none';
+                        } else {
+                            body.style.display = 'block';
+                        }
+                    }
+
+                    if (isMinimized) {
+                        widget.style.width = '200px';
+                    } else {
+                        widget.style.width = '380px';
+                    }
                 }
                 startJobPolling();
+            };
+
+            window.closeWidget = function () {
+                const widget = document.getElementById('jobWidget');
+                if (widget) widget.style.display = 'none';
+                localStorage.setItem('jobWidgetClosed', 'true');
+
+                // If job is finished, clear persistence
+                // If job is running, we just hide the widget from view
+                // But polling might continue in background if we don't stop it.
+                // For now, let's keep polling but hidden.
+            };
+
+            window.minimizeWidget = function () {
+                const widget = document.getElementById('jobWidget');
+                const body = document.getElementById('jobWidgetBody');
+                if (widget && body) {
+                    if (body.style.display === 'none') {
+                        // expanding
+                        body.style.display = 'block';
+                        widget.style.width = '380px';
+                        localStorage.setItem('jobWidgetMinimized', 'false');
+                        localStorage.setItem('jobWidgetBodyHidden', 'false');
+                        localStorage.setItem('jobWidgetClosed', 'false'); // Un-close
+                    } else {
+                        // minimizing
+                        body.style.display = 'none';
+                        widget.style.width = '200px';
+                        localStorage.setItem('jobWidgetMinimized', 'true');
+                        localStorage.setItem('jobWidgetBodyHidden', 'true');
+                        localStorage.setItem('jobWidgetClosed', 'false'); // Un-close but minimized
+                    }
+                }
+            };
+
+            window.toggleWidgetBody = function () {
+                const body = document.getElementById('jobWidgetBody');
+                const icon = document.getElementById('widgetToggleIcon');
+                if (body) {
+                    if (body.style.display === 'none') {
+                        body.style.display = 'block';
+                        if (icon) icon.className = 'bi bi-dash-lg';
+                        localStorage.setItem('jobWidgetBodyHidden', 'false');
+                    } else {
+                        body.style.display = 'none';
+                        if (icon) icon.className = 'bi bi-arrows-angle-expand';
+                        localStorage.setItem('jobWidgetBodyHidden', 'true');
+                    }
+                }
             };
 
             function startJobPolling() {
@@ -419,16 +790,22 @@
                 try {
                     const res = await fetch(`/api/mp_jobs/${activeJobId}`);
                     if (!res.ok) {
+                        // Job not found (404) - clear localStorage and hide widget
                         if (res.status === 404) {
+                            console.log('Job not found, clearing stale job ID');
                             localStorage.removeItem('activeJobId');
                             activeJobId = null;
-                            if (jobPollInterval) clearInterval(jobPollInterval);
+                            if (jobPollInterval) {
+                                clearInterval(jobPollInterval);
+                                jobPollInterval = null;
+                            }
                             const widget = document.getElementById('jobWidget');
                             if (widget) widget.style.display = 'none';
                         }
                         return;
                     }
                     const data = await res.json();
+
                     if (!data || data.error) return;
 
                     const status = data.status;
@@ -446,7 +823,7 @@
 
                     if (progressBar) {
                         progressBar.style.width = `${percent}%`;
-                        progressBar.className = `progress-bar progress-bar-striped progress-bar-animated ${status === 'failed' ? 'bg-danger' : 'bg-primary'}`;
+                        progressBar.textContent = `${percent}%`;
                     }
                     if (progressText) {
                         progressText.textContent = message || `${current} / ${total} Ürün`;
@@ -456,20 +833,20 @@
                     const statusEl = document.getElementById('jobStatusText');
                     if (statusEl) {
                         let statusHtml = '';
-                        if (status === 'running') statusHtml = '<span class="extra-small badge bg-primary">Çalışıyor</span>';
-                        else if (status === 'pausing') statusHtml = '<span class="extra-small badge bg-warning text-dark">Duraklıyor</span>';
-                        else if (status === 'cancelling') statusHtml = '<span class="extra-small badge bg-danger">İptal Ediliyor</span>';
-                        else if (status === 'cancelled') statusHtml = '<span class="extra-small badge bg-secondary">İptal Edildi</span>';
-                        else if (status === 'completed') statusHtml = '<span class="extra-small badge bg-success">Başarılı</span>';
-                        else if (status === 'failed') statusHtml = '<span class="extra-small badge bg-danger">Hata</span>';
+                        if (status === 'running') statusHtml = '<span class="badge bg-primary">Çalışıyor</span>';
+                        else if (status === 'pausing') statusHtml = '<span class="badge bg-warning text-dark">Duraklatılıyor...</span>';
+                        else if (status === 'cancelling') statusHtml = '<span class="badge bg-danger">İptal Ediliyor...</span>';
+                        else if (status === 'cancelled') statusHtml = '<span class="badge bg-secondary">İptal Edildi</span>';
+                        else if (status === 'completed') statusHtml = '<span class="badge bg-success">Tamamlandı</span>';
+                        else if (status === 'failed') statusHtml = '<span class="badge bg-danger">Hata</span>';
 
-                        if (data.pause_requested && status === 'running') statusHtml = '<span class="extra-small badge bg-warning text-dark">Duraklatılıyor</span>';
+                        if (data.pause_requested) statusHtml += ' <span class="badge bg-warning"><i class="bi bi-pause-fill"></i></span>';
                         statusEl.innerHTML = statusHtml;
                     }
 
                     const logsContainer = document.getElementById('jobLogs');
                     if (logsContainer) {
-                        logsContainer.innerHTML = logs.map(l => `<div class="mb-1 border-bottom border-white border-opacity-5 pb-1">${l.message}</div>`).join('');
+                        logsContainer.innerHTML = logs.map(l => `<div class="small text-muted border-bottom py-1">${l.message}</div>`).join('');
                         logsContainer.scrollTop = logsContainer.scrollHeight;
                     }
 
@@ -478,36 +855,36 @@
                     const btnCancel = document.getElementById('btnJobCancel');
                     const btnView = document.getElementById('btnJobView');
 
-                    // Handle controls based on status
+                    // Check for terminal states (including cancelled)
                     if (status === 'completed' || status === 'failed' || status === 'cancelled') {
-                        if (jobPollInterval) clearInterval(jobPollInterval);
-                        jobPollInterval = null;
+                        if (jobPollInterval) {
+                            clearInterval(jobPollInterval);
+                            jobPollInterval = null;
+                        }
+                        // Widget'ı kapatma, sadece polling'i durdur
+                        // localStorage.removeItem('activeJobId');  // <-- KALDIRILDI
+                        // activeJobId = null;  // <-- KALDIRILDI
 
                         if (btnPause) btnPause.classList.add('d-none');
                         if (btnResume) btnResume.classList.add('d-none');
                         if (btnCancel) btnCancel.classList.add('d-none');
                         if (btnView) {
                             btnView.classList.remove('d-none');
-                            const batchId = data.batch_id || (data.result && data.result.batch_id) || activeJobId;
+                            const batchId = (data.result && data.result.batch_id) || activeJobId;
                             btnView.onclick = () => window.location.href = `/batch/${batchId}`;
                         }
 
-                        // Notify user on terminal states (only if just finished)
-                        if (typeof Swal !== 'undefined' && !window.notificationShown) {
-                            window.notificationShown = true;
-                            Swal.fire({
-                                toast: true,
-                                position: 'top-end',
-                                icon: status === 'completed' ? 'success' : 'error',
-                                title: status === 'completed' ? 'İşlem Tamamlandı!' : 'İşlem Başarısız',
-                                showConfirmButton: false,
-                                timer: 3000
-                            });
-                        }
+                        Swal.fire({
+                            toast: true,
+                            position: 'top-end',
+                            icon: status === 'completed' ? 'success' : 'error',
+                            title: status === 'completed' ? 'İşlem Tamamlandı!' : 'İşlem Başarısız',
+                            showConfirmButton: false,
+                            timer: 3000
+                        });
                     } else {
-                        window.notificationShown = false; // Reset for next job
                         if (btnView) btnView.classList.add('d-none');
-                        if (status === 'pausing' || data.pause_requested) {
+                        if (data.pause_requested) {
                             if (btnPause) btnPause.classList.add('d-none');
                             if (btnResume) btnResume.classList.remove('d-none');
                         } else {
@@ -515,6 +892,7 @@
                             if (btnResume) btnResume.classList.add('d-none');
                         }
                     }
+
                 } catch (e) {
                     console.error('Widget update error:', e);
                 }
@@ -523,41 +901,48 @@
             window.controlJob = async function (action) {
                 if (!activeJobId) return;
                 try {
-                    const res = await fetch(`/api/mp_jobs/${activeJobId}/${action}`, { method: 'POST' });
-                    const data = await res.json();
-                    if (data.success) {
-                        updateWidgetUI();
-                    } else {
-                        if (typeof Swal !== 'undefined') Swal.fire('Hata', data.message || 'İşlem başarısız.', 'error');
-                        else alert(data.message || 'İşlem başarısız.');
-                    }
+                    await fetch('/api/job/control', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ job_id: activeJobId, action: action })
+                    });
+                    updateWidgetUI();
                 } catch (e) {
-                    console.error('Job control error:', e);
+                    console.error('Control job error:', e);
                 }
             };
 
-            // Init on page load
-            document.addEventListener('DOMContentLoaded', async function () {
-                const jobId = localStorage.getItem('activeJobId');
-                if (jobId) {
-                    // Pre-check if job is actually alive
+            // Initialize widget on page load if there's an active job
+            (async function initWidget() {
+                if (activeJobId) {
                     try {
-                        const res = await fetch(`/api/mp_jobs/${jobId}`);
-                        if (res.ok) {
-                            const data = await res.json();
-                            if (data && !data.error) {
-                                window.showJobWidget(jobId);
+                        const res = await fetch(`/api/mp_jobs/${activeJobId}`);
+                        if (!res.ok) throw new Error('Job not found');
+                        const data = await res.json();
+
+                        if (data && !data.error) {
+                            const status = data.status;
+                            // Only resume polling if job is still active
+                            if (status === 'running' || status === 'queued' || status === 'pausing' || status === 'cancelling') {
+                                showJobWidget(activeJobId);
                             } else {
+                                // Job is completed/failed, clear localStorage
                                 localStorage.removeItem('activeJobId');
+                                activeJobId = null;
                             }
                         } else {
+                            // Job not found, clear localStorage
                             localStorage.removeItem('activeJobId');
+                            activeJobId = null;
                         }
                     } catch (e) {
-                        console.error('Widget init check error:', e);
+                        console.error('Widget init error:', e);
+                        // Clear stale job on error
+                        localStorage.removeItem('activeJobId');
+                        activeJobId = null;
                     }
                 }
-            });
+            })();
         })();
     </script>
 
@@ -627,43 +1012,162 @@
             });
         }
 
-        // Resume Active Job Function
-        window.resumeActiveJob = function () {
-            const jobId = localStorage.getItem('activeJobId');
-            if (jobId) {
-                showJobWidget(jobId);
-            } else {
-                alert('Devam eden işlem bulunamadı.');
-            }
-        };
+        // Global Job Widget Functions (Sidebar Version)
+        (function () {
+            let activeJobId = localStorage.getItem('activeJobId') || null;
+            let jobPollInterval = null;
 
-        // Show resume button if there's an active job
-        function checkAndShowResumeButton() {
-            const resumeBtn = document.getElementById('resumeJobBtn');
-            if (resumeBtn) {
-                const activeJobId = localStorage.getItem('activeJobId');
-                if (activeJobId) {
-                    // Önce job'un gerçekten aktif olup olmadığını kontrol et
-                    fetch(`/api/mp_jobs/${activeJobId}`)
-                        .then(res => res.ok ? res.json() : null)
-                        .then(data => {
-                            if (data && !data.error) {
-                                const status = data.status;
-                                if (status === 'running' || status === 'queued' || status === 'pausing') {
-                                    resumeBtn.style.display = 'block';
-                                }
-                            }
-                        })
-                        .catch(() => {
-                            // Job bulunamazsa localStorage'ı temizle
+            window.showJobWidget = function (jobId) {
+                if (!jobId) return;
+                activeJobId = jobId;
+                localStorage.setItem('activeJobId', jobId);
+
+                const widget = document.getElementById('jobWidget');
+                if (widget) {
+                    widget.style.display = 'block';
+                }
+                startJobPolling();
+            };
+
+            function startJobPolling() {
+                if (jobPollInterval) clearInterval(jobPollInterval);
+                updateWidgetUI();
+                jobPollInterval = setInterval(updateWidgetUI, 2000);
+            }
+
+            async function updateWidgetUI() {
+                if (!activeJobId) return;
+                try {
+                    const res = await fetch(`/api/mp_jobs/${activeJobId}`);
+                    if (!res.ok) {
+                        if (res.status === 404) {
                             localStorage.removeItem('activeJobId');
-                        });
+                            activeJobId = null;
+                            if (jobPollInterval) clearInterval(jobPollInterval);
+                            const widget = document.getElementById('jobWidget');
+                            if (widget) widget.style.display = 'none';
+                        }
+                        return;
+                    }
+                    const data = await res.json();
+                    if (!data || data.error) return;
+
+                    const status = data.status;
+                    const progress = data.progress || {};
+                    const logs = data.logs || [];
+
+                    const current = progress.current || 0;
+                    const total = progress.total || 1;
+                    const percent = Math.round((current / total) * 100);
+
+                    const progressBar = document.getElementById('jobProgressBar');
+                    const progressText = document.getElementById('jobProgressText');
+                    const batchText = document.getElementById('jobBatchText');
+
+                    if (progressBar) {
+                        progressBar.style.width = `${percent}%`;
+                        progressBar.className = `progress-bar progress-bar-striped progress-bar-animated ${status === 'failed' ? 'bg-danger' : 'bg-primary'}`;
+                    }
+                    if (progressText) progressText.innerText = `${current} / ${total}`;
+                    if (batchText) batchText.innerText = data.batch_id || '';
+
+                    const statusEl = document.getElementById('jobStatusText');
+                    if (statusEl) {
+                        let statusHtml = '';
+                        if (status === 'queued') statusHtml = '<span class="extra-small badge bg-secondary">Sırada</span>';
+                        else if (status === 'running') statusHtml = '<span class="extra-small badge bg-primary">Çalışıyor</span>';
+                        else if (status === 'completed') statusHtml = '<span class="extra-small badge bg-success">Başarılı</span>';
+                        else if (status === 'failed') statusHtml = '<span class="extra-small badge bg-danger">Hata</span>';
+                        if (data.pause_requested && status === 'running') statusHtml = '<span class="extra-small badge bg-warning text-dark">Duraklatılıyor</span>';
+                        statusEl.innerHTML = statusHtml;
+                    }
+
+                    const logsContainer = document.getElementById('jobLogs');
+                    if (logsContainer) {
+                        logsContainer.innerHTML = logs.map(l => `<div class="mb-1 border-bottom border-white border-opacity-5 pb-1">${l.message}</div>`).join('');
+                        logsContainer.scrollTop = logsContainer.scrollHeight;
+                    }
+
+                    const btnPause = document.getElementById('btnJobPause');
+                    const btnResume = document.getElementById('btnJobResume');
+                    const btnCancel = document.getElementById('btnJobCancel');
+                    const btnView = document.getElementById('btnJobView');
+
+                    if (status === 'completed' || status === 'failed' || status === 'cancelled') {
+                        if (jobPollInterval) clearInterval(jobPollInterval);
+                        jobPollInterval = null;
+                        if (btnPause) btnPause.classList.add('d-none');
+                        if (btnResume) btnResume.classList.add('d-none');
+                        if (btnCancel) btnCancel.classList.add('d-none');
+                        if (btnView) {
+                            btnView.classList.remove('d-none');
+                            const batchId = data.batch_id || (data.result && data.result.batch_id) || activeJobId;
+                            btnView.onclick = () => window.location.href = `/batch/${batchId}`;
+                        }
+                        if (typeof Swal !== 'undefined' && !window.notificationShown) {
+                            window.notificationShown = true;
+                            Swal.fire({
+                                toast: true,
+                                position: 'top-end',
+                                icon: status === 'completed' ? 'success' : 'error',
+                                title: status === 'completed' ? 'İşlem Tamamlandı!' : 'İşlem Başarısız',
+                                showConfirmButton: false,
+                                timer: 3000
+                            });
+                        }
+                    } else {
+                        window.notificationShown = false;
+                        if (btnView) btnView.classList.add('d-none');
+                        if (status === 'pausing' || data.pause_requested) {
+                            if (btnPause) btnPause.classList.add('d-none');
+                            if (btnResume) btnResume.classList.remove('d-none');
+                        } else {
+                            if (btnPause) btnPause.classList.remove('d-none');
+                            if (btnResume) btnResume.classList.add('d-none');
+                        }
+                    }
+                } catch (e) {
+                    console.error('Widget update error:', e);
                 }
             }
-        }
 
-        // Sayfa yüklendiğinde kontrol et
-        checkAndShowResumeButton();
+            window.controlJob = async function (action) {
+                if (!activeJobId) return;
+                try {
+                    const res = await fetch(`/api/mp_jobs/${activeJobId}/${action}`, { method: 'POST' });
+                    const data = await res.json();
+                    if (data.success) {
+                        updateWidgetUI();
+                    } else {
+                        if (typeof Swal !== 'undefined') Swal.fire('Hata', data.message || 'İşlem başarısız.', 'error');
+                        else alert(data.message || 'İşlem başarısız.');
+                    }
+                } catch (e) {
+                    console.error('Job control error:', e);
+                }
+            };
+
+            document.addEventListener('DOMContentLoaded', async function () {
+                const jobId = localStorage.getItem('activeJobId');
+                if (jobId) {
+                    try {
+                        const res = await fetch(`/api/mp_jobs/${jobId}`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data && !data.error) {
+                                window.showJobWidget(jobId);
+                            } else {
+                                localStorage.removeItem('activeJobId');
+                            }
+                        } else {
+                            localStorage.removeItem('activeJobId');
+                        }
+                    } catch (e) {
+                        console.error('Widget init check error:', e);
+                    }
+                }
+            });
+        })();
     </script>
 
     <!-- Chatbot Widget -->
