@@ -22,18 +22,20 @@
                     </div>
                     <div class="text-end">
                         <div class="text-end">
-                            <select
-                                class="form-select form-select-sm border-0 bg-light text-secondary fw-bold interval-select"
-                                data-marketplace="{{ key }}"
-                                style="width: auto; display: inline-block; cursor: pointer;">
-                                <option value="15">Her 15 Dakikada Bir</option>
-                                <option value="30">Her 30 Dakikada Bir</option>
-                                <option value="60">Her 1 Saatte Bir</option>
-                                <option value="180">Her 3 Saatte Bir</option>
-                                <option value="360">Her 6 Saatte Bir</option>
-                                <option value="720">Her 12 Saatte Bir</option>
-                                <option value="1440">Günde Bir Kez</option>
-                            </select>
+                            <div class="text-end">
+                                <select
+                                    class="form-select form-select-sm border-0 bg-light text-secondary fw-bold interval-select"
+                                    data-marketplace="{{ key }}"
+                                    style="width: 100%; display: inline-block; cursor: not-allowed;" disabled>
+                                    <option value="15">Her 15 Dakikada Bir</option>
+                                    <option value="30">Her 30 Dakikada Bir</option>
+                                    <option value="60" selected>Her 1 Saatte Bir (Sabit)</option>
+                                    <option value="180">Her 3 Saatte Bir</option>
+                                    <option value="360">Her 6 Saatte Bir</option>
+                                    <option value="720">Her 12 Saatte Bir</option>
+                                    <option value="1440">Günde Bir Kez</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -85,10 +87,16 @@
                         <div class="progress-bar progress-bar-striped progress-bar-animated sync-progress-bar"
                             role="progressbar" style="width: 0%"></div>
                     </div>
-                    <div class="d-flex justify-content-between mt-1">
-                        <span class="sync-progress-text x-small text-muted" style="font-size: 0.75rem;">0 / 0
-                            ürün</span>
-                        <span class="sync-progress-eta x-small text-muted" style="font-size: 0.75rem;">—</span>
+                    <div class="d-flex justify-content-between mt-1 align-items-center">
+                        <div>
+                            <span class="sync-progress-text x-small text-muted" style="font-size: 0.75rem;">0 / 0
+                                ürün</span>
+                            <span class="sync-progress-eta x-small text-muted ms-2" style="font-size: 0.75rem;">—</span>
+                        </div>
+                        <button class="btn btn-sm btn-link text-danger text-decoration-none p-0 x-small fw-bold"
+                            onclick="cancelSync('{{ key }}')" style="font-size: 0.75rem;">
+                            <i class="bi bi-x-circle me-1"></i>İptal Et
+                        </button>
                     </div>
                 </div>
 
@@ -105,52 +113,56 @@
 </div>
 </div>
 
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">
-            <i class="bi bi-list-ul me-2"></i> Senkronizasyon Logları
-        </h5>
-        <div>
-            <select class="form-select form-select-sm" id="logMarketplaceFilter">
-                <option value="">Tüm Pazaryerleri</option>
-                {% for key, name in marketplaces.items() %}
-                <option value="{{ key }}">{{ name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-    </div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0" id="syncLogsTable">
-                <thead class="bg-light">
-                    <tr>
-                        <th class="ps-3">Pazaryeri</th>
-                        <th>Zaman</th>
-                        <th class="text-center">Güncellenen Ürün</th>
-                        <th class="text-center">Stok Değişikliği</th>
-                        <th class="text-center">Fiyat Değişikliği</th>
-                        <th>Durum</th>
-                        <th class="text-end pe-4">Detay</th>
-                    </tr>
-                </thead>
-                <tbody id="syncLogsTableBody" class="border-top-0">
-                    <tr>
-                        <td colspan="7" class="text-center py-5 text-muted">
-                            <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
-                            Loglar yükleniyor...
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-    <div class="card-footer bg-white py-3 border-top-0">
-        <div class="d-flex justify-content-between align-items-center">
-            <div class="small text-muted">
-                Her 30 saniyede bir otomatik güncellenir.
+<div class="row pt-4">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-header border-bottom-0 py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold text-dark">
+                    <i class="bi bi-list-ul me-2 text-primary"></i> Senkronizasyon Logları
+                </h5>
+                <div style="width: 200px;">
+                    <select class="form-select form-select-sm" id="logMarketplaceFilter">
+                        <option value="">Tüm Pazaryerleri</option>
+                        {% for key, name in marketplaces.items() %}
+                        <option value="{{ key }}">{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
             </div>
-            <div id="syncLogsPagination">
-                <!-- Pagination will be rendered here -->
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="syncLogsTable">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="ps-4">Pazaryeri</th>
+                                <th>Zaman</th>
+                                <th class="text-center">Güncellenen Ürün</th>
+                                <th class="text-center">Stok Değişikliği</th>
+                                <th class="text-center">Fiyat Değişikliği</th>
+                                <th>Durum</th>
+                                <th class="text-end pe-4">Detay</th>
+                            </tr>
+                        </thead>
+                        <tbody id="syncLogsTableBody" class="border-top-0">
+                            <tr>
+                                <td colspan="7" class="text-center py-5 text-muted">
+                                    <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                                    Loglar yükleniyor...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer bg-white py-3 border-top-0">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="small text-muted">
+                        Her 30 saniyede bir otomatik güncellenir.
+                    </div>
+                    <div id="syncLogsPagination">
+                        <!-- Pagination will be rendered here -->
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -442,6 +454,41 @@
             Swal.fire('Hata', err.message, 'error');
         }
     }
+
+    // Cancel Sync Function
+    window.cancelSync = async function (marketplace) {
+        if (!activeJobs[marketplace]) return;
+        const jobId = activeJobs[marketplace];
+
+        const confirm = await Swal.fire({
+            title: 'Emin misiniz?',
+            text: "Senkronizasyon işlemi durdurulacak.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Evet, durdur',
+            cancelButtonText: 'Vazgeç'
+        });
+
+        if (!confirm.isConfirmed) return;
+
+        try {
+            const resp = await fetch(`/api/job/cancel/${jobId}`, { method: 'POST' });
+            const data = await resp.json();
+            if (data.success) {
+                Swal.fire({
+                    toast: true, position: 'top-end', icon: 'success',
+                    title: 'İşlem durduruluyor...', showConfirmButton: false, timer: 2000
+                });
+                // Status polling handles the rest
+            } else {
+                Swal.fire('Hata', data.message || 'Durdurulamadı', 'error');
+            }
+        } catch (err) {
+            console.error('Cancel error:', err);
+        }
+    };
 
     let currentLogPage = 1;
     let totalLogPages = 1;

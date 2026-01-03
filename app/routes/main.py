@@ -231,7 +231,7 @@ def dashboard():
 
         # Marketplace Stats
         stats = {}
-        for mp in ['trendyol', 'pazarama', 'hepsiburada', 'idefix', 'n11']:
+        for mp in ['trendyol', 'pazarama', 'hepsiburada', 'idefix', 'n11', 'ikas']:
             stats[mp] = get_mp_count(mp, user_id)
 
         marketplaces_stats = [
@@ -245,6 +245,8 @@ def dashboard():
              "count": stats['idefix']['count'], "active": stats['idefix']['active'], "passive": stats['idefix']['passive'], "approved": stats['idefix'].get('approved', 0)},
             {"name": "N11", "key": "n11", "icon": "tag-fill", "color": "danger", 
              "count": stats['n11']['count'], "active": stats['n11']['active'], "passive": stats['n11']['passive'], "approved": stats['n11'].get('approved', 0)},
+            {"name": "İkas", "key": "ikas", "icon": "lightning-charge-fill", "color": "primary", 
+             "count": stats['ikas']['count'], "active": stats['ikas']['active'], "passive": stats['ikas']['passive'], "approved": stats['ikas'].get('approved', 0)},
         ]
 
         total_sent = sum(s['count'] for s in stats.values())
@@ -392,7 +394,13 @@ def dashboard():
                 'sales_counts': counts,
                 'sales_revenues': revenues,
                 'mp_labels': mp_labels,
+                'mp_labels': mp_labels,
                 'mp_data': mp_data
+            },
+            'settings': {
+                'show_returns': Setting.get('SHOW_RETURNS_CARD', 'on', user_id=user_id),
+                'show_cancels': Setting.get('SHOW_CANCELS_CARD', 'on', user_id=user_id),
+                'show_questions': Setting.get('SHOW_QUESTIONS_CARD', 'on', user_id=user_id)
             }
         }
 
@@ -685,7 +693,13 @@ def settings_page():
             "IDEFIX_PRICE_FIXED": Setting.get("IDEFIX_PRICE_FIXED", "0", user_id=user_id),
             
             # Global Price Rules (Tüm pazaryerlerine ortak)
+            # Global Price Rules (Tüm pazaryerlerine ortak)
             "GLOBAL_PRICE_RULES": Setting.get("GLOBAL_PRICE_RULES", "", user_id=user_id),
+            
+            # Dashboard Visibility
+            "SHOW_RETURNS_CARD": Setting.get("SHOW_RETURNS_CARD", "on", user_id=user_id),
+            "SHOW_CANCELS_CARD": Setting.get("SHOW_CANCELS_CARD", "on", user_id=user_id),
+            "SHOW_QUESTIONS_CARD": Setting.get("SHOW_QUESTIONS_CARD", "on", user_id=user_id),
         }
         xml_sources = SupplierXML.query.filter_by(user_id=user_id).order_by(SupplierXML.id.desc()).all()
         return render_template("settings.html", settings=settings, xml_sources=xml_sources)
@@ -722,7 +736,11 @@ def settings_page():
             "IDEFIX_PRICE_PERCENTAGE", "IDEFIX_PRICE_FIXED",
             
             # Global Price Rules
+            # Global Price Rules
             "GLOBAL_PRICE_RULES",
+            
+            # Dashboard Visibility
+            "SHOW_RETURNS_CARD", "SHOW_CANCELS_CARD", "SHOW_QUESTIONS_CARD"
         ]
         
         # Identify which MP being updated/added

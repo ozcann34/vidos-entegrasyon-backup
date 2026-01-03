@@ -162,11 +162,13 @@
             <i class="bi bi-wallet2 fs-5"></i>
           </div>
         </div>
-        <h3 class="fw-bold mb-1" style="color: var(--vidos-dark);">93.335,41 <small class="text-muted"
-            style="font-size: 0.6em;">TL</small></h3>
+        <h3 class="fw-bold mb-1" style="color: var(--vidos-dark);">
+          {{ "{:,.2f}".format(stats.monthly_revenue|default(0)).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+          <small class="text-muted" style="font-size: 0.6em;">TL</small>
+        </h3>
         <div class="d-flex align-items-center mt-2">
-          <span class="text-success small fw-bold"><i class="bi bi-caret-up-fill"></i> %12.5</span>
-          <span class="text-muted small ms-2">geçen aya göre</span>
+          <!-- Growth is placeholder for now -->
+          <span class="text-secondary small fw-bold">-</span>
         </div>
       </div>
     </div>
@@ -177,64 +179,106 @@
     <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #20c997 !important;">
       <div class="card-body p-4">
         <div class="d-flex justify-content-between align-items-start mb-2">
-          <p class="text-muted mb-0 small fw-bold text-uppercase">Toplam Sipariş</p>
+          <p class="text-muted mb-0 small fw-bold text-uppercase">Toplam Sipariş (Bu Ay)</p>
           <div class="vidos-icon-box" style="color: #20c997;">
             <i class="bi bi-box-seam fs-5"></i>
           </div>
         </div>
-        <h3 class="fw-bold mb-1" style="color: var(--vidos-dark);">21 <small class="text-muted"
-            style="font-size: 0.6em;">Adet</small></h3>
+        <h3 class="fw-bold mb-1" style="color: var(--vidos-dark);">{{ stats.monthly_orders|default(0) }} <small
+            class="text-muted" style="font-size: 0.6em;">Adet</small></h3>
         <div class="d-flex align-items-center mt-2">
-          <span class="text-success small fw-bold"><i class="bi bi-caret-up-fill"></i> 4 yeni</span>
-          <span class="text-muted small ms-2">son 24 saat</span>
+          <span class="text-secondary small fw-bold">-</span>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Marketplace: Trendyol -->
+  <!-- Marketplace Cards (Loop) -->
+  {% for mp in stats.marketplaces %}
   <div class="col-md-3">
-    <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #f27a1a !important;">
+    <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid var(--bs-{{ mp.color }}) !important;">
       <div class="card-body p-4">
         <div class="d-flex justify-content-between align-items-start mb-2">
-          <p class="text-muted mb-0 small fw-bold text-uppercase">Trendyol Ürünleri</p>
-          <img
-            src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Trendyol_logo.svg/2560px-Trendyol_logo.svg.png"
-            height="15">
+          <p class="text-muted mb-0 small fw-bold text-uppercase">{{ mp.name }} Ürünleri</p>
+          <!-- Icon fallback -->
+          <i class="bi bi-{{ mp.icon }} fs-5 text-{{ mp.color }}"></i>
         </div>
-        <h3 class="fw-bold mb-1" style="color: var(--vidos-dark);">34.276 <small class="text-muted"
-            style="font-size: 0.6em;">SKU</small></h3>
+        <h3 class="fw-bold mb-1" style="color: var(--vidos-dark);">{{ "{:,}".format(mp.count).replace(',', '.') }}
+          <small class="text-muted" style="font-size: 0.6em;">SKU</small>
+        </h3>
         <div class="d-flex align-items-center mt-2">
-          <span class="badge bg-warning-light text-warning rounded-pill px-2">Aktif Senk.</span>
+          <span class="badge bg-{{ mp.color }}-light text-{{ mp.color }} rounded-pill px-2">Aktif: {{ mp.active
+            }}</span>
         </div>
       </div>
     </div>
   </div>
+  {% endfor %}
 
-  <!-- Marketplace: N11 -->
+  <!-- Returns Card (Toggleable) -->
+  {% if stats.settings.show_returns != 'off' %}
   <div class="col-md-3">
-    <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #5d5d5d !important;">
+    <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #dc3545 !important;">
       <div class="card-body p-4">
         <div class="d-flex justify-content-between align-items-start mb-2">
-          <p class="text-muted mb-0 small fw-bold text-uppercase">N11 Ürünleri</p>
-          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/N11_Logo.svg/1024px-N11_Logo.svg.png"
-            height="15">
+          <p class="text-muted mb-0 small fw-bold text-uppercase">İade Talepleri (Bu Ay)</p>
+          <div class="vidos-icon-box text-danger">
+            <i class="bi bi-arrow-return-left fs-5"></i>
+          </div>
         </div>
-        <h3 class="fw-bold mb-1" style="color: var(--vidos-dark);">5.094 <small class="text-muted"
-            style="font-size: 0.6em;">SKU</small></h3>
-        <div class="d-flex align-items-center mt-2">
-          <span class="badge bg-danger-light text-danger rounded-pill px-2">Bağlantı Aktif</span>
-        </div>
+        <h3 class="fw-bold mb-1" style="color: var(--vidos-dark);">{{ stats.returns_count }}</h3>
+        <a href="{{ url_for('main.returns_page') }}" class="small link-danger text-decoration-none fw-bold">İncele <i
+            class="bi bi-arrow-right"></i></a>
       </div>
     </div>
   </div>
+  {% endif %}
+
+  <!-- Cancels Card (Toggleable) -->
+  {% if stats.settings.show_cancels != 'off' %}
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #fd7e14 !important;">
+      <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <p class="text-muted mb-0 small fw-bold text-uppercase">İptal Siparişler (Bu Ay)</p>
+          <div class="vidos-icon-box text-warning">
+            <i class="bi bi-x-circle fs-5"></i>
+          </div>
+        </div>
+        <h3 class="fw-bold mb-1" style="color: var(--vidos-dark);">{{ stats.cancel_count }}</h3>
+        <a href="{{ url_for('main.orders_page') }}" class="small link-warning text-decoration-none fw-bold">İncele <i
+            class="bi bi-arrow-right"></i></a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Questions Card (Toggleable) -->
+  {% if stats.settings.show_questions != 'off' %}
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #0dcaf0 !important;">
+      <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <p class="text-muted mb-0 small fw-bold text-uppercase">Müşteri Soruları</p>
+          <div class="vidos-icon-box text-info">
+            <i class="bi bi-chat-dots fs-5"></i>
+          </div>
+        </div>
+        <h3 class="fw-bold mb-1" style="color: var(--vidos-dark);">- <small class="text-muted fs-6">Soru</small></h3>
+        <a href="{{ url_for('main.questions_page') }}" class="small link-info text-decoration-none fw-bold">Soruları
+          Yönet <i class="bi bi-arrow-right"></i></a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
 </div>
 
 <!-- Secondary Stats (Usage & More) -->
 <div class="row g-4 mb-4">
   <div class="col-lg-8">
     <div class="card border-0 shadow-sm h-100">
-      <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+      <div class="card-header border-bottom py-3 d-flex justify-content-between align-items-center">
         <h5 class="card-title mb-0 fw-bold" style="color: var(--vidos-dark);">Satış Performansı</h5>
         <div class="d-flex gap-2">
           <button class="btn btn-sm btn-light active">Haftalık</button>
@@ -248,7 +292,7 @@
   </div>
   <div class="col-lg-4">
     <div class="card border-0 shadow-sm h-100">
-      <div class="card-header bg-white border-bottom py-3">
+      <div class="card-header border-bottom py-3">
         <h5 class="card-title mb-0 fw-bold" style="color: var(--vidos-dark);">Pazar Yeri Dağılımı</h5>
       </div>
       <div class="card-body">

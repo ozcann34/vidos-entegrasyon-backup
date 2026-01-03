@@ -218,8 +218,9 @@
       <div id="stockCollapse" class="accordion-collapse collapse" data-bs-parent="#settingsAccordion">
         <div class="accordion-body">
           <form method="POST" action="{{ url_for('main.settings_page') }}">
-            <div class="row g-3 align-items-end">
-              <div class="col-md-6">
+            <div class="row g-3">
+              <!-- Kritik Stok -->
+              <div class="col-md-12">
                 <label class="form-label fw-bold">Kritik Stok Limiti</label>
                 <div class="input-group">
                   <span class="input-group-text"><i class="bi bi-exclamation-triangle"></i></span>
@@ -229,8 +230,47 @@
                 </div>
                 <div class="form-text">Ürün stoğu bu sayının altına düştüğünde dashboard'da uyarı verilir.</div>
               </div>
-              <div class="col-md-6">
-                <button type="submit" class="btn btn-primary"><i class="bi bi-save me-2"></i> Kaydet</button>
+
+              <!-- Dashboard Toggles -->
+              <div class="col-12">
+                <hr class="my-2">
+              </div>
+              <h6 class="fw-bold text-muted mb-0"><i class="bi bi-columns-gap me-2"></i>Kontrol Paneli (Dashboard)
+                Kartları</h6>
+
+              <div class="col-lg-4">
+                <div class="form-check form-switch p-3 border rounded bg-light hover-shadow">
+                  <input type="hidden" name="SHOW_RETURNS_CARD" value="off">
+                  <input class="form-check-input" type="checkbox" id="checkReturns" name="SHOW_RETURNS_CARD" value="on"
+                    {% if settings.SHOW_RETURNS_CARD !='off' %}checked{% endif %}>
+                  <label class="form-check-label fw-bold text-dark" for="checkReturns">İade Talepleri</label>
+                  <div class="form-text extra-small">Son 30 günlük iade sayısını gösteren kartı açar/kapatır.</div>
+                </div>
+              </div>
+
+              <div class="col-lg-4">
+                <div class="form-check form-switch p-3 border rounded bg-light hover-shadow">
+                  <input type="hidden" name="SHOW_CANCELS_CARD" value="off">
+                  <input class="form-check-input" type="checkbox" id="checkCancels" name="SHOW_CANCELS_CARD" value="on"
+                    {% if settings.SHOW_CANCELS_CARD !='off' %}checked{% endif %}>
+                  <label class="form-check-label fw-bold text-dark" for="checkCancels">İptal Edilenler</label>
+                  <div class="form-text extra-small">Son 30 günlük iptal sayısını gösteren kartı açar/kapatır.</div>
+                </div>
+              </div>
+
+              <div class="col-lg-4">
+                <div class="form-check form-switch p-3 border rounded bg-light hover-shadow">
+                  <input type="hidden" name="SHOW_QUESTIONS_CARD" value="off">
+                  <input class="form-check-input" type="checkbox" id="checkQuestions" name="SHOW_QUESTIONS_CARD"
+                    value="on" {% if settings.SHOW_QUESTIONS_CARD !='off' %}checked{% endif %}>
+                  <label class="form-check-label fw-bold text-dark" for="checkQuestions">Müşteri Soruları</label>
+                  <div class="form-text extra-small">Müşteri soruları kartını açar (API bağlantısı gerektirir).</div>
+                </div>
+              </div>
+
+              <div class="col-12 text-end mt-4">
+                <button type="submit" class="btn btn-primary px-4"><i class="bi bi-save me-2"></i> Ayarları
+                  Kaydet</button>
               </div>
             </div>
           </form>
