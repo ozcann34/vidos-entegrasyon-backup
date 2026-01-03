@@ -1829,7 +1829,16 @@ def perform_pazarama_direct_push_actions(user_id: int, to_update: List[Any], to_
             raw = json.loads(xml_item.raw_data)
             
             # Marka ve Kategori Çözümü
-            brand_id = resolve_pazarama_brand(client, raw.get('brand'))
+            brand_id = 0
+            # 1. Öncelik: Ayarlardaki Marka ID
+            default_brand_id = Setting.get("PAZARAMA_BRAND_ID", user_id=user_id)
+            if default_brand_id and default_brand_id.strip():
+                brand_id = default_brand_id # Pazarama ID string olabilir
+            
+            # 2. Öncelik: XML'den Çözümle
+            if not brand_id:
+                brand_id = resolve_pazarama_brand(client, raw.get('brand'))
+                
             cat_id = resolve_pazarama_category(client, xml_item.title, raw.get('category'), raw.get('category'), user_id=user_id)
             
             if not brand_id or not cat_id:

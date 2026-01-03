@@ -2452,7 +2452,19 @@ def perform_idefix_direct_push_actions(user_id: int, to_update: List[Any], to_cr
             raw = json.loads(xml_item.raw_data)
             
             # Marka ve Kategori Çözümü
-            brand_id = resolve_idefix_brand(raw.get('brand'), user_id=user_id)
+            brand_id = 0
+            # 1. Öncelik: Ayarlardaki Marka ID
+            default_brand_id = Setting.get("IDEFIX_BRAND_ID", user_id=user_id)
+            if default_brand_id and default_brand_id.strip():
+                try:
+                    brand_id = int(default_brand_id)
+                except:
+                    pass
+            
+            # 2. Öncelik: XML'den Çözümle
+            if not brand_id:
+                brand_id = resolve_idefix_brand(raw.get('brand'), user_id=user_id)
+            
             cat_id = resolve_idefix_category(raw.get('title'), raw.get('category'), user_id=user_id)
             
             if not brand_id or not cat_id:

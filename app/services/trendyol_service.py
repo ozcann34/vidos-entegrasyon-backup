@@ -552,10 +552,10 @@ def ensure_brand_tfidf_ready():
     if not _BRAND_TFIDF.get("vectorizer"):
         prepare_brand_tfidf()
 
-def match_brand_id_for_name_tfidf(name: str) -> Optional[Dict[str, Any]]:
-    """Match single brand name using TF-IDF."""
+def match_brand_id_for_name_tfidf(name: str) -> int:
+    """Match single brand name using TF-IDF. Returns Brand ID or 0."""
     if not name or not _BRAND_TFIDF.get('vectorizer'):
-        return None
+        return 0
         
     vec = _BRAND_TFIDF['vectorizer']
     mat = _BRAND_TFIDF['matrix']
@@ -569,11 +569,11 @@ def match_brand_id_for_name_tfidf(name: str) -> Optional[Dict[str, Any]]:
         idx = int(row.argmax())
         score = float(row[idx])
         
-        if score >= 0.45: 
-            return leaf[idx]
-        return None
+        if score >= 0.40: 
+            return int(leaf[idx].get('id') or 0)
+        return 0
     except Exception:
-        return None
+        return 0
 
 def match_brands_tfidf_batch(names: list[str]) -> Dict[str, Optional[Dict[str, Any]]]:
     """
@@ -1965,6 +1965,11 @@ def perform_trendyol_direct_push_actions(user_id: int, to_update: List[Any], to_
     
     client = get_trendyol_client(user_id=user_id)
     res = {'updated_count': 0, 'created_count': 0, 'zeroed_count': 0}
+
+    # Ensure TF-IDF is ready for matching (required for to_create items)
+    if to_create:
+        ensure_brand_tfidf_ready()
+        ensure_tfidf_ready()
     
     # --- 1. GÜNCELLEMELER (Update) ---
     if to_update:
@@ -1996,6 +2001,14 @@ def perform_trendyol_direct_push_actions(user_id: int, to_update: List[Any], to_
     if to_create:
         from app.services.xml_service import generate_random_barcode
         create_items = []
+        
+        # Get default brand from settings
+        default_brand_id = 0
+        settings_brand_id = Setting.get("TRENDYOL_BRAND_ID", user_id=user_id)
+        if settings_brand_id and settings_brand_id.strip():
+            try: default_brand_id = int(settings_brand_id)
+            except: pass
+
         for xml_item in to_create:
             barcode = xml_item.barcode
 
@@ -2008,9 +2021,13 @@ def perform_trendyol_direct_push_actions(user_id: int, to_update: List[Any], to_
             
             raw = json.loads(xml_item.raw_data)
             
-            # TODO: Trendyol Marka ve Kategori Çözümü (resolve_trendyol_brand vb.)
-            # Şimdilik mevcut match_ functions kullanılabilir
-            brand_id = match_brand_id_for_name_tfidf(raw.get('brand'))
+            # --- Marka ve Kategori Çözümü ---
+            # 1. Marka: Ayarlar (Varsayılan) -> XML (Eşleştirme)
+            brand_id = default_brand_id
+            if not brand_id:
+                brand_id = match_brand_id_for_name_tfidf(raw.get('brand'))
+            
+            # 2. Kategori: XML Ürün Başlığı (Eşleştirme)
             cat_id = match_category_id_for_title_tfidf(raw.get('title'))
             
             if not brand_id or not cat_id:
