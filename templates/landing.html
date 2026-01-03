@@ -22,26 +22,40 @@
     <style>
         /* Slider Custom Styles */
         .vidos-hero-slider {
-            margin-top: 80px;
-            border-radius: var(--vidos-radius);
+            margin-top: 0;
+            /* Remove top margin interaction, let padding handle it if needed or it sits under nav */
+            padding-top: 80px;
+            /* Space for the fixed navbar */
+            border-radius: 0;
+            /* Full width means no rounded corners usually */
             overflow: hidden;
-            box-shadow: var(--vidos-shadow);
+            box-shadow: none;
+            /* Clean look */
             position: relative;
+            width: 100vw;
+            /* Force full viewport width */
+            margin-left: calc(-50vw + 50%);
+            /* Hack to force full width if inside a parent container, though here we remove the parent container class */
+            left: 0;
+            right: 0;
         }
 
         .carousel-item {
             position: relative;
-            height: 500px;
-            /* Default desktop height */
+            height: 85vh;
+            /* Even taller for impact */
+            min-height: 600px;
+            background-color: #f0f2f5;
         }
 
         .carousel-item img {
             height: 100%;
             width: 100%;
             object-fit: cover;
+            object-position: center;
         }
 
-        /* Overlay for text readability */
+        /* Improved Gradient Overlay */
         .carousel-item::after {
             content: '';
             position: absolute;
@@ -49,11 +63,11 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: linear-gradient(to right, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.4) 50%, transparent 100%);
+            background: linear-gradient(to right, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.5) 50%, rgba(0, 0, 0, 0.2) 100%);
             z-index: 1;
         }
 
-        /* Stronger selector to override vidos_core.css defaults */
+        /* Caption Text */
         #vidosHeroCarousel .carousel-caption {
             z-index: 2;
             position: absolute;
@@ -63,33 +77,46 @@
             right: 0;
             display: flex;
             align-items: center;
-            padding: 3rem 5rem;
-            /* More padding on desktop */
+            padding: 0;
+            /* Remove default padding, handle with container */
             text-align: left;
 
-            /* Reset vidos_core.css white box styles */
             background: transparent !important;
             backdrop-filter: none !important;
             border: none !important;
             box-shadow: none !important;
             border-radius: 0 !important;
             max-width: 100% !important;
+            right: auto;
+            /* Reset bootstrap */
+            left: auto;
+            /* Reset bootstrap */
+            width: 100%;
+        }
+
+        /* Container for caption content to keep it aligned with site content */
+        .caption-container {
+            width: 100%;
+            max-width: 1400px;
+            /* Match nav container */
+            margin: 0 auto;
+            padding: 0 2rem;
         }
 
         .carousel-caption-content {
-            max-width: 700px;
-            animation: slideInLeft 0.8s ease-out;
+            max-width: 800px;
+            animation: slideInUp 1s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        @keyframes slideInLeft {
+        @keyframes slideInUp {
             from {
                 opacity: 0;
-                transform: translateX(-30px);
+                transform: translateY(40px);
             }
 
             to {
                 opacity: 1;
-                transform: translateX(0);
+                transform: translateY(0);
             }
         }
 
@@ -100,39 +127,49 @@
         }
 
         /* Responsive Adjustments */
+        @media (max-width: 991px) {
+            .carousel-item {
+                height: 70vh;
+                min-height: 500px;
+            }
+        }
+
         @media (max-width: 768px) {
             .carousel-item {
-                height: 400px;
-                /* Taller on mobile */
+                height: 80vh;
+                /* Very tall on mobile for impact */
+                min-height: 500px;
             }
 
             .carousel-item::after {
                 background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.5) 60%, rgba(0, 0, 0, 0.2) 100%);
             }
 
-            /* Stronger selector for mobile override */
             #vidosHeroCarousel .carousel-caption {
-                padding: 1.5rem 2rem;
                 align-items: flex-end;
-                /* Bottom align on mobile */
+                padding-bottom: 4rem;
+            }
+
+            .caption-container {
+                padding: 0 1.5rem;
             }
 
             .carousel-caption-content {
                 max-width: 100%;
                 text-align: center;
-                margin-bottom: 3rem;
-                /* Space for indicators */
             }
 
             #vidosHeroCarousel .display-4 {
-                font-size: 2rem;
-                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+                font-size: 2.5rem;
+                font-weight: 800;
+                text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
             }
 
             #vidosHeroCarousel .lead {
-                font-size: 1rem;
-                color: rgba(255, 255, 255, 0.9) !important;
-                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+                font-size: 1.1rem;
+                color: rgba(255, 255, 255, 0.95) !important;
+                margin-bottom: 2rem !important;
+                text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
             }
         }
     </style>
@@ -170,7 +207,8 @@
         </nav>
 
         <!-- Vidos 2.0 Hero Slider -->
-        <div id="vidosHeroCarousel" class="carousel slide vidos-hero-slider container" data-bs-ride="carousel">
+        <div id="vidosHeroCarousel" class="carousel slide vidos-hero-slider container-fluid p-0"
+            data-bs-ride="carousel">
             <div class="carousel-indicators">
                 <button type="button" data-bs-target="#vidosHeroCarousel" data-bs-slide-to="0" class="active"></button>
                 <button type="button" data-bs-target="#vidosHeroCarousel" data-bs-slide-to="1"></button>
@@ -180,36 +218,43 @@
                 <div class="carousel-item active" data-bs-interval="5000">
                     <img src="{{ url_for('static', filename='images/vidos2/slider1.png') }}" alt="Entegrasyon">
                     <div class="carousel-caption">
-                        <div class="carousel-caption-content">
-                            <h2 class="display-4 fw-bold mb-3 text-white">E-Ticaret'te Sınırları Kaldırın</h2>
-                            <p class="lead mb-4 text-white-50 fw-medium">Tüm pazaryerlerini tek noktadan yöneterek
-                                operasyonel hızınızı katlayın.</p>
-                            <a href="{{ url_for('auth.register') }}"
-                                class="btn btn-primary btn-lg px-5 shadow-lg fw-bold border-0">Ücretsiz Başla</a>
+                        <div class="caption-container">
+                            <div class="carousel-caption-content">
+                                <h2 class="display-4 fw-bold mb-3 text-white">E-Ticaret'te Sınırları Kaldırın</h2>
+                                <p class="lead mb-4 text-white-50 fw-medium">Tüm pazaryerlerini tek noktadan yöneterek
+                                    operasyonel hızınızı katlayın.</p>
+                                <a href="{{ url_for('auth.register') }}"
+                                    class="btn btn-primary btn-lg px-5 shadow-lg fw-bold border-0">Ücretsiz Başla</a>
+                            </div>
                         </div>
                     </div>
                 </div>
                 <div class="carousel-item" data-bs-interval="5000">
                     <img src="{{ url_for('static', filename='images/vidos2/slider2.png') }}" alt="Senkronizasyon">
                     <div class="carousel-caption">
-                        <div class="carousel-caption-content">
-                            <h2 class="display-4 fw-bold mb-3 text-white">Tam Otomatik Senkronizasyon</h2>
-                            <p class="lead mb-4 text-white-50 fw-medium">Stok ve fiyatlarınız her an güncel kalsın,
-                                manuel hataları sıfırlayın.</p>
-                            <a href="#features"
-                                class="btn btn-primary btn-lg px-5 shadow-lg fw-bold border-0">Özellikleri Keşfet</a>
+                        <div class="caption-container">
+                            <div class="carousel-caption-content">
+                                <h2 class="display-4 fw-bold mb-3 text-white">Tam Otomatik Senkronizasyon</h2>
+                                <p class="lead mb-4 text-white-50 fw-medium">Stok ve fiyatlarınız her an güncel kalsın,
+                                    manuel hataları sıfırlayın.</p>
+                                <a href="#features"
+                                    class="btn btn-primary btn-lg px-5 shadow-lg fw-bold border-0">Özellikleri
+                                    Keşfet</a>
+                            </div>
                         </div>
                     </div>
                 </div>
                 <div class="carousel-item" data-bs-interval="5000">
                     <img src="{{ url_for('static', filename='images/vidos2/slider3.png') }}" alt="Yönetim">
                     <div class="carousel-caption">
-                        <div class="carousel-caption-content">
-                            <h2 class="display-4 fw-bold mb-3 text-white">Gelişmiş Raporlama & Yönetim</h2>
-                            <p class="lead mb-4 text-white-50 fw-medium">Satış trendlerinizi takip edin, verilerle
-                                büyüme stratejinizi belirleyin.</p>
-                            <a href="{{ url_for('auth.login') }}"
-                                class="btn btn-primary btn-lg px-5 shadow-lg fw-bold border-0">Hemen Dene</a>
+                        <div class="caption-container">
+                            <div class="carousel-caption-content">
+                                <h2 class="display-4 fw-bold mb-3 text-white">Gelişmiş Raporlama & Yönetim</h2>
+                                <p class="lead mb-4 text-white-50 fw-medium">Satış trendlerinizi takip edin, verilerle
+                                    büyüme stratejinizi belirleyin.</p>
+                                <a href="{{ url_for('auth.login') }}"
+                                    class="btn btn-primary btn-lg px-5 shadow-lg fw-bold border-0">Hemen Dene</a>
+                            </div>
                         </div>
                     </div>
                 </div>
