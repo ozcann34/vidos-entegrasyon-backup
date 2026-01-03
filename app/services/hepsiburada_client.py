@@ -460,7 +460,7 @@ class HepsiburadaClient:
         
         return {
             "Authorization": f"Basic {encoded}",
-            "User-Agent": f"{m_id}", # Changed from VidosEntegrasyon/1.0 to m_id
+            "User-Agent": f"VidosE_{m_id}", 
             "Accept": "application/json",
             "Content-Type": "application/json"
         }
@@ -493,8 +493,15 @@ class HepsiburadaClient:
             resp = self.session.get(url, headers=headers, params=params, timeout=20)
             resp.raise_for_status()
             return resp.json()
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 401:
+                logging.error(f"HB Questions 401 Unauthorized. Check credentials. Headers: {headers}")
+            if e.response.status_code == 403:
+                logging.error(f"HB Questions 403 Forbidden. Check permissions.")
+            logging.error(f"Hepsiburada get_product_questions HTTP error: {e}")
+            return {"data": [], "totalCount": 0}
         except Exception as e:
-            logging.error(f"Hepsiburada get_product_questions error: {e}")
+            logging.exception(f"Hepsiburada get_product_questions error: {e}")
             return {"data": [], "totalCount": 0}
 
     def answer_product_question(self, question_number: str, answer_text: str) -> Dict[str, Any]:

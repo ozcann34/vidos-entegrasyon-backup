@@ -165,19 +165,26 @@ def _save_sync_log(marketplace: str, result: Dict[str, Any], error_message: Opti
         db.session.rollback()
 
 
-def get_sync_logs(marketplace: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
-    """Senkronizasyon loglarını getir"""
+def get_sync_logs(marketplace: Optional[str] = None, page: int = 1, per_page: int = 20) -> Dict[str, Any]:
+    """Senkronizasyon loglarını getir (Sayfalamalı)"""
     try:
         query = SyncLog.query
         
         if marketplace:
             query = query.filter_by(marketplace=marketplace)
         
-        logs = query.order_by(SyncLog.timestamp.desc()).limit(limit).all()
+        # Pagination
+        pagination = query.order_by(SyncLog.timestamp.desc()).paginate(page=page, per_page=per_page, error_out=False)
         
-        return [log.to_dict() for log in logs]
+        return {
+            'logs': [log.to_dict() for log in pagination.items],
+            'total': pagination.total,
+            'pages': pagination.pages,
+            'current_page': pagination.page,
+            'per_page': per_page
+        }
         
     except Exception as e:
         logger.error(f"Error fetching sync logs: {e}")
-        return []
+        return {'logs': [], 'total': 0, 'pages': 0, 'current_page': page, 'per_page': per_page}
 

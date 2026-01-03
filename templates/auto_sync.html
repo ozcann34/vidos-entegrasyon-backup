@@ -91,28 +91,39 @@
             </select>
         </div>
     </div>
-    <div class="card-body">
+    <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover align-middle" id="syncLogsTable">
-                <thead>
+            <table class="table table-hover align-middle mb-0" id="syncLogsTable">
+                <thead class="bg-light">
                     <tr>
-                        <th>Pazaryeri</th>
+                        <th class="ps-3">Pazaryeri</th>
                         <th>Zaman</th>
-                        <th>Güncellenen Ürün</th>
-                        <th>Stok Değişikliği</th>
-                        <th>Fiyat Değişikliği</th>
+                        <th class="text-center">Güncellenen Ürün</th>
+                        <th class="text-center">Stok Değişikliği</th>
+                        <th class="text-center">Fiyat Değişikliği</th>
                         <th>Durum</th>
-                        <th>Detay</th>
+                        <th class="text-end pe-4">Detay</th>
                     </tr>
                 </thead>
-                <tbody id="syncLogsTableBody">
+                <tbody id="syncLogsTableBody" class="border-top-0">
                     <tr>
-                        <td colspan="7" class="text-center text-muted">
-                            <i class="bi bi-hourglass-split"></i> Loglar yükleniyor...
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                            Loglar yükleniyor...
                         </td>
                     </tr>
                 </tbody>
             </table>
+        </div>
+    </div>
+    <div class="card-footer bg-white py-3 border-top-0">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="small text-muted">
+                Her 30 saniyede bir otomatik güncellenir.
+            </div>
+            <div id="syncLogsPagination">
+                <!-- Pagination will be rendered here -->
+            </div>
         </div>
     </div>
 </div>
@@ -383,21 +394,30 @@
         }
     }
 
-    async function loadLogs(marketplace = null) {
+    let currentLogPage = 1;
+    let totalLogPages = 1;
+
+    async function loadLogs(marketplace = null, page = 1) {
+        currentLogPage = page;
         try {
-            const url = marketplace ? `/api/auto_sync/logs?marketplace=${marketplace}&limit=50` : '/api/auto_sync/logs?limit=50';
+            const url = marketplace
+                ? `/api/auto_sync/logs?marketplace=${marketplace}&page=${page}&per_page=20`
+                : `/api/auto_sync/logs?page=${page}&per_page=20`;
             const resp = await fetch(url);
             const data = await resp.json();
             const tbody = document.getElementById('syncLogsTableBody');
 
             if (!data.success || !data.logs || data.logs.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted"><i class="bi bi-inbox"></i> Henüz log kaydı yok</td></tr>`;
+                renderPagination(0, 0);
                 return;
             }
 
+            totalLogPages = data.pages;
+
             tbody.innerHTML = data.logs.map(log => {
                 const date = new Date(log.timestamp);
-                const statusBadge = log.success ? '<span class="badge bg-success">Başarılı</span>' : '<span class="badge bg-danger">Hatalı</span>';
+                const statusBadge = log.success ? '<span class="badge bg-success-subtle text-success border border-success-subtle px-3 rounded-pill">Başarılı</span>' : '<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 rounded-pill">Hatalı</span>';
 
                 let details = log.details_json;
                 if (typeof details === 'string') {
@@ -406,22 +426,68 @@
 
                 const hasDetails = details && details.details && details.details.length > 0;
                 const detailBtn = hasDetails
-                    ? `<button class="btn btn-sm btn-outline-info" onclick='showLogDetails(${JSON.stringify(details.details).replace(/'/g, "&#39;")})'><i class="bi bi-eye"></i> Detay</button>`
-                    : '<span class="text-muted">-</span>';
+                    ? `<button class="btn btn-sm btn-outline-info rounded-pill px-3" onclick='showLogDetails(${JSON.stringify(details.details).replace(/'/g, "&#39;")})'><i class="bi bi-eye me-1"></i> Detay</button>`
+                    : '<span class="text-muted small">Detay Yok</span>';
 
                 return `<tr>
-                        <td><strong>${marketplaces[log.marketplace] || log.marketplace}</strong></td>
-                        <td><small>${date.toLocaleString('tr-TR')}</small></td>
-                        <td class="text-center">${log.products_updated}</td>
-                        <td class="text-center">${log.stock_changes}</td>
-                        <td class="text-center">${log.price_changes}</td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle me-2" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
+                                    <i class="bi bi-shop"></i>
+                                </span>
+                                <span class="fw-bold">${marketplaces[log.marketplace] || log.marketplace}</span>
+                            </div>
+                        </td>
+                        <td><div class="small text-muted mb-1"><i class="bi bi-calendar3 me-1"></i>${date.toLocaleDateString('tr-TR')}</div><div class="small fw-bold"><i class="bi bi-clock me-1"></i>${date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</div></td>
+                        <td class="text-center"><span class="badge bg-light text-dark border rounded-pill px-3">${log.products_updated}</span></td>
+                        <td class="text-center"><span class="text-primary fw-bold">${log.stock_changes}</span></td>
+                        <td class="text-center"><span class="text-success fw-bold">${log.price_changes}</span></td>
                         <td>${statusBadge}</td>
-                        <td class="text-center">${detailBtn}</td>
+                        <td class="text-end pe-3">${detailBtn}</td>
                     </tr>`;
             }).join('');
+
+            renderPagination(data.current_page, data.pages);
+
         } catch (err) {
             console.error('Error loading logs:', err);
         }
+    }
+
+    function renderPagination(current, total) {
+        const container = document.getElementById('syncLogsPagination');
+        if (!container) return;
+
+        if (total <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+
+        let html = `<ul class="pagination pagination-sm mb-0 justify-content-end">`;
+
+        // Prev
+        html += `<li class="page-item ${current === 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="loadLogs(document.getElementById('logMarketplaceFilter').value, ${current - 1}); return false;"><i class="bi bi-chevron-left"></i></a>
+                 </li>`;
+
+        // Pages
+        for (let i = 1; i <= total; i++) {
+            if (i === 1 || i === total || (i >= current - 2 && i <= current + 2)) {
+                html += `<li class="page-item ${i === current ? 'active' : ''}">
+                            <a class="page-link" href="#" onclick="loadLogs(document.getElementById('logMarketplaceFilter').value, ${i}); return false;">${i}</a>
+                         </li>`;
+            } else if (i === current - 3 || i === current + 3) {
+                html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
+        }
+
+        // Next
+        html += `<li class="page-item ${current === total ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="loadLogs(document.getElementById('logMarketplaceFilter').value, ${current + 1}); return false;"><i class="bi bi-chevron-right"></i></a>
+                 </li>`;
+
+        html += `</ul>`;
+        container.innerHTML = html;
     }
 
     window.showLogDetails = function (details) {

@@ -997,7 +997,62 @@ items: List[Dict[str, Any]],
             
         url = f"{self.BASE_URL}/pim/pool/{self.vendor_id}/list"
         
-        # documentation says 'limit' instead of 'size'
+        return {'content': [], 'totalElements': 0}
+
+    # ============================================================
+    # Müşteri Soruları (Customer Questions)
+    # ============================================================
+    
+    def get_product_questions(self, page: int = 1, limit: int = 50) -> Dict[str, Any]:
+        """
+        GET /pim/vendor/{vendorId}/question/filter
+        Fetch questions asked by customers.
+        """
+        if not self.vendor_id:
+            logger.error("[IDEFIX] get_product_questions failed: vendor_id is missing")
+            return {"questions": []}
+
+        url = f"{self.BASE_URL}/pim/vendor/{self.vendor_id}/question/filter"
+        params = {"page": page, "limit": limit}
+
+        try:
+            logger.info(f"[IDEFIX] Fetching questions: {url}")
+            resp = self.session.get(url, headers=self._get_headers(), params=params, timeout=20)
+            
+            if resp.status_code == 200:
+                data = resp.json()
+                # Unified format for api_questions.py
+                if isinstance(data, list):
+                     return {"questions": data}
+                elif isinstance(data, dict):
+                    if 'items' in data: return {"questions": data['items']}
+                    if 'content' in data: return {"questions": data['content']}
+                    return {"questions": [data]}
+                return {"questions": []}
+            
+            logger.error(f"[IDEFIX] get_questions failed: {resp.status_code} {resp.text}")
+            return {"questions": []}
+        except Exception as e:
+            logger.error(f"[IDEFIX] get_questions error: {e}")
+            return {"questions": []}
+
+    def answer_product_question(self, question_id: str, answer_text: str) -> Dict[str, Any]:
+        """
+        POST /pim/vendor/{vendorId}/question/{questionId}/answer
+        """
+        if not self.vendor_id:
+            raise ValueError("Idefix vendor_id eksik!")
+            
+        url = f"{self.BASE_URL}/pim/vendor/{self.vendor_id}/question/{question_id}/answer"
+        payload = {"answer_body": answer_text}
+        
+        try:
+            resp = self.session.post(url, headers=self._get_headers(), json=payload, timeout=20)
+            resp.raise_for_status()
+            return resp.json() if resp.text else {"success": True}
+        except Exception as e:
+             logger.error(f"[IDEFIX] answer_question error: {e}")
+             raise
         params = {"page": page, "limit": limit}
         
         if search:

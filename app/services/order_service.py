@@ -907,7 +907,7 @@ def get_order_detail(order_id: int):
 
 def _trigger_bugz_push(order, user_id=None):
     """
-    Triggers the BUG-Z order creation if the user has configured it.
+    Triggers the BUG-Z order creation in BACKGROUND to prevent timeout.
     """
     try:
         if not user_id:
@@ -916,18 +916,32 @@ def _trigger_bugz_push(order, user_id=None):
         if not user_id:
             return
 
-        from app.models import User
-        user = User.query.get(user_id)
-        if not user:
-            return
+        order_id = order.id
 
-        # Check if BUG-Z integration is configured
-        # Note: BugZService checks for api_key and api_secret in settings.
-        bugz = BugZService(user)
-        
-        if bugz.is_configured():
-            logger.info(f"Triggering BUG-Z push for order {order.order_number} (User: {user_id})")
-            bugz.create_order(order)
+        # Background Task
+        def _bg_task(o_id, u_id):
+            from flask import current_app
+            from app.models import User, Order
+            from app.services.bug_z_service import BugZService
+            
+            # Ensure app context
+            with current_app.app_context():
+                try:
+                    user_obj = User.query.get(u_id)
+                    if not user_obj: return
+                    
+                    order_obj = Order.query.get(o_id)
+                    if not order_obj: return
+                    
+                    bugz = BugZService(user_obj)
+                    if bugz.is_configured():
+                        logger.info(f"BUG-Z Push (Background) started for Order #{order_obj.order_number}")
+                        bugz.create_order(order_obj)
+                except Exception as ex:
+                    logger.error(f"Background BUG-Z Push Error: {ex}")
+
+        from app.services.job_queue import MP_EXECUTOR
+        MP_EXECUTOR.submit(_bg_task, order_id, user_id)
             
     except Exception as e:
-        logger.error(f"Error in _trigger_bugz_push: {e}")
+        logger.error(f"Error initiating BUG-Z background push: {e}")

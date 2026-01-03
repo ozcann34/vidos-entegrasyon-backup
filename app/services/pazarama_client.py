@@ -500,10 +500,10 @@ class PazaramaClient:
 
     def get_product_questions(self, page: int = 1, size: int = 50) -> Dict[str, Any]:
         """
-        GET /question/getQuestions
+        GET /merchantgateway/api/v1/Question/GetQuestions
         Fetch questions asked by customers about products.
         """
-        url = f"{BASE_URL}/question/getQuestions"
+        url = f"{BASE_URL}/merchantgateway/api/v1/Question/GetQuestions"
         params = {"page": page, "size": size}
         
         try:
@@ -515,10 +515,10 @@ class PazaramaClient:
 
     def answer_product_question(self, question_id: str, answer: str) -> Dict[str, Any]:
         """
-        POST /question/answerQuestion
+        POST /merchantgateway/api/v1/Question/AnswerQuestion
         Answer a customer question.
         """
-        url = f"{BASE_URL}/question/answerQuestion"
+        url = f"{BASE_URL}/merchantgateway/api/v1/Question/AnswerQuestion"
         
         payload = {
             "questionId": question_id,

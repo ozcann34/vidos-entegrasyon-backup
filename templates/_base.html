@@ -558,7 +558,7 @@
 
     <!-- Floating Job Widget (Global - All Pages) -->
     <div id="jobWidget" class="card shadow-lg border-0 animate-fade-in"
-        style="position: fixed; bottom: 20px; right: 20px; width: 380px; z-index: 9999; display: block; border-radius: 12px; overflow: hidden;">
+        style="position: fixed; bottom: 20px; right: 20px; width: 380px; z-index: 9999; display: none; border-radius: 12px; overflow: hidden;">
         <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-2 border-0"
             style="background: var(--sidebar-bg) !important;">
             <h6 class="mb-0 small fw-bold"><i class="bi bi-gear-wide-connected me-2"></i>İşlem Durumu</h6>
@@ -566,8 +566,10 @@
                 <button class="btn btn-sm btn-link text-white-50 p-0 me-2 hover-white"
                     onclick="window.toggleWidgetBody()" title="Küçült/Büyüt"><i class="bi bi-dash-lg"
                         id="widgetToggleIcon"></i></button>
-                <button class="btn btn-sm btn-link text-white-50 p-0 hover-white" onclick="window.minimizeWidget()"
+                <button class="btn btn-sm btn-link text-white-50 p-0 me-2 hover-white" onclick="window.minimizeWidget()"
                     title="Simge Durumuna Küçült"><i class="bi bi-dash-circle"></i></button>
+                <button class="btn btn-sm btn-link text-white-50 p-0 hover-white" onclick="window.closeWidget()"
+                    title="Pencereyi Kapat"><i class="bi bi-x-lg"></i></button>
             </div>
         </div>
         <div id="jobWidgetBody" class="card-body p-3" style="background: var(--card);">
@@ -593,14 +595,18 @@
                 </div>
             </div>
 
-            <div class="d-flex justify-content-between gap-2">
-                <button id="btnJobPause" class="btn btn-sm btn-warning flex-grow-1"
-                    onclick="window.controlJob('pause')"><i class="bi bi-pause-fill me-1"></i>Duraklat</button>
-                <button id="btnJobResume" class="btn btn-sm btn-success flex-grow-1 d-none"
-                    onclick="window.controlJob('resume')"><i class="bi bi-play-fill me-1"></i>Devam Et</button>
-                <button id="btnJobCancel" class="btn btn-sm btn-danger flex-grow-1"
-                    onclick="window.controlJob('cancel')"><i class="bi bi-stop-fill me-1"></i>İptal</button>
-                <button id="btnJobView" class="btn btn-sm btn-primary flex-grow-1 d-none"><i
+            <div class="d-grid gap-2">
+                <div class="d-flex justify-content-between gap-2" id="jobControls">
+                    <button id="btnJobPause" class="btn btn-sm btn-warning flex-grow-1"
+                        onclick="window.controlJob('pause')"><i class="bi bi-pause-fill me-1"></i>Duraklat</button>
+                    <button id="btnJobResume" class="btn btn-sm btn-success flex-grow-1 d-none"
+                        onclick="window.controlJob('resume')"><i class="bi bi-play-fill me-1"></i>Devam Et</button>
+                    <button id="btnJobCancel" class="btn btn-sm btn-danger flex-grow-1"
+                        onclick="window.controlJob('cancel')"><i class="bi bi-stop-fill me-1"></i>İptal</button>
+                </div>
+                <button id="btnJobClose" class="btn btn-sm btn-secondary d-none" onclick="window.closeWidget()"><i
+                        class="bi bi-x-lg me-1"></i>Pencereyi Kapat</button>
+                <button id="btnJobView" class="btn btn-sm btn-primary d-none"><i
                         class="bi bi-eye-fill me-1"></i>Sonuçları Gör</button>
             </div>
         </div>
@@ -617,11 +623,24 @@
                 localStorage.setItem('activeJobId', jobId);
                 const widget = document.getElementById('jobWidget');
                 if (widget) {
-                    widget.style.display = 'block';
+                    // Check if user explicitly closed it
+                    const isClosed = localStorage.getItem('jobWidgetClosed') === 'true';
 
                     // Restore minimized state if exists
                     const isMinimized = localStorage.getItem('jobWidgetMinimized') === 'true';
                     const isBodyHidden = localStorage.getItem('jobWidgetBodyHidden') === 'true';
+
+                    // If closed, don't show unless this is a NEW job call (activeJobId just set)
+                    // But initWidget calls showJobWidget...
+                    // Let's rely on isClosed only if activeJobId hasn't changed?
+                    // For simplicity: If closed, keep closed unless we force show.
+
+                    if (isClosed && !window.forceShowWidget) {
+                        widget.style.display = 'none';
+                    } else {
+                        widget.style.display = 'block';
+                    }
+
                     const body = document.getElementById('jobWidgetBody');
 
                     if (body) {
@@ -641,20 +660,35 @@
                 startJobPolling();
             };
 
+            window.closeWidget = function () {
+                const widget = document.getElementById('jobWidget');
+                if (widget) widget.style.display = 'none';
+                localStorage.setItem('jobWidgetClosed', 'true');
+
+                // If job is finished, clear persistence
+                // If job is running, we just hide the widget from view
+                // But polling might continue in background if we don't stop it.
+                // For now, let's keep polling but hidden.
+            };
+
             window.minimizeWidget = function () {
                 const widget = document.getElementById('jobWidget');
                 const body = document.getElementById('jobWidgetBody');
                 if (widget && body) {
                     if (body.style.display === 'none') {
+                        // expanding
                         body.style.display = 'block';
                         widget.style.width = '380px';
                         localStorage.setItem('jobWidgetMinimized', 'false');
                         localStorage.setItem('jobWidgetBodyHidden', 'false');
+                        localStorage.setItem('jobWidgetClosed', 'false'); // Un-close
                     } else {
+                        // minimizing
                         body.style.display = 'none';
                         widget.style.width = '200px';
                         localStorage.setItem('jobWidgetMinimized', 'true');
                         localStorage.setItem('jobWidgetBodyHidden', 'true');
+                        localStorage.setItem('jobWidgetClosed', 'false'); // Un-close but minimized
                     }
                 }
             };

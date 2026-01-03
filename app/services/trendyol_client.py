@@ -587,7 +587,7 @@ class TrendyolClient:
                 except requests.exceptions.HTTPError as e2:
                     if e2.response.status_code == 403:
                         # Both endpoints failed with 403 - return empty result with clear message
-                        logging.error("Both question endpoints returned 403 - insufficient API permissions")
+                        logging.error(f"Both question endpoints returned 403. Response: {e2.response.text}")
                         return {
                             "content": [],
                             "totalElements": 0,

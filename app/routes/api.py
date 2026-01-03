@@ -2298,14 +2298,15 @@ def api_auto_sync_logs():
     """Senkronizasyon loglarını getir"""
     try:
         marketplace = request.args.get('marketplace')
-        limit = min(int(request.args.get('limit', 50)), 200)
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 20))
         
         from app.services.auto_sync_service import get_sync_logs
-        logs = get_sync_logs(marketplace=marketplace, limit=limit)
+        result = get_sync_logs(marketplace=marketplace, page=page, per_page=per_page)
         
         return jsonify({
             'success': True,
-            'logs': logs
+            **result
         })
         
     except Exception as e:
