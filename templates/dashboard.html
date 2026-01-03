@@ -16,29 +16,19 @@
 </div>
 {% endif %}
 
-<div class="d-flex flex-wrap gap-2 mb-4 align-items-center">
-  <div class="btn-group btn-group-mobile">
-    <a href="{{ url_for('main.settings_page') }}" class="btn btn-outline-secondary">
-      <i class="bi bi-gear me-1"></i> Ayarlar
-    </a>
-    <a href="{{ url_for('main.user_manual') }}" class="btn btn-primary shadow-sm fw-bold">
-      <i class="bi bi-book-half me-2"></i>Rehber
-    </a>
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div class="d-flex align-items-center gap-3">
+    <h1 class="h3 fw-bold mb-0 text-dark">Genel Bakış</h1>
+    <span class="badge bg-primary-light text-primary rounded-pill">Bugün</span>
   </div>
-
-  <div class="btn-group btn-group-mobile">
-    <a href="{{ url_for('main.dashboard', force_sync='true') }}"
-      class="btn btn-outline-info shadow-sm fw-bold text-center">
-      <i class="bi bi-arrow-clockwise me-1"></i> Verileri Güncelle
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('main.dashboard', force_sync='true') }}" class="btn btn-white border shadow-sm btn-sm fw-bold">
+      <i class="bi bi-arrow-clockwise me-1"></i> Senkronize Et
     </a>
+    <button class="btn btn-primary btn-sm fw-bold shadow-sm">
+      <i class="bi bi-download me-1"></i> Rapor Al
+    </button>
   </div>
-  {% if last_sync %}
-  <div class="w-100 text-end mobile-hide">
-    <span class="btn btn-light disabled text-muted small" style="font-size: 0.8rem;" id="last-sync-time">
-      Son Güncelleme: {{ last_sync }}
-    </span>
-  </div>
-  {% endif %}
 </div>
 
 <!-- Kritik Stok Butonu -->
@@ -160,165 +150,119 @@
 
 
 
-<!-- Financial & Usage Section -->
-<div class="row g-4 mb-4">
-  <!-- Financial Cards -->
-  <!-- Financial Cards Removed per request -->
-
-  <!-- Subscription Usage -->
-  <div class="col-12">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h6 class="card-title text-muted fw-bold mb-0">Paket Kullanımı</h6>
-          {% if current_user.subscription.plan == 'bug-z-bayilik' %}
-          <span class="badge bg-success bg-gradient border border-success-subtle text-white">
-            <i class="bi bi-patch-check-fill me-1"></i>{{ current_user.subscription.plan_display_name }}
-          </span>
-          {% else %}
-          <span
-            class="badge bg-{{ 'primary' if current_user.subscription.plan == 'pro' else 'warning' if current_user.subscription.plan == 'enterprise' else 'light text-dark border' }}">
-            {{ current_user.subscription.plan_display_name }}
-          </span>
-          {% endif %}
-        </div>
-
-        <!-- Products -->
-        <div class="mb-3">
-          <div class="d-flex justify-content-between small mb-1">
-            <span>Ürün Limiti</span>
-            <span class="fw-bold">
-              {{ stats.usage.products.used }} /
-              {% if stats.usage.products.is_unlimited %}Sınırsız{% else %}{{ stats.usage.products.limit }}{% endif %}
-            </span>
-          </div>
-          <div class="progress" style="height: 6px;">
-            <div class="progress-bar bg-primary" role="progressbar"
-              style="width: {{ stats.usage.products.percent|default(0) }}%">
-            </div>
+<!-- Vidos 2.0 Operational Stats -->
+<div class="row g-3 mb-4">
+  <!-- Revenue Card -->
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid var(--vidos-primary) !important;">
+      <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <p class="text-muted mb-0 small fw-bold text-uppercase">Toplam Satış (Bu Ay)</p>
+          <div class="vidos-icon-box" style="color: var(--vidos-primary);">
+            <i class="bi bi-wallet2 fs-5"></i>
           </div>
         </div>
+        <h3 class="fw-bold mb-1" style="color: var(--vidos-dark);">93.335,41 <small class="text-muted"
+            style="font-size: 0.6em;">TL</small></h3>
+        <div class="d-flex align-items-center mt-2">
+          <span class="text-success small fw-bold"><i class="bi bi-caret-up-fill"></i> %12.5</span>
+          <span class="text-muted small ms-2">geçen aya göre</span>
+        </div>
+      </div>
+    </div>
+  </div>
 
-        <!-- XML Sources -->
-        <div>
-          <div class="d-flex justify-content-between small mb-1">
-            <span>XML Kaynakları</span>
-            <span class="fw-bold">
-              {{ stats.usage.xml_sources.used }} /
-              {% if stats.usage.xml_sources.is_unlimited %}Sınırsız{% else %}{{ stats.usage.xml_sources.limit }}{% endif
-              %}
-            </span>
+  <!-- Orders Card -->
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #20c997 !important;">
+      <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <p class="text-muted mb-0 small fw-bold text-uppercase">Toplam Sipariş</p>
+          <div class="vidos-icon-box" style="color: #20c997;">
+            <i class="bi bi-box-seam fs-5"></i>
           </div>
-          <div class="progress" style="height: 6px;">
-            <div class="progress-bar bg-info" role="progressbar"
-              style="width: {{ stats.usage.xml_sources.percent|default(0) }}%">
-            </div>
-          </div>
+        </div>
+        <h3 class="fw-bold mb-1" style="color: var(--vidos-dark);">21 <small class="text-muted"
+            style="font-size: 0.6em;">Adet</small></h3>
+        <div class="d-flex align-items-center mt-2">
+          <span class="text-success small fw-bold"><i class="bi bi-caret-up-fill"></i> 4 yeni</span>
+          <span class="text-muted small ms-2">son 24 saat</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Marketplace: Trendyol -->
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #f27a1a !important;">
+      <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <p class="text-muted mb-0 small fw-bold text-uppercase">Trendyol Ürünleri</p>
+          <img
+            src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Trendyol_logo.svg/2560px-Trendyol_logo.svg.png"
+            height="15">
+        </div>
+        <h3 class="fw-bold mb-1" style="color: var(--vidos-dark);">34.276 <small class="text-muted"
+            style="font-size: 0.6em;">SKU</small></h3>
+        <div class="d-flex align-items-center mt-2">
+          <span class="badge bg-warning-light text-warning rounded-pill px-2">Aktif Senk.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Marketplace: N11 -->
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #5d5d5d !important;">
+      <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <p class="text-muted mb-0 small fw-bold text-uppercase">N11 Ürünleri</p>
+          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/N11_Logo.svg/1024px-N11_Logo.svg.png"
+            height="15">
+        </div>
+        <h3 class="fw-bold mb-1" style="color: var(--vidos-dark);">5.094 <small class="text-muted"
+            style="font-size: 0.6em;">SKU</small></h3>
+        <div class="d-flex align-items-center mt-2">
+          <span class="badge bg-danger-light text-danger rounded-pill px-2">Bağlantı Aktif</span>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<div class="row g-4 mb-5">
-
-  {# PAZAR YERLERİ STATİSTİKLERİ #}
-  {% for mp in stats.marketplaces %}
-  <div class="col-6 col-md-6 col-lg-3">
-    {% set mkey = mp.key if mp.key is defined else mp.name|lower %}
-    {% set color_class = 'warning' if mkey == 'trendyol' else mp.color %}
-    <div class="card p-3 p-md-4 stat-card border-{{ color_class }} card-mobile-stack">
-      <div class="d-flex align-items-center">
-        <i class="bi bi-{{ mp.icon }} text-{{ color_class }} fs-3 me-3"></i>
-        <div class="overflow-hidden">
-          <p class="text-muted mb-0 small text-truncate">{{ mp.name }} Ürün Sayısı</p>
-          <h4 class="mb-0 fw-bold text-{{ color_class }}" id="mp-count-{{ mkey }}">
-            {% if mp.count is not none %}{{ mp.count }}{% else %}0{% endif %}
-          </h4>
-          <p class="text-muted mt-1 mb-0" style="font-size: 0.75rem;">
-            Aktif: <span id="mp-active-{{ mkey }}">{{ mp.active }}</span> /
-            Onay: <span id="mp-approved-{{ mkey }}">{{ mp.approved|default(0) }}</span> /
-            Pasif: <span id="mp-passive-{{ mkey }}">{{ mp.passive }}</span>
-          </p>
+<!-- Secondary Stats (Usage & More) -->
+<div class="row g-4 mb-4">
+  <div class="col-lg-8">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0 fw-bold" style="color: var(--vidos-dark);">Satış Performansı</h5>
+        <div class="d-flex gap-2">
+          <button class="btn btn-sm btn-light active">Haftalık</button>
+          <button class="btn btn-sm btn-light">Aylık</button>
         </div>
       </div>
-      <div class="d-flex gap-2 mt-3 w-100">
-        <a class="btn btn-xs btn-outline-primary btn-animated flex-grow-1" style="font-size: 0.7rem; padding: 0.25rem;"
-          href="{{ url_for('main.marketplace_products_page', marketplace=mkey) }}">Ürünler</a>
-        <a class="btn btn-xs btn-outline-secondary btn-animated flex-grow-1"
-          style="font-size: 0.7rem; padding: 0.25rem;"
-          href="{{ url_for('main.marketplace_products_page', marketplace=mkey) }}">Görüntüle</a>
+      <div class="card-body">
+        <canvas id="salesChart" style="height: 300px;"></canvas>
       </div>
     </div>
   </div>
-  {% endfor %}
-
-
-  <div class="col-6 col-md-6 col-lg-3">
-    <div class="card p-4 stat-card border-success">
-      <div class="d-flex align-items-center">
-        <i class="bi bi-cash-coin text-success fs-3 me-3"></i>
-        <div>
-          <p class="text-muted mb-0">Aylık Toplam Ciro</p>
-          <h4 class="mb-0 fw-bold text-success" id="stat-monthly-revenue">{{ '%.2f' % stats.monthly_revenue }} TL</h4>
-          <div class="d-flex justify-content-between align-items-center mt-2">
-            <p class="text-muted mb-0" style="font-size:.85rem;">Tüm pazar yerleri (Bu Ay)</p>
-            <a href="{{ url_for('report.profit_loss_report') }}"
-              class="text-success text-decoration-none small fw-bold">
-              Detay <i class="bi bi-arrow-right"></i>
-            </a>
+  <div class="col-lg-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white border-bottom py-3">
+        <h5 class="card-title mb-0 fw-bold" style="color: var(--vidos-dark);">Pazar Yeri Dağılımı</h5>
+      </div>
+      <div class="card-body">
+        <div style="height: 250px; position: relative;">
+          <canvas id="marketplaceChart"></canvas>
+        </div>
+        <div class="mt-4">
+          <div class="d-flex justify-content-between small mb-1">
+            <span>Ürün Limit Kullanımı</span>
+            <span class="fw-bold">{{ stats.usage.products.percent|default(0) }}%</span>
           </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-lg-3">
-    <div class="card p-4 stat-card border-primary">
-      <div class="d-flex align-items-center">
-        <i class="bi bi-basket text-primary fs-3 me-3"></i>
-        <div>
-          <p class="text-muted mb-0">Aylık Sipariş Adedi</p>
-          <h4 class="mb-0 fw-bold text-primary" id="stat-monthly-orders">{{ stats.monthly_orders }}</h4>
-          <p class="text-muted mt-1 mb-0" style="font-size:.85rem;">Toplam (Bu Ay)</p>
-        </div>
-      </div>
-    </div>
-  </div>
-  <!-- Tahmini Net Kar Removed per request -->
-  <div class="col-6 col-lg-3">
-    <div class="card p-4 stat-card border-warning">
-      <div class="d-flex align-items-center">
-        <i class="bi bi-cart-plus text-warning fs-3 me-3"></i>
-        <div>
-          <p class="text-muted mb-0">Aylık Sepete Alınma</p>
-          <h4 class="mb-0 fw-bold text-warning">0</h4>
-          <p class="text-muted mt-1 mb-0" style="font-size:.85rem;">Veri Sağlanamıyor</p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  {# YENİ KARTLAR: İade ve İptal #}
-  <div class="col-6 col-lg-3 mt-4">
-    <div class="card p-4 stat-card border-danger">
-      <div class="d-flex align-items-center">
-        <i class="bi bi-arrow-return-left text-danger fs-3 me-3"></i>
-        <div>
-          <p class="text-muted mb-0">Aylık İade Adedi</p>
-          <h4 class="mb-0 fw-bold text-danger" id="stat-monthly-returns">{{ stats.returns_count|default(0) }}</h4>
-          <p class="text-muted mt-1 mb-0" style="font-size:.85rem;">Toplam (Bu Ay)</p>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-lg-3 mt-4">
-    <div class="card p-4 stat-card border-secondary">
-      <div class="d-flex align-items-center">
-        <i class="bi bi-x-circle text-secondary fs-3 me-3"></i>
-        <div>
-          <p class="text-muted mb-0">Aylık İptal Adedi</p>
-          <h4 class="mb-0 fw-bold text-secondary" id="stat-monthly-cancels">{{ stats.cancel_count|default(0) }}</h4>
-          <p class="text-muted mt-1 mb-0" style="font-size:.85rem;">Toplam (Bu Ay)</p>
+          <div class="progress" style="height: 8px; border-radius: 4px;">
+            <div class="progress-bar bg-primary" style="width: {{ stats.usage.products.percent|default(0) }}%"></div>
+          </div>
         </div>
       </div>
     </div>

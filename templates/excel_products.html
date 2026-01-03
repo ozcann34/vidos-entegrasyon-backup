@@ -14,25 +14,26 @@
     </div>
 
     <!-- Saved Files Section -->
-    <div class="card mb-4 border-0 shadow-sm" style="background: var(--card);">
+    <div class="card vidos-card mb-4 border-0 animate-fade-in">
         <div class="card-header bg-transparent border-0 py-3 d-flex justify-content-between align-items-center">
-            <h5 class="mb-0"><i class="bi bi-folder2-open me-2"></i>Kayıtlı Excel Dosyaları</h5>
-            <button class="btn btn-sm btn-outline-secondary" onclick="refreshFileList()">
+            <h6 class="mb-0 fw-bold text-secondary text-uppercase small"><i class="bi bi-folder2-open me-2"></i>Kayıtlı
+                Dosyalar</h6>
+            <button class="btn btn-sm btn-white border shadow-sm" onclick="refreshFileList()">
                 <i class="bi bi-arrow-clockwise me-1"></i>Yenile
             </button>
         </div>
-        <div class="card-body">
-            <div class="row align-items-center">
+        <div class="card-body pt-0">
+            <div class="row align-items-center g-3">
                 <div class="col-md-8">
-                    <select id="savedFileSelect" class="form-select">
+                    <select id="savedFileSelect" class="form-select bg-light border-0">
                         <option value="">-- Dosya Seçin --</option>
                     </select>
                 </div>
-                <div class="col-md-4 d-flex gap-2 mt-2 mt-md-0">
-                    <button class="btn btn-primary flex-grow-1" onclick="loadSelectedFile()">
+                <div class="col-md-4 d-flex gap-2">
+                    <button class="btn btn-primary flex-grow-1 shadow-sm fw-bold" onclick="loadSelectedFile()">
                         <i class="bi bi-folder2-open me-1"></i>Yükle
                     </button>
-                    <button class="btn btn-outline-danger" onclick="deleteSelectedFile()">
+                    <button class="btn btn-white border shadow-sm text-danger" onclick="deleteSelectedFile()">
                         <i class="bi bi-trash"></i>
                     </button>
                 </div>
@@ -41,132 +42,152 @@
     </div>
 
     <!-- Upload Section -->
-    <div class="card mb-4 border-0 shadow-sm" style="background: var(--card);">
+    <div class="card vidos-card mb-4 border-0 animate-fade-in">
         <div class="card-header bg-transparent border-0 py-3 d-flex justify-content-between align-items-center">
-            <h5 class="mb-0"><i class="bi bi-cloud-upload me-2"></i>Excel Dosyası Yükle</h5>
-            <a href="{{ url_for('products.download_template') }}" class="btn btn-sm btn-outline-success">
-                <i class="bi bi-file-earmark-excel me-1"></i>Örnek Şablon İndir
+            <h6 class="mb-0 fw-bold text-secondary text-uppercase small"><i class="bi bi-cloud-upload me-2"></i>Excel
+                Yükle</h6>
+            <a href="{{ url_for('products.download_template') }}"
+                class="btn btn-sm btn-white border shadow-sm text-success fw-bold">
+                <i class="bi bi-file-earmark-excel me-1"></i>Şablon İndir
             </a>
         </div>
-        <div class="card-body">
-            <div id="dropZone" class="border border-2 border-dashed rounded-3 p-5 text-center"
-                style="border-color: var(--border) !important; cursor: pointer; transition: all 0.3s;">
-                <i class="bi bi-file-earmark-excel display-4 text-success mb-3"></i>
-                <p class="mb-2">Dosyayı sürükleyip bırakın veya tıklayarak seçin</p>
-                <small class="text-muted">.xlsx, .xls, .csv desteklenir</small>
+        <div class="card-body pt-0">
+            <div id="dropZone" class="border border-2 border-dashed rounded-3 p-5 text-center bg-light"
+                style="border-color: var(--vidos-border-color) !important; cursor: pointer; transition: all 0.3s;">
+                <div class="mb-3">
+                    <i class="bi bi-cloud-arrow-up display-4 text-primary opacity-50"></i>
+                </div>
+                <h6 class="fw-bold text-dark">Dosyayı buraya bırakın</h6>
+                <p class="text-muted small mb-0">veya tıklayarak seçin (.xlsx, .csv)</p>
                 <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" class="d-none">
             </div>
             <div id="uploadProgress" class="mt-3 d-none">
-                <div class="progress" style="height: 8px;">
-                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" style="width: 0%">
+                <div class="progress" style="height: 6px;">
+                    <div class="progress-bar bg-primary progress-bar-striped progress-bar-animated" style="width: 0%">
                     </div>
                 </div>
-                <small class="text-muted mt-1 d-block">Yükleniyor...</small>
+                <div class="d-flex justify-content-between mt-1">
+                    <small class="text-primary fw-bold">Yükleniyor...</small>
+                    <small class="text-muted" id="uploadPercentage">0%</small>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- File Info Section -->
-    <div id="fileInfoSection" class="card mb-4 border-0 shadow-sm d-none" style="background: var(--card);">
-        <div class="card-body">
+    <div id="fileInfoSection" class="card vidos-card mb-4 border-0 shadow-sm d-none animate-fade-in">
+        <div class="card-body p-3">
             <div class="row align-items-center">
                 <div class="col-md-6">
-                    <h6 class="mb-1"><i class="bi bi-file-earmark-check text-success me-2"></i><span
-                            id="fileName">dosya.xlsx</span></h6>
-                    <small class="text-muted"><span id="productCount">0</span> ürün yüklendi</small>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="rounded-circle bg-success-subtle p-3 text-success">
+                            <i class="bi bi-file-earmark-spreadsheet fs-4"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-0 fw-bold text-dark" id="fileName">dosya.xlsx</h6>
+                            <small class="text-muted"><span id="productCount" class="fw-bold text-primary">0</span> ürün
+                                yüklendi</small>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-md-6 text-md-end">
-                    <span class="badge bg-success me-2"><span id="matchedCols">0</span>/<span id="totalCols">0</span>
-                        kolon eşleşti</span>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="showColumnMapping()">
-                        <i class="bi bi-list-check me-1"></i>Kolon Eşleşmesi
-                    </button>
+                <div class="col-md-6 text-md-end mt-3 mt-md-0">
+                    <div class="d-inline-flex align-items-center gap-2 bg-light rounded-pill p-1 pe-3 border">
+                        <span class="badge bg-success rounded-pill px-3 py-2">
+                            <span id="matchedCols">0</span>/<span id="totalCols">0</span>
+                        </span>
+                        <span class="small text-muted fw-bold">Kolon Eşleşti</span>
+                        <button class="btn btn-sm btn-white border shadow-sm rounded-pill ms-2"
+                            onclick="showColumnMapping()">
+                            <i class="bi bi-list-check me-1"></i>Detay
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Action Buttons -->
-    <div id="actionSection" class="card mb-4 border-0 shadow-sm d-none" style="background: var(--card);">
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-6">
-                    <h6 class="mb-3"><i class="bi bi-send me-2"></i>Pazaryerine Gönder</h6>
-                    <div class="btn-group flex-wrap gap-2">
-                        <button class="btn btn-outline-warning btn-sm" onclick="sendToMarketplace('trendyol')">
-                            <i class="bi bi-shop me-1"></i>Trendyol'a Gönder
+    <div id="actionSection" class="card vidos-card mb-4 border-0 d-none animate-fade-in">
+        <div class="card-body p-4">
+            <div class="row g-4">
+                <div class="col-lg-6 border-end-lg">
+                    <h6 class="mb-3 fw-bold text-secondary text-uppercase small"><i
+                            class="bi bi-send me-2"></i>Pazaryeri Gönderim</h6>
+                    <div class="btn-group w-100 shadow-sm mb-3" role="group">
+                        <button class="btn btn-white border fw-bold text-warning"
+                            onclick="sendToMarketplace('trendyol')">
+                            Trendyol
                         </button>
-                        <button class="btn btn-outline-primary btn-sm" onclick="sendToMarketplace('pazarama')">
-                            <i class="bi bi-shop me-1"></i>Pazarama'ya Gönder
+                        <button class="btn btn-white border fw-bold text-primary"
+                            onclick="sendToMarketplace('pazarama')">
+                            Pazarama
                         </button>
-                        <!-- N11 Button Added -->
-                        <button class="btn btn-outline-danger btn-sm" onclick="sendToMarketplace('n11')">
-                            <i class="bi bi-shop me-1"></i>N11'e Gönder
+                        <button class="btn btn-white border fw-bold text-danger" onclick="sendToMarketplace('n11')">
+                            N11
                         </button>
-                        <button class="btn btn-outline-secondary btn-sm" onclick="sendToMarketplace('idefix')">
-                            <i class="bi bi-shop me-1"></i>İdefix'e Gönder
-                        </button>
-                    </div>
-                    <div class="mt-2">
-                        <button class="btn btn-primary" onclick="sendAllToTrendyol()">
-                            <i class="bi bi-send-fill me-1"></i>Hepsini Trendyol'a Gönder
+                        <button class="btn btn-white border fw-bold text-info" onclick="sendToMarketplace('idefix')">
+                            İdefix
                         </button>
                     </div>
-                    <div class="mt-3 d-flex gap-2 flex-wrap">
-                        <button class="btn btn-outline-secondary" disabled
-                            title="Otomatik eşleştirme gönderim sırasında yapılır">
-                            <i class="bi bi-tags me-1"></i>Markaları Eşleştir
+
+                    <button class="btn btn-primary w-100 shadow-sm mb-3 fw-bold py-2" onclick="sendAllToTrendyol()">
+                        <i class="bi bi-rocket-takeoff me-2"></i>Hepsini Trendyol'a Gönder
+                    </button>
+
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-white border flex-fill text-muted" disabled>
+                            <i class="bi bi-tags me-1"></i>Marka Eşleştir
                         </button>
-                        <button class="btn btn-outline-info" onclick="showCategoryMatchingModal()">
-                            <i class="bi bi-folder me-1"></i>Kategorileri Eşleştir
+                        <button class="btn btn-sm btn-white border flex-fill text-info"
+                            onclick="showCategoryMatchingModal()">
+                            <i class="bi bi-folder me-1"></i>Kategori Eşleştir
                         </button>
                     </div>
                 </div>
-                <div class="col-md-6 mt-3 mt-md-0">
-                    <h6 class="mb-3"><i class="bi bi-gear me-2"></i>Gönderim Seçenekleri</h6>
+                <div class="col-lg-6">
+                    <h6 class="mb-3 fw-bold text-secondary text-uppercase small"><i
+                            class="bi bi-sliders me-2"></i>Gönderim Ayarları</h6>
                     <div class="row g-2">
                         <div class="col-6">
-                            <div class="form-check">
-                                <input type="checkbox" id="optZeroStock" class="form-check-input">
-                                <label class="form-check-label small" for="optZeroStock">Stok 0 olanları 1 olarak
-                                    gönder</label>
+                            <div class="form-check form-switch bg-light p-2 rounded">
+                                <input type="checkbox" id="optZeroStock" class="form-check-input ms-0 me-2">
+                                <label class="form-check-label small" for="optZeroStock">Stok 0 → 1 Gönder</label>
                             </div>
                         </div>
                         <div class="col-6">
-                            <div class="form-check">
-                                <input type="checkbox" id="optSkipNoImage" class="form-check-input">
-                                <label class="form-check-label small" for="optSkipNoImage">Görselsiz ürünleri
-                                    atla</label>
+                            <div class="form-check form-switch bg-light p-2 rounded">
+                                <input type="checkbox" id="optSkipNoImage" class="form-check-input ms-0 me-2">
+                                <label class="form-check-label small" for="optSkipNoImage">Görselsiz Atla</label>
                             </div>
                         </div>
                         <div class="col-6">
-                            <div class="form-check">
-                                <input type="checkbox" id="optPriceMultiplier" class="form-check-input">
-                                <label class="form-check-label small" for="optPriceMultiplier">Fiyat çarpanı
-                                    uygula</label>
+                            <div class="form-check form-switch bg-light p-2 rounded">
+                                <input type="checkbox" id="optPriceMultiplier" class="form-check-input ms-0 me-2">
+                                <label class="form-check-label small" for="optPriceMultiplier">Fiyat Çarpanı</label>
                             </div>
                         </div>
                         <div class="col-6">
-                            <div class="form-check">
-                                <input type="checkbox" id="optSkipNoBarcode" class="form-check-input" checked>
-                                <label class="form-check-label small" for="optSkipNoBarcode">Barkodsuz ürünleri
-                                    atla</label>
+                            <div class="form-check form-switch bg-light p-2 rounded">
+                                <input type="checkbox" id="optSkipNoBarcode" class="form-check-input ms-0 me-2" checked>
+                                <label class="form-check-label small" for="optSkipNoBarcode">Barkodsuz Atla</label>
                             </div>
                         </div>
-                        <div class="col-12">
-                            <div class="form-check">
-                                <input type="checkbox" id="optMatchByStockCode" class="form-check-input">
+                        <div class="col-12 mt-2">
+                            <div
+                                class="form-check form-switch bg-primary-subtle p-2 rounded border border-primary-subtle">
+                                <input type="checkbox" id="optMatchByStockCode" class="form-check-input ms-0 me-2">
                                 <label class="form-check-label small fw-bold text-primary" for="optMatchByStockCode">
                                     <i class="bi bi-upc-scan me-1"></i>Stok Kodu İle Eşleştir (Barkod yerine)
                                 </label>
                             </div>
                         </div>
-                        <div class="col-6">
+                        <div class="col-12 mt-2">
                             <div class="input-group input-group-sm">
-                                <span class="input-group-text small">Fiyat 0 ise:</span>
-                                <input type="text" id="optDefaultPrice" class="form-control" placeholder="0.00">
-                                <button class="btn btn-success btn-sm" type="button" onclick="saveDefaultPrice()">
-                                    <i class="bi bi-check"></i>
+                                <span class="input-group-text bg-light border-0">Varsayılan Fiyat</span>
+                                <input type="text" id="optDefaultPrice" class="form-control bg-light border-0"
+                                    placeholder="0.00">
+                                <button class="btn btn-success" type="button" onclick="saveDefaultPrice()">
+                                    <i class="bi bi-check-lg"></i>
                                 </button>
                             </div>
                         </div>
@@ -177,39 +198,39 @@
     </div>
 
     <!-- Barcode/Stock Code Generator -->
-    <div id="codeGeneratorSection" class="card mb-4 border-0 shadow-sm d-none" style="background: var(--card);">
-        <div class="card-body">
-            <h6 class="mb-3"><i class="bi bi-upc-scan me-2"></i>Barkod / Stok Kodu Oluşturucu</h6>
-            <div class="row g-3">
+    <div id="codeGeneratorSection" class="card vidos-card mb-4 border-0 d-none animate-fade-in">
+        <div class="card-body p-3">
+            <h6 class="mb-3 fw-bold text-secondary text-uppercase small"><i class="bi bi-upc-scan me-2"></i>Barkod & Kod
+                Operasyonları</h6>
+            <div class="row g-3 align-items-end">
                 <div class="col-md-2">
-                    <label class="form-label small">Ön Ek (2 harf)</label>
-                    <input type="text" id="codePrefix" class="form-control" maxlength="2" placeholder="VD"
-                        style="text-transform: uppercase;">
+                    <label class="form-label small fw-bold text-muted mb-1">Kod Ön Eki</label>
+                    <input type="text" id="codePrefix" class="form-control form-control-sm bg-light border-0"
+                        maxlength="2" placeholder="VD" style="text-transform: uppercase;">
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label small">Oluşturulacak Kod</label>
-                    <select id="codeType" class="form-select">
-                        <option value="both">Barkod + Stok Kodu</option>
+                    <label class="form-label small fw-bold text-muted mb-1">İşlem Tipi</label>
+                    <select id="codeType" class="form-select form-select-sm bg-light border-0">
+                        <option value="both">Barkod + Stok</option>
                         <option value="barcode">Sadece Barkod</option>
-                        <option value="stock">Sadece Stok Kodu</option>
+                        <option value="stock">Sadece Stok</option>
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label small"><i class="bi bi-tag me-1"></i>Ürün İsmi Öneki</label>
-                    <input type="text" id="titlePrefix" class="form-control" placeholder="Örn: [KAMPANYA] "
-                        onchange="localStorage.setItem('excelTitlePrefix', this.value)">
-                    <small class="text-muted">Gönderimde ürün isminin başına eklenir</small>
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-tag me-1"></i>Ürün Adı Ön
+                        Eki</label>
+                    <input type="text" id="titlePrefix" class="form-control form-control-sm bg-light border-0"
+                        placeholder="Örn: [KAMPANYA] " onchange="localStorage.setItem('excelTitlePrefix', this.value)">
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label small">&nbsp;</label>
-                    <button class="btn btn-warning w-100" onclick="generateRandomCodes()">
-                        <i class="bi bi-shuffle me-1"></i>Random Oluştur
+                    <button class="btn btn-warning btn-sm w-100 shadow-sm fw-bold text-white"
+                        onclick="generateRandomCodes()">
+                        <i class="bi bi-shuffle me-1"></i>Oluştur
                     </button>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label small">&nbsp;</label>
-                    <button class="btn btn-outline-secondary w-100" onclick="showCustomCodeModal()">
-                        <i class="bi bi-pencil me-1"></i>Özel Kod Gir
+                <div class="col-md-2">
+                    <button class="btn btn-white btn-sm border w-100 shadow-sm" onclick="showCustomCodeModal()">
+                        <i class="bi bi-pencil me-1"></i>Özel Kod
                     </button>
                 </div>
             </div>
@@ -217,38 +238,41 @@
     </div>
 
     <!-- Products Table -->
-    <div id="productsSection" class="card border-0 shadow-sm d-none" style="background: var(--card);">
+    <div id="productsSection" class="card vidos-card border-0 d-none animate-fade-in">
         <div class="card-header bg-transparent border-0 py-3">
-            <div class="row align-items-center">
+            <div class="row align-items-center g-2">
                 <div class="col-md-4">
-                    <div class="input-group">
-                        <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search"></i></span>
-                        <input type="text" id="searchInput" class="form-control border-start-0"
-                            placeholder="Barkod, ürün adı ara...">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light border-0 text-muted"><i class="bi bi-search"></i></span>
+                        <input type="text" id="searchInput" class="form-control bg-light border-0"
+                            placeholder="Barkod veya ürün adı ara...">
                     </div>
                 </div>
                 <div class="col-md-4 text-center">
-                    <span class="text-muted">Seçili: <strong id="selectedCount">0</strong> ürün</span>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3">
+                        Seçili: <strong id="selectedCount">0</strong>
+                    </span>
                 </div>
                 <div class="col-md-4 text-end">
-                    <button class="btn btn-sm btn-outline-primary me-2" onclick="selectAll()">
-                        <i class="bi bi-check-all me-1"></i>Tümünü Seç
-                    </button>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="deselectAll()">
-                        <i class="bi bi-x-lg me-1"></i>Seçimi Kaldır
-                    </button>
+                    <div class="btn-group shadow-sm">
+                        <button class="btn btn-sm btn-white border" onclick="selectAll()">
+                            <i class="bi bi-check-all text-success me-1"></i>Tümünü Seç
+                        </button>
+                        <button class="btn btn-sm btn-white border" onclick="deselectAll()">
+                            <i class="bi bi-x-lg text-danger me-1"></i>Kaldır
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover mb-0" id="productsTable">
-                    <thead style="background: var(--bg);">
+                <table class="table table-hover align-middle mb-0" id="productsTable">
+                    <thead class="bg-light">
                         <tr>
-                            <th style="width: 40px;"><input type="checkbox" id="selectAllCheck"
-                                    class="form-check-input">
-                            </th>
-                            <th style="width: 50px;">Görsel</th>
+                            <th style="width: 40px;" class="ps-3"><input type="checkbox" id="selectAllCheck"
+                                    class="form-check-input"></th>
+                            <th style="width: 60px;">Görsel</th>
                             <th>Barkod</th>
                             <th>Stok Kodu</th>
                             <th>Ürün Adı</th>
@@ -258,7 +282,7 @@
                             <th class="text-center" style="width: 100px;">İşlem</th>
                         </tr>
                     </thead>
-                    <tbody id="productsBody">
+                    <tbody id="productsBody" class="border-top-0">
                         <!-- Products will be loaded here -->
                     </tbody>
                 </table>
@@ -267,18 +291,18 @@
         <div class="card-footer bg-transparent border-0 py-3">
             <div class="row align-items-center">
                 <div class="col-md-4">
-                    <small class="text-muted">Toplam: <strong id="totalProducts">0</strong> ürün / <strong
-                            id="totalPages">0</strong> sayfa</small>
+                    <small class="text-muted fw-bold">Toplam: <span id="totalProducts">0</span> ürün</small>
                 </div>
                 <div class="col-md-4">
                     <nav>
-                        <ul class="pagination justify-content-center mb-0" id="pagination"></ul>
+                        <ul class="pagination justify-content-center pagination-sm mb-0" id="pagination"></ul>
                     </nav>
                 </div>
                 <div class="col-md-4 text-end">
-                    <div class="input-group input-group-sm" style="max-width: 150px; display: inline-flex;">
-                        <input type="number" id="goToPageInput" class="form-control" placeholder="Sayfa" min="1">
-                        <button class="btn btn-outline-secondary" onclick="goToPage()">Git</button>
+                    <div class="input-group input-group-sm d-inline-flex" style="width: 120px;">
+                        <input type="number" id="goToPageInput" class="form-control bg-light border-0"
+                            placeholder="Sayfa" min="1">
+                        <button class="btn btn-white border" onclick="goToPage()">Git</button>
                     </div>
                 </div>
             </div>
@@ -796,22 +820,38 @@
         tbody.innerHTML = products.map(p => {
             const imgUrl = getProductImage(p);
             return `
-      <tr data-index="${p._index - 1}" class="${selectedIndices.has(p._index - 1) ? 'selected' : ''}">
-        <td><input type="checkbox" class="form-check-input product-check" ${selectedIndices.has(p._index - 1) ? 'checked' : ''}></td>
-        <td>${imgUrl ? `<img src="${imgUrl}" class="rounded" style="width:40px;height:40px;object-fit:cover;" onerror="this.style.display='none'">` : '<i class="bi bi-image text-muted"></i>'}</td>
-        <td><code>${p.barcode || '-'}</code></td>
-        <td><small class="text-muted">${p.stock_code || '-'}</small></td>
-        <td>${(p.title || '').substring(0, 40)}${(p.title || '').length > 40 ? '...' : ''}</td>
-        <td><span class="badge bg-secondary">${p.brand || '-'}</span></td>
-        <td class="text-end">${formatPrice(p.sale_price || p.price)}</td>
-        <td class="text-center"><span class="badge ${parseInt(p.quantity) > 0 ? 'bg-success' : 'bg-danger'}">${p.quantity || 0}</span></td>
+      <tr data-index="${p._index - 1}" class="animate-fade-in ${selectedIndices.has(p._index - 1) ? 'selected table-primary' : ''}">
+        <td class="ps-3"><input type="checkbox" class="form-check-input product-check" ${selectedIndices.has(p._index - 1) ? 'checked' : ''}></td>
+        <td>
+            <div class="rounded border p-1 bg-white shadow-sm" style="width: 48px; height: 48px;">
+                ${imgUrl ? `<img src="${imgUrl}" class="rounded w-100 h-100 object-fit-cover" onerror="this.style.display='none'">` : '<div class="d-flex align-items-center justify-content-center h-100 bg-light rounded text-muted"><i class="bi bi-image"></i></div>'}
+            </div>
+        </td>
+        <td>
+            <div class="d-flex flex-column">
+                <span class="badge bg-light text-dark border font-monospace select-all" style="width: fit-content;">${p.barcode || '-'}</span>
+            </div>
+        </td>
+        <td><small class="text-muted font-monospace">${p.stock_code || '-'}</small></td>
+        <td>
+            <div class="text-truncate fw-semibold text-dark" style="max-width: 300px;" title="${escapeHtml(p.title || '')}">${(p.title || '')}</div>
+        </td>
+        <td>${p.brand ? `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">${p.brand}</span>` : '<span class="text-muted small">-</span>'}</td>
+        <td class="text-end fw-bold text-dark">${formatPrice(p.sale_price || p.price)}</td>
         <td class="text-center">
-          <button class="btn btn-sm btn-outline-info me-1" onclick="showProductDetail(${p._index - 1})" title="Detay">
-            <i class="bi bi-eye"></i>
-          </button>
-          <button class="btn btn-sm btn-outline-primary" onclick="editProduct(${p._index - 1})" title="Düzenle">
-            <i class="bi bi-pencil"></i>
-          </button>
+            <span class="badge ${parseInt(p.quantity) > 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} rounded-pill px-3">
+                ${p.quantity || 0}
+            </span>
+        </td>
+        <td class="text-center">
+            <div class="btn-group shadow-sm op-0-hover">
+              <button class="btn btn-sm btn-white border text-primary" onclick="showProductDetail(${p._index - 1})" title="Detay">
+                <i class="bi bi-eye"></i>
+              </button>
+              <button class="btn btn-sm btn-white border text-secondary" onclick="editProduct(${p._index - 1})" title="Düzenle">
+                <i class="bi bi-pencil"></i>
+              </button>
+            </div>
         </td>
       </tr>
     `}).join('');
@@ -823,10 +863,10 @@
                 const idx = parseInt(row.dataset.index);
                 if (this.checked) {
                     selectedIndices.add(idx);
-                    row.classList.add('selected');
+                    row.classList.add('selected', 'table-primary');
                 } else {
                     selectedIndices.delete(idx);
-                    row.classList.remove('selected');
+                    row.classList.remove('selected', 'table-primary');
                 }
                 updateSelectedCount();
             });

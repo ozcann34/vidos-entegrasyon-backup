@@ -5,125 +5,121 @@
 {% block content %}
 <div id="tabMarketplace">
   <!-- Modern Toolbar & Filter System -->
-  <div class="card border-0 shadow-sm mb-4" style="background: var(--card);">
-    <div class="card-body p-2">
-      <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
+  <div class="card vidos-card border-0 mb-4">
+    <div class="card-body p-3">
+      <div class="d-flex flex-wrap gap-3 align-items-center justify-content-between">
         <!-- Search Bar (Flexible Pivot) -->
-        <div class="input-group w-100-mobile flex-grow-1" style="min-width: 250px; max-width: 600px;">
-          <span class="input-group-text border-end-0"
-            style="background: var(--input-bg); border-color: var(--input-border); color: var(--muted);"><i
-              class="bi bi-search"></i></span>
-          <input type="text" id="searchInput" class="form-control border-start-0 ps-0"
-            style="background: var(--input-bg); border-color: var(--input-border); color: var(--text);"
+        <div class="input-group w-auto flex-grow-1" style="min-width: 280px; max-width: 600px;">
+          <span class="input-group-text bg-light border-0"><i class="bi bi-search text-muted"></i></span>
+          <input type="text" id="searchInput" class="form-control bg-light border-0"
             placeholder="Ürün adı, barkod veya stok kodu ara...">
           {% if marketplace in ['n11', 'trendyol', 'idefix'] %}
-          <button id="btnFetchFromMp" class="btn btn-outline-warning" title="Pazaryerinden Veri Çek"><i
-              class="bi bi-cloud-download"></i></button>
+          <button id="btnFetchFromMp" class="btn btn-warning shadow-sm fw-bold text-white ms-2 rounded"
+            title="Pazaryerinden Veri Çek"><i class="bi bi-cloud-download me-1"></i>Çek</button>
           {% endif %}
         </div>
 
         <!-- Toolbar Right: View Toggles & Bulk Actions -->
-        <div class="d-flex gap-2 align-items-center w-100-mobile justify-content-between-mobile">
+        <div class="d-flex gap-2 align-items-center flex-wrap">
           <!-- Advanced Filter Toggle -->
-          <button class="btn btn-outline-secondary flex-fill-mobile" type="button" data-bs-toggle="collapse"
+          <button class="btn btn-white border shadow-sm btn-sm fw-bold" type="button" data-bs-toggle="collapse"
             data-bs-target="#advancedFilterPanel" aria-expanded="false" aria-controls="advancedFilterPanel">
             <i class="bi bi-sliders me-1"></i> Filtrele
           </button>
 
+          <div class="vr mx-1 d-none d-md-block text-secondary opacity-25"></div>
+
           <!-- View Toggles -->
-          <div class="btn-group" role="group" aria-label="Görünüm">
-            <button type="button" class="btn btn-outline-secondary view-toggle active" data-view="table"
+          <div class="btn-group shadow-sm" role="group" aria-label="Görünüm">
+            <button type="button" class="btn btn-white border btn-sm view-toggle active" data-view="table"
               title="Tablo"><i class="bi bi-table"></i></button>
-            <button type="button" class="btn btn-outline-secondary view-toggle" data-view="grid" title="Kart"><i
+            <button type="button" class="btn btn-white border btn-sm view-toggle" data-view="grid" title="Kart"><i
                 class="bi bi-grid-3x3-gap"></i></button>
-            <button type="button" class="btn btn-outline-secondary view-toggle" data-view="compact" title="Kompakt"><i
+            <button type="button" class="btn btn-white border btn-sm view-toggle" data-view="compact" title="Kompakt"><i
                 class="bi bi-list"></i></button>
           </div>
 
-          <div class="vr mx-1 d-none d-md-block text-secondary"></div>
+          <div class="vr mx-1 d-none d-md-block text-secondary opacity-25"></div>
 
-        </div>
-
-        <div class="vr mx-1 d-none d-md-block text-secondary"></div>
-
-        <!-- Bulk Actions -->
-        <div class="dropdown">
-          <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="mainActionsDropdown"
-            data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="bi bi-three-dots-vertical"></i>
-          </button>
-          <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="mainActionsDropdown">
-            <li><button id="btnBulkUpdate" class="dropdown-item" disabled><i
-                  class="bi bi-pencil-square me-2"></i>Seçiliyi Güncelle</button></li>
-            <li><button id="btnBulkDelete" class="dropdown-item text-danger" disabled><i
-                  class="bi bi-trash me-2"></i>Seçiliyi Sil</button></li>
-            <li>
-              <hr class="dropdown-divider">
-            </li>
-            <li><button id="btnRefreshList" class="dropdown-item"><i class="bi bi-arrow-repeat me-2"></i>Listeyi
-                Yenile</button></li>
-          </ul>
+          <!-- Bulk Actions -->
+          <div class="dropdown">
+            <button class="btn btn-white border shadow-sm btn-sm dropdown-toggle fw-bold" type="button"
+              id="mainActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+              İşlemler
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow border-0" aria-labelledby="mainActionsDropdown">
+              <li><button id="btnBulkUpdate" class="dropdown-item" disabled><i
+                    class="bi bi-pencil-square me-2 text-primary"></i>Seçiliyi Güncelle</button></li>
+              <li><button id="btnBulkDelete" class="dropdown-item text-danger" disabled><i
+                    class="bi bi-trash me-2"></i>Seçiliyi Sil</button></li>
+              <li>
+                <hr class="dropdown-divider">
+              </li>
+              <li><button id="btnRefreshList" class="dropdown-item"><i class="bi bi-arrow-repeat me-2"></i>Listeyi
+                  Yenile</button></li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
   <!-- Collapsible Advanced Filter Panel -->
-  <div class="collapse" id="advancedFilterPanel">
-    <div class="card-footer border-top-0 p-3" style="background: var(--card);">
-      <div class="row g-3">
+  <div class="collapse mb-4" id="advancedFilterPanel">
+    <div class="card vidos-card border-0 p-4">
+      <div class="row g-4">
         <!-- Status Filters -->
         <div class="col-md-6 col-lg-4">
-          <label class="form-label small text-muted fw-bold">Durum</label>
-          <div class="btn-group w-100" role="group">
-            <button type="button" class="btn btn-outline-secondary btn-sm filter-btn" data-filter="status"
+          <label class="form-label small text-muted fw-bold text-uppercase">Durum</label>
+          <div class="btn-group w-100 shadow-sm" role="group">
+            <button type="button" class="btn btn-white border btn-sm filter-btn fw-bold" data-filter="status"
               data-value="all">Tümü</button>
-            <button type="button" class="btn btn-outline-secondary btn-sm filter-btn" data-filter="status"
+            <button type="button" class="btn btn-white border btn-sm filter-btn text-success" data-filter="status"
               data-value="active">Aktif</button>
-            <button type="button" class="btn btn-outline-secondary btn-sm filter-btn" data-filter="status"
+            <button type="button" class="btn btn-white border btn-sm filter-btn text-warning" data-filter="status"
               data-value="pending">Onay</button>
-            <button type="button" class="btn btn-outline-secondary btn-sm filter-btn" data-filter="status"
+            <button type="button" class="btn btn-white border btn-sm filter-btn text-muted" data-filter="status"
               data-value="passive">Pasif</button>
           </div>
         </div>
 
         <!-- Stock Level Filters -->
         <div class="col-md-6 col-lg-3">
-          <label class="form-label small text-muted fw-bold">Stok Durumu</label>
-          <div class="btn-group w-100" role="group">
-            <button type="button" class="btn btn-outline-secondary btn-sm filter-btn" data-filter="stock"
+          <label class="form-label small text-muted fw-bold text-uppercase">Stok Durumu</label>
+          <div class="btn-group w-100 shadow-sm" role="group">
+            <button type="button" class="btn btn-white border btn-sm filter-btn fw-bold" data-filter="stock"
               data-value="all">Tümü</button>
-            <button type="button" class="btn btn-outline-secondary btn-sm filter-btn" data-filter="stock"
+            <button type="button" class="btn btn-white border btn-sm filter-btn text-danger" data-filter="stock"
               data-value="low">Kritik (&lt;10)</button>
-            <button type="button" class="btn btn-outline-secondary btn-sm filter-btn" data-filter="stock"
+            <button type="button" class="btn btn-white border btn-sm filter-btn text-secondary" data-filter="stock"
               data-value="out">Tükenmiş</button>
           </div>
         </div>
 
         <!-- Range Inputs -->
         <div class="col-md-6 col-lg-3">
-          <label class="form-label small text-muted fw-bold">Fiyat Aralığı</label>
+          <label class="form-label small text-muted fw-bold text-uppercase">Fiyat Aralığı</label>
           <div class="input-group input-group-sm">
-            <span class="input-group-text">Min</span>
-            <input type="number" id="filterPriceMin" class="form-control" placeholder="0">
-            <span class="input-group-text">Max</span>
-            <input type="number" id="filterPriceMax" class="form-control" placeholder="∞">
+            <span class="input-group-text bg-light border-0">Min</span>
+            <input type="number" id="filterPriceMin" class="form-control bg-light border-0" placeholder="0">
+            <span class="input-group-text bg-light border-0">Max</span>
+            <input type="number" id="filterPriceMax" class="form-control bg-light border-0" placeholder="∞">
           </div>
         </div>
         <div class="col-md-6 col-lg-2">
-          <label class="form-label small text-muted fw-bold">Stok Aralığı</label>
+          <label class="form-label small text-muted fw-bold text-uppercase">Stok Aralığı</label>
           <div class="input-group input-group-sm">
-            <input type="number" id="filterStockMin" class="form-control" placeholder="Min">
-            <span class="input-group-text">-</span>
-            <input type="number" id="filterStockMax" class="form-control" placeholder="Max">
+            <input type="number" id="filterStockMin" class="form-control bg-light border-0" placeholder="Min">
+            <span class="input-group-text bg-light border-0">-</span>
+            <input type="number" id="filterStockMax" class="form-control bg-light border-0" placeholder="Max">
           </div>
         </div>
 
         <!-- Actions -->
-        <div class="col-12 d-flex justify-content-end gap-2 border-top pt-2 mt-2">
-          <button id="clearFiltersBtn" class="btn btn-sm btn-link text-muted text-decoration-none">Temizle ve
+        <div class="col-12 d-flex justify-content-end gap-2 border-top pt-3">
+          <button id="clearFiltersBtn" class="btn btn-sm btn-link text-muted text-decoration-none fw-bold">Temizle ve
             Kapat</button>
-          <button id="applyFiltersBtn" class="btn btn-sm btn-primary px-4">Uygula</button>
+          <button id="applyFiltersBtn" class="btn btn-sm btn-primary px-4 fw-bold shadow-sm">Filtreleri Uygula</button>
         </div>
       </div>
     </div>
@@ -203,105 +199,6 @@
     </div>
   </div>
 </div>
-
-<style>
-  .job-monitor-panel {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 400px;
-    max-width: 90vw;
-    background: var(--bs-dark, #212529);
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    z-index: 1050;
-    overflow: hidden;
-    transition: all 0.3s ease;
-  }
-
-  .job-monitor-panel.minimized .job-monitor-body {
-    display: none !important;
-  }
-
-  .job-monitor-panel.minimized {
-    width: auto;
-  }
-
-  .job-monitor-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 12px 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-  }
-
-  .job-monitor-title {
-    font-weight: 600;
-    font-size: 14px;
-  }
-
-  .job-monitor-body {
-    padding: 16px;
-    color: #e9ecef;
-    max-height: 350px;
-    overflow-y: auto;
-  }
-
-  .job-monitor-logs {
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 8px;
-    padding: 10px;
-    max-height: 180px;
-    overflow-y: auto;
-    font-family: 'Consolas', monospace;
-    font-size: 12px;
-  }
-
-  .job-monitor-log-item {
-    padding: 3px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  .job-monitor-log-item:last-child {
-    border-bottom: none;
-  }
-
-  .job-monitor-log-item.log-error {
-    color: #f87171;
-  }
-
-  .job-monitor-log-item.log-warning {
-    color: #fbbf24;
-  }
-
-  .job-monitor-log-item.log-info {
-    color: #60a5fa;
-  }
-
-  .job-monitor-controls button {
-    padding: 2px 8px;
-    border: none;
-  }
-
-  .job-monitor-spinner {
-    display: inline-block;
-  }
-
-  .job-monitor-panel.completed .job-monitor-spinner,
-  .job-monitor-panel.failed .job-monitor-spinner {
-    display: none;
-  }
-
-  .job-monitor-panel.completed .job-monitor-header {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  }
-
-  .job-monitor-panel.failed .job-monitor-header {
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  }
-</style>
 
 
 
@@ -1308,20 +1205,37 @@
       const qtyVal = Number(p.quantity ?? p.stock ?? p.stockCount ?? 0) || 0;
       const barcode = escapeHtml(p.barcode || '—');
       const stockCode = escapeHtml(p.stockCode || '—');
+
+      let statusBadge = '';
+      if (p.status_color === 'success' || p.status_label === 'Aktif') {
+        statusBadge = '<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Aktif</span>';
+      } else if (p.status_color === 'warning' || p.status_label === 'Onay') {
+        statusBadge = '<span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1">Onay Bekliyor</span>';
+      } else {
+        statusBadge = `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1">${p.status_label || 'Pasif'}</span>`;
+      }
+
       return `
       <tr>
-        <td><input type="checkbox" class="mpSel" data-bc="${p.barcode}"></td>
-        <td><img src="${imageUrl}" alt="${escapeHtml(p.title)}" class="img-thumbnail" style="width:60px;height:60px;object-fit:cover;"></td>
-        <td class="text-truncate" style="max-width: 250px;">${escapeHtml(p.title)}</td>
+        <td class="ps-3"><input type="checkbox" class="form-check-input mpSel" data-bc="${p.barcode}"></td>
+        <td><div class="rounded border p-1 bg-white" style="width: 50px; height: 50px;"><img src="${imageUrl}" alt="${escapeHtml(p.title)}" class="w-100 h-100 object-fit-cover rounded"></div></td>
         <td>
-          <div><span class="badge bg-secondary">${barcode}</span></div>
-          <div class="small text-muted">Stok: <code>${stockCode}</code></div>
+            <div class="fw-semibold text-dark text-truncate" style="max-width: 250px;">${escapeHtml(p.title)}</div>
+            <div class="small text-muted text-truncate" style="max-width: 250px;">${barcode}</div>
         </td>
-        <td>${priceText} TL / <span class="fw-bold text-success">${qtyVal}</span></td>
-        <td><span class="badge bg-${p.status_color || 'secondary'}">${p.status_label || '—'}</span></td>
-        <td class="d-flex gap-2">
-          <button class="btn btn-sm btn-primary btn-animated" onclick="window.openUpdateModal('${p.barcode}')"><i class="bi bi-pencil-square me-1"></i>Düzenle</button>
-          <button class="btn btn-sm btn-outline-danger btn-animated" onclick="deleteProduct('${p.barcode}')"><i class="bi bi-trash"></i></button>
+        <td>
+          <div><code class="text-primary bg-primary-subtle px-2 py-1 rounded">${stockCode}</code></div>
+        </td>
+        <td>
+            <div class="fw-bold text-dark">${priceText} TL</div>
+            <div class="small text-muted">Stok: <span class="${qtyVal < 5 ? 'text-danger fw-bold' : 'text-success fw-bold'}">${qtyVal}</span></div>
+        </td>
+        <td>${statusBadge}</td>
+        <td>
+          <div class="btn-group shadow-sm">
+            <button class="btn btn-sm btn-white border text-primary" onclick="window.openUpdateModal('${p.barcode}')" title="Düzenle"><i class="bi bi-pencil-square"></i></button>
+            <button class="btn btn-sm btn-white border text-danger" onclick="deleteProduct('${p.barcode}')" title="Sil"><i class="bi bi-trash"></i></button>
+          </div>
         </td>
       </tr>`;
     });
@@ -1367,23 +1281,41 @@
       const qtyVal = Number(p.quantity ?? p.stock ?? p.stockCount ?? 0) || 0;
       const barcode = escapeHtml(p.barcode || '—');
       const stockCode = escapeHtml(p.stockCode || '—');
+
+      let statusBadge = '';
+      if (p.status_color === 'success' || p.status_label === 'Aktif') {
+        statusBadge = '<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill">Aktif</span>';
+      } else {
+        statusBadge = `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill">${p.status_label || 'Pasif'}</span>`;
+      }
+
       return `
       <div class="col">
-        <div class="card h-100 shadow-sm">
-          <div class="ratio ratio-4x3 bg-light rounded-top">
-            <img src="${imageUrl}" alt="${escapeHtml(p.title)}" class="img-fluid object-fit-cover rounded-top">
-          </div>
-          <div class="card-body d-flex flex-column">
-            <h6 class="card-title text-truncate">${escapeHtml(p.title)}</h6>
-            <div class="mb-2">
-              <span class="badge bg-secondary">${barcode}</span>
-              <div class="small text-muted mt-1">Stok Kod: <code>${stockCode}</code></div>
+        <div class="card vidos-card h-100 border-0">
+          <div class="ratio ratio-4x3 bg-light rounded-top position-relative overflow-hidden">
+            <img src="${imageUrl}" alt="${escapeHtml(p.title)}" class="img-fluid object-fit-cover">
+            <div class="position-absolute top-0 end-0 p-2">
+                ${statusBadge}
             </div>
-            <div class="mb-2">${priceText} TL · <span class="fw-semibold text-success">${qtyVal}</span></div>
-            <div class="mb-3"><span class="badge bg-${p.status_color || 'secondary'}">${p.status_label || '—'}</span></div>
-            <div class="mt-auto d-flex gap-2">
-              <button class="btn btn-outline-primary btn-sm flex-grow-1" onclick="openUpdateModal('${p.barcode}')"><i class="bi bi-pencil-square me-1"></i>Düzenle</button>
-              <button class="btn btn-outline-danger btn-sm" onclick="deleteProduct('${p.barcode}')"><i class="bi bi-trash"></i></button>
+          </div>
+          <div class="card-body d-flex flex-column p-4">
+            <h6 class="card-title text-truncate fw-bold mb-1" title="${escapeHtml(p.title)}">${escapeHtml(p.title)}</h6>
+            <div class="text-muted small mb-3 text-truncate">${barcode}</div>
+            
+            <div class="d-flex justify-content-between align-items-end mt-auto mb-3">
+                <div>
+                    <div class="small text-muted">Fiyat</div>
+                    <div class="fw-bold fs-5 text-dark">${priceText} <small>TL</small></div>
+                </div>
+                <div class="text-end">
+                    <div class="small text-muted">Stok</div>
+                    <div class="fw-bold ${qtyVal < 5 ? 'text-danger' : 'text-success'}">${qtyVal}</div>
+                </div>
+            </div>
+
+            <div class="d-grid gap-2 d-md-flex">
+              <button class="btn btn-white border shadow-sm btn-sm flex-grow-1 fw-bold text-primary" onclick="openUpdateModal('${p.barcode}')"><i class="bi bi-pencil-square me-1"></i>Düzenle</button>
+              <button class="btn btn-white border shadow-sm btn-sm text-danger" onclick="deleteProduct('${p.barcode}')"><i class="bi bi-trash"></i></button>
             </div>
           </div>
         </div>
@@ -1404,19 +1336,31 @@
       const qtyVal = Number(p.quantity ?? p.stock ?? p.stockCount ?? 0) || 0;
       const barcode = escapeHtml(p.barcode || '—');
       const stockCode = escapeHtml(p.stockCode || '—');
+
+      let statusClass = 'bg-secondary-subtle text-secondary';
+      if (p.status_color === 'success') statusClass = 'bg-success-subtle text-success';
+
       return `
-      <div class="list-group-item d-flex align-items-center gap-3">
+      <div class="list-group-item d-flex align-items-center gap-3 border-0 shadow-sm mb-2 rounded p-3">
         <input type="checkbox" class="form-check-input mpSel" data-bc="${p.barcode}">
         <div class="flex-grow-1">
-          <div class="d-flex justify-content-between align-items-center">
-            <div class="fw-semibold text-truncate">${escapeHtml(p.title)}</div>
-            <span class="badge bg-${p.status_color || 'secondary'}">${p.status_label || '—'}</span>
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <div class="fw-bold text-dark text-truncate" style="max-width: 400px;">${escapeHtml(p.title)}</div>
+            <span class="badge ${statusClass} rounded-pill px-3">${p.status_label || '—'}</span>
           </div>
-          <div class="text-muted small">${barcode} · Stok: <code>${stockCode}</code> · ${priceText} TL · <span class="text-success fw-semibold">${qtyVal}</span></div>
+          <div class="text-muted small d-flex gap-3 align-items-center">
+            <span><i class="bi bi-upc-scan me-1"></i>${barcode}</span>
+            <span class="vr"></span>
+            <span><i class="bi bi-box-seam me-1"></i>${stockCode}</span>
+            <span class="vr"></span>
+            <span class="fw-bold text-dark">${priceText} TL</span>
+            <span class="vr"></span>
+            <span class="${qtyVal < 5 ? 'text-danger fw-bold' : 'text-success fw-bold'}">Stok: ${qtyVal}</span>
+          </div>
         </div>
-        <div class="btn-group btn-group-sm">
-          <button class="btn btn-outline-primary" title="Düzenle" onclick="openUpdateModal('${p.barcode}')"><i class="bi bi-pencil-square"></i></button>
-          <button class="btn btn-outline-danger" onclick="deleteProduct('${p.barcode}')"><i class="bi bi-trash"></i></button>
+        <div class="btn-group shadow-sm">
+          <button class="btn btn-sm btn-white border text-primary" title="Düzenle" onclick="openUpdateModal('${p.barcode}')"><i class="bi bi-pencil-square"></i></button>
+          <button class="btn btn-sm btn-white border text-danger" onclick="deleteProduct('${p.barcode}')"><i class="bi bi-trash"></i></button>
         </div>
       </div>`;
     });

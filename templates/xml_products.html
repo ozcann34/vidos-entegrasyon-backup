@@ -3,78 +3,60 @@
 {% block page_title %}Tedarikçi XML'den Gelen Ürünler{% endblock %}
 
 {% block content %}
-<style>
-  .text-orange {
-    color: #FF6000 !important;
-  }
-
-  .text-purple {
-    color: #5f259f !important;
-  }
-
-  .btn-outline-warning:hover,
-  .btn-outline-danger:hover,
-  .btn-outline-primary:hover,
-  .btn-outline-info:hover,
-  .btn-outline-secondary:hover {
-    transform: translateY(-2px);
-    transition: all 0.2s;
-  }
-</style>
 <div class="animate-fade-in">
-  <!-- Minimalist Toolbar -->
-  <div class="card border-0 shadow-sm mb-4" style="background: var(--card); border-radius: 1rem;">
-    <div class="card-body p-2">
-      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <!-- Modern Toolbar & Filter System -->
+  <div class="card vidos-card border-0 mb-4">
+    <div class="card-body p-3">
+      <div class="d-flex flex-wrap gap-3 align-items-center justify-content-between">
+
         <!-- Left Side: Source & Basic View -->
         <div class="d-flex align-items-center gap-2">
           <button id="changeSourceBtn"
-            class="btn btn-sm btn-outline-primary border-2 fw-bold d-flex align-items-center gap-2 rounded-pill px-3">
-            <i class="bi bi-hdd-network"></i> Kaynak
+            class="btn btn-sm btn-white border shadow-sm fw-bold d-flex align-items-center gap-2 px-3">
+            <i class="bi bi-hdd-network text-primary"></i> Kaynak Seç
           </button>
-          <button id="toggleViewBtn"
-            class="btn btn-sm btn-light border d-flex align-items-center gap-2 rounded-pill px-3" data-mode="list">
+          <div class="vr mx-1 text-secondary opacity-25"></div>
+          <button id="toggleViewBtn" class="btn btn-sm btn-white border shadow-sm d-flex align-items-center gap-2 px-3"
+            data-mode="list">
             <i class="bi bi-grid-3x3-gap"></i> Görünüm
           </button>
         </div>
 
         <!-- Center: Marketplace Send Buttons -->
-        <div class="d-flex align-items-center gap-2 flex-wrap">
-          <span class="small text-muted fw-bold me-1">Seçilileri Gönder:</span>
-          <button id="sendTrendyolBtn"
-            class="btn btn-sm btn-outline-warning rounded-pill px-3 fw-bold shadow-sm d-flex align-items-center gap-1">
-            <i class="bi bi-lightning-fill"></i> Trendyol
-          </button>
-          <button id="sendHepsiburadaBtn"
-            class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold shadow-sm d-flex align-items-center gap-1"
-            style="border-color: #FF6000; color: #FF6000;">
-            <i class="bi bi-lightning-fill"></i> Hepsiburada
-          </button>
-          <button id="sendPazaramaBtn"
-            class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold shadow-sm d-flex align-items-center gap-1">
-            <i class="bi bi-lightning-fill"></i> Pazarama
-          </button>
-          <button id="sendIdefixBtn"
-            class="btn btn-sm btn-outline-info rounded-pill px-3 fw-bold shadow-sm d-flex align-items-center gap-1">
-            <i class="bi bi-lightning-fill"></i> İdefix
-          </button>
-          <button id="sendN11Btn"
-            class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-bold shadow-sm d-flex align-items-center gap-1"
-            style="border-color: #5f259f; color: #5f259f;">
-            <i class="bi bi-lightning-fill"></i> N11
-          </button>
+        <div class="d-flex align-items-center gap-2 flex-wrap justify-content-center">
+          <div class="btn-group shadow-sm" role="group">
+            <button id="sendTrendyolBtn" class="btn btn-sm btn-white border fw-bold text-warning"
+              title="Trendyol'a Gönder">
+              <i class="bi bi-lightning-fill"></i> Trendyol
+            </button>
+            <button id="sendHepsiburadaBtn" class="btn btn-sm btn-white border fw-bold text-danger"
+              title="Hepsiburada'ya Gönder">
+              <i class="bi bi-lightning-fill"></i> HB
+            </button>
+            <button id="sendPazaramaBtn" class="btn btn-sm btn-white border fw-bold text-primary"
+              title="Pazarama'ya Gönder">
+              <i class="bi bi-lightning-fill"></i> Pazarama
+            </button>
+            <button id="sendIdefixBtn" class="btn btn-sm btn-white border fw-bold text-info" title="İdefix'e Gönder">
+              <i class="bi bi-lightning-fill"></i> İdefix
+            </button>
+            <button id="sendN11Btn" class="btn btn-sm btn-white border fw-bold" style="color: #5f259f;"
+              title="N11'e Gönder">
+              <i class="bi bi-lightning-fill"></i> N11
+            </button>
+          </div>
         </div>
 
         <!-- Right Side: Global Actions & Search -->
         <div class="d-flex align-items-center gap-2">
-          <span id="productCountInfo" class="small fw-bold text-muted me-2"></span>
-          <div class="position-relative">
-            <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
-            <input type="text" id="searchInput" class="form-control form-control-sm rounded-pill ps-5"
-              placeholder="Ürün veya Barkod Ara..." style="width: 200px;">
+          <span id="productCountInfo" class="small fw-bold text-muted me-2 d-none d-md-inline"></span>
+          <div class="input-group input-group-sm" style="width: 250px;">
+            <span class="input-group-text bg-light border-0"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" id="searchInput" class="form-control bg-light border-0"
+              placeholder="Ürün veya Barkod Ara...">
           </div>
-          <button id="sendAllBtn" class="btn btn-sm btn-admin rounded-pill px-4 shadow-sm">
-            <i class="bi bi-rocket-takeoff me-2"></i> Tümünü Gönder
+          <button id="sendAllBtn" class="btn btn-sm btn-primary px-3 shadow-sm fw-bold">
+            <i class="bi bi-rocket-takeoff me-1"></i> Tümünü Gönder
           </button>
         </div>
       </div>
@@ -83,124 +65,133 @@
 </div>
 
 <!-- Advanced Filters -->
-<div class="card mb-3 border-0 shadow-sm animate-fade-in" style="background: var(--card);">
+<div class="card vidos-card border-0 mb-4 animate-fade-in">
+  <div class="card-header bg-transparent border-0 pt-3 pb-0 d-flex justify-content-between align-items-center">
+    <h6 class="mb-0 text-secondary fw-bold text-uppercase small"><i class="bi bi-funnel me-1"></i>Gelişmiş Filtreler
+    </h6>
+    <button class="btn btn-sm btn-link text-muted p-0 text-decoration-none small"
+      onclick="clearFilters()">Temizle</button>
+  </div>
   <div class="card-body p-3">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-      <h6 class="mb-0 text-secondary"><i class="bi bi-funnel me-2"></i>Gelişmiş Filtreler</h6>
-      <button class="btn btn-sm btn-link text-decoration-none text-muted p-0" onclick="clearFilters()">Filtreleri
-        Temizle</button>
-    </div>
     <div class="row g-3">
-      <div class="col-md-2">
-        <label class="form-label small fw-bold mb-1">Min. Stok</label>
-        <input type="number" id="minStockInput" class="form-control form-control-sm" placeholder="0">
+      <div class="col-6 col-md-2">
+        <label class="form-label small fw-bold text-muted mb-1">Barkod</label>
+        <input type="text" id="filterBarcode" class="form-control form-control-sm bg-light border-0"
+          placeholder="Barkod...">
       </div>
-      <div class="col-md-2">
-        <label class="form-label small fw-bold mb-1">Max. Stok</label>
-        <input type="number" id="maxStockInput" class="form-control form-control-sm" placeholder="99999">
+      <div class="col-6 col-md-2">
+        <label class="form-label small fw-bold text-muted mb-1">Stok Kodu</label>
+        <input type="text" id="filterStockCode" class="form-control form-control-sm bg-light border-0"
+          placeholder="Stok kodu...">
       </div>
-      <div class="col-md-2">
-        <label class="form-label small fw-bold mb-1">Min. Fiyat</label>
-        <input type="number" id="minPriceInput" class="form-control form-control-sm" placeholder="0.00">
+      <div class="col-6 col-md-2">
+        <label class="form-label small fw-bold text-muted mb-1">Model Kodu</label>
+        <input type="text" id="filterModelCode" class="form-control form-control-sm bg-light border-0"
+          placeholder="Model kodu...">
       </div>
-      <div class="col-md-2">
-        <label class="form-label small fw-bold mb-1">Max. Fiyat</label>
-        <input type="number" id="maxPriceInput" class="form-control form-control-sm" placeholder="100000.00">
+      <div class="col-6 col-md-2">
+        <label class="form-label small fw-bold text-muted mb-1">Kategori</label>
+        <input type="text" id="categoryInput" class="form-control form-control-sm bg-light border-0"
+          placeholder="Kategori...">
       </div>
-      <div class="col-md-2">
-        <label class="form-label small fw-bold mb-1">Barkod</label>
-        <input type="text" id="filterBarcode" class="form-control form-control-sm" placeholder="Barkod...">
+      <div class="col-6 col-md-2">
+        <label class="form-label small fw-bold text-muted mb-1">Marka</label>
+        <input type="text" id="brandInput" class="form-control form-control-sm bg-light border-0"
+          placeholder="Marka...">
       </div>
-      <div class="col-md-2">
-        <label class="form-label small fw-bold mb-1">Stok Kodu</label>
-        <input type="text" id="filterStockCode" class="form-control form-control-sm" placeholder="Stok kodu...">
+      <div class="col-6 col-md-2 d-flex align-items-end">
+        <button id="applyFiltersBtn" class="btn btn-primary btn-sm w-100 shadow-sm fw-bold" onclick="fetchProducts(1)">
+          Uygula
+        </button>
       </div>
-      <div class="col-md-2">
-        <label class="form-label small fw-bold mb-1">Model Kodu</label>
-        <input type="text" id="filterModelCode" class="form-control form-control-sm" placeholder="Model kodu...">
-      </div>
-      <div class="col-md-2">
-        <label class="form-label small fw-bold mb-1">Kategori</label>
-        <input type="text" id="categoryInput" class="form-control form-control-sm" placeholder="Kategori ara...">
-      </div>
-      <div class="col-md-2">
-        <label class="form-label small fw-bold mb-1">Marka</label>
-        <input type="text" id="brandInput" class="form-control form-control-sm" placeholder="Marka ara...">
-      </div>
-      <div class="col-md-2 d-flex align-items-end">
-        <div class="form-check form-switch mb-1">
-          <input class="form-check-input" type="checkbox" id="hasImageFilter">
-          <label class="form-check-label small" for="hasImageFilter">Sadece Resimliler</label>
+    </div>
+
+    <!-- Expanded Ranges (Optional/Secondary) -->
+    <div class="row g-3 mt-1 pt-3 border-top border-light">
+      <div class="col-12 col-md-4">
+        <div class="input-group input-group-sm">
+          <span class="input-group-text bg-light border-0 text-muted small">Fiyat</span>
+          <input type="number" id="minPriceInput" class="form-control bg-light border-0" placeholder="Min">
+          <span class="input-group-text bg-light border-0">-</span>
+          <input type="number" id="maxPriceInput" class="form-control bg-light border-0" placeholder="Max">
         </div>
       </div>
-    </div>
-    <div class="row mt-3">
-      <div class="col-12 text-end">
-        <button id="applyFiltersBtn" class="btn btn-primary btn-sm px-4 shadow-sm" onclick="fetchProducts(1)">
-          Filtreleri Uygula
-        </button>
+      <div class="col-12 col-md-4">
+        <div class="input-group input-group-sm">
+          <span class="input-group-text bg-light border-0 text-muted small">Stok</span>
+          <input type="number" id="minStockInput" class="form-control bg-light border-0" placeholder="Min">
+          <span class="input-group-text bg-light border-0">-</span>
+          <input type="number" id="maxStockInput" class="form-control bg-light border-0" placeholder="Max">
+        </div>
+      </div>
+      <div class="col-12 col-md-4 d-flex align-items-center">
+        <div class="form-check form-switch ms-2">
+          <input class="form-check-input" type="checkbox" id="hasImageFilter">
+          <label class="form-check-label small text-muted" for="hasImageFilter">Sadece Resimliler</label>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
 <!-- Tools & Options -->
-<div class="card mb-4 border-0 shadow-sm animate-fade-in" style="background: var(--card);">
+<div class="card vidos-card border-0 mb-4 animate-fade-in">
+  <div class="card-header bg-transparent border-0 pt-3 pb-0">
+    <h6 class="mb-0 text-secondary fw-bold text-uppercase small"><i class="bi bi-sliders me-1"></i>Gönderim Ayarları
+    </h6>
+  </div>
   <div class="card-body p-3">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-      <h6 class="mb-0 text-secondary"><i class="bi bi-sliders me-2"></i>Gönderim Ayarları</h6>
-      <span class="badge text-muted border py-1 px-2" style="background: var(--input-bg);">
-        Ayarlar toplu gönderim sırasında otomatik uygulanır.
-      </span>
-    </div>
     <div class="row g-4">
-      <!-- Sol Kolon: Başlık ve Fiyat Ayarları -->
-      <div class="col-lg-5 border-end">
+      <!-- Left Column: Pricing & Content -->
+      <div class="col-lg-5 border-end-lg">
         <div class="row g-3">
           <div class="col-md-6">
-            <label class="form-label small fw-bold mb-1">Başlık Ön Ek (Prefix)</label>
-            <input type="text" id="titlePrefixInput" class="form-control form-control-sm"
+            <label class="form-label small fw-bold text-muted mb-1">Başlık Ön Ek</label>
+            <input type="text" id="titlePrefixInput" class="form-control form-control-sm bg-light border-0"
               placeholder="Örn: [KAMPANYA] ">
           </div>
           <div class="col-md-6">
-            <label class="form-label small fw-bold mb-1">Fiyat Çarpanı</label>
-            <input type="number" id="priceMultiplierInput" class="form-control form-control-sm" value="1.0" step="0.01">
+            <label class="form-label small fw-bold text-muted mb-1">Fiyat Çarpanı</label>
+            <input type="number" id="priceMultiplierInput" class="form-control form-control-sm bg-light border-0"
+              value="1.0" step="0.01">
           </div>
           <div class="col-md-12">
-            <label class="form-label small fw-bold mb-1">Fiyat 0 ise varsayılan fiyat</label>
-            <input type="number" id="defaultPriceInput" class="form-control form-control-sm" placeholder="0.00">
-            <div class="form-text small mt-1" style="font-size: 0.7rem;">XML'de fiyat bulunamazsa bu değer kullanılır.
-            </div>
+            <label class="form-label small fw-bold text-muted mb-1">Varsayılan Fiyat (Eğer 0 ise)</label>
+            <input type="number" id="defaultPriceInput" class="form-control form-control-sm bg-light border-0"
+              placeholder="0.00">
           </div>
         </div>
       </div>
 
-      <!-- Sağ Kolon: Atlatma ve Eşleştirme Seçenekleri -->
+      <!-- Right Column: Logic Options -->
       <div class="col-lg-7">
-        <label class="form-label small fw-bold mb-2">Gönderim Seçenekleri</label>
         <div class="row g-2">
           <div class="col-md-6">
-            <div class="form-check form-switch p-2 border rounded-3 bg-light bg-opacity-10 mb-2">
+            <div class="form-check form-switch p-2 rounded bg-light mb-1">
               <input class="form-check-input ms-0 me-2" type="checkbox" id="optSkipNoBarcode">
-              <label class="form-check-label small fw-semibold" for="optSkipNoBarcode">Barkodsuz Ürünleri Atla</label>
+              <label class="form-check-label small fw-semibold text-secondary" for="optSkipNoBarcode">Barkodsuzları
+                Atla</label>
             </div>
           </div>
           <div class="col-md-6">
-            <div class="form-check form-switch p-2 border rounded-3 bg-light bg-opacity-10 mb-2">
+            <div class="form-check form-switch p-2 rounded bg-light mb-1">
               <input class="form-check-input ms-0 me-2" type="checkbox" id="optSkipNoImage">
-              <label class="form-check-label small fw-semibold" for="optSkipNoImage">Resimsiz Ürünleri Atla</label>
+              <label class="form-check-label small fw-semibold text-secondary" for="optSkipNoImage">Resimsizleri
+                Atla</label>
             </div>
           </div>
           <div class="col-md-6">
-            <div class="form-check form-switch p-2 border rounded-3 bg-light bg-opacity-10 mb-2">
+            <div class="form-check form-switch p-2 rounded bg-light mb-1">
               <input class="form-check-input ms-0 me-2" type="checkbox" id="optMatchByStockCode">
-              <label class="form-check-label small fw-semibold" for="optMatchByStockCode">Stok Kodu İle Eşleştir</label>
+              <label class="form-check-label small fw-semibold text-secondary" for="optMatchByStockCode">Stok Kodu İle
+                Eşleştir</label>
             </div>
           </div>
           <div class="col-md-6">
-            <div class="form-check form-switch p-2 border rounded-3 bg-light bg-opacity-10 mb-2">
+            <div class="form-check form-switch p-2 rounded bg-light mb-1">
               <input class="form-check-input ms-0 me-2" type="checkbox" id="optZeroStockAsOne">
-              <label class="form-check-label small fw-semibold" for="optZeroStockAsOne">Stok 0 ise 1 Gönder</label>
+              <label class="form-check-label small fw-semibold text-secondary" for="optZeroStockAsOne">Stok 0 ise 1
+                Gönder</label>
             </div>
           </div>
         </div>
@@ -402,31 +393,33 @@
 
           // Variant badge
           const variantBadge = variantCount > 0
-            ? `<span class="badge bg-primary bg-opacity-75 ms-2 cursor-pointer variant-toggle" data-idx="${idx}" title="Varyantlar"><i class="bi bi-layers"></i> ${variantCount}</span>`
+            ? `<span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-2 cursor-pointer variant-toggle rounded-pill" data-idx="${idx}" title="Varyantlar"><i class="bi bi-layers"></i> ${variantCount}</span>`
             : '';
 
           const row = `
-              <tr class="animate-fade-in main-product-row" data-idx="${idx}">
+              <tr class="animate-fade-in main-product-row align-middle" data-idx="${idx}">
                   <td class="ps-3"><input type="checkbox" class="form-check-input row-check" data-barcode="${product.barcode}" ${checked}></td>
-                  <td><img src="${imgUrl}" alt="${product.title}" class="img-thumbnail border-0 shadow-sm" style="width: 50px; height: 50px; object-fit: cover;"></td>
-                  <td class="text-truncate" style="max-width: 250px;" title="${product.title}">${product.title}</td>
+                  <td><div class="rounded border p-1 bg-white" style="width: 50px; height: 50px;"><img src="${imgUrl}" alt="${product.title}" class="w-100 h-100 object-fit-cover rounded"></div></td>
+                  <td class="text-truncate" style="max-width: 250px;" title="${product.title}">
+                    <div class="fw-semibold text-dark">${product.title}</div>
+                  </td>
                   <td>
                     <div class="d-flex flex-column">
-                      <span class="badge bg-secondary font-monospace">${product.barcode}</span>
-                      <span class="small text-muted font-monospace" style="font-size: 0.75rem;">${product.stockCode || ''}</span>
+                      <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle font-monospace">${product.barcode}</span>
+                      <span class="small text-muted font-monospace mt-1" style="font-size: 0.75rem;">${product.stockCode || ''}</span>
                     </div>
                     ${variantBadge}
                   </td>
                   <td style="font-size: 0.85rem;" class="text-muted text-truncate" style="max-width: 150px;">${product.category || '---'}</td>
                   <td>
                     <div class="d-flex flex-column">
-                      <span class="fw-bold">${Number(product.price || 0).toFixed(2)} TL</span>
-                      <span class="small text-success fw-bold">Stok: ${variantCount > 0 ? totalStock : parseInt(product.quantity || 0)}</span>
+                      <span class="fw-bold text-dark">${Number(product.price || 0).toFixed(2)} TL</span>
+                      <span class="small fw-bold ${totalStock < 5 ? 'text-danger' : 'text-success'}">Stok: ${variantCount > 0 ? totalStock : parseInt(product.quantity || 0)}</span>
                     </div>
                   </td>
-                  <td><span class="badge bg-info bg-opacity-10 text-info border border-info">Hazır</span></td>
+                  <td><span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill">Hazır</span></td>
                   <td class="text-end pe-3">
-                    <button class="btn btn-sm btn-outline-primary shadow-sm" onclick="showProductDetail(${idx})" title="Ürün Detayı">
+                    <button class="btn btn-sm btn-white border shadow-sm text-primary" onclick="showProductDetail(${idx})" title="Ürün Detayı">
                       <i class="bi bi-eye"></i>
                     </button>
                   </td>
@@ -443,13 +436,13 @@
               const attrText = variantAttrs.map(a => `${a.name}: ${a.value}`).join(', ') || '';
 
               const vRow = `
-                <tr class="animate-fade-in variant-row d-none" data-parent-idx="${idx}" style="background: rgba(var(--bs-primary-rgb), 0.03);">
+                <tr class="animate-fade-in variant-row d-none" data-parent-idx="${idx}" style="background: var(--vidos-light);">
                     <td class="ps-4"><input type="checkbox" class="form-check-input row-check" data-barcode="${variant.barcode}" ${vChecked}></td>
-                    <td><img src="${vImgUrl}" alt="${variant.title}" class="img-thumbnail border-0" style="width: 40px; height: 40px; object-fit: cover; opacity: 0.8;"></td>
+                    <td><img src="${vImgUrl}" alt="${variant.title}" class="img-thumbnail border-0 ms-2" style="width: 40px; height: 40px; object-fit: cover; opacity: 0.8;"></td>
                     <td class="text-truncate ps-4" style="max-width: 230px; font-size: 0.9rem;" title="${variant.title}">
-                      <i class="bi bi-arrow-return-right text-muted me-1"></i>${attrText || variant.title}
+                      <i class="bi bi-arrow-return-right text-muted me-1"></i><span class="fw-medium text-dark">${attrText || variant.title}</span>
                     </td>
-                    <td><span class="badge bg-light text-dark font-monospace" style="font-size: 0.75rem;">${variant.barcode}</span></td>
+                    <td><span class="badge bg-light text-dark font-monospace border" style="font-size: 0.75rem;">${variant.barcode}</span></td>
                     <td style="font-size: 0.8rem;" class="text-muted">-</td>
                     <td>
                       <div class="d-flex flex-column">
@@ -457,7 +450,8 @@
                         <span class="small text-success">Stok: ${parseInt(variant.quantity || 0)}</span>
                       </div>
                     </td>
-                    <td><span class="badge bg-secondary bg-opacity-25 text-secondary" style="font-size: 0.7rem;">Varyant</span></td>
+                    <td><span class="badge bg-secondary-subtle text-secondary" style="font-size: 0.7rem;">Varyant</span></td>
+                    <td></td>
                 </tr>
               `;
               productListBody.insertAdjacentHTML('beforeend', vRow);
@@ -506,26 +500,36 @@
 
           const card = `
               <div class="col-12 col-sm-6 col-md-4 col-lg-3 animate-fade-in">
-                <div class="card h-100 border-0 shadow-sm product-card position-relative">
+                <div class="card vidos-card h-100 border-0 product-card position-relative icon-link-hover">
                   ${variantBadge}
-                  <div class="card-body p-2 d-flex flex-column">
-                    <div class="d-flex align-items-start justify-content-between mb-2">
-                      <div class="form-check">
-                        <input type="checkbox" class="form-check-input row-check" data-barcode="${product.barcode}" ${checked}>
-                      </div>
-                      <span class="badge bg-secondary font-monospace small">${product.barcode}</span>
+                  <div class="card-body p-0 d-flex flex-column">
+                    <div class="position-relative bg-light rounded-top overflow-hidden" style="height: 200px;">
+                        <img src="${imgUrl}" class="w-100 h-100 object-fit-cover">
+                        <div class="position-absolute top-0 start-0 p-2">
+                             <input type="checkbox" class="form-check-input row-check shadow-sm" data-barcode="${product.barcode}" ${checked} style="transform: scale(1.2);">
+                        </div>
+                         <button class="btn btn-sm btn-white position-absolute bottom-0 end-0 m-2 shadow rounded-circle border-0" onclick="showProductDetail(${idx})" title="Detay">
+                            <i class="bi bi-eye text-primary"></i>
+                        </button>
                     </div>
-                    <div class="text-center mb-2" style="height: 160px; overflow: hidden; border-radius: 8px; background: #f8f9fa; position: relative;">
-                      <img src="${imgUrl}" class="h-100 w-100" style="object-fit: contain;">
-                      <button class="btn btn-sm btn-light position-absolute bottom-0 end-0 m-2 shadow-sm rounded-circle" onclick="showProductDetail(${idx})" title="Detay">
-                        <i class="bi bi-eye text-primary"></i>
-                      </button>
-                    </div>
-                    <div class="fw-semibold text-truncate mb-1" title="${product.title}">${product.title}</div>
-                    <div class="text-muted small mb-2 text-truncate">${product.category_path || '---'}</div>
-                    <div class="mt-auto d-flex justify-content-between align-items-center pt-2 border-top">
-                      <div class="fw-bold fs-5 text-primary">${Number(product.price || 0).toFixed(2)} TL</div>
-                      <div class="badge bg-success bg-opacity-10 text-success">Stok: ${variantCount > 0 ? totalStock : parseInt(product.quantity || 0)}</div>
+                    
+                    <div class="p-3 d-flex flex-column flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle font-monospace small">${product.barcode}</span>
+                        </div>
+                        <h6 class="fw-bold text-dark text-truncate mb-1" title="${product.title}">${product.title}</h6>
+                        <div class="text-muted small mb-3 text-truncate">${product.category_path || '---'}</div>
+                        
+                        <div class="mt-auto d-flex justify-content-between align-items-end border-top pt-3">
+                            <div>
+                                <small class="text-muted d-block" style="font-size: 0.7rem;">Satış Fiyatı</small>
+                                <span class="fw-bold text-dark fs-5">${Number(product.price || 0).toFixed(2)} TL</span>
+                            </div>
+                            <div class="text-end">
+                                <small class="text-muted d-block" style="font-size: 0.7rem;">Stok</small>
+                                <span class="fw-bold ${totalStock < 5 ? 'text-danger' : 'text-success'}">${variantCount > 0 ? totalStock : parseInt(product.quantity || 0)}</span>
+                            </div>
+                        </div>
                     </div>
                   </div>
                 </div>

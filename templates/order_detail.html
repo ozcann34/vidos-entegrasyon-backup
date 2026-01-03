@@ -5,115 +5,144 @@
 {% block page_title %}📦 Sipariş Detayı{% endblock %}
 
 {% block content %}
-<a href="{{ url_for('main.orders_page') }}" class="btn btn-sm btn-outline-secondary mb-3">
+
+<a href="{{ url_for('main.orders_page') }}" class="btn btn-white border shadow-sm btn-sm mb-3">
     <i class="bi bi-arrow-left me-2"></i>Siparişlere Dön
 </a>
 
 <div class="row g-4">
     <!-- Order Info Card -->
     <div class="col-md-8">
-        <div class="card p-4 mb-4">
-            <div class="d-flex justify-content-between align-items-start mb-3">
-                <div>
-                    <h5 class="mb-1">Sipariş #{{ order.order_number }}</h5>
-                    <p class="text-muted small mb-0">{{ order.created_at.strftime('%d %B %Y, %H:%M') if order.created_at
-                        else '—' }}</p>
-                </div>
-                <div class="text-end">
-                    {% if order.marketplace == 'trendyol' %}
-                    <span class="badge bg-success fs-6">Trendyol</span>
-                    {% elif order.marketplace == 'pazarama' %}
-                    <span class="badge bg-primary fs-6">Pazarama</span>
-                    {% else %}
-                    <span class="badge bg-secondary fs-6">{{ order.marketplace|title }}</span>
-                    {% endif %}
-                    <br>
-                    {% if order.status in ['Delivered', 'Teslim Edildi'] %}
-                    <span class="badge bg-success mt-2">{{ order.status }}</span>
-                    {% elif order.status in ['Shipped', 'Kargoya Verildi'] %}
-                    <span class="badge bg-info mt-2">{{ order.status }}</span>
-                    {% elif order.status in ['Cancelled', 'İptal Edildi'] %}
-                    <span class="badge bg-danger mt-2">{{ order.status }}</span>
-                    {% else %}
-                    <span class="badge bg-warning mt-2">{{ order.status }}</span>
-                    {% endif %}
-                </div>
-            </div>
-
-            {% if order.admin_note %}
-            <div class="alert alert-info py-2 px-3 mb-3 small">
-                <i class="bi bi-info-circle me-2"></i>
-                {{ order.admin_note|replace('\n', '<br>')|safe }}
-            </div>
-            {% endif %}
-
-            <div class="d-flex gap-2 mb-4">
-                <button class="btn btn-sm btn-primary" onclick="pushToBugZ({{ order.id }})">
-                    <i class="bi bi-cloud-upload me-2"></i>BUG-Z'ye Gönder (ERP Sync)
-                </button>
-            </div>
-
-            <hr>
-
-            <!-- Order Items -->
-            <h6 class="mb-3"><i class="bi bi-box-seam me-2"></i>Sipariş Kalemleri</h6>
-            <div class="table-responsive">
-                <table class="table table-sm">
-                    <thead>
-                        <tr>
-                            <th>Ürün</th>
-                            <th>Barkod</th>
-                            <th class="text-center">Adet</th>
-                            <th class="text-end">Birim Fiyat</th>
-                            <th class="text-end">Toplam</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% if order.items %}
-                        {% for item in order.items %}
-                        <tr>
-                            <td>
-                                <strong>{{ item.product_name or '—' }}</strong>
-                                {% if item.status %}
-                                <br><small class="text-muted">{{ item.status }}</small>
-                                {% endif %}
-                            </td>
-                            <td><code>{{ item.barcode or '—' }}</code></td>
-                            <td class="text-center">{{ item.quantity }}</td>
-                            <td class="text-end">{{ "%.2f"|format(item.unit_price) }} {{ item.currency }}</td>
-                            <td class="text-end"><strong>{{ "%.2f"|format(item.unit_price * item.quantity) }} {{
-                                    item.currency }}</strong></td>
-                        </tr>
-                        {% endfor %}
+        <div class="card vidos-card border-0 mb-4">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h5 class="mb-1 text-dark fw-bold">Sipariş #{{ order.order_number }}</h5>
+                        <p class="text-muted small mb-0">
+                            <i class="bi bi-calendar3 me-1"></i>
+                            {{ order.created_at.strftime('%d %B %Y, %H:%M') if order.created_at else '—' }}
+                        </p>
+                    </div>
+                    <div class="text-end">
+                        {% if order.marketplace == 'trendyol' %}
+                        <span
+                            class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill fs-6 px-3">Trendyol</span>
+                        {% elif order.marketplace == 'pazarama' %}
+                        <span
+                            class="badge bg-purple-subtle text-purple border border-purple-subtle rounded-pill fs-6 px-3"
+                            style="color: #6f42c1; background-color: #e0dbf5; border-color: #d1c4e9;">Pazarama</span>
+                        {% elif order.marketplace == 'n11' %}
+                        <span
+                            class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill fs-6 px-3">N11</span>
                         {% else %}
-                        <tr>
-                            <td colspan="5" class="text-center text-muted">Ürün bilgisi bulunamadı</td>
-                        </tr>
+                        <span
+                            class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill fs-6 px-3">{{
+                            order.marketplace|title }}</span>
                         {% endif %}
-                    </tbody>
-                    <tfoot>
-                        <tr class="table-active">
-                            <th colspan="4" class="text-end">Toplam Tutar:</th>
-                            <th class="text-end">{{ "%.2f"|format(order.total_price) }} {{ order.currency }}</th>
-                        </tr>
-                    </tfoot>
-                </table>
+                        <div class="mt-2">
+                            {% if order.status in ['Delivered', 'Teslim Edildi'] %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i
+                                    class="bi bi-check-circle-fill me-1"></i>{{ order.status }}</span>
+                            {% elif order.status in ['Shipped', 'Kargoya Verildi'] %}
+                            <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1"><i
+                                    class="bi bi-truck me-1"></i>{{ order.status }}</span>
+                            {% elif order.status in ['Cancelled', 'İptal Edildi', 'İade Edildi'] %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1"><i
+                                    class="bi bi-x-circle me-1"></i>{{ order.status }}</span>
+                            {% else %}
+                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1"><i
+                                    class="bi bi-clock me-1"></i>{{ order.status }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                {% if order.admin_note %}
+                <div
+                    class="alert alert-info bg-info-subtle border-info-subtle text-info-emphasis py-2 px-3 mb-3 small rounded-3">
+                    <i class="bi bi-info-circle me-2"></i>
+                    {{ order.admin_note|replace('\n', '<br>')|safe }}
+                </div>
+                {% endif %}
+
+                <div class="d-flex gap-2 mb-4">
+                    <button class="btn btn-sm btn-primary fw-bold shadow-sm" onclick="pushToBugZ({{ order.id }})">
+                        <i class="bi bi-cloud-upload me-2"></i>BUG-Z'ye Gönder
+                    </button>
+                    <!-- Additional actions can go here -->
+                </div>
+
+                <hr class="text-secondary opacity-25">
+
+                <!-- Order Items -->
+                <h6 class="mb-3 fw-bold text-dark"><i class="bi bi-box-seam me-2 text-primary"></i>Sipariş Kalemleri
+                </h6>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light text-uppercase">
+                            <tr>
+                                <th class="text-muted small fw-bold py-3 ps-3">Ürün</th>
+                                <th class="text-muted small fw-bold py-3">Barkod</th>
+                                <th class="text-center text-muted small fw-bold py-3">Adet</th>
+                                <th class="text-end text-muted small fw-bold py-3">Birim Fiyat</th>
+                                <th class="text-end text-muted small fw-bold py-3 pe-3">Toplam</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if order.items %}
+                            {% for item in order.items %}
+                            <tr>
+                                <td class="ps-3">
+                                    <span class="fw-semibold text-dark">{{ item.product_name or '—' }}</span>
+                                    {% if item.status %}
+                                    <br><small class="text-muted">{{ item.status }}</small>
+                                    {% endif %}
+                                </td>
+                                <td><code
+                                        class="text-primary bg-primary-subtle px-2 py-1 rounded">{{ item.barcode or '—' }}</code>
+                                </td>
+                                <td class="text-center fw-bold text-dark">{{ item.quantity }}</td>
+                                <td class="text-end text-muted">{{ "%.2f"|format(item.unit_price) }} {{ item.currency }}
+                                </td>
+                                <td class="text-end fw-bold text-dark pe-3">
+                                    {{ "%.2f"|format(item.unit_price * item.quantity) }} {{ item.currency }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">Ürün bilgisi bulunamadı</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                        <tfoot class="border-top">
+                            <tr>
+                                <th colspan="4" class="text-end py-3 text-secondary">Genel Toplam:</th>
+                                <th class="text-end py-3 fw-bold text-primary fs-5 pe-3">{{
+                                    "%.2f"|format(order.total_price) }} {{ order.currency }}</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
             </div>
         </div>
 
         <!-- Raw Data (Collapsible) -->
         {% if order.raw_data %}
-        <div class="card p-3">
-            <div class="d-flex justify-content-between align-items-center">
-                <h6 class="mb-0"><i class="bi bi-code-square me-2"></i>Ham Veri (Debug)</h6>
-                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse"
-                    data-bs-target="#rawDataCollapse">
-                    <i class="bi bi-chevron-down"></i>
-                </button>
-            </div>
-            <div class="collapse mt-3" id="rawDataCollapse">
-                <pre class="bg-light p-3 rounded"
-                    style="max-height: 400px; overflow-y: auto;"><code>{{ order.raw_data }}</code></pre>
+        <div class="card vidos-card border-0">
+            <div class="card-body p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 text-muted small fw-bold"><i class="bi bi-code-square me-2"></i>Ham Veri (Debug)
+                    </h6>
+                    <button class="btn btn-sm btn-white border shadow-sm" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#rawDataCollapse">
+                        <i class="bi bi-chevron-down"></i>
+                    </button>
+                </div>
+                <div class="collapse mt-3" id="rawDataCollapse">
+                    <pre class="bg-dark text-white p-3 rounded small mb-0"
+                        style="max-height: 400px; overflow-y: auto; font-family: 'Consolas', monospace;"><code>{{ order.raw_data }}</code></pre>
+                </div>
             </div>
         </div>
         {% endif %}
@@ -121,68 +150,84 @@
 
     <!-- Customer Info Card -->
     <div class="col-md-4">
-        <div class="card p-4">
-            <h6 class="mb-3"><i class="bi bi-person-circle me-2"></i>Müşteri Bilgileri</h6>
-            {% if order.customer %}
-            <div class="mb-3">
-                <label class="text-muted small">Ad Soyad</label>
-                <p class="mb-0"><strong>{{ order.customer.first_name }} {{ order.customer.last_name }}</strong></p>
-            </div>
-            {% if order.customer.email %}
-            <div class="mb-3">
-                <label class="text-muted small">E-posta</label>
-                <p class="mb-0">{{ order.customer.email }}</p>
-            </div>
-            {% endif %}
-            {% if order.customer.phone and order.marketplace != 'pazarama' %}
-            <div class="mb-3">
-                <label class="text-muted small">Telefon</label>
-                <p class="mb-0">{{ order.customer.phone }}</p>
-            </div>
-            {% endif %}
-            {% if order.customer.address %}
-            <div class="mb-3">
-                <label class="text-muted small">Adres</label>
-                <p class="mb-0">{{ order.customer.address }}</p>
-                {% if order.customer.district or order.customer.city %}
-                <small class="text-muted">
-                    {{ order.customer.district }}{% if order.customer.district and order.customer.city %}, {% endif %}{{
-                    order.customer.city }}
-                </small>
+        <div class="card vidos-card border-0 mb-4">
+            <div class="card-body p-4">
+                <h6 class="mb-4 fw-bold text-dark border-bottom pb-2"><i
+                        class="bi bi-person-circle me-2 text-primary"></i>Müşteri Bilgileri</h6>
+                {% if order.customer %}
+                <div class="d-flex align-items-center mb-4">
+                    <div class="avatar bg-primary-subtle text-primary rounded-circle me-3 d-flex align-items-center justify-content-center fw-bold"
+                        style="width: 48px; height: 48px; font-size: 1.25rem;">
+                        {{ order.customer.first_name[0] if order.customer.first_name else '?' }}
+                    </div>
+                    <div>
+                        <h6 class="fw-bold text-dark mb-0">{{ order.customer.first_name }} {{ order.customer.last_name
+                            }}</h6>
+                        <small class="text-muted">Müşteri</small>
+                    </div>
+                </div>
+
+                {% if order.customer.email %}
+                <div class="mb-3">
+                    <label class="text-muted small fw-bold text-uppercase" style="font-size: 0.7rem;">E-posta</label>
+                    <p class="mb-0 text-dark">{{ order.customer.email }}</p>
+                </div>
                 {% endif %}
-                </p>
+                {% if order.customer.phone and order.marketplace != 'pazarama' %}
+                <div class="mb-3">
+                    <label class="text-muted small fw-bold text-uppercase" style="font-size: 0.7rem;">Telefon</label>
+                    <p class="mb-0 text-dark font-monospace">{{ order.customer.phone }}</p>
+                </div>
+                {% endif %}
+                {% if order.customer.address %}
+                <div class="mb-3">
+                    <label class="text-muted small fw-bold text-uppercase" style="font-size: 0.7rem;">Adres</label>
+                    <p class="mb-0 text-dark small">{{ order.customer.address }}</p>
+                    {% if order.customer.district or order.customer.city %}
+                    <small class="text-secondary fw-semibold">
+                        {{ order.customer.district }}{% if order.customer.district and order.customer.city %} / {% endif
+                        %}{{
+                        order.customer.city }}
+                    </small>
+                    {% endif %}
+                </div>
+                {% endif %}
+                {% else %}
+                <p class="text-muted text-center py-3">Müşteri bilgisi bulunmuyor</p>
+                {% endif %}
             </div>
-            {% endif %}
-            {% else %}
-            <p class="text-muted">Müşteri bilgisi bulunmuyor</p>
-            {% endif %}
         </div>
 
-        <!-- Order Timeline (Optional) -->
-        <div class="card p-4 mt-3">
-            <h6 class="mb-3"><i class="bi bi-clock-history me-2"></i>Sipariş Zaman Çizelgesi</h6>
-            <div class="timeline">
-                <div class="timeline-item">
-                    <div class="timeline-marker bg-success"></div>
-                    <div class="timeline-content">
-                        <small class="text-muted">{{ order.created_at.strftime('%d.%m.%Y %H:%M') if order.created_at
-                            else '—' }}</small>
-                        <p class="mb-0">Sipariş Oluşturuldu</p>
+        <!-- Order Timeline -->
+        <div class="card vidos-card border-0">
+            <div class="card-body p-4">
+                <h6 class="mb-4 fw-bold text-dark border-bottom pb-2"><i
+                        class="bi bi-clock-history me-2 text-primary"></i>Sipariş Geçmişi</h6>
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <div class="timeline-marker bg-success"></div>
+                        <div class="timeline-content">
+                            <span class="text-muted small d-block mb-1">{{ order.created_at.strftime('%d.%m.%Y %H:%M')
+                                if order.created_at else '—' }}</span>
+                            <span class="fw-semibold text-dark">Sipariş Oluşturuldu</span>
+                        </div>
                     </div>
-                </div>
-                {% if order.updated_at and order.updated_at != order.created_at %}
-                <div class="timeline-item">
-                    <div class="timeline-marker bg-info"></div>
-                    <div class="timeline-content">
-                        <small class="text-muted">{{ order.updated_at.strftime('%d.%m.%Y %H:%M') }}</small>
-                        <p class="mb-0">Son Güncelleme</p>
+                    {% if order.updated_at and order.updated_at != order.created_at %}
+                    <div class="timeline-item">
+                        <div class="timeline-marker bg-primary"></div>
+                        <div class="timeline-content">
+                            <span class="text-muted small d-block mb-1">{{ order.updated_at.strftime('%d.%m.%Y %H:%M')
+                                }}</span>
+                            <span class="fw-semibold text-dark">Son Güncelleme</span>
+                        </div>
                     </div>
+                    {% endif %}
                 </div>
-                {% endif %}
             </div>
         </div>
     </div>
 </div>
+
 {% endblock %}
 
 {% block head_scripts %}

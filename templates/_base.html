@@ -1,4 +1,5 @@
-<html lang="tr" data-bs-theme="dark">
+<!DOCTYPE html>
+<html lang="tr" data-bs-theme="light">
 
 <head>
     <meta charset="utf-8">
@@ -12,18 +13,56 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <!-- PWA & Mobile Meta -->
-    <meta name="theme-color" content="#6366f1">
+    <meta name="theme-color" content="#0061f2">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Vidos">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='logo.png') }}">
     <link rel="manifest" href="/static/manifest.json">
-    <!-- Custom CSS -->
-    <link href="{{ url_for('static', filename='app.css') }}" rel="stylesheet">
 
+    <!-- Vidos 2.0 Design System -->
+    <link href="{{ url_for('static', filename='css/vidos_core.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='app.css') }}" rel="stylesheet">
 
     {% block head_scripts %}{% endblock %}
 
+    <style>
+        /* Vidos 2.0 Layout Overrides */
+        #sidebar {
+            background-color: var(--vidos-bg-sidebar) !important;
+            width: 260px;
+            min-width: 260px;
+            z-index: 1000;
+        }
+
+        .nav-link {
+            color: rgba(255, 255, 255, 0.7) !important;
+            padding: 0.8rem 1.5rem !important;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.05) !important;
+            color: white !important;
+        }
+
+        .nav-link.active {
+            background: rgba(0, 97, 242, 0.1) !important;
+            color: white !important;
+            border-left: 3px solid var(--vidos-primary) !important;
+        }
+
+        #main-content {
+            background-color: var(--vidos-bg-main) !important;
+        }
+
+        .vidos-top-bar {
+            background: white !important;
+            border-bottom: 1px solid var(--vidos-border-color);
+            height: 70px;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+    </style>
 </head>
 
 <body class="d-flex app-bg-animated" {% if request.endpoint=='marketplace_products_page' and request.view_args and
