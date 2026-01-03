@@ -343,7 +343,7 @@ def dashboard():
                 
             day_count, day_rev = q.first()
             counts.append(day_count or 0)
-            revenues.append(str(day_rev or 0)) 
+            revenues.append(float(day_rev or 0))  # Chart.js needs numbers, not strings 
 
         # B. Marketplace Distribution
         mp_query = db.session.query(
@@ -754,7 +754,10 @@ def settings_page():
         
         for k in all_keys:
             if k in request.form:
-                val = request.form.get(k, "").strip()
+                # For checkbox fields with hidden fallback, getlist returns ['off', 'on'] when checked
+                # We want the last value (checkbox overrides hidden)
+                vals = request.form.getlist(k)
+                val = vals[-1].strip() if vals else ""
                 
                 # Limit enforcement for NEW marketplaces
                 if k in mp_check and val:
