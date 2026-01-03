@@ -216,7 +216,7 @@
   {% endfor %}
 
   <!-- Returns Card (Toggleable) -->
-  {% if stats.settings.show_returns != 'off' %}
+  {% if stats.settings.get('show_returns', 'on') != 'off' %}
   <div class="col-md-3">
     <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #dc3545 !important;">
       <div class="card-body p-4">
@@ -235,7 +235,7 @@
   {% endif %}
 
   <!-- Cancels Card (Toggleable) -->
-  {% if stats.settings.show_cancels != 'off' %}
+  {% if stats.settings.get('show_cancels', 'on') != 'off' %}
   <div class="col-md-3">
     <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #fd7e14 !important;">
       <div class="card-body p-4">
@@ -254,7 +254,7 @@
   {% endif %}
 
   <!-- Questions Card (Toggleable) -->
-  {% if stats.settings.show_questions != 'off' %}
+  {% if stats.settings.get('show_questions', 'on') != 'off' %}
   <div class="col-md-3">
     <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #0dcaf0 !important;">
       <div class="card-body p-4">
@@ -488,9 +488,33 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
   document.addEventListener('DOMContentLoaded', function () {
+    // Rapor Al Button
+    const reportBtn = document.querySelector('button.btn-primary.shadow-sm');
+    if (reportBtn && reportBtn.innerHTML.includes('Rapor Al')) {
+      reportBtn.addEventListener('click', function () {
+        // Redirect to reports or trigger download
+        // Check if report route exists, otherwise alert
+        window.location.href = "{{ url_for('main.financial_reports') if 'financial_reports' in url_for('main.dashboard') else '#' }}";
+        // For now, since financial_reports is not confirmed, let's just show an alert or a modal
+        Swal.fire({
+          title: 'Raporlar',
+          text: 'Finansal raporlar modülü hazırlanıyor.',
+          icon: 'info'
+        });
+      });
+    }
+
     {% if stats and stats.charts %}
     const chartData = {{ stats.charts | tojson | safe
   }};
+
+  // Dark Mode Support for Charts
+  const isDarkMode = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+  const textColor = isDarkMode ? '#e9ecef' : '#495057';
+  const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+
+  Chart.defaults.color = textColor;
+  Chart.defaults.borderColor = gridColor;
 
   // --- Sales Chart (Line) ---
   const ctxSales = document.getElementById('salesChart').getContext('2d');
