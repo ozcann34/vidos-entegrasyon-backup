@@ -2172,8 +2172,11 @@ def api_auto_sync_toggle():
         data = request.get_json() or {}
         marketplace = data.get('marketplace')
         # Enforce 3-hour interval and auto matching as per new business logic
+        # UPDATE: User requested 15 mins and random barcode toggle
         enabled = data.get('enabled', False)
-        interval_minutes = 180 # Always 3 hours
+        # Default to 15 mins if not provided, but allow override
+        interval_minutes = int(data.get('interval_minutes', 15))
+        if interval_minutes < 15: interval_minutes = 15 # Minimum 15 mins
         
         if not marketplace or marketplace not in MARKETPLACES:
             return jsonify({'success': False, 'message': 'Geçersiz pazaryeri'}), 400
@@ -2181,19 +2184,24 @@ def api_auto_sync_toggle():
         # AutoSync kaydını güncelle
         auto_sync = AutoSync.get_or_create(marketplace, user_id=current_user.id)
         auto_sync.enabled = enabled
-        auto_sync.sync_interval_minutes = 180 # Force usage
+        auto_sync.sync_interval_minutes = interval_minutes
         auto_sync.updated_at = datetime.utcnow().isoformat()
         db.session.commit()
         
-        # Save extended settings (XML Source, Match Strategy)
+        # Save extended settings (XML Source, Match Strategy, Random Barcode)
         xml_source_id = data.get('xml_source_id')
-        # match_by is ignored/forced to 'stock_code' logic implicitly by services
         match_by = data.get('match_by')
+        use_random_barcode = data.get('use_random_barcode') # Boolean
         
         if xml_source_id:
             Setting.set(f'AUTO_SYNC_XML_SOURCE_{marketplace}', str(xml_source_id), user_id=current_user.id)
         if match_by:
             Setting.set(f'AUTO_SYNC_MATCH_BY_{marketplace}', str(match_by), user_id=current_user.id)
+        
+        # Save Random Barcode Setting
+        # We save it as a setting specific to marketplace auto sync
+        # Logic: If true, generated products will have random barcode
+        Setting.set(f'AUTO_SYNC_USE_RANDOM_BARCODE_{marketplace}', 'true' if use_random_barcode else 'false', user_id=current_user.id)
         
         # Scheduler job'unu ekle veya kaldır
         from app.services.scheduler_service import add_sync_job, remove_sync_job

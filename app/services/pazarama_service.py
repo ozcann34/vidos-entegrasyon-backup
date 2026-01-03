@@ -1818,7 +1818,11 @@ def perform_pazarama_direct_push_actions(user_id: int, to_update: List[Any], to_
         create_items = []
         for xml_item in to_create:
             barcode = xml_item.barcode
-            if src.use_random_barcode:
+
+            # Check random barcode setting (Global override from Auto Sync Menu)
+            use_random_setting = Setting.get(f'AUTO_SYNC_USE_RANDOM_BARCODE_pazarama', user_id=user_id) == 'true'
+            
+            if src.use_random_barcode or use_random_setting:
                 barcode = generate_random_barcode()
             
             raw = json.loads(xml_item.raw_data)

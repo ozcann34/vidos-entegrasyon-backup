@@ -1957,7 +1957,10 @@ def perform_trendyol_direct_push_actions(user_id: int, to_update: List[Any], to_
     """
     from app.services.job_queue import append_mp_job_log
     from app.utils.helpers import calculate_price
-    from app.models import MarketplaceProduct, db
+    from app.services.job_queue import append_mp_job_log
+    from app.utils.helpers import calculate_price
+    from app.models import MarketplaceProduct, Setting
+    from app import db
     
     client = get_trendyol_client(user_id=user_id)
     res = {'updated_count': 0, 'created_count': 0, 'zeroed_count': 0}
@@ -1994,7 +1997,11 @@ def perform_trendyol_direct_push_actions(user_id: int, to_update: List[Any], to_
         create_items = []
         for xml_item in to_create:
             barcode = xml_item.barcode
-            if src.use_random_barcode:
+
+            # Check random barcode setting (Global override from Auto Sync Menu)
+            use_random_setting = Setting.get(f'AUTO_SYNC_USE_RANDOM_BARCODE_trendyol', user_id=user_id) == 'true'
+
+            if src.use_random_barcode or use_random_setting:
                 barcode = generate_random_barcode()
             
             raw = json.loads(xml_item.raw_data)

@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 import logging
 from datetime import datetime
+import traceback
 
 # Services import
 from app.services.pazarama_service import get_pazarama_client
@@ -12,6 +13,13 @@ from app.services.hepsiburada_service import get_hepsiburada_client
 
 api_questions_bp = Blueprint('api_questions', __name__)
 logger = logging.getLogger(__name__)
+
+def parse_date(date_val):
+    """Normalize date for sorting."""
+    if not date_val:
+        return ""
+    # Add more robust parsing if needed (e.g. ISO vs Timestamp)
+    return str(date_val)
 
 @api_questions_bp.route('/api/questions', methods=['GET'])
 @login_required
@@ -33,15 +41,9 @@ def get_questions():
                 content = resp.get('items') or resp.get('content') or resp.get('data') or []
                 
                 for item in content:
-                    # Map Pazarama to unified format
-                    # Structure usually: { questionId, questionText, createDate, customerName, isAnswered, productName, productImageUrl, ... }
                     q_text = item.get('questionText') or item.get('text')
-                    # If answered usually not shown in "waiting" list, but let's check flag
                     is_answered = item.get('isAnswered') or (item.get('answerText') is not None)
                     
-                    if not is_answered: # Only show unanswered usually? Or all? Let's show all but sort/filter in UI
-                        pass
-                        
                     questions.append({
                         'id': item.get('questionId') or item.get('id'),
                         'marketplace': 'pazarama',
@@ -72,7 +74,7 @@ def get_questions():
                         'image_url': item.get('imageUrl'),
                         'text': item.get('text'),
                         'date': item.get('creationDate'),
-                        'username': item.get('userName') or (item.get('userFirstName') + ' ' + item.get('userLastName') if item.get('userFirstName') else None),
+                        'username': item.get('userName') or (item.get('userFirstName', '') + ' ' + item.get('userLastName', '')).strip(),
                         'answered': item.get('status') == 'ANSWERED'
                     })
         except Exception as e:
@@ -87,15 +89,13 @@ def get_questions():
                 content = res.get('questions', [])
                 
                 for item in content:
-                    # N11 XML parsed items
-                    # We usually want UNANSWERED ones.
                     answered = item.get('answered')
                     
                     questions.append({
                         'id': item.get('id'),
                         'marketplace': 'n11',
                         'product_name': item.get('product', {}).get('title'),
-                        'image_url': None, # N11 question list might not return image URL directly
+                        'image_url': None, 
                         'text': item.get('text'),
                         'date': item.get('createdDate'),
                         'username': item.get('user'),
@@ -150,7 +150,7 @@ def get_questions():
 
     # Sort by date descending
     try:
-        # Filter out invalid dates
+        # Robust Sort: Handle None or different types by converting to string first
         questions.sort(key=lambda x: str(x.get('date') or '0'), reverse=True)
     except Exception as se:
         logger.warning(f"Sort questions error: {se}")
@@ -167,7 +167,7 @@ def answer_question():
     answer = data.get('answer')
     
     if not all([q_id, marketplace, answer]):
-        return jsonify({'success': False, 'message': 'Eksik bilgi.'})
+        return jsonify({'success': False, 'message': 'Eksik bilgi (ID, Pazaryeri veya Cevap boş olamaz).'})
         
     user_id = current_user.id
     
@@ -181,7 +181,14 @@ def answer_question():
         elif marketplace == 'trendyol':
             client = get_trendyol_client(user_id=user_id)
             if not client: raise Exception("Trendyol API bilgileri eksik")
-            res = client.answer_question(int(q_id), answer)
+            
+            # Safe Int Casting
+            try:
+                t_id = int(str(q_id))
+            except (ValueError, TypeError):
+                 return jsonify({'success': False, 'message': f'Geçersiz Trendyol Soru ID formatı: {q_id}'})
+                 
+            res = client.answer_question(t_id, answer)
             return jsonify({'success': True, 'response': res})
             
         elif marketplace == 'n11':
@@ -201,11 +208,12 @@ def answer_question():
         elif marketplace == 'hepsiburada':
             client = get_hepsiburada_client(user_id=user_id)
             if not client: raise Exception("Hepsiburada API bilgileri eksik")
-            res = client.answer_product_question(q_id, answer) # HB uses question number in URL
+            res = client.answer_product_question(q_id, answer) # HB uses question number
             return jsonify({'success': True, 'response': res})
             
     except Exception as e:
         logger.error(f"Answer error {marketplace}: {e}")
-        return jsonify({'success': False, 'message': str(e)})
+        logger.error(traceback.format_exc()) # Log full traceback
+        return jsonify({'success': False, 'message': f"İşlem başarısız: {str(e)}"})
 
     return jsonify({'success': False, 'message': 'Geçersiz pazaryeri.'})

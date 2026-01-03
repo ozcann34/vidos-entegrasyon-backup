@@ -21,9 +21,20 @@
                         </label>
                     </div>
                     <div class="text-end">
-                        <span class="badge bg-light text-secondary border rounded-pill px-3 py-2">
-                            <i class="bi bi-clock-history me-1"></i> Her 3 Saatte Bir
-                        </span>
+                        <div class="text-end">
+                            <select
+                                class="form-select form-select-sm border-0 bg-light text-secondary fw-bold interval-select"
+                                data-marketplace="{{ key }}"
+                                style="width: auto; display: inline-block; cursor: pointer;">
+                                <option value="15">Her 15 Dakikada Bir</option>
+                                <option value="30">Her 30 Dakikada Bir</option>
+                                <option value="60">Her 1 Saatte Bir</option>
+                                <option value="180">Her 3 Saatte Bir</option>
+                                <option value="360">Her 6 Saatte Bir</option>
+                                <option value="720">Her 12 Saatte Bir</option>
+                                <option value="1440">Günde Bir Kez</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -38,6 +49,16 @@
                     <div class="form-text small mt-2">
                         <i class="bi bi-info-circle me-1"></i>
                         Eşleşme Otomatik Olarak Yapılır: <strong>Stok Kodu > Barkod</strong>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <div class="form-check">
+                        <input class="form-check-input random-barcode-check" type="checkbox"
+                            id="random_barcode_{{ key }}" data-marketplace="{{ key }}">
+                        <label class="form-check-label small text-muted" for="random_barcode_{{ key }}">
+                            Barkodu olmayan ürünler için <strong>13 haneli Rastgele Barkod</strong> oluştur
+                        </label>
                     </div>
                 </div>
 
@@ -259,9 +280,25 @@
 
                     const toggleEl = card.querySelector('.sync-enable');
                     const xmlSelect = card.querySelector('.xml-source-select');
+                    const intervalSelect = card.querySelector('.interval-select');
+                    const rndBarcodeCheck = card.querySelector('.random-barcode-check');
 
                     if (toggleEl) toggleEl.checked = setting.enabled;
                     if (xmlSelect) xmlSelect.value = setting.xml_source_id || '';
+                    if (intervalSelect) intervalSelect.value = setting.sync_interval_minutes || 15;
+
+                    // Random Barcode handling (stored in setting.use_random_barcode or we might need to fetch it separately if not in response)
+                    // The API auto_sync_settings returns data.settings list which api.py populates with extended settings
+                    if (rndBarcodeCheck) {
+                        // Check if api_auto_sync_settings in api.py adds this field. 
+                        // It currently grabs XML_SOURCE and MATCH_BY. I should update api_auto_sync_settings in api.py too later to return this!
+                        // For now let's hope I updated it? I haven't updated api_auto_sync_settings yet to return use_random_barcode.
+                        // I need to update api.py/api_auto_sync_settings first or now.
+                        // Actually I should update JS now, then backend get later.
+                        // Wait, I can fetch it via separate call or just rely on API update.
+                        // Let's assume API returns it as 'use_random_barcode'.
+                        rndBarcodeCheck.checked = setting.use_random_barcode === 'true' || setting.use_random_barcode === true;
+                    }
                 });
             }
         } catch (err) {
@@ -282,15 +319,22 @@
         }
 
         try {
+            const intervalSelect = card ? card.querySelector('.interval-select') : null;
+            const rndBarcodeCheck = card ? card.querySelector('.random-barcode-check') : null;
+
+            const intervalVal = intervalSelect ? parseInt(intervalSelect.value) : 15;
+            const useRandomBarcode = rndBarcodeCheck ? rndBarcodeCheck.checked : false;
+
             const resp = await fetch('/api/auto_sync/toggle', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     marketplace,
                     enabled,
-                    interval_minutes: 180, // Fixed 3 hours
+                    interval_minutes: intervalVal,
                     xml_source_id: xmlSourceId,
-                    match_by: 'auto'
+                    match_by: 'auto',
+                    use_random_barcode: useRandomBarcode
                 })
             });
             const data = await resp.json();

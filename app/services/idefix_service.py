@@ -1546,8 +1546,12 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
     default_brand_id = Setting.get("IDEFIX_BRAND_ID", "", user_id=user_id)  # Fallback brand ID
     
     # Barcode settings
+    # Barcode settings
     barcode_prefix = Setting.get("IDEFIX_BARCODE_PREFIX", "", user_id=user_id)
-    use_random_barcode = Setting.get("IDEFIX_USE_RANDOM_BARCODE", "off", user_id=user_id) == "on"
+    # Support both old manual setting and new Auto Sync toggle
+    use_random_old = Setting.get("IDEFIX_USE_RANDOM_BARCODE", "off", user_id=user_id) == "on"
+    use_random_new = Setting.get(f"AUTO_SYNC_USE_RANDOM_BARCODE_idefix", user_id=user_id) == "true"
+    use_random_barcode = use_random_old or use_random_new
     
     # Brand resolution - API-first approach with local cache
     local_brand_cache = {}
@@ -2095,11 +2099,17 @@ def fetch_all_idefix_products(user_id: Optional[int] = None, job_id: Optional[st
                     })
                     
                 # Break if we reached or exceeded total count for THIS state
-                if len(items) < limit or (total > 0 and state_item_count >= total):
+                # FIX: If total is 0/missing/fake, do NOT break based on total check alone.
+                # Only break if we got fewer items than limit (meaning end of list).
+                if len(items) < limit:
                     break
                     
+                # If total is explicitly > 0 and looks real (not the fake +1 logic), we might use it,
+                # but it's safer to just rely on len(items) < limit or empty items.
+                # However, to avoid infinite loops if API is buggy (returns same page), safety break remains.
+                
                 page += 1
-                if page > 500: break # Safety
+                if page > 1000: break # Increased Safety limit
                 
             except Exception as e:
                 # Log error but continue to next state
@@ -2430,7 +2440,11 @@ def perform_idefix_direct_push_actions(user_id: int, to_update: List[Any], to_cr
         for xml_item in to_create:
             # Random barkod seçeneği
             barcode = xml_item.barcode
-            if src.use_random_barcode:
+            
+            # Check random barcode setting (Global override from Auto Sync Menu)
+            use_random_setting = Setting.get(f'AUTO_SYNC_USE_RANDOM_BARCODE_idefix', user_id=user_id) == 'true'
+            
+            if src.use_random_barcode or use_random_setting:
                 barcode = generate_random_barcode()
             
             # Zorunlu alanları XML'den çek (xml_item.raw_data içerisinde hepsi var)
