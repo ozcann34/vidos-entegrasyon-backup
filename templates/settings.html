@@ -1119,6 +1119,107 @@
       });
     });
 
+    // --- Generic Marketplace Price Rules Logic ---
+    window.marketplaceRules = {
+      trendyol: [],
+      hepsiburada: [],
+      pazarama: [],
+      idefix: [],
+      n11: []
+    };
+
+    const mpConfig = {
+      trendyol: { hidden: 'TRENDYOL_PRICE_RULES_HIDDEN', container: 'trendyol_rules_container' },
+      hepsiburada: { hidden: 'HB_PRICE_RULES_HIDDEN', container: 'hepsiburada_rules_container' },
+      pazarama: { hidden: 'PAZARAMA_PRICE_RULES_HIDDEN', container: 'pazarama_rules_container' },
+      idefix: { hidden: 'IDEFIX_PRICE_RULES_HIDDEN', container: 'idefix_rules_container' },
+      n11: { hidden: 'N11_PRICE_RULES_HIDDEN', container: 'n11_rules_container' }
+    };
+
+    function initMarketplaceRules() {
+      Object.keys(mpConfig).forEach(mp => {
+        const hiddenInput = document.getElementById(mpConfig[mp].hidden);
+        if (hiddenInput && hiddenInput.value) {
+          try {
+            window.marketplaceRules[mp] = JSON.parse(hiddenInput.value);
+          } catch (e) {
+            console.error(`Error parsing ${mp} price rules:`, e);
+            window.marketplaceRules[mp] = [];
+          }
+        }
+        renderPriceRules(mp);
+      });
+    }
+
+    window.addPriceRule = function (mp) {
+      if (!window.marketplaceRules[mp]) window.marketplaceRules[mp] = [];
+
+      let lastMax = 0;
+      if (window.marketplaceRules[mp].length > 0) {
+        lastMax = window.marketplaceRules[mp][window.marketplaceRules[mp].length - 1].max || 0;
+      }
+      const newMin = lastMax > 0 ? parseFloat((lastMax + 0.01).toFixed(2)) : 0;
+
+      window.marketplaceRules[mp].push({
+        min: newMin,
+        max: newMin + 1000,
+        percent: 10,
+        fixed: 0
+      });
+      renderPriceRules(mp);
+      savePriceRules(mp);
+    };
+
+    window.removePriceRule = function (mp, index) {
+      window.marketplaceRules[mp].splice(index, 1);
+      renderPriceRules(mp);
+      savePriceRules(mp);
+    };
+
+    window.updatePriceRule = function (mp, index, field, value) {
+      window.marketplaceRules[mp][index][field] = parseFloat(value) || 0;
+      savePriceRules(mp);
+    };
+
+    function renderPriceRules(mp) {
+      const container = document.getElementById(mpConfig[mp].container);
+      if (!container) return;
+
+      if (window.marketplaceRules[mp].length === 0) {
+        container.innerHTML = `
+          <div class="alert alert-light border py-2 text-center small mb-2">
+            Kural tanımlanmadı.
+          </div>`;
+        return;
+      }
+
+      let html = '<div class="table-responsive"><table class="table table-sm table-bordered align-middle mb-2" style="font-size: 0.85rem;">';
+      html += '<thead class="table-light"><tr><th>Min</th><th>Max</th><th>Kâr%</th><th>Sabit</th><th style="width:40px"></th></tr></thead><tbody>';
+
+      window.marketplaceRules[mp].forEach((rule, idx) => {
+        html += `<tr>
+          <td><input type="number" step="0.01" class="form-control form-control-sm" value="${rule.min}" onchange="updatePriceRule('${mp}', ${idx}, 'min', this.value)"></td>
+          <td><input type="number" step="0.01" class="form-control form-control-sm" value="${rule.max || 999999}" onchange="updatePriceRule('${mp}', ${idx}, 'max', this.value)"></td>
+          <td><input type="number" step="0.1" class="form-control form-control-sm" value="${rule.percent}" onchange="updatePriceRule('${mp}', ${idx}, 'percent', this.value)"></td>
+          <td><input type="number" step="0.01" class="form-control form-control-sm" value="${rule.fixed || 0}" onchange="updatePriceRule('${mp}', ${idx}, 'fixed', this.value)"></td>
+          <td class="text-center"><button type="button" class="btn btn-sm text-danger p-0" onclick="removePriceRule('${mp}', ${idx})"><i class="bi bi-trash"></i></button></td>
+        </tr>`;
+      });
+
+      html += '</tbody></table></div>';
+      container.innerHTML = html;
+    }
+
+    function savePriceRules(mp) {
+      const hiddenInput = document.getElementById(mpConfig[mp].hidden);
+      if (hiddenInput) {
+        hiddenInput.value = JSON.stringify(window.marketplaceRules[mp]);
+      }
+    }
+
+    initMarketplaceRules();
+    // --- End Marketplace Price Rules Logic ---
+
     // --- Global Price Rules Logic (Tüm Pazaryerlerine Ortak) ---
     window.globalPriceRules = [];
 
@@ -1136,7 +1237,12 @@
     }
 
     window.addGlobalPriceRule = function () {
-      window.globalPriceRules.push({ min: 0, max: 1000, percent: 10, fixed: 0 });
+      let lastMax = 0;
+      if (window.globalPriceRules.length > 0) {
+        lastMax = window.globalPriceRules[window.globalPriceRules.length - 1].max || 0;
+      }
+      const newMin = lastMax > 0 ? parseFloat((lastMax + 0.01).toFixed(2)) : 0;
+      window.globalPriceRules.push({ min: newMin, max: newMin + 1000, percent: 10, fixed: 0 });
       renderGlobalRules();
       saveGlobalRules();
     };

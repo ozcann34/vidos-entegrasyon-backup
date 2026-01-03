@@ -199,6 +199,12 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a href="{{ url_for('main.barcode_tools') }}"
+                    class="nav-link {% if request.endpoint == 'main.barcode_tools' %}active{% endif %}">
+                    <i class="bi bi-upc-scan me-2"></i> Barkod Araçları
+                </a>
+            </li>
+            <li class="nav-item">
                 <a href="{{ url_for('main.instagram_panel') }}"
                     class="nav-link {% if request.endpoint == 'main.instagram_panel' %}active{% endif %}">
                     <i class="bi bi-instagram me-2"></i> Instagram Paneli

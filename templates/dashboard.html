@@ -236,7 +236,9 @@
             {% if mp.count is not none %}{{ mp.count }}{% else %}0{% endif %}
           </h4>
           <p class="text-muted mt-1 mb-0" style="font-size: 0.75rem;">
-            Aktif: {{ mp.active }} / Pasif: {{ mp.passive }}
+            Aktif: <span id="mp-active-{{ mkey }}">{{ mp.active }}</span> /
+            Onay: <span id="mp-approved-{{ mkey }}">{{ mp.approved|default(0) }}</span> /
+            Pasif: <span id="mp-passive-{{ mkey }}">{{ mp.passive }}</span>
           </p>
         </div>
       </div>
@@ -674,9 +676,18 @@
 
           // Update Marketplace Counts
           if (data.mp_counts) {
-            for (const [key, count] of Object.entries(data.mp_counts)) {
-              const el = document.getElementById(`mp-count-${key}`);
-              if (el) el.innerText = count;
+            for (const [key, stats] of Object.entries(data.mp_counts)) {
+              const elCount = document.getElementById(`mp-count-${key}`);
+              if (elCount) elCount.innerText = stats.count;
+
+              const elActive = document.getElementById(`mp-active-${key}`);
+              if (elActive) elActive.innerText = stats.active;
+
+              const elApproved = document.getElementById(`mp-approved-${key}`);
+              if (elApproved) elApproved.innerText = stats.approved;
+
+              const elPassive = document.getElementById(`mp-passive-${key}`);
+              if (elPassive) elPassive.innerText = stats.passive;
             }
           }
 

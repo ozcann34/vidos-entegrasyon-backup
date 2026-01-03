@@ -23,6 +23,8 @@ class N11Client:
         self.api_key = str(api_key).strip() if api_key else ""
         self.api_secret = str(api_secret).strip() if api_secret else ""
         self.headers = {
+            "appKey": self.api_key,
+            "appSecret": self.api_secret,
             "appkey": self.api_key,
             "appsecret": self.api_secret,
             "Content-Type": "application/json",

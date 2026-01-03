@@ -51,14 +51,17 @@ def get_mp_count(mp_name, u_id):
         stats = db.session.query(
             db.func.count(MarketplaceProduct.id).label('total'),
             db.func.sum(db.case((MarketplaceProduct.status == 'Aktif', 1), else_=0)).label('active'),
-            db.func.sum(db.case((MarketplaceProduct.status == 'Pasif', 1), else_=0)).label('passive')
+            db.func.sum(db.case((MarketplaceProduct.status == 'Pasif', 1), else_=0)).label('passive'),
+            # Genişletilmiş onay durumu: Hem 'Onaylandı' hem 'Approved' kelimelerini ara, harf duyarlılığını boşver
+            db.func.sum(db.case((MarketplaceProduct.approval_status.ilike('%onay%'), 1), (MarketplaceProduct.approval_status.ilike('%approved%'), 1), else_=0)).label('approved')
         ).filter_by(user_id=u_id, marketplace=mp_name).first()
         
         if stats and stats.total > 0:
             return {
                 'count': stats.total,
                 'active': int(stats.active or 0),
-                'passive': int(stats.passive or 0)
+                'passive': int(stats.passive or 0),
+                'approved': int(stats.approved or 0)
             }
             
         # 2. API Fallback if DB is empty (Lightweight total count)
@@ -88,10 +91,10 @@ def get_mp_count(mp_name, u_id):
         except Exception as api_err:
             logging.warning(f"Fallback API count failed for {mp_name}: {api_err}")
             
-        return {'count': total_api, 'active': total_api, 'passive': 0}
+        return {'count': total_api, 'active': total_api, 'passive': 0, 'approved': 0}
     except Exception as e:
         logging.error(f"Error count for {mp_name}: {e}")
-        return {'count': 0, 'active': 0, 'passive': 0}
+        return {'count': 0, 'active': 0, 'passive': 0, 'approved': 0}
 
 
 def permission_required(permission_name):
@@ -233,15 +236,15 @@ def dashboard():
 
         marketplaces_stats = [
             {"name": "Trendyol", "key": "trendyol", "icon": "bag-check-fill", "color": "success", 
-             "count": stats['trendyol']['count'], "active": stats['trendyol']['active'], "passive": stats['trendyol']['passive']},
+             "count": stats['trendyol']['count'], "active": stats['trendyol']['active'], "passive": stats['trendyol']['passive'], "approved": stats['trendyol'].get('approved', 0)},
             {"name": "Pazarama", "key": "pazarama", "icon": "shop", "color": "primary", 
-             "count": stats['pazarama']['count'], "active": stats['pazarama']['active'], "passive": stats['pazarama']['passive']},
+             "count": stats['pazarama']['count'], "active": stats['pazarama']['active'], "passive": stats['pazarama']['passive'], "approved": stats['pazarama'].get('approved', 0)},
             {"name": "Hepsiburada", "key": "hepsiburada", "icon": "cart", "color": "warning", 
-             "count": stats['hepsiburada']['count'], "active": stats['hepsiburada']['active'], "passive": stats['hepsiburada']['passive']},
+             "count": stats['hepsiburada']['count'], "active": stats['hepsiburada']['active'], "passive": stats['hepsiburada']['passive'], "approved": stats['hepsiburada'].get('approved', 0)},
             {"name": "İdefix", "key": "idefix", "icon": "box-fill", "color": "info", 
-             "count": stats['idefix']['count'], "active": stats['idefix']['active'], "passive": stats['idefix']['passive']},
+             "count": stats['idefix']['count'], "active": stats['idefix']['active'], "passive": stats['idefix']['passive'], "approved": stats['idefix'].get('approved', 0)},
             {"name": "N11", "key": "n11", "icon": "tag-fill", "color": "danger", 
-             "count": stats['n11']['count'], "active": stats['n11']['active'], "passive": stats['n11']['passive']},
+             "count": stats['n11']['count'], "active": stats['n11']['active'], "passive": stats['n11']['passive'], "approved": stats['n11'].get('approved', 0)},
         ]
 
         total_sent = sum(s['count'] for s in stats.values())
@@ -451,6 +454,12 @@ def excel_products_page():
 @permission_required('xml_products')
 def xml_urunler():
     return render_template("xml_products.html")
+
+
+@main_bp.route("/barcode-tools")
+@login_required
+def barcode_tools():
+    return render_template('barcode_tools.html')
 
 
 @main_bp.route("/api/dashboard/stats")

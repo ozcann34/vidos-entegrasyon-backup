@@ -1169,7 +1169,36 @@ def api_delete_product(marketplace, barcode):
 
     flash(f"⚠️ {MARKETPLACES.get(marketplace, 'Pazar Yeri')} - {barcode} ürünü silme kuyruğuna alındı.", "danger")
     return jsonify({"success": True, "message": "İşlem kuyruğa alındı."})
-@api_bp.route("/api/product/update_details/<marketplace>", methods=["POST"])
+@api_bp.route("/api/barcodes/generate_missing", methods=["POST"])
+@login_required
+def api_generate_missing_barcodes():
+    from app.services.barcode_service import bulk_generate_missing_barcodes, generate_barcode_report
+    res = bulk_generate_missing_barcodes(current_user.id)
+    if res.get('success'):
+        report = generate_barcode_report(res.get('details', []))
+        return jsonify({
+            'success': True, 
+            'message': f"{res['count']} ürün için yeni barkod üretildi.",
+            'report': report
+        })
+    return jsonify(res), 400
+
+@api_bp.route("/api/barcodes/override_all", methods=["POST"])
+@login_required
+def api_override_all_barcodes():
+    from app.services.barcode_service import bulk_override_all_barcodes, generate_barcode_report
+    res = bulk_override_all_barcodes(current_user.id)
+    if res.get('success'):
+        report = generate_barcode_report(res.get('details', []))
+        return jsonify({
+            'success': True, 
+            'message': f"TÜM ürünlerin ({res['count']}) barkodu rastgele barkodlarla güncellendi.",
+            'report': report
+        })
+    return jsonify(res), 400
+
+
+@api_bp.route("/api/product-update-details/<marketplace>", methods=["POST"])
 def api_product_update_details(marketplace):
     """
     Update detailed product info (Title, Price, Stock, Description, etc.)
