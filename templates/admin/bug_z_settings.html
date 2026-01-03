@@ -72,6 +72,7 @@
                                         </button>
                                         <ul class="dropdown-menu shadow-sm p-2" style="min-width: 250px;">
                                             <li class="dropdown-header border-bottom mb-2 pb-2">XML Kaynakları</li>
+                                            {% for xml in user.supplier_xmls %}
                                             <li class="mb-2">
                                                 <div class="d-flex justify-content-between align-items-center px-2">
                                                     <div class="d-flex flex-column overflow-hidden">
