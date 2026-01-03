@@ -87,7 +87,14 @@ def run_repair():
         ('payments', 'payment_metadata', 'TEXT'),
         ('payments', 'created_at', 'TIMESTAMP'),
         ('payments', 'completed_at', 'TIMESTAMP'),
-        ('payments', 'updated_at', 'TIMESTAMP')
+        ('payments', 'updated_at', 'TIMESTAMP'),
+
+        # SUPPLIER_XMLS Tablosu (Son Eklenenler)
+        ('supplier_xmls', 'use_random_barcode', 'BOOLEAN DEFAULT FALSE'),
+        ('supplier_xmls', 'last_cached_at', 'TIMESTAMP'),
+
+        # SYNC_LOGS Tablosu
+        ('sync_logs', 'user_id', 'INTEGER')
     ]
 
     for table, col, dtype in schema_updates:
