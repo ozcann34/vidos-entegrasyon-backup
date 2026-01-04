@@ -403,12 +403,17 @@ def perform_hepsiburada_direct_push_actions(user_id: int, to_update: List[Any], 
     """
     import json
     from datetime import datetime
-    from app.services.job_queue import append_mp_job_log
+    from app.services.job_queue import append_mp_job_log, get_mp_job, update_mp_job
     from app.utils.helpers import calculate_price, chunked
     from app.models import MarketplaceProduct, Setting, db
     
     client = get_hepsiburada_client(user_id=user_id)
     res = {'updated_count': 0, 'created_count': 0, 'zeroed_count': 0}
+
+    total_ops = len(to_update or []) + len(to_create or []) + len(to_zero or [])
+    completed_ops = 0
+    if job_id:
+        update_mp_job(job_id, progress={'current': 0, 'total': total_ops, 'message': 'İşlemler başlatılıyor...'})
     
     # Varsayılan değerler
     dispatch_time = int(Setting.get("HEPSIBURADA_DISPATCH_TIME", "3", user_id=user_id))
@@ -416,8 +421,15 @@ def perform_hepsiburada_direct_push_actions(user_id: int, to_update: List[Any], 
 
     # --- 1. GÜNCELLEMELER (Update) ---
     if to_update:
+        if job_id: update_mp_job(job_id, progress={'message': f'Güncellemeler hazırlanıyor ({len(to_update)} ürün)...'})
         update_items = []
         for xml_item, local_item in to_update:
+            if job_id:
+                js = get_mp_job(job_id)
+                if js and js.get('cancel_requested'):
+                    append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
+                    return res
+            # ... loop body continues ...
             final_price = calculate_price(xml_item.price, 'hepsiburada', user_id=user_id)
             update_items.append({
                 "MerchantSku": local_item.stock_code,
@@ -436,14 +448,28 @@ def perform_hepsiburada_direct_push_actions(user_id: int, to_update: List[Any], 
 
         try:
             for batch in chunked(update_items, 100):
+                if job_id:
+                    js = get_mp_job(job_id)
+                    if js and js.get('cancel_requested'):
+                        append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
+                        return res
                 client.upload_products(batch)
                 res['updated_count'] += len(batch)
+                
+                completed_ops += len(batch)
+                if job_id:
+                    update_mp_job(job_id, progress={
+                        'current': completed_ops,
+                        'total': total_ops,
+                        'message': f"Güncelleniyor ({completed_ops}/{total_ops})..."
+                    })
             db.session.commit()
         except Exception as e:
             if job_id: append_mp_job_log(job_id, f"Hepsiburada güncelleme hatası: {str(e)}", level='error')
 
     # --- 2. YENİ ÜRÜNLER (Create) ---
     if to_create:
+        if job_id: update_mp_job(job_id, progress={'message': f'Yeni ürünler hazırlanıyor ({len(to_create)} ürün)...'})
         from app.services.xml_service import generate_random_barcode
         create_items = []
         for xml_item in to_create:
@@ -473,25 +499,42 @@ def perform_hepsiburada_direct_push_actions(user_id: int, to_update: List[Any], 
 
         if create_items:
             try:
-                payloads = [x[0] for x in create_items]
-                client.upload_products(payloads)
-                for item_payload, xml_record in create_items:
-                    existing = MarketplaceProduct.query.filter_by(user_id=user_id, marketplace='hepsiburada', stock_code=xml_record.stock_code).first()
-                    if not existing:
-                        new_mp = MarketplaceProduct(
-                            user_id=user_id, marketplace='hepsiburada', barcode=item_payload['Barcode'],
-                            stock_code=xml_record.stock_code, title=xml_record.title,
-                            price=item_payload['Price'], sale_price=item_payload['Price'],
-                            quantity=xml_record.quantity, status='Pending', on_sale=True
-                        )
-                        db.session.add(new_mp)
-                db.session.commit()
-                res['created_count'] += len(create_items)
+                for batch in chunked(create_items, 50):
+                    if job_id:
+                        js = get_mp_job(job_id)
+                        if js and js.get('cancel_requested'):
+                            append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
+                            return res
+
+                    payloads = [x[0] for x in batch]
+                    client.upload_products(payloads)
+                    for item_payload, xml_record in batch:
+                        existing = MarketplaceProduct.query.filter_by(user_id=user_id, marketplace='hepsiburada', stock_code=xml_record.stock_code).first()
+                        if not existing:
+                            new_mp = MarketplaceProduct(
+                                user_id=user_id, marketplace='hepsiburada', barcode=item_payload['Barcode'],
+                                stock_code=xml_record.stock_code, title=xml_record.title,
+                                price=item_payload['Price'], sale_price=item_payload['Price'],
+                                quantity=xml_record.quantity, status='Pending', on_sale=True
+                            )
+                            db.session.add(new_mp)
+                    db.session.commit()
+                    res['created_count'] += len(batch)
+                    
+                    completed_ops += len(batch)
+                    if job_id:
+                        update_mp_job(job_id, progress={
+                            'current': completed_ops,
+                            'total': total_ops,
+                            'message': f"Yeni Ürünler Ekleniyor ({completed_ops}/{total_ops})..."
+                        })
+
             except Exception as e:
                 if job_id: append_mp_job_log(job_id, f"Hepsiburada yükleme hatası: {str(e)}", level='error')
 
     # --- 3. STOK SIFIRLAMA (Zero) ---
     if to_zero:
+        if job_id: update_mp_job(job_id, progress={'message': f'Stok sıfırlama hazırlanıyor ({len(to_zero)} ürün)...'})
         zero_items = []
         for local_item in to_zero:
             zero_items.append({
@@ -507,8 +550,21 @@ def perform_hepsiburada_direct_push_actions(user_id: int, to_update: List[Any], 
 
         try:
             for batch in chunked(zero_items, 100):
+                if job_id:
+                    js = get_mp_job(job_id)
+                    if js and js.get('cancel_requested'):
+                        append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
+                        return res
                 client.upload_products(batch)
                 res['zeroed_count'] += len(batch)
+                
+                completed_ops += len(batch)
+                if job_id:
+                    update_mp_job(job_id, progress={
+                        'current': completed_ops,
+                        'total': total_ops,
+                        'message': f"Stoklar Sıfırlanıyor ({completed_ops}/{total_ops})..."
+                    })
             db.session.commit()
         except Exception as e:
             if job_id: append_mp_job_log(job_id, f"Hepsiburada stok sıfırlama hatası: {str(e)}", level='error')

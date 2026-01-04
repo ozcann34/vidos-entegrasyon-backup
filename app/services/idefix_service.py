@@ -2418,17 +2418,29 @@ def perform_idefix_direct_push_actions(user_id: int, to_update: List[Any], to_cr
     to_create: xml_item listesi
     to_zero: local_item listesi
     """
-    from app.services.job_queue import append_mp_job_log
+    from app.services.job_queue import append_mp_job_log, get_mp_job, update_mp_job
     from app.utils.helpers import calculate_price
     from app.models import MarketplaceProduct, db
     
     client = get_idefix_client(user_id=user_id)
     res = {'updated_count': 0, 'created_count': 0, 'zeroed_count': 0}
     
+    total_ops = len(to_update or []) + len(to_create or []) + len(to_zero or [])
+    completed_ops = 0
+    if job_id:
+        update_mp_job(job_id, progress={'current': 0, 'total': total_ops, 'message': 'İşlemler başlatılıyor...'})
+    
     # --- 1. GÜNCELLEMELER (Update) ---
     if to_update:
+        if job_id: update_mp_job(job_id, progress={'message': f'Güncellemeler hazırlanıyor ({len(to_update)} ürün)...'})
         update_items = []
         for xml_item, local_item in to_update:
+            if job_id:
+                js = get_mp_job(job_id)
+                if js and js.get('cancel_requested'):
+                    append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
+                    return res
+            # ... loop continues ...
             final_price = calculate_price(xml_item.price, 'idefix', user_id=user_id)
             update_items.append({
                 'barcode': local_item.barcode, # Veritabanındaki barkodu kullan
@@ -2448,14 +2460,28 @@ def perform_idefix_direct_push_actions(user_id: int, to_update: List[Any], to_cr
         try:
             from app.utils.helpers import chunked
             for batch in chunked(update_items, 100):
+                if job_id:
+                    js = get_mp_job(job_id)
+                    if js and js.get('cancel_requested'):
+                        append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
+                        return res
                 client.update_inventory_and_price(batch)
                 res['updated_count'] += len(batch)
+                
+                completed_ops += len(batch)
+                if job_id:
+                    update_mp_job(job_id, progress={
+                        'current': completed_ops,
+                        'total': total_ops,
+                        'message': f"Güncelleniyor ({completed_ops}/{total_ops})..."
+                    })
             db.session.commit()
         except Exception as e:
             if job_id: append_mp_job_log(job_id, f"Idefix güncelleme hatası: {str(e)}", level='error')
 
     # --- 2. YENİ ÜRÜNLER (Create) ---
     if to_create:
+        if job_id: update_mp_job(job_id, progress={'message': f'Yeni ürünler hazırlanıyor ({len(to_create)} ürün)...'})
         from app.services.xml_service import generate_random_barcode
         create_items = []
         for xml_item in to_create:
@@ -2513,36 +2539,54 @@ def perform_idefix_direct_push_actions(user_id: int, to_update: List[Any], to_cr
             if job_id: append_mp_job_log(job_id, f"Yeni Ürün Yükleniyor: {xml_item.stock_code} ({xml_item.title[:30]}...)")
 
         # Toplu Yükleme
+        # Toplu Yükleme
         if create_items:
             try:
-                payloads = [x[0] for x in create_items]
-                client.create_products(payloads)
-                
-                # Başarılı ise yerel veritabanına MarketplaceProduct olarak ekle
-                for item_payload, xml_record in create_items:
-                    # Duplicate check
-                    existing = MarketplaceProduct.query.filter_by(user_id=user_id, marketplace='idefix', barcode=item_payload['barcode']).first()
-                    if not existing:
-                        new_mp = MarketplaceProduct(
-                            user_id=user_id,
-                            marketplace='idefix',
-                            barcode=item_payload['barcode'],
-                            stock_code=xml_record.stock_code,
-                            title=xml_record.title,
-                            price=item_payload['price'],
-                            sale_price=item_payload['price'],
-                            quantity=xml_record.quantity,
-                            status='Pending',
-                            on_sale=True
-                        )
-                        db.session.add(new_mp)
-                db.session.commit()
-                res['created_count'] += len(create_items)
+                for batch in chunked(create_items, 50):
+                    if job_id:
+                        js = get_mp_job(job_id)
+                        if js and js.get('cancel_requested'):
+                            append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
+                            return res
+
+                    payloads = [x[0] for x in batch]
+                    client.create_products(payloads)
+                    
+                    # Başarılı ise yerel veritabanına MarketplaceProduct olarak ekle
+                    for item_payload, xml_record in batch:
+                        # Duplicate check
+                        existing = MarketplaceProduct.query.filter_by(user_id=user_id, marketplace='idefix', barcode=item_payload['barcode']).first()
+                        if not existing:
+                            new_mp = MarketplaceProduct(
+                                user_id=user_id,
+                                marketplace='idefix',
+                                barcode=item_payload['barcode'],
+                                stock_code=xml_record.stock_code,
+                                title=xml_record.title,
+                                price=item_payload['price'],
+                                sale_price=item_payload['price'],
+                                quantity=xml_record.quantity,
+                                status='Pending',
+                                on_sale=True
+                            )
+                            db.session.add(new_mp)
+                    db.session.commit()
+                    res['created_count'] += len(batch)
+                    
+                    completed_ops += len(batch)
+                    if job_id:
+                        update_mp_job(job_id, progress={
+                            'current': completed_ops,
+                            'total': total_ops,
+                            'message': f"Yeni Ürünler Ekleniyor ({completed_ops}/{total_ops})..."
+                        })
+
             except Exception as e:
                 if job_id: append_mp_job_log(job_id, f"Idefix yükleme hatası: {str(e)}", level='error')
 
     # --- 3. STOK SIFIRLAMA (Zero) ---
     if to_zero:
+        if job_id: update_mp_job(job_id, progress={'message': f'Stok sıfırlama hazırlanıyor ({len(to_zero)} ürün)...'})
         from app.utils.helpers import chunked
         zero_items = []
         for local_item in to_zero:
@@ -2556,8 +2600,21 @@ def perform_idefix_direct_push_actions(user_id: int, to_update: List[Any], to_cr
 
         try:
             for batch in chunked(zero_items, 100):
+                if job_id:
+                    js = get_mp_job(job_id)
+                    if js and js.get('cancel_requested'):
+                        append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
+                        return res
                 client.update_inventory_and_price(batch)
                 res['zeroed_count'] += len(batch)
+                
+                completed_ops += len(batch)
+                if job_id:
+                    update_mp_job(job_id, progress={
+                        'current': completed_ops,
+                        'total': total_ops,
+                        'message': f"Stoklar Sıfırlanıyor ({completed_ops}/{total_ops})..."
+                    })
             db.session.commit()
         except Exception as e:
             if job_id: append_mp_job_log(job_id, f"Idefix stok sıfırlama hatası: {str(e)}", level='error')
