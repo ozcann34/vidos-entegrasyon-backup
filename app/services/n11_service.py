@@ -1468,9 +1468,10 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
     """
     N11 için Direct Push aksiyonlarını gerçekleştirir.
     """
-    from app.services.job_queue import append_mp_job_log
+    from app.services.job_queue import append_mp_job_log, get_mp_job
     from app.utils.helpers import calculate_price, chunked
-    from app.models import MarketplaceProduct, db
+    from app.models import MarketplaceProduct
+    from app import db
     import json
     
     client = get_n11_client(user_id=user_id)
@@ -1480,6 +1481,12 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
     if to_update:
         update_items = []
         for xml_item, local_item in to_update:
+            if job_id:
+                js = get_mp_job(job_id)
+                if js and js.get('cancel_requested'):
+                    append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
+                    return res
+
             final_price = calculate_price(xml_item.price, 'n11', user_id=user_id)
             update_items.append({
                 "sellerCode": local_item.stock_code,
@@ -1505,6 +1512,12 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
         from app.services.xml_service import generate_random_barcode
         create_items = []
         for xml_item in to_create:
+            if job_id:
+                js = get_mp_job(job_id)
+                if js and js.get('cancel_requested'):
+                    append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
+                    return res
+                    
             barcode = xml_item.barcode
             # Check random barcode settings (Global overrides from Auto Sync Menu)
             use_random_setting = Setting.get(f'AUTO_SYNC_USE_RANDOM_BARCODE_n11', user_id=user_id) == 'true'
@@ -1516,6 +1529,11 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
             raw = json.loads(xml_item.raw_data)
             final_price = calculate_price(xml_item.price, 'n11', user_id=user_id)
             
+            # Title Validation
+            safe_title = (xml_item.title or "").strip()
+            if len(safe_title) < 5: safe_title = f"{safe_title} - Ürün"
+            if len(safe_title) > 100: safe_title = safe_title[:100]
+
             # N11 Rest API product creation payload (basic)
             # Bu kısım N11'in karmaşık yapısı nedeniyle (kategori özellikleri vb.) 
             # manuel gönderimdeki mantığı (perform_n11_send_products) temel almalıdır.
@@ -1524,7 +1542,7 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
             item = {
                 "sellerCode": xml_item.stock_code,
                 "barcode": barcode,
-                "title": xml_item.title,
+                "title": safe_title,
                 "subtitle": xml_item.title[:50],
                 "price": final_price,
                 "currencyType": "TL",
@@ -1564,8 +1582,15 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
 
     # --- 3. STOK SIFIRLAMA (Zero) ---
     if to_zero:
+    if to_zero:
         zero_items = []
         for local_item in to_zero:
+            if job_id:
+                js = get_mp_job(job_id)
+                if js and js.get('cancel_requested'):
+                    append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
+                    return res
+
             zero_items.append({
                 "sellerCode": local_item.stock_code,
                 "price": local_item.sale_price,
