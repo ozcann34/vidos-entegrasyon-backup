@@ -52,8 +52,17 @@ class DirectSyncService:
             xml_products = db.session.query(
                 CachedXmlProduct.stock_code,
                 CachedXmlProduct.barcode,
+                CachedXmlProduct.title,
+                CachedXmlProduct.description,
                 CachedXmlProduct.quantity,
-                CachedXmlProduct.price
+                CachedXmlProduct.price,
+                CachedXmlProduct.category_name,
+                CachedXmlProduct.brand_name,
+                CachedXmlProduct.images_json,
+                CachedXmlProduct.model_code,
+                CachedXmlProduct.main_category,
+                CachedXmlProduct.top_category,
+                CachedXmlProduct.sub_category
             ).filter(CachedXmlProduct.xml_source_id == xml_source_id).all()
             
             xml_map = {p.stock_code: p for p in xml_products if p.stock_code}
@@ -62,8 +71,9 @@ class DirectSyncService:
             local_products = db.session.query(
                 MarketplaceProduct.id,
                 MarketplaceProduct.stock_code,
+                MarketplaceProduct.barcode,
                 MarketplaceProduct.quantity,
-                MarketplaceProduct.price, # Eksikti, eklendi
+                MarketplaceProduct.price,
                 MarketplaceProduct.sale_price,
                 MarketplaceProduct.xml_source_id
             ).filter_by(user_id=user_id, marketplace=marketplace).all()
