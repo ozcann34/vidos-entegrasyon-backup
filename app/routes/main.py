@@ -394,11 +394,19 @@ def dashboard():
         from app.services.subscription_service import get_usage_stats
         usage_stats_raw = get_usage_stats(user_id)
         
-        # Transform usage stats for template (compat with dashboard.html)
-        usage_stats = {
-            'product_count': usage_stats_raw['products']['used'] if usage_stats_raw else 0,
-            'product_limit': usage_stats_raw['products']['limit'] if (usage_stats_raw and usage_stats_raw['products']['limit']) else 100
-        }
+        # Robust usage stats for template (compat with both flat and nested access)
+        if usage_stats_raw:
+            usage_stats = usage_stats_raw
+        else:
+            usage_stats = {
+                'products': {'used': 0, 'limit': 100, 'percent': 0, 'is_unlimited': False},
+                'xml_sources': {'used': 0, 'limit': 1, 'percent': 0, 'is_unlimited': False},
+                'marketplaces': {'used': 0, 'limit': 1, 'percent': 0, 'is_unlimited': False}
+            }
+        
+        # Add flat aliases for template parts using stats.usage.product_count/limit
+        usage_stats['product_count'] = usage_stats.get('products', {}).get('used', 0)
+        usage_stats['product_limit'] = usage_stats.get('products', {}).get('limit') or 100
 
         stats = {
             'period': period,
@@ -451,7 +459,11 @@ def dashboard():
         fallback_stats = {
             'period': 'monthly',
             'chart_period': 'daily',
-            'usage': {'product_count': 0, 'product_limit': 100},
+            'usage': {
+                'product_count': 0, 
+                'product_limit': 100,
+                'products': {'used': 0, 'limit': 100, 'percent': 0}
+            },
             'marketplaces': [],
             'announcements': [],
             'user_notifications': [],
