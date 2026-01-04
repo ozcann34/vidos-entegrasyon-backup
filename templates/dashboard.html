@@ -57,7 +57,8 @@
       <span class="small fw-bold">{{ stats.usage.product_count }} / {{ stats.usage.product_limit }}</span>
     </div>
     <div class="progress" style="height: 8px; background-color: rgba(var(--vidos-primary-rgb), 0.1);">
-      {% set usage_pct = (stats.usage.product_count / stats.usage.product_limit * 100)|round|int %}
+      {% set usage_pct = (stats.usage.product_count / stats.usage.product_limit * 100)|round|int if
+      stats.usage.product_limit and stats.usage.product_limit > 0 else 0 %}
       {% set progress_color = 'success' if usage_pct < 70 else 'warning' if usage_pct < 90 else 'danger' %} <div
         class="progress-bar bg-{{ progress_color }} progress-bar-striped progress-bar-animated" role="progressbar"
         style="width: {{ usage_pct }}%">

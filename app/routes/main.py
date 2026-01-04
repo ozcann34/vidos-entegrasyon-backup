@@ -392,7 +392,13 @@ def dashboard():
 
         # Usage & Finance
         from app.services.subscription_service import get_usage_stats
-        usage_stats = get_usage_stats(user_id)
+        usage_stats_raw = get_usage_stats(user_id)
+        
+        # Transform usage stats for template (compat with dashboard.html)
+        usage_stats = {
+            'product_count': usage_stats_raw['products']['used'] if usage_stats_raw else 0,
+            'product_limit': usage_stats_raw['products']['limit'] if (usage_stats_raw and usage_stats_raw['products']['limit']) else 100
+        }
 
         stats = {
             'period': period,
@@ -444,10 +450,25 @@ def dashboard():
         # Provide a minimal stats structure to prevent template crashes
         fallback_stats = {
             'period': 'monthly',
+            'chart_period': 'daily',
             'usage': {'product_count': 0, 'product_limit': 100},
             'marketplaces': [],
             'announcements': [],
-            'user_notifications': []
+            'user_notifications': [],
+            'monthly_revenue': 0,
+            'monthly_orders': 0,
+            'returns_count': 0,
+            'cancel_count': 0,
+            'estimated_profit': 0,
+            'critical_stock': [],
+            'recent_orders': [],
+            'bestsellers': [],
+            'charts': {'dates': [], 'sales_counts': [], 'sales_revenues': [], 'mp_labels': [], 'mp_data': []},
+            'settings': {
+                'show_returns': 'on',
+                'show_cancels': 'on',
+                'show_questions': 'on'
+            }
         }
         return render_template('dashboard.html', stats=fallback_stats, last_sync="Hata", error=str(e))
 
