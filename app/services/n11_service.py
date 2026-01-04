@@ -1593,12 +1593,45 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
  
             payloads = [x[0] for x in batch]
             try:
-                client.create_products(payloads)
+                # Add category matching for new products (Batch logic)
+                for i, (item_payload, xml_record, r_desc) in enumerate(batch):
+                    # Find category for the product
+                    # Assuming find_matching_n11_category is imported or available in scope
+                    from app.services.n11_service import find_matching_n11_category
+                    cat_id = find_matching_n11_category(xml_record.title, user_id=user_id, job_id=job_id)
+                    if not cat_id:
+                        # Fallback or Skip (N11 requires category)
+                        if job_id: append_mp_job_log(job_id, f"[ATLADI] {xml_record.stock_code} için N11 kategorisi bulunamadı.", level='warning')
+                        payloads[i] = None # Mark for skipping
+                        continue
+                    
+                    item_payload['categoryId'] = cat_id
+
+                # Filter out skipped items
+                final_payloads = [p for p in payloads if p is not None]
+                if not final_payloads:
+                    completed_ops += len(batch) # Still count for progress even if all skipped
+                    if job_id:
+                        update_job_progress(job_id, completed_ops, total_ops, f"Yeni Ürünler Ekleniyor ({completed_ops}/{total_ops})...")
+                    continue
+
+                res_api = client.create_products(final_payloads)
                 
+                # Check for API level error
+                if res_api.get('result', {}).get('status') == 'ERROR':
+                    err_msg = res_api.get('result', {}).get('errorMessage', 'Bilinmeyen API Hatası')
+                    if job_id: append_mp_job_log(job_id, f"N11 API Hatası (Batch): {err_msg}", level='error')
+                    completed_ops += len(batch) # Still count for progress even if API failed
+                    if job_id:
+                        update_job_progress(job_id, completed_ops, total_ops, f"Yeni Ürünler Ekleniyor ({completed_ops}/{total_ops})...")
+                    continue # Skip DB update for this failed batch
+
                 # Bulk DB Create
                 new_mps = []
                 batch_logs = []
-                for item_payload, xml_record, r_desc in batch:
+                for i, (item_payload, xml_record, r_desc) in enumerate(batch):
+                    if payloads[i] is None: continue # Was skipped
+                    
                     # Duplicate check for safety
                     existing = MarketplaceProduct.query.filter_by(user_id=user_id, marketplace='n11', stock_code=xml_record.stock_code).first()
                     if not existing:
@@ -1613,20 +1646,19 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
                         if job_id:
                             batch_logs.append(f"[YENİ] {xml_record.stock_code} yüklendi. Fiyat: {item_payload['price']} ({r_desc}), Stok: {xml_record.quantity}")
                 
-                db.session.bulk_save_objects(new_mps)
-                db.session.commit()
+                if new_mps:
+                    db.session.bulk_save_objects(new_mps)
+                    db.session.commit()
                 
-                if job_id:
+                if job_id and batch_logs:
                     append_mp_job_logs(job_id, batch_logs)
 
-                res['created_count'] += len(batch)
-                completed_ops += len(batch)
+                res['created_count'] += len(final_payloads)
+                completed_ops += len(batch) # Use original batch size for progress consistency
                 if job_id:
                     update_job_progress(job_id, completed_ops, total_ops, f"Yeni Ürünler Ekleniyor ({completed_ops}/{total_ops})...")
             except Exception as e:
                 db.session.rollback()
-                if job_id: append_mp_job_log(job_id, f"N11 yükleme hatası: {str(e)}", level='error')
-
     # --- 3. STOK SIFIRLAMA (Zero) ---
     if to_zero:
         if job_id: update_job_progress(job_id, completed_ops, total_ops, f'Stok sıfırlama hazırlanıyor ({len(to_zero)} ürün)...')

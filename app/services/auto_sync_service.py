@@ -31,14 +31,21 @@ def sync_all_users_marketplace(marketplace: str):
     for record in sync_records:
         if record.user_id:
             try:
-                res = sync_marketplace_products(marketplace, user_id=record.user_id)
-                if res.get('success'):
-                    success_count += 1
+                # Parallelize: Submit each user's sync as a separate background job
+                # This ensures one user's long XML download doesn't block others
+                job_id = submit_mp_job(
+                    f'auto_sync_{marketplace}',
+                    marketplace,
+                    lambda jid, uid=record.user_id: sync_marketplace_products(marketplace, user_id=uid, job_id=jid),
+                    params={'marketplace': marketplace, 'user_id': record.user_id, 'is_auto': True}
+                )
+                success_count += 1
+                logger.info(f"Auto-sync job {job_id} submitted for user {record.user_id} on {marketplace}")
             except Exception as e:
-                logger.error(f"Sync failed for user {record.user_id} on {marketplace}: {e}")
+                logger.error(f"Failed to submit sync job for user {record.user_id} on {marketplace}: {e}")
                 
-    logger.info(f"Global sync for {marketplace} finished. Total users: {total_count}, Success: {success_count}")
-    return {'total': total_count, 'success': success_count}
+    logger.info(f"Global sync triggers finished for {marketplace}. Total users: {total_count}, Triggered: {success_count}")
+    return {'total': total_count, 'triggered': success_count}
 
 
 def sync_marketplace_products(marketplace: str, user_id: int, job_id: Optional[str] = None) -> Dict[str, Any]:

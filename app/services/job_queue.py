@@ -279,7 +279,7 @@ def submit_mp_job(job_type: str, marketplace: str, func, params: Optional[Dict[s
 
                 # Check current running jobs (Global across all workers via DB)
                 running_count = PersistentJob.query.filter_by(status='running').count()
-                if running_count < 3:
+                if running_count < 10:
                     break # Slot available!
                 
                 # Wait for a slot
