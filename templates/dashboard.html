@@ -18,7 +18,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
   <div class="d-flex align-items-center gap-3">
-    <h1 class="h3 fw-bold mb-0 text-dark">Genel Bakış</h1>
+    <h1 class="h3 fw-bold mb-0">Genel Bakış</h1>
     <span class="badge bg-primary-light text-primary rounded-pill">Bugün</span>
   </div>
   <div class="d-flex gap-2">
@@ -95,7 +95,7 @@
       style="border-radius: 12px;">
       <div class="card-body p-3 d-flex flex-column">
         <div class="d-flex justify-content-between align-items-start mb-2">
-          <h6 class="card-title fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+          <h6 class="card-title fw-bold mb-0 d-flex align-items-center gap-2">
             <i class="bi bi-{{ icon_class }} text-{{ alert_class }}"></i>
             <span class="text-truncate" style="max-width: 200px;">{{ ann.title }}</span>
           </h6>
@@ -277,9 +277,9 @@
 <!-- Secondary Stats (Usage & More) -->
 <div class="row g-4 mb-4">
   <div class="col-lg-8">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-header border-bottom py-3 d-flex justify-content-between align-items-center">
-        <h5 class="card-title mb-0 fw-bold" style="color: var(--vidos-dark);">Satış Performansı</h5>
+    <div class="card vidos-card h-100">
+      <div class="card-header border-bottom py-3 d-flex justify-content-between align-items-center bg-transparent">
+        <h5 class="card-title mb-0 fw-bold">Satış Performansı</h5>
         <div class="d-flex gap-2">
           <button class="btn btn-sm btn-light active">Haftalık</button>
           <button class="btn btn-sm btn-light">Aylık</button>
@@ -291,9 +291,9 @@
     </div>
   </div>
   <div class="col-lg-4">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-header border-bottom py-3">
-        <h5 class="card-title mb-0 fw-bold" style="color: var(--vidos-dark);">Pazar Yeri Dağılımı</h5>
+    <div class="card vidos-card h-100">
+      <div class="card-header border-bottom py-3 bg-transparent">
+        <h5 class="card-title mb-0 fw-bold">Pazar Yeri Dağılımı</h5>
       </div>
       <div class="card-body">
         <div style="height: 250px; position: relative;">
@@ -508,7 +508,6 @@
     const chartData = {{ stats.charts | tojson | safe
   }};
 
-  // Dark Mode Support for Charts
   const isDarkMode = document.documentElement.getAttribute('data-bs-theme') === 'dark';
   const textColor = isDarkMode ? '#e9ecef' : '#495057';
   const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
@@ -516,93 +515,76 @@
   Chart.defaults.color = textColor;
   Chart.defaults.borderColor = gridColor;
 
-  // --- Sales Chart (Line) ---
-  const ctxSales = document.getElementById('salesChart').getContext('2d');
+  const hasSalesData = chartData.sales_revenues && chartData.sales_revenues.some(v => v > 0);
+  if (hasSalesData) {
+    const ctxSales = document.getElementById('salesChart').getContext('2d');
+    let gradient = ctxSales.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, 'rgba(13, 110, 253, 0.4)');
+    gradient.addColorStop(1, 'rgba(13, 110, 253, 0.0)');
 
-  // Gradient
-  let gradient = ctxSales.createLinearGradient(0, 0, 0, 400);
-  gradient.addColorStop(0, 'rgba(13, 110, 253, 0.5)'); // Bootstrap Primary
-  gradient.addColorStop(1, 'rgba(13, 110, 253, 0.0)');
-
-  new Chart(ctxSales, {
-    type: 'line',
-    data: {
-      labels: chartData.dates,
-      datasets: [{
-        label: 'Günlük Ciro (TL)',
-        data: chartData.sales_revenues,
-        borderColor: '#0d6efd',
-        backgroundColor: gradient,
-        borderWidth: 2,
-        pointBackgroundColor: '#fff',
-        pointBorderColor: '#0d6efd',
-        pointRadius: 4,
-        fill: true,
-        tension: 0.4
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          mode: 'index',
-          intersect: false,
-          callbacks: {
-            label: function (context) {
-              let label = context.dataset.label || '';
-              if (label) {
-                label += ': ';
-              }
-              if (context.parsed.y !== null) {
-                label += new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(context.parsed.y);
-              }
-              return label;
+    new Chart(ctxSales, {
+      type: 'line',
+      data: {
+        labels: chartData.dates,
+        datasets: [{
+          label: 'Günlük Ciro (TL)',
+          data: chartData.sales_revenues,
+          borderColor: '#0d6efd',
+          backgroundColor: gradient,
+          borderWidth: 3,
+          pointBackgroundColor: '#fff',
+          pointBorderColor: '#0d6efd',
+          pointRadius: 4,
+          fill: true,
+          tension: 0.4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { grid: { display: false } },
+          y: {
+            beginAtZero: true,
+            grid: { color: gridColor },
+            ticks: {
+              callback: value => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 }).format(value)
             }
           }
-        }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          grid: { color: 'rgba(255, 255, 255, 0.1)' },
-          ticks: { color: '#adb5bd' }
         },
-        x: {
-          grid: { display: false },
-          ticks: { color: '#adb5bd' }
+        plugins: {
+          legend: { display: false }
         }
       }
-    }
-  });
+    });
+  } else {
+    document.getElementById('salesChart').parentElement.innerHTML = '<div class="h-100 d-flex flex-column align-items-center justify-content-center text-muted py-5"><i class="bi bi-graph-up fs-1 mb-2 opacity-25"></i><span>Henüz satış verisi bulunmuyor</span></div>';
+  }
 
-  // --- Marketplace Chart (Doughnut) ---
-  if (chartData.mp_data && chartData.mp_data.length > 0) {
-    const ctxMp = document.getElementById('marketplaceChart').getContext('2d');
-    new Chart(ctxMp, {
+  if (chartData.mp_labels && chartData.mp_labels.length > 0) {
+    const ctxMP = document.getElementById('marketplaceChart').getContext('2d');
+    new Chart(ctxMP, {
       type: 'doughnut',
       data: {
         labels: chartData.mp_labels,
         datasets: [{
           data: chartData.mp_data,
-          backgroundColor: ['#f0ad4e', '#FF6000', '#0d6efd', '#20c997', '#dc3545', '#6610f2'],
-          borderWidth: 0,
-          hoverOffset: 4
+          backgroundColor: ['#0d6efd', '#6610f2', '#6f42c1', '#d63384', '#dc3545', '#fd7e14'],
+          borderWidth: isDarkMode ? 2 : 1,
+          borderColor: isDarkMode ? '#1e293b' : '#fff'
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: { position: 'bottom', labels: { color: '#adb5bd', boxWidth: 12 } }
+          legend: { position: 'bottom', labels: { color: textColor, boxWidth: 12, padding: 20 } }
         },
-        cutout: '70%'
+        cutout: '75%'
       }
     });
   } else {
-    const container = document.getElementById('marketplaceChart').parentElement;
-    container.innerHTML = '<div class="text-center text-muted py-5"><i class="bi bi-inbox fs-1 d-block mb-2"></i>Veri Yok</div>';
+    document.getElementById('marketplaceChart').parentElement.innerHTML = '<div class="h-100 d-flex flex-column align-items-center justify-content-center text-muted py-5"><i class="bi bi-pie-chart fs-1 mb-2 opacity-25"></i><span>Pazaryeri dağılımı yok</span></div>';
   }
   {% endif %}
 

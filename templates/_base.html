@@ -224,10 +224,11 @@
     <div id="sidebar-overlay" class="sidebar-overlay d-lg-none"></div>
 
     <div id="sidebar" class="d-flex flex-column">
-        <div class="sidebar-header px-4 py-4 mb-3 border-bottom border-white border-opacity-5">
-            <a href="{{ url_for('main.dashboard') }}" class="d-flex align-items-center text-decoration-none">
-                <img src="{{ url_for('static', filename='logo.png') }}" width="28" class="me-2 rounded-1">
-                <span class="fw-bold text-white fs-5 tracking-tight">Vidos</span>
+        <div class="sidebar-header px-4 py-4 mb-3 border-bottom border-white border-opacity-5 text-center">
+            <a href="{{ url_for('main.dashboard') }}" class="d-inline-block text-decoration-none">
+                <img src="{{ url_for('static', filename='logo.png') }}" width="64"
+                    class="rounded-1 animate__animated animate__pulse animate__infinite"
+                    style="filter: drop-shadow(0 0 10px rgba(0, 97, 242, 0.4));">
             </a>
         </div>
         <ul class="nav nav-pills flex-column mb-auto">
@@ -470,9 +471,9 @@
             </li>
         </ul>
 
-        <!-- Sidebar Job Widget (Integrated) -->
+        <!-- Sidebar Job Widget (Integrated to Sidebar Bottom) -->
         <div id="jobWidget" class="mt-auto border-top border-white border-opacity-10 animate__animated animate__fadeIn"
-            style="display: none; background: rgba(0,0,0,0.2);">
+            style="display: none; background: rgba(0,0,0,0.3); position: sticky; bottom: 0; width: 100%; z-index: 10;">
             <div class="px-4 py-3">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h6 class="mb-0 small fw-bold text-white-50 text-uppercase tracking-wider"
@@ -493,23 +494,27 @@
                 </div>
 
                 <div id="jobLogs" class="mb-3 custom-scrollbar"
-                    style="max-height: 80px; overflow-y: auto; font-size: 0.7rem; color: rgba(255,255,255,0.4);">
+                    style="max-height: 100px; overflow-y: auto; font-size: 0.7rem; color: rgba(255,255,255,0.4);">
                 </div>
 
                 <div class="d-grid gap-2" id="jobControls">
-                    <div class="d-flex gap-2">
-                        <button id="btnJobPause" class="btn btn-xs btn-outline-warning flex-grow-1"
-                            onclick="window.controlJob('pause')"><i class="bi bi-pause-fill"></i></button>
-                        <button id="btnJobResume" class="btn btn-xs btn-outline-success flex-grow-1 d-none"
-                            onclick="window.controlJob('resume')"><i class="bi bi-play-fill"></i></button>
-                        <button id="btnJobCancel" class="btn btn-xs btn-outline-danger flex-grow-1"
-                            onclick="window.controlJob('cancel')"><i class="bi bi-stop-fill"></i></button>
-                    </div>
-                    <button id="btnJobView" class="btn btn-xs btn-primary d-none"><i
-                            class="bi bi-eye-fill me-1"></i>Sonuçları Gör</button>
+                    <button onclick="cancelGlobalJob()"
+                        class="btn btn-xs btn-outline-danger border-white border-opacity-25 text-white py-2">
+                        <i class="bi bi-x-circle me-1"></i> İşlemi Durdur
+                    </button>
                 </div>
+                <button id="btnJobPause" class="btn btn-xs btn-outline-warning flex-grow-1"
+                    onclick="window.controlJob('pause')"><i class="bi bi-pause-fill"></i></button>
+                <button id="btnJobResume" class="btn btn-xs btn-outline-success flex-grow-1 d-none"
+                    onclick="window.controlJob('resume')"><i class="bi bi-play-fill"></i></button>
+                <button id="btnJobCancel" class="btn btn-xs btn-outline-danger flex-grow-1"
+                    onclick="window.controlJob('cancel')"><i class="bi bi-stop-fill"></i></button>
             </div>
+            <button id="btnJobView" class="btn btn-xs btn-primary d-none"><i class="bi bi-eye-fill me-1"></i>Sonuçları
+                Gör</button>
         </div>
+    </div>
+    </div>
     </div>
 
     <!-- Mobile Bottom Navigation -->
@@ -1068,46 +1073,125 @@
             sendChatMessage();
         }
 
-        async function sendChatMessage() {
-            const input = document.getElementById('chatbot-input');
-            const text = input.value.trim();
-            if (!text) return;
+        // --- Global Job Monitor Logic ---
+        let currentActiveJobId = null;
 
-            appendMessage(text, true);
-            input.value = '';
-
-            // Loading state
-            const loadingId = 'loading-' + Date.now();
-            const messagesDiv = document.getElementById('chatbot-messages');
-            messagesDiv.insertAdjacentHTML('beforeend', `
-                <div id="${loadingId}" class="d-flex justify-content-start mb-3">
-                    <div class="bg-white border text-dark p-2 rounded shadow-sm">
-                        <div class="spinner-border spinner-border-sm text-primary" role="status"></div> Yazıyor...
-                    </div>
-                </div>
-            `);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
+        async function checkActiveJob() {
             try {
-                const response = await fetch('/api/chatbot/message', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: text })
-                });
-
-                document.getElementById(loadingId).remove();
-
-                if (response.ok) {
-                    const data = await response.json();
-                    appendMessage(data.reply, false);
-                } else {
-                    appendMessage("Üzgünüm, şu an bağlantı kuramıyorum.", false);
+                const resp = await fetch('/api/jobs/active');
+                if (resp.status === 200) {
+                    const job = await resp.json();
+                    if (job && job.id) {
+                        currentActiveJobId = job.id;
+                        startGlobalJobPolling(job.id);
+                    }
                 }
             } catch (e) {
-                document.getElementById(loadingId)?.remove();
-                appendMessage("Bir hata oluştu.", false);
+                console.error("Active job check failed", e);
             }
         }
+
+        function startGlobalJobPolling(jobId) {
+            const widget = document.getElementById('jobWidget');
+            if (widget) widget.style.display = 'block';
+            pollGlobalJob(jobId);
+        }
+
+        async function pollGlobalJob(jobId) {
+            try {
+                const resp = await fetch(`/api/mp_jobs/${jobId}`);
+                if (!resp.ok) throw new Error("Job not found");
+                const data = await resp.json();
+
+                updateGlobalJobWidget(data);
+
+                if (['completed', 'failed', 'cancelled', 'cancelled_finished'].includes(data.status)) {
+                    // Stop polling after a delay
+                    setTimeout(() => {
+                        const widget = document.getElementById('jobWidget');
+                        if (widget) widget.style.display = 'none';
+                        currentActiveJobId = null;
+                    }, 8000);
+                } else {
+                    setTimeout(() => pollGlobalJob(jobId), 3000);
+                }
+            } catch (e) {
+                console.error("Job polling failed", e);
+                // On error, check if still active after a while
+                setTimeout(() => checkActiveJob(), 10000);
+            }
+        }
+
+        function updateGlobalJobWidget(job) {
+            const statusText = document.getElementById('jobStatusText');
+            const progressBar = document.getElementById('jobProgressBar');
+            const progressText = document.getElementById('jobProgressText');
+            const logsDiv = document.getElementById('jobLogs');
+
+            if (statusText) {
+                let statusBadge = '<span class="badge bg-secondary">Bekliyor</span>';
+                if (job.status === 'running') statusBadge = '<span class="badge bg-primary animate__animated animate__pulse animate__infinite">Çalışıyor</span>';
+                else if (job.status === 'completed') statusBadge = '<span class="badge bg-success">Tamamlandı</span>';
+                else if (job.status === 'failed') statusBadge = '<span class="badge bg-danger">Hata</span>';
+                else if (job.status === 'cancelled' || job.status === 'cancelling') statusBadge = '<span class="badge bg-warning text-dark">Durduruluyor</span>';
+                else if (job.status === 'cancelled_finished') statusBadge = '<span class="badge bg-warning text-dark">İptal Edildi</span>';
+
+                statusText.innerHTML = statusBadge;
+            }
+
+            // Calculate progress if meta exists
+            if (job.result && (job.result.current !== undefined || job.result.success_count !== undefined)) {
+                const current = job.result.current || (job.result.success_count + (job.result.fail_count || 0)) || 0;
+                const total = job.result.total || job.result.count || 0;
+                const percent = total > 0 ? Math.round((current / total) * 100) : 0;
+
+                if (progressBar) {
+                    progressBar.style.width = percent + '%';
+                    progressBar.innerText = percent > 10 ? percent + '%' : '';
+                }
+                if (progressText) progressText.innerText = `${current} / ${total}`;
+            }
+
+            // Logs
+            if (logsDiv && job.logs) {
+                logsDiv.innerHTML = job.logs.slice(-5).map(l => `<div class="mb-1 text-truncate" title="${l.message}">• ${l.message}</div>`).join('');
+                logsDiv.scrollTop = logsDiv.scrollHeight;
+            }
+        }
+
+        window.cancelGlobalJob = async function () {
+            if (!currentActiveJobId) return;
+
+            const result = await Swal.fire({
+                title: 'Emin misiniz?',
+                text: "Devam eden işlem durdurulacaktır!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Evet, Durdur',
+                cancelButtonText: 'Vazgeç'
+            });
+
+            if (result.isConfirmed) {
+                try {
+                    const resp = await fetch(`/api/mp_jobs/${currentActiveJobId}/control`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'cancel' })
+                    });
+                    if (resp.ok) {
+                        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'İptal isteği gönderildi', showConfirmButton: false, timer: 2000 });
+                    }
+                } catch (e) {
+                    Swal.fire('Hata', 'İşlem durdurulamadı', 'error');
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            checkActiveJob();
+        });
     </script>
     <script>
         // Sidebar Toggle for Mobile

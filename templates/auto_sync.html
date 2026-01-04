@@ -411,6 +411,46 @@
         }
     }
 
+    window.cancelSync = async function (marketplace) {
+        const jobId = activeJobs[marketplace];
+        if (!jobId) return;
+
+        const result = await Swal.fire({
+            title: 'Emin misiniz?',
+            text: "Bu pazaryeri için devam eden senkronizasyon durdurulacaktır!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Evet, Durdur',
+            cancelButtonText: 'Vazgeç'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const resp = await fetch(`/api/mp_jobs/${jobId}/control`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'cancel' })
+                });
+                if (resp.ok) {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: 'İptal isteği gönderildi',
+                        showConfirmButton: false,
+                        timer: 2000
+                    });
+                } else {
+                    throw new Error('İptal işlemi başarısız');
+                }
+            } catch (err) {
+                Swal.fire('Hata', err.message, 'error');
+            }
+        }
+    }
+
     async function triggerManualSync(marketplace) {
         const card = document.querySelector(`.marketplace-card[data-marketplace="${marketplace}"]`);
         const xmlSelect = card ? card.querySelector('.xml-source-select') : null;

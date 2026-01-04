@@ -8,23 +8,18 @@
     --vidos-info: #00cfd5;
     --vidos-warning: #f4a100;
     --vidos-danger: #e81500;
-    --vidos-dark: #1e293b;
-    --vidos-light: #f4f7fa;
-
-    /* Backgrounds */
-    --vidos-bg-main: #f4f7fa;
-    --vidos-bg-card: #ffffff;
-    --vidos-bg-sidebar: #0f172a;
-
-    /* Text */
-    --vidos-text-main: #2d3748;
-    --vidos-text-muted: #718096;
-    --vidos-text-white: #ffffff;
-
-    /* Shadows & Borders */
-    --vidos-shadow: 0 0.15rem 1.75rem 0 rgba(33, 40, 50, 0.15);
     --vidos-border-color: #dee2e6;
     --vidos-radius: 0.5rem;
+}
+
+[data-bs-theme="dark"] {
+    --vidos-bg-main: #0f172a;
+    --vidos-bg-card: rgba(30, 41, 59, 0.7);
+    --vidos-bg-sidebar: #020617;
+    --vidos-border-color: rgba(255, 255, 255, 0.1);
+    --vidos-text-main: #f1f5f9;
+    --vidos-text-muted: #94a3b8;
+    --vidos-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
 body {
@@ -35,24 +30,31 @@ body {
 
 /* Glassmorphism Utilities */
 .glass-panel {
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: var(--vidos-shadow);
+}
+
+[data-bs-theme="light"] .glass-panel {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 /* Card Styling */
 .vidos-card {
     background: var(--vidos-bg-card);
-    border-radius: var(--vidos-radius);
+    backdrop-filter: blur(8px);
+    border-radius: 12px;
     border: 1px solid var(--vidos-border-color);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: var(--vidos-shadow);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.3s ease;
 }
 
 .vidos-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
 }
 
 /* Button Styling */
