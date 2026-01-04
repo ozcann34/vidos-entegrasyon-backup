@@ -48,9 +48,13 @@ class DirectSyncService:
                     return {'success': False, 'message': 'İptal edildi'}
 
             # 2. XML Verilerini Al (PostgreSQL'den)
-            # Sadece eşleşme anahtarı ve ham veriyi çekiyoruz (Performans + Tam Veri)
+            # Standart kolonları + ekstra veriler için raw_data'yı çekiyoruz
             xml_products = db.session.query(
                 CachedXmlProduct.stock_code,
+                CachedXmlProduct.price,
+                CachedXmlProduct.quantity,
+                CachedXmlProduct.barcode,
+                CachedXmlProduct.title,
                 CachedXmlProduct.raw_data
             ).filter(CachedXmlProduct.xml_source_id == xml_source_id).all()
             
@@ -61,11 +65,18 @@ class DirectSyncService:
             for p in xml_products:
                 if not p.stock_code: continue
                 try:
-                    # Ham veriyi SimpleNamespace'e çevirerek dot-notation (p.title vb.) kazandırıyoruz
+                    # Ham veriyi SimpleNamespace'e çevirerek dot-notation (p.images vb.) kazandırıyoruz
                     raw_dict = json.loads(p.raw_data) if p.raw_data else {}
-                    # SimpleNamespace ile xml_item.title, xml_item.quantity gibi erişimler hatasız çalışır
                     ns = SimpleNamespace(**raw_dict)
+                    
+                    # Veritabanındaki standart/temizlenmiş değerleri garanti ediyoruz
+                    ns.stock_code = p.stock_code
+                    ns.price = p.price
+                    ns.quantity = p.quantity
+                    ns.barcode = p.barcode
+                    ns.title = p.title
                     ns.raw_data = p.raw_data # Servislerin re-parse yapabilmesi için geri ekliyoruz
+                    
                     xml_map[p.stock_code] = ns
                 except Exception as e:
                     logger.warning(f"XML data parse error for {p.stock_code}: {e}")
