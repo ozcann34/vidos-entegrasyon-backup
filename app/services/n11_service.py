@@ -1582,7 +1582,6 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
 
     # --- 3. STOK SIFIRLAMA (Zero) ---
     if to_zero:
-    if to_zero:
         zero_items = []
         for local_item in to_zero:
             if job_id:
