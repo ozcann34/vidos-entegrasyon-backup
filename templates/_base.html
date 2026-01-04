@@ -69,7 +69,8 @@
 </head>
 
 <body class="d-flex app-bg-animated" {% if request.endpoint=='marketplace_products_page' and request.view_args and
-    request.view_args.get('marketplace') %} data-brand="{{ request.view_args.get('marketplace') }}" {% endif %}>
+    request.view_args.get('marketplace') %} data-brand="{{ request.view_args.get('marketplace') }}" {% endif %} {% if
+    request.endpoint=='main.auto_sync_page' %}data-page="auto_sync" {% endif %}>
 
     {% if current_user.is_authenticated and not current_user.is_admin and current_user.subscription and
     current_user.subscription.plan != 'free' and not current_user.subscription.is_approved %}
@@ -135,6 +136,11 @@
 
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Hide global job widget on auto_sync page (uses local tracking) */
+        body[data-page="auto_sync"] #jobWidget {
+            display: none !important;
         }
     </style>
     {% endif %}

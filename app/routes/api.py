@@ -54,8 +54,26 @@ def api_clear_all_cache():
     try:
         cleared_items = []
         
-        # 1. Clear all pending/paused jobs from job queue
-        from app.services.job_queue import clear_all_jobs
+        # 1. Cancel and clear all active jobs
+        from app.services.job_queue import clear_all_jobs, get_all_jobs
+        
+        # First, try to cancel all running jobs
+        cancelled_count = 0
+        try:
+            all_jobs = get_all_jobs()
+            for job in all_jobs:
+                if job.get('status') in ['pending', 'running']:
+                    job_id = job.get('id')
+                    if job_id:
+                        try:
+                            control_mp_job(job_id, 'cancel')
+                            cancelled_count += 1
+                        except:
+                            pass
+        except Exception as e:
+            logging.error(f"Failed to cancel jobs: {e}")
+        
+        # Now clear the queue
         jobs_cleared = clear_all_jobs()
         
         # 1.5 Clear BatchLog DB table (Permanent fix for stuck jobs)
@@ -66,7 +84,7 @@ def api_clear_all_cache():
         except Exception as e:
             logging.error(f"Failed to clear BatchLog DB: {e}")
             
-        cleared_items.append(f"{jobs_cleared} iş (DB dahil)")
+        cleared_items.append(f"{jobs_cleared} iş (iptal: {cancelled_count}, DB dahil)")
         
         # 2. Clear Trendyol brand cache
         from app.services.trendyol_service import _BRAND_CACHE

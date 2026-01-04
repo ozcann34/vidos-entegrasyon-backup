@@ -84,6 +84,36 @@
                         <i class="bi bi-arrow-repeat me-1"></i> Test: Şimdi Senkronize Et
                     </button>
                 </div>
+
+                <!-- Progress Tracking Area (Hidden by default) -->
+                <div class="sync-progress-area d-none mt-4" data-marketplace="{{ key }}">
+                    <div class="card border-info bg-info bg-opacity-10">
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="small fw-bold text-info">
+                                    <i class="bi bi-sync me-1 spinner-border spinner-border-sm"></i>
+                                    <span class="sync-status-text">Senkronizasyon Başlatılıyor...</span>
+                                </span>
+                                <span class="sync-percent-text text-info fw-bold">0%</span>
+                            </div>
+
+                            <div class="progress mb-2" style="height: 8px;">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-info sync-progress-bar"
+                                    role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0"
+                                    aria-valuemax="100"></div>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="small text-muted sync-count-text">0 / 0</span>
+                                <span class="small text-muted sync-eta-text">Hesaplanıyor...</span>
+                            </div>
+
+                            <button class="btn btn-sm btn-danger w-100 sync-cancel-btn">
+                                <i class="bi bi-x-circle me-1"></i> İşlemi Durdur
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -321,9 +351,21 @@
             const data = await resp.json();
 
             if (data.success && data.job_id) {
-                if (typeof window.showJobWidget === 'function') {
-                    window.showJobWidget(data.job_id);
-                }
+                // Save to localStorage
+                const jobData = {
+                    jobId: data.job_id,
+                    marketplace: marketplace,
+                    startTime: Date.now()
+                };
+                localStorage.setItem(`vidos_sync_job_${marketplace}`, JSON.stringify(jobData));
+
+                // Show progress area for this marketplace
+                showProgressArea(marketplace);
+
+                // Start polling for this specific job
+                pollLocalJob(marketplace, data.job_id);
+
+                // Reload logs after a while
                 setTimeout(loadLogs, 5000);
             } else {
                 throw new Error(data.message || 'İşlem başarısız');
@@ -332,6 +374,193 @@
             console.error('Manual sync error:', err);
             Swal.fire('Hata', err.message, 'error');
         }
+    }
+
+
+    // --- Local Progress Tracking Functions ---
+    function showProgressArea(marketplace) {
+        const progressArea = document.querySelector(`.sync-progress-area[data-marketplace="${marketplace}"]`);
+        if (progressArea) {
+            progressArea.classList.remove('d-none');
+        }
+    }
+
+    function hideProgressArea(marketplace) {
+        const progressArea = document.querySelector(`.sync-progress-area[data-marketplace="${marketplace}"]`);
+        if (progressArea) {
+            progressArea.classList.add('d-none');
+        }
+    }
+
+    function updateProgressArea(marketplace, jobData) {
+        const progressArea = document.querySelector(`.sync-progress-area[data-marketplace="${marketplace}"]`);
+        if (!progressArea) return;
+
+        const statusText = progressArea.querySelector('.sync-status-text');
+        const percentText = progressArea.querySelector('.sync-percent-text');
+        const progressBar = progressArea.querySelector('.sync-progress-bar');
+        const countText = progressArea.querySelector('.sync-count-text');
+        const etaText = progressArea.querySelector('.sync-eta-text');
+
+        // Calculate progress
+        let current = 0;
+        let total = 0;
+        if (jobData.result) {
+            current = jobData.result.current || (Number(jobData.result.success_count || 0) + Number(jobData.result.fail_count || 0)) || 0;
+            total = jobData.result.total || jobData.result.count || 0;
+        }
+
+        const percent = total > 0 ? Math.round((current / total) * 100) : 0;
+
+        // Update UI
+        if (statusText) {
+            let statusLabel = 'Bekliyor...';
+            if (jobData.status === 'running') statusLabel = 'İşleniyor...';
+            else if (jobData.status === 'completed') statusLabel = 'Tamamlandı';
+            else if (jobData.status === 'failed') statusLabel = 'Hata Oluştu';
+            else if (jobData.status === 'cancelled' || jobData.status === 'cancelling') statusLabel = 'Durduruluyor...';
+            else if (jobData.status === 'cancelled_finished') statusLabel = 'İptal Edildi';
+            statusText.innerText = statusLabel;
+        }
+
+        if (percentText) percentText.innerText = `${percent}%`;
+        if (progressBar) progressBar.style.width = `${percent}%`;
+        if (countText) countText.innerText = `${current} / ${total}`;
+
+        // Calculate ETA
+        if (etaText) {
+            const eta = calculateETA(marketplace, current, total);
+            etaText.innerText = eta || 'Hesaplanıyor...';
+        }
+    }
+
+    function calculateETA(marketplace, current, total) {
+        const jobDataStr = localStorage.getItem(`vidos_sync_job_${marketplace}`);
+        if (!jobDataStr) return null;
+
+        try {
+            const jobData = JSON.parse(jobDataStr);
+            const startTime = jobData.startTime;
+            const now = Date.now();
+            const elapsed = (now - startTime) / 1000; // seconds
+
+            if (current <= 0 || elapsed < 5) return null;
+
+            const rate = current / elapsed; // items per second
+            const remaining = total - current;
+            const etaSeconds = remaining / rate;
+
+            if (etaSeconds < 60) {
+                return `~${Math.ceil(etaSeconds)} saniye`;
+            } else {
+                const minutes = Math.ceil(etaSeconds / 60);
+                return `~${minutes} dakika`;
+            }
+        } catch (e) {
+            return null;
+        }
+    }
+
+    async function pollLocalJob(marketplace, jobId) {
+        try {
+            const resp = await fetch(`/api/mp_jobs/${jobId}`);
+            if (!resp.ok) {
+                console.error('Job poll failed:', resp.status);
+                return;
+            }
+
+            const data = await resp.json();
+
+            // Update progress area
+            updateProgressArea(marketplace, data);
+
+            // Continue polling if job is still running
+            if (data.status === 'pending' || data.status === 'running') {
+                setTimeout(() => pollLocalJob(marketplace, jobId), 2000);
+            } else {
+                // Job finished
+                if (data.status === 'completed') {
+                    setTimeout(() => {
+                        hideProgressArea(marketplace);
+                        localStorage.removeItem(`vidos_sync_job_${marketplace}`);
+                    }, 8000);
+                } else {
+                    // Failed or cancelled - keep visible longer
+                    setTimeout(() => {
+                        hideProgressArea(marketplace);
+                        localStorage.removeItem(`vidos_sync_job_${marketplace}`);
+                    }, 15000);
+                }
+            }
+        } catch (e) {
+            console.error('Job polling error:', e);
+        }
+    }
+
+    async function cancelLocalJob(marketplace) {
+        const jobDataStr = localStorage.getItem(`vidos_sync_job_${marketplace}`);
+        if (!jobDataStr) return;
+
+        try {
+            const jobData = JSON.parse(jobDataStr);
+            const jobId = jobData.jobId;
+
+            const result = await Swal.fire({
+                title: 'Emin misiniz?',
+                text: "Devam eden işlem durdurulacaktır!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Evet, Durdur',
+                cancelButtonText: 'Vazgeç'
+            });
+
+            if (result.isConfirmed) {
+                const resp = await fetch(`/api/mp_jobs/${jobId}/control`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'cancel' })
+                });
+
+                if (resp.ok) {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: 'İptal isteği gönderildi',
+                        showConfirmButton: false,
+                        timer: 2000
+                    });
+                }
+            }
+        } catch (e) {
+            Swal.fire('Hata', 'İşlem durdurulamadı', 'error');
+        }
+    }
+
+    function restoreActiveJobs() {
+        // Check localStorage for all marketplace jobs
+        const marketplaces = ['trendyol', 'pazarama', 'hepsiburada', 'n11', 'idefix'];
+
+        marketplaces.forEach(marketplace => {
+            const jobDataStr = localStorage.getItem(`vidos_sync_job_${marketplace}`);
+            if (jobDataStr) {
+                try {
+                    const jobData = JSON.parse(jobDataStr);
+                    const jobId = jobData.jobId;
+
+                    // Show progress area
+                    showProgressArea(marketplace);
+
+                    // Resume polling
+                    pollLocalJob(marketplace, jobId);
+                } catch (e) {
+                    console.error('Failed to restore job for', marketplace, e);
+                    localStorage.removeItem(`vidos_sync_job_${marketplace}`);
+                }
+            }
+        });
     }
 
 
@@ -488,6 +717,17 @@
             btn.addEventListener('click', (e) => triggerManualSync(e.target.closest('button').dataset.marketplace));
         });
 
+        // Cancel buttons for local progress
+        document.querySelectorAll('.sync-cancel-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const progressArea = e.target.closest('.sync-progress-area');
+                if (progressArea) {
+                    const marketplace = progressArea.dataset.marketplace;
+                    cancelLocalJob(marketplace);
+                }
+            });
+        });
+
         const logFilter = document.getElementById('logMarketplaceFilter');
         if (logFilter) {
             logFilter.addEventListener('change', (e) => loadLogs(e.target.value || null));
@@ -499,6 +739,9 @@
 
         const orderInterval = document.getElementById('order-sync-interval');
         if (orderInterval) orderInterval.addEventListener('change', saveOrderSettings);
+
+        // Restore active jobs from localStorage on page load
+        restoreActiveJobs();
 
         // Initialize
         loadOrderSettings();
