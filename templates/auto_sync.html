@@ -405,9 +405,17 @@
         // Calculate progress
         let current = 0;
         let total = 0;
+
+        // Check result first (completed jobs)
         if (jobData.result) {
             current = jobData.result.current || (Number(jobData.result.success_count || 0) + Number(jobData.result.fail_count || 0)) || 0;
             total = jobData.result.total || jobData.result.count || 0;
+        }
+
+        // If result empty or incomplete, check progress object (running jobs)
+        if (total === 0 && jobData.progress) {
+            current = jobData.progress.current || 0;
+            total = jobData.progress.total || 0;
         }
 
         const percent = total > 0 ? Math.round((current / total) * 100) : 0;
@@ -541,9 +549,9 @@
 
     function restoreActiveJobs() {
         // Check localStorage for all marketplace jobs
-        const marketplaces = ['trendyol', 'pazarama', 'hepsiburada', 'n11', 'idefix'];
+        const mpList = ['trendyol', 'pazarama', 'hepsiburada', 'n11', 'idefix'];
 
-        marketplaces.forEach(marketplace => {
+        mpList.forEach(marketplace => {
             const jobDataStr = localStorage.getItem(`vidos_sync_job_${marketplace}`);
             if (jobDataStr) {
                 try {

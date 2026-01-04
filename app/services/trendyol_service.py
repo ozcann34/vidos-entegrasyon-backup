@@ -1956,9 +1956,7 @@ def perform_trendyol_direct_push_actions(user_id: int, to_update: List[Any], to_
     """
     Trendyol için Direct Push aksiyonlarını gerçekleştirir.
     """
-    from app.services.job_queue import append_mp_job_log
-    from app.utils.helpers import calculate_price
-    from app.services.job_queue import append_mp_job_log
+    from app.services.job_queue import append_mp_job_log, get_mp_job
     from app.utils.helpers import calculate_price
     from app.models import MarketplaceProduct, Setting
     from app import db
@@ -1975,6 +1973,11 @@ def perform_trendyol_direct_push_actions(user_id: int, to_update: List[Any], to_
     if to_update:
         update_items = []
         for xml_item, local_item in to_update:
+            if job_id:
+                js = get_mp_job(job_id)
+                if js and js.get('cancel_requested'):
+                    append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
+                    return res
             final_price = calculate_price(xml_item.price, 'trendyol', user_id=user_id)
             update_items.append({
                 'barcode': local_item.barcode,
@@ -1991,6 +1994,11 @@ def perform_trendyol_direct_push_actions(user_id: int, to_update: List[Any], to_
 
         try:
             for batch in chunked(update_items, 100):
+                if job_id:
+                    js = get_mp_job(job_id)
+                    if js and js.get('cancel_requested'):
+                        append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
+                        return res
                 client.update_price_inventory(batch)
                 res['updated_count'] += len(batch)
             db.session.commit()
@@ -2010,6 +2018,11 @@ def perform_trendyol_direct_push_actions(user_id: int, to_update: List[Any], to_
             except: pass
 
         for xml_item in to_create:
+            if job_id:
+                js = get_mp_job(job_id)
+                if js and js.get('cancel_requested'):
+                    append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
+                    return res
             barcode = xml_item.barcode
 
             # Check random barcode settings (Global overrides from Auto Sync Menu)
@@ -2080,6 +2093,11 @@ def perform_trendyol_direct_push_actions(user_id: int, to_update: List[Any], to_
     if to_zero:
         zero_items = []
         for local_item in to_zero:
+            if job_id:
+                js = get_mp_job(job_id)
+                if js and js.get('cancel_requested'):
+                    append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
+                    return res
             zero_items.append({
                 'barcode': local_item.barcode,
                 'quantity': 0,
@@ -2091,6 +2109,11 @@ def perform_trendyol_direct_push_actions(user_id: int, to_update: List[Any], to_
 
         try:
             for batch in chunked(zero_items, 100):
+                if job_id:
+                    js = get_mp_job(job_id)
+                    if js and js.get('cancel_requested'):
+                        append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
+                        return res
                 client.update_price_inventory(batch)
                 res['zeroed_count'] += len(batch)
             db.session.commit()

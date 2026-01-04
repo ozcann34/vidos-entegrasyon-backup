@@ -6,7 +6,7 @@ from typing import Dict, Any, List, Optional
 from app import db
 from app.models import MarketplaceProduct, SupplierXML, SyncLog, Setting
 from app.services.xml_db_manager import xml_db_manager, CachedXmlProduct
-from app.services.job_queue import append_mp_job_log, update_mp_job
+from app.services.job_queue import append_mp_job_log, update_mp_job, get_mp_job
 from app.services.xml_service import generate_random_barcode
 
 logger = logging.getLogger(__name__)
@@ -40,6 +40,13 @@ class DirectSyncService:
             append_mp_job_log(job_id, f"Kaynak: {src.name} | Eşleşme: Stok Kodu")
 
         try:
+            # Check Cancel
+            if job_id:
+                js = get_mp_job(job_id)
+                if js and js.get('cancel_requested'):
+                    append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
+                    return {'success': False, 'message': 'İptal edildi'}
+
             # 2. XML Verilerini Al (Partitioned DB'den)
             xml_session = xml_db_manager.get_session(xml_source_id)
             xml_products = xml_session.query(CachedXmlProduct).all()
@@ -85,6 +92,13 @@ class DirectSyncService:
                 msg = "Tüm ürünler zaten güncel."
                 if job_id: append_mp_job_log(job_id, msg)
                 return {'success': True, 'message': msg}
+
+            # Check Cancel
+            if job_id:
+                js = get_mp_job(job_id)
+                if js and js.get('cancel_requested'):
+                    append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
+                    return {'success': False, 'message': 'İptal edildi'}
 
             # 5. Aksiyon (Execution)
             # Burada pazaryeri bazlı servislere yönlendirilecek
