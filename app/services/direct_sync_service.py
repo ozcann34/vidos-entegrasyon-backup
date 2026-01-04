@@ -4,10 +4,10 @@ import time
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from app import db
-from app.models import MarketplaceProduct, SupplierXML, SyncLog, Setting
-from app.services.xml_db_manager import xml_db_manager, CachedXmlProduct
-from app.services.job_queue import append_mp_job_log, update_mp_job, get_mp_job
+from app.models import MarketplaceProduct, SupplierXML, SyncLog, Setting, CachedXmlProduct
+from app.services.job_queue import append_mp_job_log, update_mp_job, get_mp_job, update_job_progress
 from app.services.xml_service import generate_random_barcode
+import sqlalchemy
 
 logger = logging.getLogger(__name__)
 
@@ -47,19 +47,27 @@ class DirectSyncService:
                     append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
                     return {'success': False, 'message': 'İptal edildi'}
 
-            # 2. XML Verilerini Al (Partitioned DB'den)
-            xml_session = xml_db_manager.get_session(xml_source_id)
-            xml_products = xml_session.query(CachedXmlProduct).all()
+            # 2. XML Verilerini Al (PostgreSQL'den)
+            # Sadece eşleşme için gereken kolonları çekerek belleği koruyoruz
+            xml_products = db.session.query(
+                CachedXmlProduct.stock_code,
+                CachedXmlProduct.barcode,
+                CachedXmlProduct.quantity,
+                CachedXmlProduct.price
+            ).filter(CachedXmlProduct.xml_source_id == xml_source_id).all()
+            
             xml_map = {p.stock_code: p for p in xml_products if p.stock_code}
             
             # 3. Yerel Pazaryeri Kayıtlarını Al
-            local_products = MarketplaceProduct.query.filter_by(
-                user_id=user_id, 
-                marketplace=marketplace
-            ).all()
+            local_products = db.session.query(
+                MarketplaceProduct.id,
+                MarketplaceProduct.stock_code,
+                MarketplaceProduct.quantity,
+                MarketplaceProduct.sale_price,
+                MarketplaceProduct.xml_source_id
+            ).filter_by(user_id=user_id, marketplace=marketplace).all()
+            
             local_map = {p.stock_code: p for p in local_products if p.stock_code}
-
-            xml_session.close()
 
             if not xml_map:
                 msg = "XML önbelleği boş. Lütfen önce XML'i yenileyin."
@@ -82,7 +90,11 @@ class DirectSyncService:
                         ownership_changed = True
                     
                     # Değişiklik kontrolü (Stok veya Fiyat veya Sahiplik)
-                    if xml_item.quantity != local_item.quantity or xml_item.price != local_item.sale_price or ownership_changed:
+                    # xml_item.price (XML taban fiyatı) ile local_item.price (DB taban fiyatı) karşılaştırılmalı
+                    # local_item.sale_price satış (kural uygulanmış) fiyatıdır.
+                    if (xml_item.quantity != local_item.quantity or 
+                        xml_item.price != local_item.price or 
+                        ownership_changed):
                         to_update.append((xml_item, local_item))
                 else:
                     to_create.append(xml_item)

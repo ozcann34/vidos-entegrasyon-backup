@@ -8,243 +8,246 @@ from typing import Dict, Any, Optional
 from flask import current_app
 from config import Config
 from app import db
-from app.models import BatchLog
+from app.models import BatchLog, PersistentJob
 
 from flask_login import current_user
 
-_MP_JOBS: Dict[str, Dict[str, Any]] = {}
-_MP_JOBS_LOCK = threading.Lock()
-_MP_MAX_JOBS = Config.MP_MAX_JOBS
-MP_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=4)
+# Max memory workers for actual execution
+MP_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=30)
 
 
 def is_job_running_for_user(user_id: int, job_type: str = None) -> bool:
     """
-    Check if there's an active job running for the given user.
-    Optionally filter by job_type (e.g., 'batch_send', 'sync').
-    Returns True if a running/queued job exists.
+    Check if there's an active job running for the given user in DB.
     """
-    with _MP_JOBS_LOCK:
-        for job in _MP_JOBS.values():
-            job_user_id = job.get('params', {}).get('_user_id')
-            if job_user_id == user_id:
-                status = job.get('status', '')
-                if status in ('queued', 'running', 'pausing'):
-                    # If job_type filter is specified, also check job type
-                    if job_type:
-                        if job.get('job_type') == job_type:
-                            return True
-                    else:
-                        return True
-    return False
+    try:
+        query = PersistentJob.query.filter(
+            PersistentJob.user_id == user_id,
+            PersistentJob.status.in_(['pending', 'running', 'pausing'])
+        )
+        if job_type:
+            query = query.filter(PersistentJob.job_type == job_type)
+        return query.first() is not None
+    except Exception as e:
+        logging.error(f"Error checking running job: {e}")
+        return False
 
 
 def get_running_job_for_user(user_id: int, job_type: str = None) -> Optional[Dict[str, Any]]:
     """
-    Get the currently running job for a user, if any.
+    Get the currently running job for a user from DB.
     """
-    with _MP_JOBS_LOCK:
-        for job in _MP_JOBS.values():
-            job_user_id = job.get('params', {}).get('_user_id')
-            if job_user_id == user_id:
-                status = job.get('status', '')
-                if status in ('queued', 'running', 'pausing'):
-                    if job_type:
-                        if job.get('job_type') == job_type:
-                            return serialize_job(job)
-                    else:
-                        return serialize_job(job)
-    return None
-
-def _persist_job(job_id: str, job_data: Dict[str, Any]):
-    """Helper to save/update BatchLog in DB."""
     try:
-        # We need app context. If running in thread, current_app might not work unless pushed.
-        # But this function is called from functions that should have context.
-        # Check if we have an active context
-        if not current_app:
-            return
-
-        log = BatchLog.query.filter_by(batch_id=job_id).first()
-        user_id = job_data.get('params', {}).get('_user_id')
+        query = PersistentJob.query.filter(
+            PersistentJob.user_id == user_id,
+            PersistentJob.status.in_(['pending', 'running', 'pausing'])
+        )
+        if job_type:
+            query = query.filter(PersistentJob.job_type == job_type)
         
+        job = query.order_by(PersistentJob.created_at.desc()).first()
+        return serialize_job(job) if job else None
+    except Exception as e:
+        logging.error(f"Error getting running job: {e}")
+        return None
+
+def _sync_with_batch_log(job: PersistentJob):
+    """Bridge between modern PersistentJob and legacy BatchLog if needed."""
+    try:
+        log = BatchLog.query.filter_by(batch_id=job.id).first()
         if not log:
             log = BatchLog(
-                batch_id=job_id,
-                timestamp=job_data.get('created_at'),
-                success=False, # Default
-                marketplace=job_data.get('marketplace', 'unknown'),
-                job_type=job_data.get('job_type'),
-                user_id=user_id,
-                product_count=0,
-                success_count=0,
-                fail_count=0,
-                details_json=json.dumps(job_data)
+                batch_id=job.id,
+                timestamp=job.created_at.isoformat() if job.created_at else datetime.now().isoformat(),
+                success=False,
+                marketplace=job.marketplace or 'unknown',
+                job_type=job.job_type,
+                user_id=job.user_id,
+                product_count=job.progress_total,
+                details_json=json.dumps(serialize_job(job))
             )
             db.session.add(log)
         else:
-            log.details_json = json.dumps(job_data)
-            # Ensure marketplace is updated if it changed or was wrong
-            if job_data.get('marketplace'):
-                log.marketplace = job_data.get('marketplace')
+            log.details_json = json.dumps(serialize_job(job))
+            log.job_type = job.job_type
+            log.marketplace = job.marketplace
             
-            # Ensure job_type is set
-            if job_data.get('job_type'):
-                log.job_type = job_data.get('job_type')
-            
-            # Ensure user_id is set if missing
-            if not log.user_id and user_id:
-                log.user_id = user_id
-            
-            if job_data.get('status') == 'completed':
-                # Check result for success/fail counts
-                res = job_data.get('result') or {}
+            if job.status == 'completed':
+                res = json.loads(job.result_json) if job.result_json else {}
                 if isinstance(res, dict):
-                    # Check both top-level and nested summary for counts
                     summary = res.get('summary', {})
                     s_count = res.get('success_count', summary.get('success_count', 0))
                     f_count = res.get('fail_count', summary.get('fail_count', 0))
-                    total_count = res.get('count', s_count + f_count)
-                    
-                    log.product_count = total_count
+                    log.product_count = res.get('count', s_count + f_count)
                     log.success_count = s_count
                     log.fail_count = f_count
                     log.success = (f_count == 0) and res.get('success', True)
                 else:
                     log.success = True
-            elif job_data.get('status') == 'failed':
+            elif job.status == 'failed':
                 log.success = False
         
         db.session.commit()
     except Exception as e:
-        logging.error(f"Failed to persist job {job_id}: {e}")
+        logging.error(f"Failed to sync batch log: {e}")
         db.session.rollback()
 
 def register_mp_job(job_type: str, marketplace: str, params: Optional[Dict[str, Any]] = None) -> str:
     job_id = str(uuid.uuid4())
-    now = datetime.utcnow()
-    record = {
-        'id': job_id,
-        'job_type': job_type,
-        'marketplace': marketplace,
-        'status': 'queued',
-        'created_at': now.isoformat(),
-        'updated_at': now.isoformat(),
-        'created_ts': now.timestamp(),
-        'params': params or {},
-        'result': None,
-        'error': None,
-        'logs': [],
-        'cancel_requested': False,
-        'pause_requested': False
-    }
-    with _MP_JOBS_LOCK:
-        if len(_MP_JOBS) >= _MP_MAX_JOBS:
-            oldest_id = min(_MP_JOBS.items(), key=lambda item: item[1].get('created_ts', 0))[0]
-            _MP_JOBS.pop(oldest_id, None)
-        _MP_JOBS[job_id] = record
+    user_id = params.get('_user_id') if params else None
     
-    logging.info("Job queued: %s (%s.%s)", job_id, marketplace, job_type)
+    job = PersistentJob(
+        id=job_id,
+        user_id=user_id,
+        marketplace=marketplace,
+        job_type=job_type,
+        status='pending',
+        params_json=json.dumps(params or {}),
+        progress_total=100,
+        logs_json=json.dumps([])
+    )
     
-    # Persist initial state
-    _persist_job(job_id, record)
+    db.session.add(job)
+    db.session.commit()
+    
+    logging.info("Job created in DB: %s (%s.%s)", job_id, marketplace, job_type)
+    _sync_with_batch_log(job)
     
     return job_id
 
-def serialize_job(job: Dict[str, Any]) -> Dict[str, Any]:
-    data = {k: (list(v) if k == 'logs' and isinstance(v, list) else v) for k, v in job.items() if k != 'created_ts'}
-    return data
+def serialize_job(job: PersistentJob) -> Dict[str, Any]:
+    if not job: return {}
+    return {
+        'id': job.id,
+        'user_id': job.user_id,
+        'marketplace': job.marketplace,
+        'job_type': job.job_type,
+        'status': job.status,
+        'progress_current': job.progress_current,
+        'progress_total': job.progress_total,
+        'progress_message': job.progress_message,
+        'params': job.get_params(),
+        'result': json.loads(job.result_json) if job.result_json else None,
+        'logs': job.get_logs(),
+        'cancel_requested': job.cancel_requested,
+        'created_at': job.created_at.isoformat() if job.created_at else None,
+        'updated_at': job.updated_at.isoformat() if job.updated_at else None
+    }
 
 def get_mp_job(job_id: str) -> Optional[Dict[str, Any]]:
-    with _MP_JOBS_LOCK:
-        job = _MP_JOBS.get(job_id)
-        if not job:
-            # Try DB if not in memory
-            try:
-                log = BatchLog.query.filter_by(batch_id=job_id).first()
-                if log and log.details_json:
-                    return json.loads(log.details_json)
-            except Exception:
-                pass
-            return None
-        return serialize_job(job)
+    # Force expire session to get fresh data from other workers
+    db.session.expire_all()
+    job = PersistentJob.query.get(job_id)
+    return serialize_job(job) if job else None
 
 def get_all_jobs() -> list:
-    """Get all jobs from memory."""
-    with _MP_JOBS_LOCK:
-        return [serialize_job(job) for job in _MP_JOBS.values()]
-
+    jobs = PersistentJob.query.order_by(PersistentJob.created_at.desc()).limit(100).all()
+    return [serialize_job(job) for job in jobs]
 
 def clear_all_jobs() -> int:
-    """Clear all jobs from memory. Returns count of jobs cleared."""
-    with _MP_JOBS_LOCK:
-        count = len(_MP_JOBS)
-        _MP_JOBS.clear()
-        logging.info(f"Cleared {count} jobs from memory")
-        return count
+    # We don't delete from DB, but we could mark old ones as failed or something
+    # For now, let's keep DB persistence.
+    return 0
 
 
 def control_mp_job(job_id: str, action: str) -> bool:
-    """
-    Control a running job.
-    Actions: 'cancel', 'pause', 'resume'
-    """
-    with _MP_JOBS_LOCK:
-        job = _MP_JOBS.get(job_id)
-        if not job:
-            return False
+    job = PersistentJob.query.get(job_id)
+    if not job:
+        return False
+    
+    if action == 'cancel':
+        job.cancel_requested = True
+        job.status = 'cancelling'
+        logging.info(f"Job {job_id} cancel requested in DB")
+    elif action == 'pause':
+        # job.pause_requested = True # Not in model yet, use params
+        job.status = 'pausing'
+    elif action == 'resume':
+        job.status = 'running' 
+    else:
+        return False
         
-        if action == 'cancel':
-            job['cancel_requested'] = True
-            job['status'] = 'cancelling'
-            logging.info(f"Job {job_id} cancel requested")
-        elif action == 'pause':
-            job['pause_requested'] = True
-            job['status'] = 'pausing'
-            logging.info(f"Job {job_id} pause requested")
-        elif action == 'resume':
-            job['pause_requested'] = False
-            job['status'] = 'running' 
-            logging.info(f"Job {job_id} resume requested")
-        else:
-            return False
-            
-        # Persist change
-        _persist_job(job_id, job)
-        return True
+    db.session.commit()
+    _sync_with_batch_log(job)
+    return True
 
 def update_mp_job(job_id: str, **fields: Any) -> Optional[Dict[str, Any]]:
-    with _MP_JOBS_LOCK:
-        job = _MP_JOBS.get(job_id)
-        if not job:
-            return None
-        now_iso = datetime.utcnow().isoformat()
-        job['updated_at'] = now_iso
-        for key, value in fields.items():
-            job[key] = value
-        
-        # Persist update
-        _persist_job(job_id, job)
-        
-        return serialize_job(job)
+    # Force expire to get updates from actual running thread
+    db.session.expire_all()
+    job = PersistentJob.query.get(job_id)
+    if not job:
+        return None
+    
+    for key, value in fields.items():
+        if hasattr(job, key):
+            setattr(job, key, value)
+        elif key == 'result':
+            job.result_json = json.dumps(value)
+        elif key == 'error':
+            # Store error in result or specific field if we add it
+            pass
+            
+    db.session.commit()
+    _sync_with_batch_log(job)
+    return serialize_job(job)
 
 def append_mp_job_log(job_id: str, message: str, level: str = 'info') -> None:
-    level_normalized = level.upper()
-    log_entry = {
-        'ts': datetime.utcnow().isoformat(),
-        'level': level_normalized,
-        'message': message,
-    }
-    with _MP_JOBS_LOCK:
-        job = _MP_JOBS.get(job_id)
-        if not job:
-            return
-        job.setdefault('logs', []).append(log_entry)
-        job['updated_at'] = log_entry['ts']
-        
-        _persist_job(job_id, job)
+    append_mp_job_logs(job_id, [message], level=level)
 
-    logging.log(getattr(logging, level_normalized, logging.INFO), "[%s] %s", job_id, message)
+def append_mp_job_logs(job_id: str, messages: List[str], level: str = 'info') -> None:
+    if not messages:
+        return
+
+    level_normalized = level.upper()
+    ts = datetime.utcnow().isoformat()
+    
+    new_entries = []
+    for msg in messages:
+        new_entries.append({
+            'ts': ts,
+            'level': level_normalized,
+            'message': msg,
+        })
+    
+    job = PersistentJob.query.get(job_id)
+    if not job:
+        return
+        
+    logs = job.get_logs()
+    logs.extend(new_entries)
+    job.logs_json = json.dumps(logs)
+    db.session.commit()
+    
+    # Still persist to BatchLog details
+    _sync_with_batch_log(job)
+
+    # Log to system console (just the last one or summary if too many)
+    params = job.get_params()
+    u_email = params.get('_user_email')
+    u_id = job.user_id
+    
+    user_tag = ""
+    if u_email:
+        user_tag = f" (User: {u_email})"
+    elif u_id:
+        user_tag = f" (User ID: {u_id})"
+        
+    if len(messages) == 1:
+        logging.log(getattr(logging, level_normalized, logging.INFO), "[%s]%s %s", job_id, user_tag, messages[0])
+    else:
+        logging.log(getattr(logging, level_normalized, logging.INFO), "[%s]%s Added %d logs (Last: %s)", job_id, user_tag, len(messages), messages[-1])
+
+def update_job_progress(job_id: str, current: int, total: int = None, message: str = None):
+    """Accurate progress update helper."""
+    job = PersistentJob.query.get(job_id)
+    if job:
+        job.progress_current = current
+        if total is not None:
+            job.progress_total = total
+        if message:
+            job.progress_message = message
+        db.session.commit()
+        _sync_with_batch_log(job)
 
 def submit_mp_job(job_type: str, marketplace: str, func, params: Optional[Dict[str, Any]] = None) -> str:
     # Capture user_id if authenticated
@@ -253,6 +256,7 @@ def submit_mp_job(job_type: str, marketplace: str, func, params: Optional[Dict[s
             if params is None:
                 params = {}
             params['_user_id'] = current_user.id
+            params['_user_email'] = current_user.email
     except Exception:
         pass # Ignore auth errors in submission if any
 
@@ -262,23 +266,61 @@ def submit_mp_job(job_type: str, marketplace: str, func, params: Optional[Dict[s
 
     def _runner():
         with app.app_context():
+            # Wait/Queue Management: Limit to max 3 concurrent running jobs
+            import random
+            while True:
+                db.session.expire_all()
+                job = PersistentJob.query.get(job_id)
+                if not job or job.cancel_requested:
+                    if job:
+                        job.status = 'cancelled'
+                        db.session.commit()
+                    return
+
+                # Check current running jobs (Global across all workers via DB)
+                running_count = PersistentJob.query.filter_by(status='running').count()
+                if running_count < 3:
+                    break # Slot available!
+                
+                # Wait for a slot
+                time.sleep(10 + random.random() * 5)
+
+            job.status = 'running'
+            job.started_at = datetime.now()
+            db.session.commit()
+            
             append_mp_job_log(job_id, "Başladı", level='info')
-            update_mp_job(job_id, status='running')
+            
             try:
                 result = func(job_id)
                 
                 # Check for cancellation
-                final_state = get_mp_job(job_id)
-                if final_state and final_state.get('cancel_requested'):
+                db.session.refresh(job)
+                if job.cancel_requested:
                     append_mp_job_log(job_id, "İptal edildi", level='warning')
-                    update_mp_job(job_id, status='cancelled', result=result, error="Kullanıcı tarafından iptal edildi")
+                    job.status = 'cancelled'
                 else:
                     append_mp_job_log(job_id, "Tamamlandı", level='info')
-                    update_mp_job(job_id, status='completed', result=result, error=None)
+                    job.status = 'completed'
+                
+                job.result_json = json.dumps(result)
+                job.completed_at = datetime.now()
+                job.progress_current = job.progress_total
+                db.session.commit()
+                _sync_with_batch_log(job)
+                
             except Exception as exc:
                 logging.exception("Job failed: %s", job_id)
+                db.session.rollback()
+                
+                # Reload job to save error state
+                job = PersistentJob.query.get(job_id)
+                job.status = 'failed'
+                job.completed_at = datetime.now()
+                db.session.commit()
+                
                 append_mp_job_log(job_id, f"Hata: {exc}", level='error')
-                update_mp_job(job_id, status='failed', error=str(exc))
+                _sync_with_batch_log(job)
 
     MP_EXECUTOR.submit(_runner)
     return job_id

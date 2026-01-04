@@ -1,7 +1,7 @@
 from .user import User
 from .subscription import Subscription
 from .admin_log import AdminLog
-from .product import Product, SupplierXML, MarketplaceProduct
+from .product import Product, SupplierXML, MarketplaceProduct, CachedXmlProduct, PersistentJob
 from .settings import Setting, BatchLog
 from .order import Order, OrderItem, Customer
 from .auto_sync import AutoSync, SyncLog

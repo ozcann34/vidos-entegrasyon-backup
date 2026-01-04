@@ -1468,7 +1468,7 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
     """
     N11 için Direct Push aksiyonlarını gerçekleştirir.
     """
-    from app.services.job_queue import append_mp_job_log, get_mp_job, update_mp_job
+    from app.services.job_queue import append_mp_job_log, append_mp_job_logs, get_mp_job, update_mp_job, update_job_progress
     from app.utils.helpers import calculate_price, chunked
     from app.models import MarketplaceProduct
     from app import db
@@ -1480,80 +1480,90 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
     total_ops = len(to_update or []) + len(to_create or []) + len(to_zero or [])
     completed_ops = 0
     if job_id:
-        update_mp_job(job_id, progress={'current': 0, 'total': total_ops, 'message': 'İşlemler başlatılıyor...'})
+        update_job_progress(job_id, 0, total_ops, 'İşlemler başlatılıyor...')
     
-    if to_update:
-        if job_id: update_mp_job(job_id, progress={'message': f'Güncellemeler hazırlanıyor ({len(to_update)} ürün)...'})
-        update_items = []
+        update_payloads = []
+        db_mappings = []
+        batch_logs = []
+        
         for xml_item, local_item in to_update:
-            if job_id:
+            # Periodic cancel check
+            if len(db_mappings) % 50 == 0 and job_id:
                 js = get_mp_job(job_id)
                 if js and js.get('cancel_requested'):
                     append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
                     return res
-
-            final_price = calculate_price(xml_item.price, 'n11', user_id=user_id)
-            update_items.append({
+            
+            final_price, rule_desc = calculate_price(xml_item.price, 'n11', user_id=user_id, return_details=True)
+            update_payloads.append({
                 "sellerCode": local_item.stock_code,
                 "price": final_price,
                 "quantity": xml_item.quantity
             })
-            if job_id: append_mp_job_log(job_id, f"Güncelleniyor: {xml_item.stock_code} (Stok: {local_item.quantity} -> {xml_item.quantity})")
             
-            local_item.quantity = xml_item.quantity
-            local_item.sale_price = final_price
-            local_item.last_sync_at = datetime.now()
+            db_mappings.append({
+                'id': local_item.id,
+                'price': xml_item.price, # Base
+                'quantity': xml_item.quantity,
+                'sale_price': final_price, # Calculated
+                'last_sync_at': datetime.now()
+            })
+            
+            if job_id:
+                status_log = f"[{local_item.stock_code}] Fiyat: {local_item.sale_price} -> {final_price} ({rule_desc}), Stok: {local_item.quantity} -> {xml_item.quantity}"
+                batch_logs.append(status_log)
 
+        # Batch execute API and DB calls
         try:
-            for batch in chunked(update_items, 100):
+            for i, batch in enumerate(chunked(update_payloads, 100)):
+                if job_id and i % 5 == 0:
+                    js = get_mp_job(job_id)
+                    if js and js.get('cancel_requested'):
+                        append_mp_job_log(job_id, "İptal edildi (Batch sırasında)", level='warning')
+                        return res
+                
                 client.update_products_price_and_stock(batch)
                 res['updated_count'] += len(batch)
                 
+                # Corresponding DB updates
+                batch_mappings = db_mappings[i*100 : (i+1)*100]
+                db.session.bulk_update_mappings(MarketplaceProduct, batch_mappings)
+                db.session.commit()
+
+                # Batch Logs
+                if job_id:
+                    curr_batch_logs = batch_logs[i*100 : (i+1)*100]
+                    append_mp_job_logs(job_id, curr_batch_logs)
+
                 completed_ops += len(batch)
                 if job_id:
-                    update_mp_job(job_id, progress={
-                        'current': completed_ops,
-                        'total': total_ops,
-                        'message': f"Güncelleniyor ({completed_ops}/{total_ops})..."
-                    })
-            db.session.commit()
+                    update_job_progress(job_id, completed_ops, total_ops, f"Güncelleniyor ({completed_ops}/{total_ops})...")
+            
         except Exception as e:
+            db.session.rollback()
             if job_id: append_mp_job_log(job_id, f"N11 güncelleme hatası: {str(e)}", level='error')
 
     # --- 2. YENİ ÜRÜNLER (Create) ---
     if to_create:
-        if job_id: update_mp_job(job_id, progress={'message': f'Yeni ürünler hazırlanıyor ({len(to_create)} ürün)...'})
+        if job_id: update_job_progress(job_id, completed_ops, total_ops, f'Yeni ürünler hazırlanıyor ({len(to_create)} ürün)...')
         from app.services.xml_service import generate_random_barcode
-        create_items = []
+        
+        valid_creates = []
         for xml_item in to_create:
-            if job_id:
+            if len(valid_creates) % 50 == 0 and job_id:
                 js = get_mp_job(job_id)
                 if js and js.get('cancel_requested'):
                     append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
                     return res
-                    
+            
             barcode = xml_item.barcode
-            # Check random barcode settings (Global overrides from Auto Sync Menu)
-            use_random_setting = Setting.get(f'AUTO_SYNC_USE_RANDOM_BARCODE_n11', user_id=user_id) == 'true'
-            use_override_setting = Setting.get(f'AUTO_SYNC_USE_OVERRIDE_BARCODE_n11', user_id=user_id) == 'true'
-
-            if use_override_setting or (not barcode and (src.use_random_barcode or use_random_setting)):
-                barcode = generate_random_barcode()
+            final_price, rule_desc = calculate_price(xml_item.price, 'n11', user_id=user_id, return_details=True)
             
-            raw = json.loads(xml_item.raw_data)
-            final_price = calculate_price(xml_item.price, 'n11', user_id=user_id)
-            
-            # Title Validation
             safe_title = (xml_item.title or "").strip()
             if len(safe_title) < 5: safe_title = f"{safe_title} - Ürün"
             if len(safe_title) > 100: safe_title = safe_title[:100]
-
-            # N11 Rest API product creation payload (basic)
-            # Bu kısım N11'in karmaşık yapısı nedeniyle (kategori özellikleri vb.) 
-            # manuel gönderimdeki mantığı (perform_n11_send_products) temel almalıdır.
-            # Ancak Direct Push için basitleştirilmiş bir yapı sunuyoruz.
-            
-            item = {
+ 
+            item_payload = {
                 "sellerCode": xml_item.stock_code,
                 "barcode": barcode,
                 "title": safe_title,
@@ -1567,84 +1577,96 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
                 }],
                 "images": [img['url'] for img in raw.get('images', []) if img.get('url')],
                 "description": raw.get('details') or raw.get('description') or xml_item.title,
-                # Mandatory fields usually fetched from settings or matched
                 "preparingDay": 3,
                 "shipmentTemplate": "Varsayılan" 
             }
-            create_items.append((item, xml_item))
-            if job_id: append_mp_job_log(job_id, f"Yeni Ürün Yükleniyor: {xml_item.stock_code} ({xml_item.title[:30]}...)")
+            valid_creates.append((item_payload, xml_item, rule_desc))
 
-        if create_items:
+        # API Chunks
+        for batch in chunked(valid_creates, 50):
+            if job_id:
+                js = get_mp_job(job_id)
+                if js and js.get('cancel_requested'):
+                    append_mp_job_log(job_id, "İptal edildi (Create sırasında)", level='warning')
+                    return res
+ 
+            payloads = [x[0] for x in batch]
             try:
-                for batch in chunked(create_items, 50):
-                    if job_id:
-                         js = get_mp_job(job_id)
-                         if js and js.get('cancel_requested'):
-                            append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
-                            return res
+                client.create_products(payloads)
+                
+                # Bulk DB Create
+                new_mps = []
+                batch_logs = []
+                for item_payload, xml_record, r_desc in batch:
+                    # Duplicate check for safety
+                    existing = MarketplaceProduct.query.filter_by(user_id=user_id, marketplace='n11', stock_code=xml_record.stock_code).first()
+                    if not existing:
+                        new_mps.append(MarketplaceProduct(
+                            user_id=user_id, marketplace='n11', barcode=item_payload['barcode'],
+                            stock_code=xml_record.stock_code, title=xml_record.title,
+                            price=xml_record.price, # Base
+                            sale_price=item_payload['price'], # Calculated
+                            quantity=item_payload['stockItems'][0]['quantity'], status='Pending', on_sale=True,
+                            xml_source_id=src.id
+                        ))
+                        if job_id:
+                            batch_logs.append(f"[YENİ] {xml_record.stock_code} yüklendi. Fiyat: {item_payload['price']} ({r_desc}), Stok: {xml_record.quantity}")
+                
+                db.session.bulk_save_objects(new_mps)
+                db.session.commit()
+                
+                if job_id:
+                    append_mp_job_logs(job_id, batch_logs)
 
-                    payloads = [x[0] for x in batch]
-                    # N11 specific create method call
-                    client.create_products(payloads)
-                    for item_payload, xml_record in batch:
-                        existing = MarketplaceProduct.query.filter_by(user_id=user_id, marketplace='n11', stock_code=xml_record.stock_code).first()
-                        if not existing:
-                            new_mp = MarketplaceProduct(
-                                user_id=user_id, marketplace='n11', barcode=item_payload['barcode'],
-                                stock_code=xml_record.stock_code, title=xml_record.title,
-                                price=item_payload['price'], sale_price=item_payload['price'],
-                                quantity=xml_record.stockItems[0]['quantity'], status='Pending', on_sale=True,
-                                xml_source_id=src.id
-                            )
-                            db.session.add(new_mp)
-                    db.session.commit()
-                    res['created_count'] += len(batch)
-                    
-                    completed_ops += len(batch)
-                    if job_id:
-                        update_mp_job(job_id, progress={
-                            'current': completed_ops,
-                            'total': total_ops,
-                            'message': f"Yeni Ürünler Ekleniyor ({completed_ops}/{total_ops})..."
-                        })
-
+                res['created_count'] += len(batch)
+                completed_ops += len(batch)
+                if job_id:
+                    update_job_progress(job_id, completed_ops, total_ops, f"Yeni Ürünler Ekleniyor ({completed_ops}/{total_ops})...")
             except Exception as e:
+                db.session.rollback()
                 if job_id: append_mp_job_log(job_id, f"N11 yükleme hatası: {str(e)}", level='error')
 
     # --- 3. STOK SIFIRLAMA (Zero) ---
     if to_zero:
-        if job_id: update_mp_job(job_id, progress={'message': f'Stok sıfırlama hazırlanıyor ({len(to_zero)} ürün)...'})
-        zero_items = []
+        if job_id: update_job_progress(job_id, completed_ops, total_ops, f'Stok sıfırlama hazırlanıyor ({len(to_zero)} ürün)...')
+        zero_payloads = []
+        zero_mappings = []
+        
         for local_item in to_zero:
-            if job_id:
+            # Periodic cancel check
+            if len(zero_payloads) % 50 == 0 and job_id:
                 js = get_mp_job(job_id)
                 if js and js.get('cancel_requested'):
                     append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
                     return res
-
-            zero_items.append({
+            
+            zero_payloads.append({
                 "sellerCode": local_item.stock_code,
                 "price": local_item.sale_price,
                 "quantity": 0
             })
-            if job_id: append_mp_job_log(job_id, f"Stok Sıfırlanıyor (XML'de yok): {local_item.stock_code}")
-            local_item.quantity = 0
+            zero_mappings.append({'id': local_item.id, 'quantity': 0})
 
         try:
-            for batch in chunked(zero_items, 100):
+            for i, batch in enumerate(chunked(zero_payloads, 100)):
+                if job_id and i % 5 == 0:
+                    js = get_mp_job(job_id)
+                    if js and js.get('cancel_requested'):
+                        append_mp_job_log(job_id, "İptal edildi (Zero sırasında)", level='warning')
+                        return res
+                
                 client.update_products_price_and_stock(batch)
                 res['zeroed_count'] += len(batch)
                 
+                batch_mappings = zero_mappings[i*100 : (i+1)*100]
+                db.session.bulk_update_mappings(MarketplaceProduct, batch_mappings)
+                db.session.commit()
+                
                 completed_ops += len(batch)
                 if job_id:
-                    update_mp_job(job_id, progress={
-                        'current': completed_ops,
-                        'total': total_ops,
-                        'message': f"Stoklar Sıfırlanıyor ({completed_ops}/{total_ops})..."
-                    })
-            db.session.commit()
+                    update_job_progress(job_id, completed_ops, total_ops, f"Stoklar Sıfırlanıyor ({completed_ops}/{total_ops})...")
         except Exception as e:
+            db.session.rollback()
             if job_id: append_mp_job_log(job_id, f"N11 stok sıfırlama hatası: {str(e)}", level='error')
 
     return res
-

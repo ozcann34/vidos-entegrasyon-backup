@@ -93,3 +93,58 @@ class MarketplaceProduct(db.Model):
         except:
             return []
 
+
+class CachedXmlProduct(db.Model):
+    __tablename__ = 'cached_xml_products'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    xml_source_id = db.Column(db.Integer, db.ForeignKey('supplier_xmls.id'), nullable=True, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
+    
+    stock_code = db.Column(db.String(200), index=True, nullable=False)
+    barcode = db.Column(db.String(200), index=True)
+    title = db.Column(db.String(500))
+    price = db.Column(db.Float, default=0.0)
+    quantity = db.Column(db.Integer, default=0)
+    brand = db.Column(db.String(200))
+    category = db.Column(db.String(500))
+    images_json = db.Column(db.Text)
+    raw_data = db.Column(db.Text) # Kaynak verinin tamamı (JSON)
+    last_updated = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+
+    __table_args__ = (
+        db.Index('idx_xml_stock_code', 'xml_source_id', 'stock_code'),
+    )
+
+class PersistentJob(db.Model):
+    __tablename__ = 'persistent_jobs'
+    
+    id = db.Column(db.String(50), primary_key=True) # UUID
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
+    marketplace = db.Column(db.String(50), index=True)
+    job_type = db.Column(db.String(100), index=True)
+    
+    status = db.Column(db.String(20), default='pending', index=True) # pending, running, completed, failed, cancelled
+    progress_current = db.Column(db.Integer, default=0)
+    progress_total = db.Column(db.Integer, default=100)
+    progress_message = db.Column(db.String(500))
+    
+    params_json = db.Column(db.Text) # JSON serialized parameters
+    result_json = db.Column(db.Text) # JSON serialized result
+    errors_json = db.Column(db.Text) # JSON serialized errors list
+    logs_json = db.Column(db.Text)   # JSON serialized logs
+    
+    cancel_requested = db.Column(db.Boolean, default=False)
+    
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+    started_at = db.Column(db.DateTime, nullable=True)
+    completed_at = db.Column(db.DateTime, nullable=True)
+
+    def get_params(self):
+        import json
+        return json.loads(self.params_json) if self.params_json else {}
+    
+    def get_logs(self):
+        import json
+        return json.loads(self.logs_json) if self.logs_json else []

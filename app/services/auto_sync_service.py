@@ -47,10 +47,15 @@ def sync_marketplace_products(marketplace: str, user_id: int, job_id: Optional[s
     """
     from app.services.job_queue import update_mp_job, append_mp_job_log
     
-    logger.info(f"Starting sync for {marketplace} (User: {user_id})")
+    # Fetch user for better logging
+    from app.models import User
+    user_record = User.query.get(user_id)
+    user_label = user_record.email if user_record else f"ID: {user_id}"
+    
+    logger.info(f"Starting sync for {marketplace} (User: {user_label})")
     
     if job_id:
-        append_mp_job_log(job_id, f"{marketplace} senkronizasyonu başlatılıyor...", level='info')
+        append_mp_job_log(job_id, f"{marketplace} senkronizasyonu başlatılıyor... (Kullanıcı: {user_label})", level='info')
         update_mp_job(job_id, progress={'current': 0, 'total': 100, 'message': 'Hazırlanıyor...'})
     
     result = {

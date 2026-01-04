@@ -30,14 +30,16 @@ def get_marketplace_multiplier(marketplace: str, user_id: Optional[int] = None):
         mp_multiplier = 1.0
     return mp_multiplier
 
-def calculate_price(base_price: float, marketplace: str, user_id: Optional[int] = None, multiplier_override: Optional[float] = None) -> float:
+def calculate_price(base_price: float, marketplace: str, user_id: Optional[int] = None, multiplier_override: Optional[float] = None, return_details: bool = False) -> Any:
     """
     Calculate final price based on GLOBAL tiered price rules.
     Looks up rules in GLOBAL_PRICE_RULES setting (JSON) which applies to ALL marketplaces.
     If no rules found or no matching range, returns the base price unchanged.
+    
+    If return_details is True, returns (price, rule_description)
     """
     if base_price <= 0:
-        return 0.0
+        return (0.0, "Geçersiz fiyat") if return_details else 0.0
 
     # Ensure user_id
     if user_id is None:
@@ -55,7 +57,6 @@ def calculate_price(base_price: float, marketplace: str, user_id: Optional[int] 
     if rules_json:
         try:
             rules = json.loads(rules_json)
-            # Rules format: [{"min": 0, "max": 100, "percent": 30, "fixed": 5}, ...]
             # Find the rule that matches the base_price range
             for rule in rules:
                 rmin = float(rule.get('min', 0))
@@ -64,14 +65,22 @@ def calculate_price(base_price: float, marketplace: str, user_id: Optional[int] 
                     percent = float(rule.get('percent', 0))
                     fixed_on_top = float(rule.get('fixed', 0))
                     price = base_price * (1 + (percent / 100.0)) + fixed_on_top
-                    return round(price, 2)
+                    
+                    desc = ""
+                    if percent > 0: desc += f"%{percent}"
+                    if fixed_on_top > 0: desc += f"{' + ' if desc else ''}{fixed_on_top} TL"
+                    if not desc: desc = "Kural eşleşti (değişim yok)"
+                    desc += f" ({rmin}-{rmax} TL arası)"
+                    
+                    final_p = round(price, 2)
+                    return (final_p, desc) if return_details else final_p
         except Exception as e:
             import logging
             logging.error(f"Error calculating price with GLOBAL rules: {e}")
 
-    # 2. FALLBACK: If no global rules or no matching range, return base price as-is
-    # (No legacy multiplier system - fiyat çarpanı kaldırıldı)
-    return round(base_price, 2)
+    # 2. FALLBACK: No rules
+    final_p = round(base_price, 2)
+    return (final_p, "Fiyat kuralı yok") if return_details else final_p
 
 
 def chunked(iterable: Iterable[Any], size: int) -> Iterable[List[Any]]:

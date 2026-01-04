@@ -2428,196 +2428,207 @@ def perform_idefix_direct_push_actions(user_id: int, to_update: List[Any], to_cr
     total_ops = len(to_update or []) + len(to_create or []) + len(to_zero or [])
     completed_ops = 0
     if job_id:
-        update_mp_job(job_id, progress={'current': 0, 'total': total_ops, 'message': 'İşlemler başlatılıyor...'})
+        update_job_progress(job_id, 0, total_ops, 'İşlemler başlatılıyor...')
     
     # --- 1. GÜNCELLEMELER (Update) ---
     if to_update:
-        if job_id: update_mp_job(job_id, progress={'message': f'Güncellemeler hazırlanıyor ({len(to_update)} ürün)...'})
-        update_items = []
+        if job_id: update_mp_job(job_id, completed_ops, total_ops, f'Güncellemeler hazırlanıyor ({len(to_update)} ürün)...')
+        
+        update_payloads = []
+        db_mappings = []
+        batch_logs = []
+        
         for xml_item, local_item in to_update:
-            if job_id:
+            # Periodic cancel check
+            if len(db_mappings) % 50 == 0 and job_id:
                 js = get_mp_job(job_id)
                 if js and js.get('cancel_requested'):
                     append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
                     return res
-            # ... loop continues ...
-            final_price = calculate_price(xml_item.price, 'idefix', user_id=user_id)
-            update_items.append({
-                'barcode': local_item.barcode, # Veritabanındaki barkodu kullan
-                'price': final_price,
-                'inventoryQuantity': xml_item.quantity
+            
+            final_price, rule_desc = calculate_price(xml_item.price, 'idefix', user_id=user_id, return_details=True)
+            
+            update_payloads.append({
+                "SKU": local_item.stock_code,
+                "Price": final_price,
+                "Quantity": xml_item.quantity
             })
             
-            # Canlı Log
-            if job_id: append_mp_job_log(job_id, f"Güncelleniyor: {xml_item.stock_code} (Stok: {local_item.quantity} -> {xml_item.quantity})")
+            db_mappings.append({
+                'id': local_item.id,
+                'price': xml_item.price, # Base
+                'quantity': xml_item.quantity,
+                'sale_price': final_price, # Calculated
+                'last_sync_at': datetime.now()
+            })
             
-            # Yerel veritabanını güncelle
-            local_item.quantity = xml_item.quantity
-            local_item.sale_price = final_price
-            local_item.last_sync_at = datetime.now()
+            if job_id:
+                status_log = f"[{local_item.stock_code}] Fiyat: {local_item.sale_price} -> {final_price} ({rule_desc}), Stok: {local_item.quantity} -> {xml_item.quantity}"
+                batch_logs.append(status_log)
 
-        # Idefix toplu güncellemeyi destekler
+        # Batch execute API and DB calls
         try:
-            from app.utils.helpers import chunked
-            for batch in chunked(update_items, 100):
-                if job_id:
+            for i, batch in enumerate(chunked(update_payloads, 100)):
+                if job_id and i % 5 == 0:
                     js = get_mp_job(job_id)
                     if js and js.get('cancel_requested'):
-                        append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
+                        append_mp_job_log(job_id, "İptal edildi (Batch sırasında)", level='warning')
                         return res
-                client.update_inventory_and_price(batch)
+                
+                client.update_products(batch)
                 res['updated_count'] += len(batch)
                 
+                # Corresponding DB updates
+                batch_mappings = db_mappings[i*100 : (i+1)*100]
+                db.session.bulk_update_mappings(MarketplaceProduct, batch_mappings)
+                db.session.commit()
+                
+                # Batch Logs
+                if job_id:
+                    curr_batch_logs = batch_logs[i*100 : (i+1)*100]
+                    append_mp_job_logs(job_id, curr_batch_logs)
+
                 completed_ops += len(batch)
                 if job_id:
-                    update_mp_job(job_id, progress={
-                        'current': completed_ops,
-                        'total': total_ops,
-                        'message': f"Güncelleniyor ({completed_ops}/{total_ops})..."
-                    })
-            db.session.commit()
+                    update_mp_job(job_id, completed_ops, total_ops, f"Güncelleniyor ({completed_ops}/{total_ops})...")
+                    if i % 10 == 0:
+                        append_mp_job_log(job_id, f"✅ {completed_ops} ürün güncellendi.")
+            
         except Exception as e:
+            db.session.rollback()
             if job_id: append_mp_job_log(job_id, f"Idefix güncelleme hatası: {str(e)}", level='error')
 
-    # --- 2. YENİ ÜRÜNLER (Create) ---
     if to_create:
-        if job_id: update_mp_job(job_id, progress={'message': f'Yeni ürünler hazırlanıyor ({len(to_create)} ürün)...'})
+        if job_id: update_mp_job(job_id, completed_ops, total_ops, f'Yeni ürünler hazırlanıyor ({len(to_create)} ürün)...')
         from app.services.xml_service import generate_random_barcode
-        create_items = []
+        
+        # Get default brand from settings
+        default_brand_id = 0
+        settings_brand_id = Setting.get("IDEFIX_BRAND_ID", user_id=user_id)
+        if settings_brand_id and settings_brand_id.strip():
+            try: default_brand_id = int(settings_brand_id)
+            except: pass
+ 
+        valid_creates = []
         for xml_item in to_create:
-            # Random barkod seçeneği
-            barcode = xml_item.barcode
+            if len(valid_creates) % 50 == 0 and job_id:
+                js = get_mp_job(job_id)
+                if js and js.get('cancel_requested'):
+                    append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
+                    return res
             
-            # Check random barcode settings (Global overrides from Auto Sync Menu)
+            barcode = xml_item.barcode
             use_random_setting = Setting.get(f'AUTO_SYNC_USE_RANDOM_BARCODE_idefix', user_id=user_id) == 'true'
             use_override_setting = Setting.get(f'AUTO_SYNC_USE_OVERRIDE_BARCODE_idefix', user_id=user_id) == 'true'
-
+ 
             if use_override_setting or (not barcode and (src.use_random_barcode or use_random_setting)):
                 barcode = generate_random_barcode()
             
-            # Zorunlu alanları XML'den çek (xml_item.raw_data içerisinde hepsi var)
             raw = json.loads(xml_item.raw_data)
-            
-            # Marka ve Kategori Çözümü
-            brand_id = 0
-            # 1. Öncelik: Ayarlardaki Marka ID
-            default_brand_id = Setting.get("IDEFIX_BRAND_ID", user_id=user_id)
-            if default_brand_id and default_brand_id.strip():
-                try:
-                    brand_id = int(default_brand_id)
-                except:
-                    pass
-            
-            # 2. Öncelik: XML'den Çözümle
-            if not brand_id:
-                brand_id = resolve_idefix_brand(raw.get('brand'), user_id=user_id)
-            
+            brand_id = default_brand_id
+            if not brand_id: brand_id = resolve_idefix_brand(raw.get('brand'), user_id=user_id)
             cat_id = resolve_idefix_category(raw.get('title'), raw.get('category'), user_id=user_id)
             
             if not brand_id or not cat_id:
-                reason = "Marka bulunamadı" if not brand_id else "Kategori bulunamadı"
-                if job_id: append_mp_job_log(job_id, f"Atlandı ({reason}): {xml_item.stock_code}", level='warning')
-                continue
-
-            final_price = calculate_price(xml_item.price, 'idefix', user_id=user_id)
+                continue # Silent skip
+ 
+            final_price, rule_desc = calculate_price(xml_item.price, 'idefix', user_id=user_id, return_details=True)
             
-            item = {
-                "barcode": barcode,
-                "title": xml_item.title,
-                "productMainId": raw.get('modelCode') or raw.get('parent_barcode') or xml_item.stock_code,
-                "brandId": int(brand_id),
-                "categoryId": int(cat_id),
-                "inventoryQuantity": xml_item.quantity,
-                "vendorStockCode": xml_item.stock_code,
-                "description": raw.get('details') or raw.get('description') or xml_item.title,
-                "price": final_price,
-                "vatRate": raw.get('vatRate', 20.0),
-                "images": [img['url'] for img in raw.get('images', []) if img.get('url')]
+            item_payload = {
+                "SKU": xml_item.stock_code,
+                "Barcode": barcode,
+                "Name": xml_item.title,
+                "Description": raw.get('details') or raw.get('description') or xml_item.title,
+                "Price": final_price,
+                "Quantity": xml_item.quantity,
+                "Images": [img['url'] for img in raw.get('images', []) if img.get('url')]
             }
-            create_items.append((item, xml_item))
-            
-            if job_id: append_mp_job_log(job_id, f"Yeni Ürün Yükleniyor: {xml_item.stock_code} ({xml_item.title[:30]}...)")
+            valid_creates.append((item_payload, xml_item, rule_desc))
 
-        # Toplu Yükleme
-        # Toplu Yükleme
-        if create_items:
+        # API Chunks
+        for batch in chunked(valid_creates, 50):
+            if job_id:
+                js = get_mp_job(job_id)
+                if js and js.get('cancel_requested'):
+                    append_mp_job_log(job_id, "İptal edildi (Create sırasında)", level='warning')
+                    return res
+ 
+            payloads = [x[0] for x in batch]
             try:
-                for batch in chunked(create_items, 50):
-                    if job_id:
-                        js = get_mp_job(job_id)
-                        if js and js.get('cancel_requested'):
-                            append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
-                            return res
+                client.create_products(payloads)
+                
+                # Bulk DB Create
+                new_mps = []
+                batch_logs = []
+                for item_payload, xml_record, r_desc in batch:
+                    # Duplicate check for safety
+                    existing = MarketplaceProduct.query.filter_by(user_id=user_id, marketplace='idefix', stock_code=xml_record.stock_code).first()
+                    if not existing:
+                        new_mps.append(MarketplaceProduct(
+                            user_id=user_id, marketplace='idefix', barcode=item_payload['Barcode'],
+                            stock_code=xml_record.stock_code, title=xml_record.title,
+                            price=xml_record.price, # Base
+                            sale_price=item_payload['Price'], # Calculated
+                            quantity=xml_record.quantity, status='Pending', on_sale=True,
+                            xml_source_id=src.id
+                        ))
+                        if job_id:
+                            batch_logs.append(f"[YENİ] {xml_record.stock_code} yüklendi. Fiyat: {item_payload['Price']} ({r_desc}), Stok: {xml_record.quantity}")
+                
+                db.session.bulk_save_objects(new_mps)
+                db.session.commit()
+                
+                if job_id:
+                    append_mp_job_logs(job_id, batch_logs)
 
-                    payloads = [x[0] for x in batch]
-                    client.create_products(payloads)
-                    
-                    # Başarılı ise yerel veritabanına MarketplaceProduct olarak ekle
-                    for item_payload, xml_record in batch:
-                        # Duplicate check
-                        existing = MarketplaceProduct.query.filter_by(user_id=user_id, marketplace='idefix', barcode=item_payload['barcode']).first()
-                        if not existing:
-                            new_mp = MarketplaceProduct(
-                                user_id=user_id,
-                                marketplace='idefix',
-                                barcode=item_payload['barcode'],
-                                stock_code=xml_record.stock_code,
-                                title=xml_record.title,
-                                price=item_payload['price'],
-                                sale_price=item_payload['price'],
-                                quantity=xml_record.quantity,
-                                status='Pending',
-                                on_sale=True,
-                                xml_source_id=src.id
-                            )
-                            db.session.add(new_mp)
-                    db.session.commit()
-                    res['created_count'] += len(batch)
-                    
-                    completed_ops += len(batch)
-                    if job_id:
-                        update_mp_job(job_id, progress={
-                            'current': completed_ops,
-                            'total': total_ops,
-                            'message': f"Yeni Ürünler Ekleniyor ({completed_ops}/{total_ops})..."
-                        })
-
+                res['created_count'] += len(batch)
+                completed_ops += len(batch)
+                if job_id:
+                    update_mp_job(job_id, completed_ops, total_ops, f"Yeni Ürünler Ekleniyor ({completed_ops}/{total_ops})...")
             except Exception as e:
+                db.session.rollback()
                 if job_id: append_mp_job_log(job_id, f"Idefix yükleme hatası: {str(e)}", level='error')
 
     # --- 3. STOK SIFIRLAMA (Zero) ---
     if to_zero:
-        if job_id: update_mp_job(job_id, progress={'message': f'Stok sıfırlama hazırlanıyor ({len(to_zero)} ürün)...'})
-        from app.utils.helpers import chunked
-        zero_items = []
+        if job_id: update_job_progress(job_id, completed_ops, total_ops, f'Stok sıfırlama hazırlanıyor ({len(to_zero)} ürün)...')
+        zero_payloads = []
+        zero_mappings = []
+        
         for local_item in to_zero:
-            zero_items.append({
+            # Periodic cancel check
+            if len(zero_payloads) % 50 == 0 and job_id:
+                js = get_mp_job(job_id)
+                if js and js.get('cancel_requested'):
+                    append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
+                    return res
+            
+            zero_payloads.append({
                 'barcode': local_item.barcode,
                 'price': local_item.sale_price,
                 'inventoryQuantity': 0
             })
-            if job_id: append_mp_job_log(job_id, f"Stok Sıfırlanıyor (XML'de yok): {local_item.stock_code}")
-            local_item.quantity = 0
+            zero_mappings.append({'id': local_item.id, 'quantity': 0})
 
         try:
-            for batch in chunked(zero_items, 100):
-                if job_id:
+            for i, batch in enumerate(chunked(zero_payloads, 100)):
+                if job_id and i % 5 == 0:
                     js = get_mp_job(job_id)
                     if js and js.get('cancel_requested'):
-                        append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
+                        append_mp_job_log(job_id, "İptal edildi (Zero sırasında)", level='warning')
                         return res
                 client.update_inventory_and_price(batch)
                 res['zeroed_count'] += len(batch)
                 
+                batch_mappings = zero_mappings[i*100 : (i+1)*100]
+                db.session.bulk_update_mappings(MarketplaceProduct, batch_mappings)
+                db.session.commit()
+                
                 completed_ops += len(batch)
                 if job_id:
-                    update_mp_job(job_id, progress={
-                        'current': completed_ops,
-                        'total': total_ops,
-                        'message': f"Stoklar Sıfırlanıyor ({completed_ops}/{total_ops})..."
-                    })
-            db.session.commit()
+                    update_job_progress(job_id, completed_ops, total_ops, f"Stoklar Sıfırlanıyor ({completed_ops}/{total_ops})...")
         except Exception as e:
+            db.session.rollback()
             if job_id: append_mp_job_log(job_id, f"Idefix stok sıfırlama hatası: {str(e)}", level='error')
 
     return res

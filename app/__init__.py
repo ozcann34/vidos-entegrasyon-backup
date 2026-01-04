@@ -145,13 +145,13 @@ def create_app(config_name='default'):
     # Initialize scheduler for auto sync
     with app.app_context():
         # Create database tables
-        try:
-            from sqlalchemy.exc import IntegrityError, ProgrammingError
-            db.create_all()
-        except (IntegrityError, ProgrammingError):
-            pass # Race condition handling for multiple workers
-        except Exception as e:
-            print(f"DB Error: {e}")
+        # try:
+        #     from sqlalchemy.exc import IntegrityError, ProgrammingError
+        #     db.create_all()
+        # except (IntegrityError, ProgrammingError):
+        #     pass # Race condition handling for multiple workers
+        # except Exception as e:
+        #     print(f"DB Error: {e}")
 
         # Check for is_support column and add if missing
         try:

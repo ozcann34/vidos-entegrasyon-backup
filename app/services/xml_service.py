@@ -415,100 +415,105 @@ def generate_random_barcode() -> str:
 
 def refresh_xml_cache(xml_source_id: int, job_id: Optional[str] = None) -> Dict[str, Any]:
     """
-    Download XML, parse it, and save to partitioned SQLite database.
-    This is the core of the High-Frequency sync.
+    Download XML, parse it, and save to central PostgreSQL database.
+    High-Performance Bulk Update logic.
     """
     from app import db
-    from app.services.xml_db_manager import xml_db_manager, CachedXmlProduct
-    from app.services.job_queue import append_mp_job_log
+    from app.models import CachedXmlProduct, SupplierXML
+    from app.services.job_queue import append_mp_job_log, update_job_progress
     
     src = SupplierXML.query.get(xml_source_id)
     if not src:
         return {'success': False, 'message': 'XML kaynağı bulunamadı.'}
 
-    msg = f"XML Cache yenileniyor: {src.name}"
+    msg = f"XML Önbelleği yenileniyor: {src.name}"
     logger.info(f"[XML-CACHE] {msg}")
     if job_id: append_mp_job_log(job_id, msg)
 
     try:
-        # 1. Load XML into memory (index format)
+        # 1. Download and parse XML (index format)
         index = load_xml_source_index(xml_source_id, force=True)
         if '_error' in index:
             return {'success': False, 'message': index['_error']}
             
         records = index.get('__records__', [])
+        total_count = len(records)
         if not records:
             return {'success': False, 'message': 'XML içerisinde ürün bulunamadı.'}
 
-        # 2. Get partitioned DB session
-        session = xml_db_manager.get_session(xml_source_id)
-        
-        try:
-            # 3. Clear old cache for this source
-            session.query(CachedXmlProduct).delete()
-            
-            # 4. Prepare bulk records
-            bulk_items = []
-            for r in records:
-                bulk_items.append(CachedXmlProduct(
-                    stock_code=r.get('stockCode'),
-                    barcode=r.get('barcode'),
-                    title=r.get('title'),
-                    price=r.get('price', 0.0),
-                    quantity=r.get('quantity', 0),
-                    brand=r.get('brand'),
-                    category=r.get('category'),
-                    images_json=json.dumps(r.get('images', [])),
-                    raw_data=json.dumps(r)
-                ))
-            
-            # 5. Bulk insert (Fast for SQLite)
-            session.bulk_save_objects(bulk_items)
-            session.commit()
-            
-            # 6. Update last_cached_at in main DB
-            src.last_cached_at = datetime.now()
-            db.session.commit()
-            
-            msg = f"XML Cache başarıyla güncellendi. {len(records)} ürün veritabanına işlendi."
-            logger.info(f"[XML-CACHE] {msg}")
-            if job_id: append_mp_job_log(job_id, msg)
-            
-            return {'success': True, 'count': len(records)}
-            
-        except Exception as e:
-            session.rollback()
-            raise e
-        finally:
-            session.close()
+        if job_id: update_job_progress(job_id, 0, total_count, "Veritabanı güncelleniyor...")
 
+        # 2. Clear old cache in PostgreSQL for this source
+        CachedXmlProduct.query.filter_by(xml_source_id=xml_source_id).delete()
+        db.session.commit()
+        
+        # 3. Prepare bulk mappings (Instead of objects for max speed)
+        # Using mappings is faster as it skips state management per object
+        mappings = []
+        batch_size = 1000
+        processed = 0
+        
+        for r in records:
+            mappings.append({
+                'xml_source_id': xml_source_id,
+                'user_id': src.user_id,
+                'stock_code': r.get('stockCode') or r.get('barcode') or 'unknown',
+                'barcode': r.get('barcode'),
+                'title': r.get('title'),
+                'price': r.get('price', 0.0),
+                'quantity': r.get('quantity', 0),
+                'brand': r.get('brand'),
+                'category': r.get('category'),
+                'images_json': json.dumps(r.get('images', [])),
+                'raw_data': json.dumps(r)
+            })
+            
+            # Write in batches
+            if len(mappings) >= batch_size:
+                db.session.bulk_insert_mappings(CachedXmlProduct, mappings)
+                db.session.commit()
+                processed += len(mappings)
+                mappings = []
+                if job_id: update_job_progress(job_id, processed, total_count, f"{processed}/{total_count} ürün işlendi...")
+
+        # Write remaining
+        if mappings:
+            db.session.bulk_insert_mappings(CachedXmlProduct, mappings)
+            db.session.commit()
+            processed += len(mappings)
+            if job_id: update_job_progress(job_id, processed, total_count, "Tamamlanıyor...")
+
+        # 4. Update last_cached_at in main DB
+        src.last_cached_at = datetime.now()
+        db.session.commit()
+        
+        msg = f"XML Önbelleği başarıyla güncellendi. {processed} ürün PostgreSQL'e işlendi."
+        logger.info(f"[XML-CACHE] {msg}")
+        if job_id: append_mp_job_log(job_id, msg)
+        
+        return {'success': True, 'count': processed}
+            
     except Exception as e:
-        msg = f"XML Cache yenilenirken hata oluştu: {str(e)}"
+        db.session.rollback()
+        msg = f"XML Önbelleği yenilenirken hata oluştu: {str(e)}"
         logger.error(f"[XML-CACHE] {msg}")
         if job_id: append_mp_job_log(job_id, msg, level='error')
         return {'success': False, 'message': msg}
 
 def search_xml_cache(xml_source_id: int, stock_code: str) -> Optional[Dict[str, Any]]:
     """
-    Search for a product in the partitioned XML cache by stock code.
+    Search for a product in the PostgreSQL XML cache.
     """
-    from app.services.xml_db_manager import xml_db_manager, CachedXmlProduct
+    from app.models import CachedXmlProduct
     
-    session = xml_db_manager.get_session(xml_source_id)
-    try:
-        product = session.query(CachedXmlProduct).filter_by(stock_code=stock_code).first()
-        if product:
-            # Reconstruct the dict format used by the app
-            return json.loads(product.raw_data)
-        return None
-    finally:
-        session.close()
+    product = CachedXmlProduct.query.filter_by(xml_source_id=xml_source_id, stock_code=stock_code).first()
+    if product:
+        return json.loads(product.raw_data)
+    return None
 
 def lookup_xml_record(xml_index: Dict[str, Dict[str, Any]], code: Optional[str] = None, stock_code: Optional[str] = None, title: Optional[str] = None) -> Optional[Dict[str, Any]]:
     if not xml_index:
         return None
-    if code:
-        rec = xml_index.get(str(code))
         if rec:
             return rec
     if stock_code:

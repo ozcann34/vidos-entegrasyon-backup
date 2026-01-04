@@ -28,17 +28,31 @@ def init_scheduler(app: Flask):
     global scheduler, _flask_app
     _flask_app = app
     
-    if scheduler is not None:
-        logger.warning("Scheduler already initialized")
-        return scheduler
-    
+    import os
+    lock_file = "scheduler.lock"
+    try:
+        # Simple file lock for Windows/Linux to prevent multiple schedulers
+        if os.path.exists(lock_file):
+            try: os.remove(lock_file)
+            except: pass
+        
+        fd = os.open(lock_file, os.O_CREAT | os.O_EXCL | os.O_RDWR)
+        # If we reached here, we own the lock
+    except Exception:
+        logger.info("Scheduler already running in another process, skipping init.")
+        return None
+
     scheduler = BackgroundScheduler(daemon=True)
     scheduler.start()
-    logger.info("Scheduler started")
+    logger.info("Scheduler started successfully (Primary Instance)")
     
-    # Uygulama kapatıldığında scheduler'ı durdur
+    # Uygulama kapatıldığında scheduler'ı durdur ve kilidi kaldır
     import atexit
-    atexit.register(lambda: scheduler.shutdown() if scheduler else None)
+    def shutdown():
+        if scheduler: scheduler.shutdown()
+        try: os.close(fd); os.remove(lock_file)
+        except: pass
+    atexit.register(shutdown)
     
     # Flask app context içinde çalışması için wrapper
     def sync_job_wrapper(marketplace: str):
