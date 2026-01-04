@@ -287,7 +287,7 @@ class N11Client:
         # Payload according to n11api.txt
         payload = {
             "payload": {
-                "integrator": "Vidos",
+                "integrator": "VidosEntegrasyon",
                 "skus": products
             }
         }
@@ -295,6 +295,8 @@ class N11Client:
         try:
             logging.info(f"[N11] Creating {len(products)} products via REST.")
             response = self.session.post(url, json=payload, timeout=30)
+            if response.status_code >= 400:
+                logging.error(f"N11 create_products API Error: {response.status_code} - {response.text}")
             response.raise_for_status()
             return response.json()
         except Exception as e:
@@ -317,6 +319,8 @@ class N11Client:
 
         try:
             response = self.session.post(url, json=payload, timeout=30)
+            if response.status_code >= 400:
+                logging.error(f"N11 check_task_status API Error: {response.status_code} - {response.text}")
             response.raise_for_status()
             return response.json()
         except Exception as e:

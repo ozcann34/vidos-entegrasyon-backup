@@ -209,10 +209,12 @@ def find_matching_n11_category(query: str, user_id: int = None, job_id: str = No
              match_path = _N11_CAT_TFIDF["leaf"][best_idx]['path']
              # append_mp_job_log(job_id, f"Kategori Analizi: '{query_clean[:50]}...' -> En yakın: '{match_path}' (Puan: {score:.2f})")
 
-        # Threshold lowered to 0.20 for better category match coverage
-        if score > 0.20: 
+        # Threshold lowered to 0.15 for better category match coverage
+        if score > 0.15: 
             match = _N11_CAT_TFIDF["leaf"][best_idx]
-            if score < 0.30 and job_id:
+            if score < 0.20 and job_id:
+                append_mp_job_log(job_id, f"Çok düşük puanlı kategori eşleşmesi ({score:.2f}): {match['path']}", level='info')
+            elif score < 0.30 and job_id:
                 append_mp_job_log(job_id, f"Düşük puanlı kategori eşleşmesi ({score:.2f}): {match['path']}", level='info')
             return match
         else:
@@ -530,9 +532,10 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
             # For simplicity, we stick to global multiplier.
             # Artık GLOBAL_PRICE_RULES kullanılıyor (multiplier kaldırıldı)
             price = calculate_price(raw_price, 'n11', user_id=user_id)
+            price = round(price, 2)
             
             quantity = int(product.get('quantity', 0))
-            if quantity <= 0 and send_options.get('zero_stock_as_one'):
+            if quantity <= 0 and kwargs.get('zero_stock_as_one'):
                 quantity = 1
         except:
             price = 0; quantity = 0
@@ -697,7 +700,7 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
         target_code = item.get('target_barcode') or item['barcode']
         
         payload_item = {
-            # "integrator": "Vidos", # Handled by client wrapper
+            "integrator": "VidosEntegrasyon",
             "title": item['title'][:200],
             "description": p.get('details') or item['description'],
             "categoryId": int(item['cat_id']), # FLAT ID
