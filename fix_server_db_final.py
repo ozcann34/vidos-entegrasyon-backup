@@ -22,11 +22,12 @@ with app.app_context():
         # 2. MarketplaceProduct Tablosuna Eksik Sütunları Ekle
         print("marketplace_products tablosu güncelleniyor...")
         
-        # Sütun kontrolü için SQL (PostgreSQL uyumlu)
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+        
         def add_column_if_missing(table_name, column_name, column_type, default_val=None):
-            check_sql = f"SELECT column_name FROM information_schema.columns WHERE table_name='{table_name}' AND column_name='{column_name}';"
-            res = db.session.execute(text(check_sql)).fetchone()
-            if not res:
+            columns = [c['name'] for c in inspector.get_columns(table_name)]
+            if column_name not in columns:
                 print(f"-> {column_name} sütunu ekleniyor...")
                 alter_sql = f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}"
                 if default_val is not None:
