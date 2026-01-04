@@ -153,6 +153,21 @@ def create_app(config_name='default'):
         except Exception as e:
             print(f"DB Error: {e}")
 
+        # Check for is_support column and add if missing
+        try:
+            from sqlalchemy import text
+            db.session.execute(text('SELECT is_support FROM users LIMIT 1'))
+        except Exception:
+            db.session.rollback()
+            try:
+                # This works for both SQLite and PostgreSQL
+                db.session.execute(text('ALTER TABLE users ADD COLUMN is_support BOOLEAN DEFAULT FALSE'))
+                db.session.commit()
+                app.logger.info("Database: Added is_support column to users table")
+            except Exception as e:
+                db.session.rollback()
+                app.logger.error(f"Database: Failed to add is_support column: {e}")
+
         # Create admin user if not exists
         try:
             from app.services.user_service import create_admin_user_if_not_exists
