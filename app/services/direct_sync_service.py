@@ -48,24 +48,25 @@ class DirectSyncService:
                     return {'success': False, 'message': 'İptal edildi'}
 
             # 2. XML Verilerini Al (PostgreSQL'den)
-            # Sadece eşleşme için gereken kolonları çekerek belleği koruyoruz
+            # Sadece eşleşme anahtarı ve ham veriyi çekiyoruz (Performans + Tam Veri)
             xml_products = db.session.query(
                 CachedXmlProduct.stock_code,
-                CachedXmlProduct.barcode,
-                CachedXmlProduct.title,
-                CachedXmlProduct.description,
-                CachedXmlProduct.quantity,
-                CachedXmlProduct.price,
-                CachedXmlProduct.category_name,
-                CachedXmlProduct.brand_name,
-                CachedXmlProduct.images_json,
-                CachedXmlProduct.model_code,
-                CachedXmlProduct.main_category,
-                CachedXmlProduct.top_category,
-                CachedXmlProduct.sub_category
+                CachedXmlProduct.raw_data
             ).filter(CachedXmlProduct.xml_source_id == xml_source_id).all()
             
-            xml_map = {p.stock_code: p for p in xml_products if p.stock_code}
+            from types import SimpleNamespace
+            import json
+            
+            xml_map = {}
+            for p in xml_products:
+                if not p.stock_code: continue
+                try:
+                    # Ham veriyi SimpleNamespace'e çevirerek dot-notation (p.title vb.) kazandırıyoruz
+                    raw_dict = json.loads(p.raw_data) if p.raw_data else {}
+                    # SimpleNamespace ile xml_item.title, xml_item.quantity gibi erişimler hatasız çalışır
+                    xml_map[p.stock_code] = SimpleNamespace(**raw_dict)
+                except Exception as e:
+                    logger.warning(f"XML data parse error for {p.stock_code}: {e}")
             
             # 3. Yerel Pazaryeri Kayıtlarını Al
             local_products = db.session.query(
