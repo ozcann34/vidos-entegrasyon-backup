@@ -8,7 +8,7 @@ from flask import Blueprint, request, jsonify, flash, redirect, url_for
 from flask_login import login_required, current_user
 from app import db
 from app.models import SupplierXML, Product, BatchLog, Setting, AutoSync, SyncLog, MarketplaceProduct
-from app.services.job_queue import submit_mp_job, get_mp_job, append_mp_job_log, get_running_job_for_user
+from app.services.job_queue import submit_mp_job, get_mp_job, append_mp_job_log, get_running_job_for_user, control_mp_job
 from app.services.xml_service import fetch_xml_from_url, load_xml_source_index
 from app.services.trendyol_service import (
     perform_trendyol_sync_stock, perform_trendyol_sync_prices, perform_trendyol_sync_all,
@@ -243,6 +243,18 @@ def api_active_job():
     if job:
         return jsonify(job)
     return jsonify({"success": False, "message": "Aktif işlem bulunamadı"}), 404
+
+
+@api_bp.route('/api/mp_jobs/<job_id>/control', methods=['POST'])
+@login_required
+def api_mp_job_control(job_id: str):
+    payload = request.get_json(force=True) or {}
+    action = payload.get('action')
+    if not action:
+        return jsonify({'success': False, 'message': 'Aksiyon belirtilmedi.'}), 400
+    
+    success = control_mp_job(job_id, action)
+    return jsonify({'success': success})
 
 
 @api_bp.route('/api/pazarama/sync_stock', methods=['POST'])

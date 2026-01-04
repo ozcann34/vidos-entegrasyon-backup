@@ -36,20 +36,21 @@
         }
 
         .nav-link {
-            color: rgba(255, 255, 255, 0.7) !important;
+            color: var(--vidos-text-muted) !important;
             padding: 0.8rem 1.5rem !important;
             border-left: 3px solid transparent;
         }
 
         .nav-link:hover {
-            background: rgba(255, 255, 255, 0.05) !important;
-            color: white !important;
+            background: rgba(0, 97, 242, 0.05) !important;
+            color: var(--vidos-primary) !important;
         }
 
         .nav-link.active {
             background: rgba(0, 97, 242, 0.1) !important;
-            color: white !important;
+            color: var(--vidos-primary) !important;
             border-left: 3px solid var(--vidos-primary) !important;
+            font-weight: 600;
         }
 
         #main-content {
@@ -57,10 +58,10 @@
         }
 
         .vidos-top-bar {
-            background: white !important;
+            background: var(--vidos-bg-sidebar) !important;
             border-bottom: 1px solid var(--vidos-border-color);
             height: 70px;
-            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            box-shadow: var(--vidos-shadow);
         }
     </style>
 </head>
@@ -573,16 +574,17 @@
                     <ol class="breadcrumb mb-0">
                         <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}"
                                 class="text-muted text-decoration-none">Vidos</a></li>
-                        <li class="breadcrumb-item active text-white" aria-current="page">{% block page_name %}Panel{%
+                        <li class="breadcrumb-item active" aria-current="page">{% block page_name %}Panel{%
                             endblock %}</li>
                     </ol>
                 </nav>
             </div>
 
             <!-- Center: Search (SaaS Style) -->
-            <div class="top-bar-search d-none d-md-flex align-items-center px-3 rounded-pill">
+            <div class="top-bar-search d-none d-md-flex align-items-center px-3 rounded-pill"
+                style="background: var(--vidos-bg-main); border: 1px solid var(--vidos-border-color);">
                 <i class="bi bi-search text-muted me-2 small"></i>
-                <input type="text" placeholder="Hızlı ara... (Ctrl+K)" class="bg-transparent border-0 text-white small"
+                <input type="text" placeholder="Hızlı ara... (Ctrl+K)" class="bg-transparent border-0 text-body small"
                     style="outline: none; width: 200px;">
             </div>
 
@@ -590,22 +592,23 @@
             <div class="d-flex align-items-center gap-3">
                 <!-- Notifications -->
                 <div class="dropdown">
-                    <button class="btn border-0 p-1 text-muted hover-white position-relative" data-bs-toggle="dropdown">
+                    <button class="btn border-0 p-1 text-muted hover-primary position-relative"
+                        data-bs-toggle="dropdown">
                         <i class="bi bi-bell-fill fs-5"></i>
                         <span class="position-absolute top-0 start-100 translate-middle p-1 bg-primary rounded-circle"
                             style="margin-top: 5px; margin-left: -5px;"></span>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-white border-opacity-10 mt-3"
-                        style="width: 320px; background: var(--sidebar-bg); border-radius: 12px;">
-                        <li class="px-3 py-2 border-bottom border-white border-opacity-5">
-                            <span class="fw-bold small text-white">Bildirimler</span>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-3 p-0 overflow-hidden"
+                        style="width: 320px; background: var(--vidos-bg-sidebar); border-radius: 12px;">
+                        <li class="px-3 py-2 border-bottom border-white border-opacity-5 bg-primary text-white">
+                            <span class="fw-bold small">Bildirimler</span>
                         </li>
-                        <div class="notification-list" style="max-height: 300px; overflow-y: auto;">
+                        <div class="notification-list custom-scrollbar" style="max-height: 300px; overflow-y: auto;">
                             {% if active_announcements %}
                             {% for ann in active_announcements[:5] %}
                             <li>
                                 <a class="dropdown-item py-3 border-bottom border-white border-opacity-5" href="#">
-                                    <div class="fw-bold small text-white">{{ ann.title }}</div>
+                                    <div class="fw-bold small text-body">{{ ann.title }}</div>
                                     <div class="text-muted extra-small mt-1">{{ ann.content[:60] }}...</div>
                                 </a>
                             </li>
@@ -618,44 +621,45 @@
                 </div>
 
                 <!-- Theme -->
-                <button id="themeToggle" class="btn border-0 p-1 text-muted hover-white">
-                    <i class="bi bi-sun-fill fs-5"></i>
+                <button id="themeToggle" class="btn border-0 p-1 text-muted hover-primary">
+                    <i class="bi bi-sun-fill fs-5" id="theme-icon"></i>
                 </button>
 
                 <!-- User Dropdown -->
                 <div class="dropdown">
                     <button
-                        class="btn d-flex align-items-center gap-2 border-white border-opacity-10 rounded-pill p-1 ps-2 pe-3"
-                        data-bs-toggle="dropdown" style="background: rgba(255,255,255,0.03);">
+                        class="btn d-flex align-items-center gap-2 border border-opacity-10 rounded-pill p-1 ps-2 pe-3"
+                        data-bs-toggle="dropdown" style="background: rgba(0,0,0,0.03);">
                         <img src="{{ url_for('static', filename='logo.png') }}" width="24" class="rounded-circle">
-                        <span class="text-white small fw-bold d-none d-sm-inline">{{ current_user.full_name or 'Hesabım'
+                        <span class="text-body small fw-bold d-none d-sm-inline">{{ current_user.full_name or 'Hesabım'
                             }}</span>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-white border-opacity-10 mt-2"
-                        style="background: var(--sidebar-bg); border-radius: 12px; min-width: 220px;">
-                        <li class="px-3 py-2 border-bottom border-white border-opacity-5">
-                            <div class="text-white fw-bold small">{{ current_user.email }}</div>
-                            <div class="badge bg-primary-glow text-primary mt-1" style="font-size: 0.6rem;">{{
-                                current_user.subscription.plan_display_name if current_user.subscription else 'Ücretsiz'
-                                }}</div>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-2 p-0 overflow-hidden"
+                        style="background: var(--vidos-bg-sidebar); border-radius: 12px; min-width: 220px;">
+                        <li class="px-3 py-3 border-bottom border-opacity-10">
+                            <div class="text-body fw-bold small text-truncate">{{ current_user.email }}</div>
+                            <div class="badge bg-primary-glow text-primary mt-1" style="font-size: 0.6rem;">Enterprise
+                            </div>
                         </li>
                         <li><a class="dropdown-item py-2 small" href="{{ url_for('main.settings_page') }}"><i
                                     class="bi bi-person me-2"></i> Profil Ayarları</a></li>
                         <li><a class="dropdown-item py-2 small" href="{{ url_for('support.index') }}"><i
                                     class="bi bi-life-preserver me-2"></i> Destek Al</a></li>
-                        {% if current_user.is_admin %}
                         <li>
-                            <hr class="dropdown-divider border-white border-opacity-5">
+                            <hr class="dropdown-divider border-opacity-10">
                         </li>
+                        {% if current_user.is_admin %}
                         <li><a class="dropdown-item py-2 small text-danger fw-bold"
                                 href="{{ url_for('admin.dashboard') }}"><i class="bi bi-shield-lock me-2"></i> Yönetici
                                 Paneli</a></li>
-                        {% endif %}
                         <li>
-                            <hr class="dropdown-divider border-white border-opacity-5">
+                            <hr class="dropdown-divider border-opacity-10">
                         </li>
+                        {% endif %}
                         <li><a class="dropdown-item py-2 small text-danger" href="{{ url_for('auth.logout') }}"><i
                                     class="bi bi-box-arrow-right me-2"></i> Güvenli Çıkış</a></li>
+                    </ul>
+                    class="bi bi-box-arrow-right me-2"></i> Güvenli Çıkış</a></li>
                     </ul>
                 </div>
             </div>

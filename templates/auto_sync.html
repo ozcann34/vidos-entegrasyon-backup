@@ -379,7 +379,7 @@
         if (!activeJobs[marketplace] || activeJobs[marketplace] !== jobId) return;
 
         try {
-            const resp = await fetch(`/api/job/status/${jobId}`);
+            const resp = await fetch(`/api/mp_jobs/${jobId}`);
             const data = await resp.json();
 
             if (!data.success) {

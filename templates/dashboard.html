@@ -505,86 +505,122 @@
     }
 
     {% if stats and stats.charts %}
-    const chartData = {{ stats.charts | tojson | safe
-  }};
+    try {
+      const chartData = {{ stats.charts | tojson | safe
+    }};
+  console.log("Chart Data:", chartData);
 
   const isDarkMode = document.documentElement.getAttribute('data-bs-theme') === 'dark';
-  const textColor = isDarkMode ? '#e9ecef' : '#495057';
-  const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+  const textColor = isDarkMode ? '#e9ecef' : '#334155';
+  const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)';
 
   Chart.defaults.color = textColor;
   Chart.defaults.borderColor = gridColor;
 
-  const hasSalesData = chartData.sales_revenues && chartData.sales_revenues.some(v => v > 0);
-  if (hasSalesData) {
-    const ctxSales = document.getElementById('salesChart').getContext('2d');
-    let gradient = ctxSales.createLinearGradient(0, 0, 0, 400);
-    gradient.addColorStop(0, 'rgba(13, 110, 253, 0.4)');
-    gradient.addColorStop(1, 'rgba(13, 110, 253, 0.0)');
+  // --- Sales Chart ---
+  try {
+    const hasSalesData = chartData.sales_revenues && chartData.sales_revenues.some(v => v > 0);
+    const salesCanvas = document.getElementById('salesChart');
 
-    new Chart(ctxSales, {
-      type: 'line',
-      data: {
-        labels: chartData.dates,
-        datasets: [{
-          label: 'Günlük Ciro (TL)',
-          data: chartData.sales_revenues,
-          borderColor: '#0d6efd',
-          backgroundColor: gradient,
-          borderWidth: 3,
-          pointBackgroundColor: '#fff',
-          pointBorderColor: '#0d6efd',
-          pointRadius: 4,
-          fill: true,
-          tension: 0.4
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          x: { grid: { display: false } },
-          y: {
-            beginAtZero: true,
-            grid: { color: gridColor },
-            ticks: {
-              callback: value => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 }).format(value)
+    if (hasSalesData && salesCanvas) {
+      const ctxSales = salesCanvas.getContext('2d');
+      let gradient = ctxSales.createLinearGradient(0, 0, 0, 400);
+      gradient.addColorStop(0, 'rgba(13, 110, 253, 0.4)');
+      gradient.addColorStop(1, 'rgba(13, 110, 253, 0.0)');
+
+      new Chart(ctxSales, {
+        type: 'line',
+        data: {
+          labels: chartData.dates,
+          datasets: [{
+            label: 'Günlük Ciro (TL)',
+            data: chartData.sales_revenues,
+            borderColor: '#0d6efd',
+            backgroundColor: gradient,
+            borderWidth: 3,
+            pointBackgroundColor: '#fff',
+            pointBorderColor: '#0d6efd',
+            pointRadius: 4,
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+            y: {
+              beginAtZero: true,
+              grid: { color: gridColor },
+              ticks: {
+                font: { size: 11 },
+                callback: value => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 }).format(value)
+              }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: isDarkMode ? '#1e293b' : '#fff',
+              titleColor: isDarkMode ? '#fff' : '#1e293b',
+              bodyColor: isDarkMode ? '#cbd5e1' : '#64748b',
+              borderColor: gridColor,
+              borderWidth: 1,
+              padding: 12,
+              displayColors: false
             }
           }
-        },
-        plugins: {
-          legend: { display: false }
         }
-      }
-    });
-  } else {
-    document.getElementById('salesChart').parentElement.innerHTML = '<div class="h-100 d-flex flex-column align-items-center justify-content-center text-muted py-5"><i class="bi bi-graph-up fs-1 mb-2 opacity-25"></i><span>Henüz satış verisi bulunmuyor</span></div>';
+      });
+    } else if (salesCanvas) {
+      salesCanvas.parentElement.innerHTML = '<div class="h-100 d-flex flex-column align-items-center justify-content-center text-muted py-5"><i class="bi bi-graph-up fs-1 mb-2 opacity-25"></i><span>Henüz satış verisi bulunmuyor</span></div>';
+    }
+  } catch (e) {
+    console.error("Sales chart error:", e);
   }
 
-  if (chartData.mp_labels && chartData.mp_labels.length > 0) {
-    const ctxMP = document.getElementById('marketplaceChart').getContext('2d');
-    new Chart(ctxMP, {
-      type: 'doughnut',
-      data: {
-        labels: chartData.mp_labels,
-        datasets: [{
-          data: chartData.mp_data,
-          backgroundColor: ['#0d6efd', '#6610f2', '#6f42c1', '#d63384', '#dc3545', '#fd7e14'],
-          borderWidth: isDarkMode ? 2 : 1,
-          borderColor: isDarkMode ? '#1e293b' : '#fff'
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'bottom', labels: { color: textColor, boxWidth: 12, padding: 20 } }
+  // --- Marketplace Chart ---
+  try {
+    const mpCanvas = document.getElementById('marketplaceChart');
+    if (chartData.mp_labels && chartData.mp_labels.length > 0 && mpCanvas) {
+      const ctxMP = mpCanvas.getContext('2d');
+      new Chart(ctxMP, {
+        type: 'doughnut',
+        data: {
+          labels: chartData.mp_labels,
+          datasets: [{
+            data: chartData.mp_data,
+            backgroundColor: ['#0d6efd', '#6610f2', '#6f42c1', '#d63384', '#dc3545', '#fd7e14'],
+            borderWidth: isDarkMode ? 2 : 1,
+            borderColor: isDarkMode ? '#1e293b' : '#fff'
+          }]
         },
-        cutout: '75%'
-      }
-    });
-  } else {
-    document.getElementById('marketplaceChart').parentElement.innerHTML = '<div class="h-100 d-flex flex-column align-items-center justify-content-center text-muted py-5"><i class="bi bi-pie-chart fs-1 mb-2 opacity-25"></i><span>Pazaryeri dağılımı yok</span></div>';
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                color: textColor,
+                boxWidth: 10,
+                padding: 15,
+                font: { size: 11 }
+              }
+            }
+          },
+          cutout: '75%'
+        }
+      });
+    } else if (mpCanvas) {
+      mpCanvas.parentElement.innerHTML = '<div class="h-100 d-flex flex-column align-items-center justify-content-center text-muted py-5"><i class="bi bi-pie-chart fs-1 mb-2 opacity-25"></i><span>Pazaryeri dağılımı yok</span></div>';
+    }
+  } catch (e) {
+    console.error("Marketplace chart error:", e);
+  }
+    } catch (e) {
+    console.error("Chart initialization error:", e);
   }
   {% endif %}
 

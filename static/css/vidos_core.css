@@ -10,6 +10,15 @@
     --vidos-danger: #e81500;
     --vidos-border-color: #dee2e6;
     --vidos-radius: 0.5rem;
+
+    /* Default (Light) Theme Variables */
+    --vidos-bg-main: #f8fafc;
+    --vidos-bg-card: rgba(255, 255, 255, 0.9);
+    --vidos-bg-sidebar: #ffffff;
+    --vidos-border-color: #e2e8f0;
+    --vidos-text-main: #1e293b;
+    --vidos-text-muted: #64748b;
+    --vidos-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 [data-bs-theme="dark"] {
@@ -38,8 +47,12 @@ body {
 }
 
 [data-bs-theme="light"] .glass-panel {
-    background: rgba(255, 255, 255, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.bg-body-tertiary {
+    background-color: var(--vidos-bg-main) !important;
 }
 
 /* Card Styling */
