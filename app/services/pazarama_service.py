@@ -1876,6 +1876,7 @@ def perform_pazarama_direct_push_actions(user_id: int, to_update: List[Any], to_
                 continue # Silent skip
  
             final_price, rule_desc = calculate_price(xml_item.price, 'pazarama', user_id=user_id, return_details=True)
+            final_price = round(final_price, 2)
             
             item_payload = {
                 "code": barcode,

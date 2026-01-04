@@ -2447,11 +2447,14 @@ def perform_idefix_direct_push_actions(user_id: int, to_update: List[Any], to_cr
                     return res
             
             final_price, rule_desc = calculate_price(xml_item.price, 'idefix', user_id=user_id, return_details=True)
+            # Idefix expects kuruş (integer)
+            price_kuruş = int(round(final_price, 2) * 100)
             
             update_payloads.append({
-                "SKU": local_item.stock_code,
-                "Price": final_price,
-                "Quantity": xml_item.quantity
+                "barcode": local_item.barcode,
+                "price": price_kuruş,
+                "comparePrice": price_kuruş, # Default same as price
+                "inventoryQuantity": xml_item.quantity
             })
             
             db_mappings.append({

@@ -1495,10 +1495,14 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
                     return res
             
             final_price, rule_desc = calculate_price(xml_item.price, 'n11', user_id=user_id, return_details=True)
+            final_price = round(final_price, 2)
+            
             update_payloads.append({
-                "sellerCode": local_item.stock_code,
-                "price": final_price,
-                "quantity": xml_item.quantity
+                "stockCode": local_item.stock_code,
+                "salePrice": final_price,
+                "listPrice": final_price,
+                "quantity": xml_item.quantity,
+                "currencyType": "TL"
             })
             
             db_mappings.append({

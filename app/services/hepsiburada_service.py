@@ -436,14 +436,15 @@ def perform_hepsiburada_direct_push_actions(user_id: int, to_update: List[Any], 
                     return res
             
             final_price, rule_desc = calculate_price(xml_item.price, 'hepsiburada', user_id=user_id, return_details=True)
+            final_price = round(final_price, 2)
             
             update_payloads.append({
-                "MerchantSku": local_item.stock_code,
+                "merchantSku": local_item.stock_code,
                 "Barcode": local_item.barcode,
                 "Price": final_price,
                 "AvailableStock": xml_item.quantity,
                 "DispatchTime": dispatch_time,
-                "CargoCompany": cargo_company
+                "CargoCompany1": cargo_company
             })
             
             db_mappings.append({

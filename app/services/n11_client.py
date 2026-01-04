@@ -525,6 +525,8 @@ class N11Client:
         try:
             logging.info(f"[N11] Bulk updating price/stock for {len(items)} items.")
             response = self.session.post(url, json=payload, timeout=60)
+            if response.status_code >= 400:
+                logging.error(f"N11 API Error Response: {response.text}")
             response.raise_for_status()
             return response.json()
         except Exception as e:
