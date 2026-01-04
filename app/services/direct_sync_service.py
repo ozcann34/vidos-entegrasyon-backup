@@ -64,7 +64,9 @@ class DirectSyncService:
                     # Ham veriyi SimpleNamespace'e çevirerek dot-notation (p.title vb.) kazandırıyoruz
                     raw_dict = json.loads(p.raw_data) if p.raw_data else {}
                     # SimpleNamespace ile xml_item.title, xml_item.quantity gibi erişimler hatasız çalışır
-                    xml_map[p.stock_code] = SimpleNamespace(**raw_dict)
+                    ns = SimpleNamespace(**raw_dict)
+                    ns.raw_data = p.raw_data # Servislerin re-parse yapabilmesi için geri ekliyoruz
+                    xml_map[p.stock_code] = ns
                 except Exception as e:
                     logger.warning(f"XML data parse error for {p.stock_code}: {e}")
             

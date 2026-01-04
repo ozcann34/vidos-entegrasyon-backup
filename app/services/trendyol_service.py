@@ -2021,7 +2021,7 @@ def perform_trendyol_direct_push_actions(user_id: int, to_update: List[Any], to_
                         append_mp_job_log(job_id, "İptal edildi (Batch sırasında)", level='warning')
                         return res
                 
-                client.update_price_and_inventory(batch)
+                client.update_price_inventory(batch)
                 res['updated_count'] += len(batch)
                 
                 # Corresponding DB updates

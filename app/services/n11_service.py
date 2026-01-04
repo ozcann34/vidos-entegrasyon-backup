@@ -1557,6 +1557,7 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
                     return res
             
             barcode = xml_item.barcode
+            raw = json.loads(xml_item.raw_data)
             final_price, rule_desc = calculate_price(xml_item.price, 'n11', user_id=user_id, return_details=True)
             
             safe_title = (xml_item.title or "").strip()
