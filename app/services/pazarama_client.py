@@ -309,19 +309,29 @@ class PazaramaClient:
     def get_product_count(self) -> int:
         """
         Get total product count from Pazarama. Raises on auth error.
+        Sums both approved and unapproved products.
         """
-        # list_products uses /product/products. We use the same but inspect root JSON for total.
+        total_global = 0
         url = f"{BASE_URL}/product/products"
-        params = {"Page": 1, "Size": 1}
-        resp = self._request("GET", url, params=params, headers={"Accept": "application/json"})
-        data = resp.json()
         
-        if "totalCount" in data: return int(data["totalCount"])
-        if "totalProductCount" in data: return int(data["totalProductCount"])
-        if "total" in data: return int(data["total"])
-        if "paging" in data and isinstance(data['paging'], dict):
-             if "totalCount" in data['paging']: return int(data['paging']['totalCount'])
-        return 0
+        for approved in [True, False]:
+            try:
+                params = {"Page": 1, "Size": 1, "Approved": "true" if approved else "false"}
+                resp = self._request("GET", url, params=params, headers={"Accept": "application/json"})
+                data = resp.json()
+                
+                count = 0
+                if "totalCount" in data: count = int(data["totalCount"])
+                elif "totalProductCount" in data: count = int(data["totalProductCount"])
+                elif "total" in data: count = int(data["total"])
+                elif "paging" in data and isinstance(data['paging'], dict):
+                     if "totalCount" in data['paging']: count = int(data['paging']['totalCount'])
+                
+                total_global += count
+            except Exception as e:
+                logging.warning(f"[PAZARAMA] get_product_count error for approved={approved}: {e}")
+                
+        return total_global
 
     def list_products(
         self,

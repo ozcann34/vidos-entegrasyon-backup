@@ -995,9 +995,30 @@ items: List[Dict[str, Any]],
             logger.error("[IDEFIX] list_products failed: vendor_id is missing")
             return {'content': [], 'totalElements': 0}
             
+        if not self.vendor_id:
+            logger.error("[IDEFIX] list_products failed: vendor_id is missing")
+            return {'content': [], 'totalElements': 0}
+            
         url = f"{self.BASE_URL}/pim/pool/{self.vendor_id}/list"
-        
-        return {'content': [], 'totalElements': 0}
+        params = {"page": page, "limit": limit}
+        if search:
+            params["search"] = search
+        if pool_state:
+            params["poolState"] = pool_state
+            
+        try:
+            resp = self.session.get(url, headers=self._get_headers(), params=params, timeout=30)
+            resp.raise_for_status()
+            data = resp.json()
+            
+            # Idefix returns { "items": [...], "totalElements": X }
+            return {
+                'content': data.get('items', []),
+                'totalElements': data.get('totalElements', 0)
+            }
+        except Exception as e:
+            logger.error(f"[IDEFIX] list_products error: {e}")
+            return {'content': [], 'totalElements': 0}
 
     # ============================================================
     # Müşteri Soruları (Customer Questions)
@@ -1903,7 +1924,7 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
         append_mp_job_log(job_id, f"Batch {batch_num}/{total_batches} gönderiliyor ({len(batch)} ürün)...")
         
         try:
-            resp = client.create_product(batch)
+            resp = client.create_products(batch)
             batch_request_id = resp.get('batchRequestId')
             
             if batch_request_id:

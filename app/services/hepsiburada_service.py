@@ -142,16 +142,16 @@ def perform_hepsiburada_send_products(job_id: str, barcodes: List[str], xml_sour
         # Payload for Inventory Uploads (Listing API)
         
         item = {
-            "merchantSku": barcode,
-            "productName": title[:200], # Added title if needed
+            "MerchantSku": barcode,
+            "ProductName": title[:200], # Added title if needed
             "VaryantGroupID": product.get('parent_barcode') or product.get('modelCode') or product.get('productCode') or barcode, 
-            "price": {
-                "amount": final_price,
-                "currency": "TRY"
+            "Price": {
+                "Amount": final_price,
+                "Currency": "TRY"
             },
-            "availableStock": stock,
-            "dispatchTime": 3,
-            "cargoCompany1": "Yurtiçi Kargo"
+            "AvailableStock": stock,
+            "DispatchTime": 3,
+            "CargoCompany": "Yurtiçi Kargo"
         }
         
         products_to_send.append(item)
@@ -275,12 +275,12 @@ def perform_hepsiburada_batch_update(job_id: str, items: List[Dict[str, Any]], u
             }
             
             if 'stock' in item:
-                hb_item["availableStock"] = int(item['stock'])
+                hb_item["AvailableStock"] = int(item['stock'])
             
             if 'price' in item:
-                hb_item["price"] = {
-                    "amount": float(item['price']),
-                    "currency": "TRY"
+                hb_item["Price"] = {
+                    "Amount": float(item['price']),
+                    "Currency": "TRY"
                 }
             
             payload.append(hb_item)
@@ -355,9 +355,9 @@ def sync_hepsiburada_with_xml_diff(job_id: str, xml_source_id: Any, user_id: int
         zero_payload = []
         for bc in to_zero_barcodes:
             zero_payload.append({
-                "merchantSku": bc,
-                "availableStock": 0,
-                "cargoCompany1": "Yurtiçi Kargo" # Required by HB Listing API
+                "MerchantSku": bc,
+                "AvailableStock": 0,
+                "CargoCompany": "Yurtiçi Kargo" # Required by HB Listing API
             })
         
         for chunk in chunked(zero_payload, 100):
@@ -420,7 +420,7 @@ def perform_hepsiburada_direct_push_actions(user_id: int, to_update: List[Any], 
         for xml_item, local_item in to_update:
             final_price = calculate_price(xml_item.price, 'hepsiburada', user_id=user_id)
             update_items.append({
-                "MerchantSku": local_item.stock_code, # SKU bazlı eşleşme
+                "MerchantSku": local_item.stock_code,
                 "Barcode": local_item.barcode,
                 "Price": final_price,
                 "AvailableStock": xml_item.quantity,

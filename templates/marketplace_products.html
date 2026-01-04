@@ -1070,13 +1070,33 @@
     }).then(res => {
       if (!res.isConfirmed) return;
       const { p, q } = res.value || {};
-      const items = Array.from(selectedMpBarcodes).map(bc => ({ barcode: bc, salePrice: isNaN(p) ? undefined : p, listPrice: isNaN(p) ? undefined : p, quantity: isNaN(q) ? undefined : q, currencyType: 'TRY' }));
+      // Create a generic item list for the bulk action
+      const items = Array.from(selectedMpBarcodes).map(bc => ({
+        barcode: bc,
+        price: isNaN(p) ? undefined : p,
+        stock: isNaN(q) ? undefined : q
+      }));
+
       Swal.fire({ title: 'Gönderiliyor', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
-      fetch('/api/trendyol/bulk/price-inventory', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items }) })
-        .then(r => r.json()).then(j => {
-          if (j.success) { Swal.fire('Başarılı', `Toplam ${j.updated} kayıt güncellendi.`, 'success'); selectedMpBarcodes.clear(); refreshBulkButtons(); fetchProducts(); }
-          else { Swal.fire('Hata', j.message || 'Güncelleme başarısız', 'error'); }
-        }).catch(() => Swal.fire('Hata', 'API çağrısı sırasında sorun oluştu.', 'error'));
+
+      // Use the generic bulk update endpoint instead of hardcoded trendyol
+      fetch(`/api/product/bulk_update/${CURRENT_MARKETPLACE}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items })
+      })
+        .then(r => r.json())
+        .then(j => {
+          if (j.success) {
+            Swal.fire('Başarılı', `Toplam ${j.count || j.updated || 0} kayıt güncellendi.`, 'success');
+            selectedMpBarcodes.clear();
+            refreshBulkButtons();
+            fetchProducts();
+          } else {
+            Swal.fire('Hata', j.message || 'Güncelleme başarısız', 'error');
+          }
+        })
+        .catch(() => Swal.fire('Hata', 'API çağrısı sırasında sorun oluştu.', 'error'));
     });
   });
 

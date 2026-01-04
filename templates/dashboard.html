@@ -16,20 +16,55 @@
 </div>
 {% endif %}
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
   <div class="d-flex align-items-center gap-3">
     <h1 class="h3 fw-bold mb-0">Genel Bakış</h1>
-    <span class="badge bg-primary-light text-primary rounded-pill">Bugün</span>
+    <div class="dropdown">
+      <button class="btn btn-primary-light text-primary btn-sm rounded-pill dropdown-toggle fw-bold" type="button"
+        data-bs-toggle="dropdown">
+        {% if stats.period == 'daily' %}Günlük{% elif stats.period == 'weekly' %}Haftalık{% else %}Aylık{% endif %}
+      </button>
+      <ul class="dropdown-menu shadow border-0">
+        <li><a class="dropdown-item {% if stats.period == 'daily' %}active{% endif %}"
+            href="{{ url_for('main.dashboard', period='daily', chart_period=stats.chart_period) }}">Günlük</a></li>
+        <li><a class="dropdown-item {% if stats.period == 'weekly' %}active{% endif %}"
+            href="{{ url_for('main.dashboard', period='weekly', chart_period=stats.chart_period) }}">Haftalık</a></li>
+        <li><a class="dropdown-item {% if stats.period == 'monthly' %}active{% endif %}"
+            href="{{ url_for('main.dashboard', period='monthly', chart_period=stats.chart_period) }}">Aylık</a></li>
+      </ul>
+    </div>
   </div>
   <div class="d-flex gap-2">
     <a href="{{ url_for('main.dashboard', force_sync='true') }}" class="btn btn-white border shadow-sm btn-sm fw-bold">
       <i class="bi bi-arrow-clockwise me-1"></i> Senkronize Et
     </a>
-    <button class="btn btn-primary btn-sm fw-bold shadow-sm">
+    <a href="{{ url_for('main.reports_page', period=stats.period) }}" class="btn btn-primary btn-sm fw-bold shadow-sm">
       <i class="bi bi-download me-1"></i> Rapor Al
-    </button>
+    </a>
   </div>
 </div>
+
+<!-- Product Limit Usage Progress -->
+{% if stats.usage %}
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body p-3">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-cpu text-primary"></i>
+        <span class="fw-bold small text-muted">PORTFÖY LİMİT KULLANIMI</span>
+      </div>
+      <span class="small fw-bold">{{ stats.usage.product_count }} / {{ stats.usage.product_limit }}</span>
+    </div>
+    <div class="progress" style="height: 8px; background-color: rgba(var(--vidos-primary-rgb), 0.1);">
+      {% set usage_pct = (stats.usage.product_count / stats.usage.product_limit * 100)|round|int %}
+      {% set progress_color = 'success' if usage_pct < 70 else 'warning' if usage_pct < 90 else 'danger' %} <div
+        class="progress-bar bg-{{ progress_color }} progress-bar-striped progress-bar-animated" role="progressbar"
+        style="width: {{ usage_pct }}%">
+    </div>
+  </div>
+</div>
+</div>
+{% endif %}
 
 <!-- Kritik Stok Butonu -->
 {% if stats.critical_stock %}
@@ -157,7 +192,8 @@
     <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid var(--vidos-primary) !important;">
       <div class="card-body p-4">
         <div class="d-flex justify-content-between align-items-start mb-2">
-          <p class="text-muted mb-0 small fw-bold text-uppercase">Toplam Satış (Bu Ay)</p>
+          <p class="text-muted mb-0 small fw-bold text-uppercase">Toplam Satış ({% if stats.period == 'daily' %}Bugün{%
+            elif stats.period == 'weekly' %}Bu Hafta{% else %}Bu Ay{% endif %})</p>
           <div class="vidos-icon-box" style="color: var(--vidos-primary);">
             <i class="bi bi-wallet2 fs-5"></i>
           </div>
@@ -179,12 +215,13 @@
     <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #20c997 !important;">
       <div class="card-body p-4">
         <div class="d-flex justify-content-between align-items-start mb-2">
-          <p class="text-muted mb-0 small fw-bold text-uppercase">Toplam Sipariş (Bu Ay)</p>
+          <p class="text-muted mb-0 small fw-bold text-uppercase">Toplam Sipariş ({% if stats.period == 'daily'
+            %}Bugün{% elif stats.period == 'weekly' %}Bu Hafta{% else %}Bu Ay{% endif %})</p>
           <div class="vidos-icon-box" style="color: #20c997;">
             <i class="bi bi-box-seam fs-5"></i>
           </div>
         </div>
-        <h3 class="fw-bold mb-1" style="color: var(--vidos-dark);">{{ stats.monthly_orders|default(0) }} <small
+        <h3 class="fw-bold mb-1" style="color: var(--vidos-text-main);">{{ stats.monthly_orders|default(0) }} <small
             class="text-muted" style="font-size: 0.6em;">Adet</small></h3>
         <div class="d-flex align-items-center mt-2">
           <span class="text-secondary small fw-bold">-</span>
@@ -280,9 +317,13 @@
     <div class="card vidos-card h-100">
       <div class="card-header border-bottom py-3 d-flex justify-content-between align-items-center bg-transparent">
         <h5 class="card-title mb-0 fw-bold">Satış Performansı</h5>
-        <div class="d-flex gap-2">
-          <button class="btn btn-sm btn-light active">Haftalık</button>
-          <button class="btn btn-sm btn-light">Aylık</button>
+        <div class="btn-group">
+          <a href="{{ url_for('main.dashboard', period=stats.period, chart_period='daily') }}"
+            class="btn btn-xs btn-outline-primary {% if stats.chart_period == 'daily' %}active{% endif %}">Günlük</a>
+          <a href="{{ url_for('main.dashboard', period=stats.period, chart_period='weekly') }}"
+            class="btn btn-xs btn-outline-primary {% if stats.chart_period == 'weekly' %}active{% endif %}">Haftalık</a>
+          <a href="{{ url_for('main.dashboard', period=stats.period, chart_period='monthly') }}"
+            class="btn btn-xs btn-outline-primary {% if stats.chart_period == 'monthly' %}active{% endif %}">Aylık</a>
         </div>
       </div>
       <div class="card-body">
@@ -489,21 +530,10 @@
 <script>
   document.addEventListener('DOMContentLoaded', function () {
     // Rapor Al Button
-    const reportBtn = document.querySelector('button.btn-primary.shadow-sm');
-    if (reportBtn && reportBtn.innerHTML.includes('Rapor Al')) {
-      reportBtn.addEventListener('click', function () {
-        // Redirect to reports or trigger download
-        // Check if report route exists, otherwise alert
-        window.location.href = "{{ url_for('main.financial_reports') if 'financial_reports' in url_for('main.dashboard') else '#' }}";
-        // For now, since financial_reports is not confirmed, let's just show an alert or a modal
-        Swal.fire({
-          title: 'Raporlar',
-          text: 'Finansal raporlar modülü hazırlanıyor.',
-          icon: 'info'
-        });
-      });
-    }
+    const reportBtn = document.querySelector('a.btn-primary.shadow-sm[href*="reports"]');
+    // It's already an <a> with correct href now.
 
+    // JS Logic for Charts (already exists below, just making sure labels match)
     {% if stats and stats.charts %}
     try {
       const chartData = {{ stats.charts | tojson | safe
@@ -533,7 +563,7 @@
         data: {
           labels: chartData.dates,
           datasets: [{
-            label: 'Günlük Ciro (TL)',
+            label: '{% if stats.chart_period == "monthly" %}Aylık Ciro{% elif stats.chart_period == "weekly" %}Haftalık Ciro{% else %}Günlük Ciro{% endif %} (TL)',
             data: chartData.sales_revenues,
             borderColor: '#0d6efd',
             backgroundColor: gradient,
