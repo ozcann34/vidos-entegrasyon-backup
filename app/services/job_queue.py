@@ -4,7 +4,7 @@ import threading
 import concurrent.futures
 import json
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from flask import current_app
 from config import Config
 from app import db
