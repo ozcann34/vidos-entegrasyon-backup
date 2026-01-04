@@ -4,14 +4,23 @@ import sys
 # Proje dizinini path'e ekle
 sys.path.append(os.getcwd())
 
+# .env dosyasını yükle (Sunucu üzerindeki DATABASE_URL vb. için)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+    print(".env dosyası yüklendi.")
+except ImportError:
+    print("python-dotenv bulunamadı, sistem environment değişkenleri kullanılacak.")
+
 from app import create_app, db
-from sqlalchemy import text
+from sqlalchemy import text, inspect
 from app.models import MarketplaceProduct, CachedXmlProduct, PersistentJob
 
 app = create_app('production') # Sunucuda production config kullanılıyor
 
 with app.app_context():
     try:
+        print(f"Bağlanılan Veritabanı: {app.config['SQLALCHEMY_DATABASE_URI']}")
         print("--- VERITABANI GÜNCELLEME İŞLEMİ BAŞLATILDI ---")
         
         # 1. Yeni Tabloları Oluştur (db.create_all sadece olmayanları oluşturur)
