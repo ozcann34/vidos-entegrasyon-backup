@@ -50,10 +50,12 @@
                 <td>
                     {% if user.is_banned %}
                     <span class="badge bg-danger">Banlı</span>
+                    {% elif user.email == 'bugraerkaradeniz34@gmail.com' %}
+                    <span class="badge badge-admin">Ana Admin</span>
                     {% elif user.is_admin %}
-                    <span class="badge badge-admin">
-                        {{ 'Ana Admin' if user.email == 'bugraerkaradeniz34@gmail.com' else 'Destek' }}
-                    </span>
+                    <span class="badge bg-info">Yönetici</span>
+                    {% elif user.is_support %}
+                    <span class="badge bg-primary">Destek</span>
                     {% elif user.is_active %}
                     <span class="badge bg-success">Aktif</span>
                     {% else %}

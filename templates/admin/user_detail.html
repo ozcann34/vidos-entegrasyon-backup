@@ -26,12 +26,16 @@
 
                 {% if user.is_banned %}
                 <span class="badge bg-danger">Banlı</span>
+                {% elif user.email == 'bugraerkaradeniz34@gmail.com' %}
+                <span class="badge badge-admin">Ana Admin</span>
                 {% elif user.is_admin %}
-                <span class="badge badge-admin">
-                    {{ 'Ana Admin' if user.email == 'bugraerkaradeniz34@gmail.com' else 'Destek' }}
-                </span>
-                {% else %}
+                <span class="badge bg-info">Yönetici</span>
+                {% elif user.is_support %}
+                <span class="badge bg-primary">Destek</span>
+                {% elif user.is_active %}
                 <span class="badge bg-success">Aktif</span>
+                {% else %}
+                <span class="badge bg-warning">Pasif</span>
                 {% endif %}
             </div>
 
@@ -102,6 +106,17 @@
                 </button>
             </form>
 
+            <!-- Support Toggle (Super Admin Only) -->
+            {% if current_user.is_super_admin and user.email != 'bugraerkaradeniz34@gmail.com' %}
+            <form action="{{ url_for('admin.toggle_support_route', user_id=user.id) }}" method="POST" class="mb-2">
+                <button type="submit"
+                    class="btn btn-{{ 'outline-primary' if not user.is_support else 'outline-warning' }} w-100">
+                    <i class="bi bi-headset me-2"></i>
+                    {{ 'Destek Yetkisi Ver' if not user.is_support else 'Destek Yetkisini Kaldır' }}
+                </button>
+            </form>
+            {% endif %}
+
             <a href="{{ url_for('admin.user_permissions', user_id=user.id) }}" class="btn btn-warning w-100 mb-2">
                 <i class="bi bi-key me-2"></i>İzinleri Düzenle
             </a>
@@ -146,7 +161,7 @@
             {% else %}
             <p class="text-muted text-center mb-0">
                 <i class="bi bi-shield-lock me-2"></i>{{ 'Ana Admin' if user.email == 'bugraerkaradeniz34@gmail.com'
-                else 'Destek' }} hesabı
+                else 'Destek' if user.is_support else 'Yönetici' }} hesabı
             </p>
             {% endif %}
         </div>

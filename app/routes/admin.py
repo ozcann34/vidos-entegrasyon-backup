@@ -498,6 +498,29 @@ def toggle_admin(user_id):
     return redirect(url_for('admin.users'))
 
 
+@admin_bp.route('/users/<int:user_id>/toggle_support', methods=['POST'])
+@super_admin_required
+def toggle_support_route(user_id):
+    """Toggle support status for a user."""
+    user = User.query.get_or_404(user_id)
+    user.is_support = not user.is_support
+    db.session.commit()
+    
+    # Log action
+    action = 'promote_support' if user.is_support else 'demote_support'
+    AdminLog.log_action(
+        admin_id=current_user.id,
+        action=action,
+        target_user_id=user_id,
+        details=f'Support status changed to {user.is_support}',
+        ip_address=request.remote_addr
+    )
+    
+    status_msg = "Destek hesabı yapıldı" if user.is_support else "Destek yetkisi alındı"
+    flash(f'{user.full_name or user.email} kullanıcısı {status_msg}.', 'success')
+    return redirect(url_for('admin.user_detail', user_id=user_id))
+
+
 @admin_bp.route('/users/create_admin', methods=['GET', 'POST'])
 @super_admin_required
 def create_admin_view():
@@ -855,6 +878,8 @@ def user_permissions(user_id):
         'returns': 'İadeler',
 
         'instagram': 'Instagram Araçları',
+        
+        'adjust_sync_interval': 'Zamanlama Ayarı Yetkisi',
 
     }
 

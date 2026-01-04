@@ -26,10 +26,11 @@
                                 <select
                                     class="form-select form-select-sm border-0 bg-light text-secondary fw-bold interval-select"
                                     data-marketplace="{{ key }}"
-                                    style="width: 100%; display: inline-block; cursor: not-allowed;" disabled>
+                                    style="width: 100%; display: inline-block; {{ 'cursor: pointer;' if current_user.has_permission('adjust_sync_interval') else 'cursor: not-allowed;' }}"
+                                    {{ ' ' if current_user.has_permission('adjust_sync_interval') else 'disabled' }}>
                                     <option value="15">Her 15 Dakikada Bir</option>
                                     <option value="30">Her 30 Dakikada Bir</option>
-                                    <option value="60" selected>Her 1 Saatte Bir (Sabit)</option>
+                                    <option value="60" selected>Her 1 Saatte Bir</option>
                                     <option value="180">Her 3 Saatte Bir</option>
                                     <option value="360">Her 6 Saatte Bir</option>
                                     <option value="720">Her 12 Saatte Bir</option>
@@ -624,6 +625,8 @@
         container.innerHTML = html;
     }
 
+    window.loadLogs = loadLogs;
+
     window.showLogDetails = function (details) {
         const tbody = document.getElementById('logDetailsTableBody');
         if (!tbody) return;
@@ -650,6 +653,17 @@
         // Sync toggles
         document.querySelectorAll('.sync-enable').forEach(toggle => {
             toggle.addEventListener('change', (e) => toggleSync(e.target.dataset.marketplace, e.target.checked));
+        });
+
+        // Interval changes
+        document.querySelectorAll('.interval-select').forEach(select => {
+            select.addEventListener('change', (e) => {
+                const mp = e.target.dataset.marketplace;
+                const toggleEl = document.getElementById(`enable_${mp}`);
+                if (toggleEl && toggleEl.checked) {
+                    toggleSync(mp, true);
+                }
+            });
         });
 
         // XML source changes
@@ -699,7 +713,7 @@
             loadLogs(filter ? filter.value : null);
         }, 30000);
     });
-    }) ();
+}) ();
 </script>
 
 <style>

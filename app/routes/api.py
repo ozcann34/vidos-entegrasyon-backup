@@ -2223,18 +2223,28 @@ def api_auto_sync_toggle():
     try:
         data = request.get_json() or {}
         marketplace = data.get('marketplace')
-        # Enforce 3-hour interval and auto matching as per new business logic
-        # UPDATE: User requested 15 mins and random barcode toggle
         enabled = data.get('enabled', False)
-        # Default to 15 mins if not provided, but allow override
-        interval_minutes = int(data.get('interval_minutes', 15))
-        if interval_minutes < 15: interval_minutes = 15 # Minimum 15 mins
         
+        # Get existing setting to compare
+        auto_sync = AutoSync.get_or_create(marketplace, user_id=current_user.id)
+        
+        # Permission check for interval update
+        requested_interval = int(data.get('interval_minutes', 60))
+        if requested_interval < 15: requested_interval = 15
+        
+        # Only super_admin or users with 'adjust_sync_interval' permission can change the interval
+        can_adjust = current_user.is_super_admin or current_user.has_permission('adjust_sync_interval')
+        
+        if can_adjust:
+            interval_minutes = requested_interval
+        else:
+            # If no permission, keep existing interval or use 60 as default if it's a new setting
+            interval_minutes = auto_sync.sync_interval_minutes or 60
+            
         if not marketplace or marketplace not in MARKETPLACES:
             return jsonify({'success': False, 'message': 'Geçersiz pazaryeri'}), 400
         
         # AutoSync kaydını güncelle
-        auto_sync = AutoSync.get_or_create(marketplace, user_id=current_user.id)
         auto_sync.enabled = enabled
         auto_sync.sync_interval_minutes = interval_minutes
         auto_sync.updated_at = datetime.utcnow().isoformat()

@@ -25,6 +25,7 @@ DEFAULT_PERMISSIONS = {
     'product_delete': True,
     'order_sync': True,
     'ikas': True,
+    'adjust_sync_interval': True,
 }
 
 
@@ -58,6 +59,7 @@ class User(db.Model, UserMixin):
     
     # Status flags
     is_admin = db.Column(db.Boolean, default=False)
+    is_support = db.Column(db.Boolean, default=False)
     is_active = db.Column(db.Boolean, default=True)
     is_banned = db.Column(db.Boolean, default=False)
     ban_reason = db.Column(db.Text, nullable=True)
@@ -123,9 +125,15 @@ class User(db.Model, UserMixin):
         if global_enabled == 'false':
             return False
 
-        # 2. Admins have all personal permissions
-        if self.is_admin:
+        # 2. Super Admin has all permissions bypass
+        if self.is_super_admin:
             return True
+
+        # 3. Regular Admins & Support Staff follow their permission JSON
+        # If they are admin or support, but a specific permission is False, return False
+        if self.is_admin or self.is_support:
+            return self.permissions.get(permission, True)
+            
         return self.permissions.get(permission, True)
     
     def set_permission(self, permission: str, value: bool):
