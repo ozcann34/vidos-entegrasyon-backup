@@ -21,23 +21,9 @@
                         </label>
                     </div>
                     <div class="text-end">
-                        <div class="text-end">
-                            <div class="text-end">
-                                <select
-                                    class="form-select form-select-sm border-0 bg-light text-secondary fw-bold interval-select"
-                                    data-marketplace="{{ key }}"
-                                    style="width: 100%; display: inline-block; {{ 'cursor: pointer;' if current_user.has_permission('adjust_sync_interval') else 'cursor: not-allowed;' }}"
-                                    {{ ' ' if current_user.has_permission('adjust_sync_interval') else 'disabled' }}>
-                                    <option value="15">Her 15 Dakikada Bir</option>
-                                    <option value="30">Her 30 Dakikada Bir</option>
-                                    <option value="60" selected>Her 1 Saatte Bir</option>
-                                    <option value="180">Her 3 Saatte Bir</option>
-                                    <option value="360">Her 6 Saatte Bir</option>
-                                    <option value="720">Her 12 Saatte Bir</option>
-                                    <option value="1440">Günde Bir Kez</option>
-                                </select>
-                            </div>
-                        </div>
+                        <span class="badge bg-light text-secondary border rounded-pill px-3 py-2 small">
+                            <i class="bi bi-clock-history me-1"></i> Her 6 Saatte Bir
+                        </span>
                     </div>
                 </div>
 
@@ -253,13 +239,9 @@
 
                     const toggleEl = card.querySelector('.sync-enable');
                     const xmlSelect = card.querySelector('.xml-source-select');
-                    const intervalSelect = card.querySelector('.interval-select');
-                    const rndBarcodeCheck = card.querySelector('.random-barcode-check');
-                    const overrideBarcodeCheck = card.querySelector('.override-barcode-check');
-
                     if (toggleEl) toggleEl.checked = setting.enabled;
                     if (xmlSelect) xmlSelect.value = setting.xml_source_id || '';
-                    if (intervalSelect) intervalSelect.value = setting.sync_interval_minutes || 15;
+                    // Interval select removed from UI
 
                     if (rndBarcodeCheck) {
                         rndBarcodeCheck.checked = setting.use_random_barcode === 'true' || setting.use_random_barcode === true;
@@ -287,11 +269,10 @@
         }
 
         try {
-            const intervalSelect = card ? card.querySelector('.interval-select') : null;
             const rndBarcodeCheck = card ? card.querySelector('.random-barcode-check') : null;
             const overrideBarcodeCheck = card ? card.querySelector('.override-barcode-check') : null;
 
-            const intervalVal = intervalSelect ? parseInt(intervalSelect.value) : 15;
+            const intervalVal = 360; // Fixed to 360 min (6 hours)
             const useRandomBarcode = rndBarcodeCheck ? rndBarcodeCheck.checked : false;
             const useOverrideBarcode = overrideBarcodeCheck ? overrideBarcodeCheck.checked : false;
 
@@ -704,16 +685,7 @@
             toggle.addEventListener('change', (e) => toggleSync(e.target.dataset.marketplace, e.target.checked));
         });
 
-        // Interval changes
-        document.querySelectorAll('.interval-select').forEach(select => {
-            select.addEventListener('change', (e) => {
-                const mp = e.target.dataset.marketplace;
-                const toggleEl = document.getElementById(`enable_${mp}`);
-                if (toggleEl && toggleEl.checked) {
-                    toggleSync(mp, true);
-                }
-            });
-        });
+        // Interval changes REMOVED as UI is fixed to 6 hours
 
         // XML source changes
         document.querySelectorAll('.xml-source-select').forEach(select => {

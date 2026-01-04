@@ -2247,17 +2247,8 @@ def api_auto_sync_toggle():
         auto_sync = AutoSync.get_or_create(marketplace, user_id=current_user.id)
         
         # Permission check for interval update
-        requested_interval = int(data.get('interval_minutes', 60))
-        if requested_interval < 15: requested_interval = 15
-        
-        # Only super_admin or users with 'adjust_sync_interval' permission can change the interval
-        can_adjust = current_user.is_super_admin or current_user.has_permission('adjust_sync_interval')
-        
-        if can_adjust:
-            interval_minutes = requested_interval
-        else:
-            # If no permission, keep existing interval or use 60 as default if it's a new setting
-            interval_minutes = auto_sync.sync_interval_minutes or 60
+        # Fixed interval: 6 hours (360 minutes) as requested by user
+        interval_minutes = 360
             
         if not marketplace or marketplace not in MARKETPLACES:
             return jsonify({'success': False, 'message': 'Geçersiz pazaryeri'}), 400

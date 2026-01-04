@@ -83,7 +83,7 @@ def _load_sync_jobs(job_wrapper_func):
             scheduler.add_job(
                 func=job_wrapper_func,
                 args=[mp],
-                trigger=IntervalTrigger(minutes=60), # Her zaman 60 dk
+                trigger=IntervalTrigger(minutes=360), # Her zaman 360 dk (6 Saat)
                 id=job_id,
                 name=f"Global Hourly Sync {mp.capitalize()}",
                 replace_existing=True
@@ -162,7 +162,7 @@ def remove_order_sync_job():
         return False
 
 
-def add_sync_job(marketplace: str, interval_minutes: int = 60):
+def add_sync_job(marketplace: str, interval_minutes: int = 360):
     """
     Pazaryeri için senkronizasyon job'u ekle
     

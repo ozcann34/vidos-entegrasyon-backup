@@ -63,6 +63,7 @@ class DirectSyncService:
                 MarketplaceProduct.id,
                 MarketplaceProduct.stock_code,
                 MarketplaceProduct.quantity,
+                MarketplaceProduct.price, # Eksikti, eklendi
                 MarketplaceProduct.sale_price,
                 MarketplaceProduct.xml_source_id
             ).filter_by(user_id=user_id, marketplace=marketplace).all()
@@ -83,15 +84,11 @@ class DirectSyncService:
                 if sc in local_map:
                     local_item = local_map[sc]
                     
-                    # Kaynak Sahipliği Güncellemesi (Veya Ataması)
-                    ownership_changed = False
-                    if getattr(local_item, 'xml_source_id', None) != xml_source_id:
-                        local_item.xml_source_id = xml_source_id
-                        ownership_changed = True
+                    # Kaynak Sahipliği Kontrolü (Atama yapmadan sadece kontrol ediyoruz)
+                    current_sid = getattr(local_item, 'xml_source_id', None)
+                    ownership_changed = (current_sid != xml_source_id)
                     
                     # Değişiklik kontrolü (Stok veya Fiyat veya Sahiplik)
-                    # xml_item.price (XML taban fiyatı) ile local_item.price (DB taban fiyatı) karşılaştırılmalı
-                    # local_item.sale_price satış (kural uygulanmış) fiyatıdır.
                     if (xml_item.quantity != local_item.quantity or 
                         xml_item.price != local_item.price or 
                         ownership_changed):
