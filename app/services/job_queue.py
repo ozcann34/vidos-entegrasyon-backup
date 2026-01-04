@@ -169,6 +169,11 @@ def get_mp_job(job_id: str) -> Optional[Dict[str, Any]]:
             return None
         return serialize_job(job)
 
+def get_all_jobs() -> list:
+    """Get all jobs from memory."""
+    with _MP_JOBS_LOCK:
+        return [serialize_job(job) for job in _MP_JOBS.values()]
+
 
 def clear_all_jobs() -> int:
     """Clear all jobs from memory. Returns count of jobs cleared."""

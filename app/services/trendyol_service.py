@@ -2050,9 +2050,16 @@ def perform_trendyol_direct_push_actions(user_id: int, to_update: List[Any], to_
 
             final_price = calculate_price(xml_item.price, 'trendyol', user_id=user_id)
             
+            # Title Validation (Trendyol Limit: 3-100 chars)
+            safe_title = (xml_item.title or "").strip()
+            if len(safe_title) < 3:
+                safe_title = f"{safe_title} - Ürün" if safe_title else f"Ürün - {barcode}"
+            if len(safe_title) > 100:
+                safe_title = safe_title[:100]
+
             item = {
                 "barcode": barcode,
-                "title": xml_item.title,
+                "title": safe_title,
                 "productMainId": raw.get('modelCode') or raw.get('parent_barcode') or xml_item.stock_code,
                 "brandId": int(brand_id),
                 "categoryId": int(cat_id),
