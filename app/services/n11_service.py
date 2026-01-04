@@ -1572,22 +1572,41 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
             if len(safe_title) > 100: safe_title = safe_title[:100]
  
             item_payload = {
-                "sellerCode": xml_item.stock_code,
-                "barcode": barcode,
+                "integrator": "VidosEntegrasyon",
                 "title": safe_title,
-                "subtitle": xml_item.title[:50],
-                "price": final_price,
-                "currencyType": "TL",
-                "stockItems": [{
-                    "sellerStockCode": xml_item.stock_code,
-                    "quantity": xml_item.quantity,
-                    "attributes": []
-                }],
-                "images": [img['url'] for img in raw.get('images', []) if img.get('url')],
                 "description": raw.get('details') or raw.get('description') or xml_item.title,
+                "categoryId": None, # Will be filled below
+                "salePrice": round(final_price, 2),
+                "listPrice": round(final_price, 2),
+                "vatRate": 20,
+                "currencyType": "TL",
+                "images": [{"url": img['url'], "order": i+1} for i, img in enumerate(raw.get('images', [])) if img.get('url')][:8],
+                "quantity": xml_item.quantity,
+                "stockCode": xml_item.stock_code,
+                "barcode": barcode,
+                "productMainId": xml_item.stock_code,
+                "shipmentTemplate": "Varsayılan",
                 "preparingDay": 3,
-                "shipmentTemplate": "Varsayılan" 
+                "attributes": [] # Mandatory
             }
+            
+            # Find category for the product
+            from app.services.n11_service import find_matching_n11_category
+            match = find_matching_n11_category(xml_item.title, user_id=user_id, job_id=job_id)
+            if not match:
+                if job_id: append_mp_job_log(job_id, f"[ATLADI] {xml_item.stock_code} için N11 kategorisi bulunamadı.", level='warning')
+                continue
+            
+            item_payload['categoryId'] = int(match['id'])
+            
+            # Brand Attribute (Mandatory ID 1)
+            default_brand = Setting.get("N11_DEFAULT_BRAND", "Vidos", user_id=user_id)
+            item_payload['attributes'].append({
+                "id": 1,
+                "valueId": None,
+                "customValue": default_brand
+            })
+
             valid_creates.append((item_payload, xml_item, rule_desc))
 
         # API Chunks
@@ -1600,21 +1619,7 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
  
             payloads = [x[0] for x in batch]
             try:
-                # Add category matching for new products (Batch logic)
-                for i, (item_payload, xml_record, r_desc) in enumerate(batch):
-                    # Find category for the product
-                    # Assuming find_matching_n11_category is imported or available in scope
-                    from app.services.n11_service import find_matching_n11_category
-                    cat_id = find_matching_n11_category(xml_record.title, user_id=user_id, job_id=job_id)
-                    if not cat_id:
-                        # Fallback or Skip (N11 requires category)
-                        if job_id: append_mp_job_log(job_id, f"[ATLADI] {xml_record.stock_code} için N11 kategorisi bulunamadı.", level='warning')
-                        payloads[i] = None # Mark for skipping
-                        continue
-                    
-                    item_payload['categoryId'] = cat_id
-
-                # Filter out skipped items
+                # Filter out skipped items (redundant now but safe)
                 final_payloads = [p for p in payloads if p is not None]
                 if not final_payloads:
                     completed_ops += len(batch) # Still count for progress even if all skipped
