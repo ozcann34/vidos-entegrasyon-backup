@@ -77,6 +77,7 @@ class MarketplaceProduct(db.Model):
     raw_data = db.Column(db.Text, nullable=True) # Full JSON from API
     
     last_sync_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+    xml_source_id = db.Column(db.Integer, nullable=True, index=True)
     
     __table_args__ = (
         db.UniqueConstraint('user_id', 'marketplace', 'barcode', name='unique_mp_product'),

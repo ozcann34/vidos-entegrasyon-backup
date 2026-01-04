@@ -2567,7 +2567,8 @@ def perform_idefix_direct_push_actions(user_id: int, to_update: List[Any], to_cr
                                 sale_price=item_payload['price'],
                                 quantity=xml_record.quantity,
                                 status='Pending',
-                                on_sale=True
+                                on_sale=True,
+                                xml_source_id=src.id
                             )
                             db.session.add(new_mp)
                     db.session.commit()

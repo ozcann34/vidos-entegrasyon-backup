@@ -515,7 +515,8 @@ def perform_hepsiburada_direct_push_actions(user_id: int, to_update: List[Any], 
                                 user_id=user_id, marketplace='hepsiburada', barcode=item_payload['Barcode'],
                                 stock_code=xml_record.stock_code, title=xml_record.title,
                                 price=item_payload['Price'], sale_price=item_payload['Price'],
-                                quantity=xml_record.quantity, status='Pending', on_sale=True
+                                quantity=xml_record.quantity, status='Pending', on_sale=True,
+                                xml_source_id=src.id
                             )
                             db.session.add(new_mp)
                     db.session.commit()

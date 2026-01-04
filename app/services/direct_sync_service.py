@@ -74,15 +74,25 @@ class DirectSyncService:
             for sc, xml_item in xml_map.items():
                 if sc in local_map:
                     local_item = local_map[sc]
-                    # Değişiklik kontrolü (Stok veya Fiyat)
-                    if xml_item.quantity != local_item.quantity or xml_item.price != local_item.sale_price:
+                    
+                    # Kaynak Sahipliği Güncellemesi (Veya Ataması)
+                    ownership_changed = False
+                    if getattr(local_item, 'xml_source_id', None) != xml_source_id:
+                        local_item.xml_source_id = xml_source_id
+                        ownership_changed = True
+                    
+                    # Değişiklik kontrolü (Stok veya Fiyat veya Sahiplik)
+                    if xml_item.quantity != local_item.quantity or xml_item.price != local_item.sale_price or ownership_changed:
                         to_update.append((xml_item, local_item))
                 else:
                     to_create.append(xml_item)
 
             for sc, local_item in local_map.items():
                 if sc not in xml_map and (local_item.quantity or 0) > 0:
-                    to_zero.append(local_item)
+                    # Sadece bu kaynağın sahipliğindeki ürünleri sıfırla
+                    # xml_source_id NULL ise eski veridir, çakışmayı önlemek için dokunmuyoruz
+                    if getattr(local_item, 'xml_source_id', None) == xml_source_id:
+                        to_zero.append(local_item)
 
             total_diff = len(to_update) + len(to_create) + len(to_zero)
             if job_id:

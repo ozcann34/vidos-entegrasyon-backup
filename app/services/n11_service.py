@@ -1593,7 +1593,8 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
                                 user_id=user_id, marketplace='n11', barcode=item_payload['barcode'],
                                 stock_code=xml_record.stock_code, title=xml_record.title,
                                 price=item_payload['price'], sale_price=item_payload['price'],
-                                quantity=xml_record.stockItems[0]['quantity'], status='Pending', on_sale=True
+                                quantity=xml_record.stockItems[0]['quantity'], status='Pending', on_sale=True,
+                                xml_source_id=src.id
                             )
                             db.session.add(new_mp)
                     db.session.commit()
