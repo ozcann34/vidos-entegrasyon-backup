@@ -421,13 +421,19 @@
         const percent = total > 0 ? Math.round((current / total) * 100) : 0;
 
         // Update UI
+        // Update UI
         if (statusText) {
             let statusLabel = 'Bekliyor...';
-            if (jobData.status === 'running') statusLabel = 'İşleniyor...';
+            if (jobData.status === 'running') {
+                // Backend'den gelen detaylı mesaj varsa onu kullan, yoksa varsayılan
+                statusLabel = (jobData.progress && jobData.progress.message) ? jobData.progress.message : 'İşleniyor...';
+            }
             else if (jobData.status === 'completed') statusLabel = 'Tamamlandı';
             else if (jobData.status === 'failed') statusLabel = 'Hata Oluştu';
             else if (jobData.status === 'cancelled' || jobData.status === 'cancelling') statusLabel = 'Durduruluyor...';
             else if (jobData.status === 'cancelled_finished') statusLabel = 'İptal Edildi';
+
+            // Eğer mesaj çok uzunsa truncate et veya tooltip ekle (Opsiyonel, şimdilik direkt yaz)
             statusText.innerText = statusLabel;
         }
 
