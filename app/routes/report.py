@@ -106,13 +106,23 @@ def profit_loss_report():
          return redirect(url_for('main.dashboard'))
 
     # Date Filter
+    period = request.args.get('period')
     start_date_str = request.args.get('start_date')
     end_date_str = request.args.get('end_date')
     
     today = datetime.now().date()
     start_of_month = today.replace(day=1)
     
-    if start_date_str:
+    if period == 'daily':
+        start_date = datetime.combine(today, datetime.min.time())
+        end_date = datetime.combine(today, datetime.max.time())
+    elif period == 'weekly':
+        start_date = datetime.combine(today - timedelta(days=today.weekday()), datetime.min.time())
+        end_date = datetime.combine(today, datetime.max.time())
+    elif period == 'monthly':
+        start_date = datetime.combine(start_of_month, datetime.min.time())
+        end_date = datetime.combine(today, datetime.max.time())
+    elif start_date_str:
         try:
             start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
         except ValueError:
@@ -120,13 +130,14 @@ def profit_loss_report():
     else:
         start_date = datetime.combine(start_of_month, datetime.min.time())
         
-    if end_date_str:
-        try:
-            end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
-        except ValueError:
-             end_date = datetime.combine(today, datetime.max.time())
-    else:
-        end_date = datetime.combine(today, datetime.max.time())
+    if not (period in ['daily', 'weekly', 'monthly']):
+        if end_date_str:
+            try:
+                end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+            except ValueError:
+                 end_date = datetime.combine(today, datetime.max.time())
+        else:
+            end_date = datetime.combine(today, datetime.max.time())
     
     # Ensure end_date includes the full day if it's just a date
     if isinstance(end_date, datetime) and end_date.hour == 0 and end_date.minute == 0:

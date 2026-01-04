@@ -443,7 +443,8 @@ def dashboard():
         
         # Provide a minimal stats structure to prevent template crashes
         fallback_stats = {
-            'usage': {'products': {'used': 0, 'limit': 0}},
+            'period': 'monthly',
+            'usage': {'product_count': 0, 'product_limit': 100},
             'marketplaces': [],
             'announcements': [],
             'user_notifications': []

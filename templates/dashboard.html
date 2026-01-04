@@ -38,7 +38,8 @@
     <a href="{{ url_for('main.dashboard', force_sync='true') }}" class="btn btn-white border shadow-sm btn-sm fw-bold">
       <i class="bi bi-arrow-clockwise me-1"></i> Senkronize Et
     </a>
-    <a href="{{ url_for('main.reports_page', period=stats.period) }}" class="btn btn-primary btn-sm fw-bold shadow-sm">
+    <a href="{{ url_for('report.profit_loss_report', period=stats.period) }}"
+      class="btn btn-primary btn-sm fw-bold shadow-sm">
       <i class="bi bi-download me-1"></i> Rapor Al
     </a>
   </div>

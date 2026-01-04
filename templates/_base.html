@@ -472,601 +472,601 @@
             </li>
         </ul>
 
-        <!-- Sidebar Job Widget (Integrated to Sidebar Bottom) -->
-        <div id="jobWidget" class="mt-auto border-top border-white border-opacity-10 animate__animated animate__fadeIn"
-            style="display: none; background: rgba(0,0,0,0.3); position: sticky; bottom: 0; width: 100%; z-index: 10;">
-            <div class="px-4 py-3">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h6 class="mb-0 small fw-bold text-white-50 text-uppercase tracking-wider"
-                        style="font-size: 0.65rem;">
-                        <i class="bi bi-gear-wide-connected me-2"></i>İşlem Durumu
-                    </h6>
-                    <div id="jobStatusText"></div>
+        <!-- Global Job Monitor Floating Panel -->
+        <div id="jobWidget" class="job-monitor-panel d-none" style="z-index: 9999;">
+            <div class="job-monitor-header" onclick="toggleJobWidgetBody()">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="job-monitor-spinner spinner-border spinner-border-sm text-light" role="status"></div>
+                    <span class="job-monitor-title">İşlem Takibi</span>
+                </div>
+                <div class="job-monitor-controls">
+                    <button type="button" class="btn btn-sm btn-link text-white p-0" id="jobMonitorMinimize">
+                        <i class="bi bi-dash-lg"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="job-monitor-body" id="jobMonitorBody">
+                <div class="job-monitor-status mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <div id="jobStatusText" class="small fw-bold"></div>
+                        <span id="jobProgressText" class="small text-white-50">0 / 0</span>
+                    </div>
+                    <div class="progress" style="height: 6px; background: rgba(255,255,255,0.1);">
+                        <div id="jobProgressBar"
+                            class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                            role="progressbar" style="width: 0%"></div>
+                    </div>
                 </div>
 
-                <div class="progress mb-2" style="height: 6px; background: rgba(255,255,255,0.05);">
-                    <div id="jobProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
-                        role="progressbar" style="width: 0%"></div>
+                <div id="jobLogs" class="job-monitor-logs mb-3">
+                    <div class="text-muted small">İşlem başlatılıyor...</div>
                 </div>
 
-                <div class="d-flex justify-content-between extra-small text-white-50 mb-3">
-                    <span id="jobProgressText">0 / 0</span>
-                    <span id="jobBatchText"></span>
-                </div>
-
-                <div id="jobLogs" class="mb-3 custom-scrollbar"
-                    style="max-height: 100px; overflow-y: auto; font-size: 0.7rem; color: rgba(255,255,255,0.4);">
-                </div>
-
-                <div class="d-grid gap-2" id="jobControls">
-                    <button onclick="cancelGlobalJob()"
-                        class="btn btn-xs btn-outline-danger border-white border-opacity-25 text-white py-2">
+                <div class="d-grid shadow-sm">
+                    <button onclick="cancelGlobalJob()" id="btnJobCancel" class="btn btn-sm btn-danger fw-bold">
                         <i class="bi bi-x-circle me-1"></i> İşlemi Durdur
                     </button>
                 </div>
-                <button id="btnJobPause" class="btn btn-xs btn-outline-warning flex-grow-1"
-                    onclick="window.controlJob('pause')"><i class="bi bi-pause-fill"></i></button>
-                <button id="btnJobResume" class="btn btn-xs btn-outline-success flex-grow-1 d-none"
-                    onclick="window.controlJob('resume')"><i class="bi bi-play-fill"></i></button>
-                <button id="btnJobCancel" class="btn btn-xs btn-outline-danger flex-grow-1"
-                    onclick="window.controlJob('cancel')"><i class="bi bi-stop-fill"></i></button>
             </div>
-            <button id="btnJobView" class="btn btn-xs btn-primary d-none"><i class="bi bi-eye-fill me-1"></i>Sonuçları
-                Gör</button>
-        </div>
-    </div>
-    </div>
-    </div>
-
-    <!-- Mobile Bottom Navigation -->
-    <!-- Mobile Bottom Navigation Removed (Sidebar is used instead) -->
-
-    <div id="main-content">
-
-        <div class="flash-message-container">
-            <!-- iOS PWA Instructions -->
-            <div id="pwa-ios-msg"
-                class="alert alert-info alert-dismissible fade show animate__animated animate__fadeInDown mb-2"
-                role="alert" style="display: none;">
-                <i class="bi bi-info-circle-fill me-2"></i>
-                <strong>Uygulamayı Yükle:</strong> iOS cihazınızda bu uygulamayı yüklemek için <strong>Paylaş</strong>
-                <i class="bi bi-share"></i> simgesine ve ardından <strong>Ana Ekrana Ekle</strong> <i
-                    class="bi bi-plus-square"></i> seçeneğine dokunun.
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"
-                    onclick="this.parentElement.style.display='none'"></button>
-            </div>
-
-            {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-            {% for category, message in messages %}
-            <div class="alert alert-{{ category }} alert-dismissible fade show animate__animated animate__fadeInRight mb-2"
-                role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-            {% endfor %}
-            {% endif %}
-            {% endwith %}
         </div>
 
-        <!-- Announcement Marquee -->
-        {% if active_announcements %}
-        <div class="announcement-marquee mb-3 shadow-sm rounded-pill overflow-hidden">
-            <div class="marquee-content d-flex align-items-center">
-                <span class="badge bg-warning text-dark ms-2 me-3 rounded-pill">DUYURU</span>
-                <div class="marquee-text-wrapper">
-                    <div class="marquee-text">
-                        {% for ann in active_announcements %}
-                        <span class="me-5"><i class="bi bi-megaphone-fill me-2"></i><strong>{{ ann.title }}:</strong> {{
-                            ann.content }}</span>
-                        {% endfor %}
+        <!-- Mobile Bottom Navigation -->
+        <!-- Mobile Bottom Navigation Removed (Sidebar is used instead) -->
+
+        <div id="main-content">
+
+            <div class="flash-message-container">
+                <!-- iOS PWA Instructions -->
+                <div id="pwa-ios-msg"
+                    class="alert alert-info alert-dismissible fade show animate__animated animate__fadeInDown mb-2"
+                    role="alert" style="display: none;">
+                    <i class="bi bi-info-circle-fill me-2"></i>
+                    <strong>Uygulamayı Yükle:</strong> iOS cihazınızda bu uygulamayı yüklemek için
+                    <strong>Paylaş</strong>
+                    <i class="bi bi-share"></i> simgesine ve ardından <strong>Ana Ekrana Ekle</strong> <i
+                        class="bi bi-plus-square"></i> seçeneğine dokunun.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"
+                        onclick="this.parentElement.style.display='none'"></button>
+                </div>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show animate__animated animate__fadeInRight mb-2"
+                    role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endfor %}
+                {% endif %}
+                {% endwith %}
+            </div>
+
+            <!-- Announcement Marquee -->
+            {% if active_announcements %}
+            <div class="announcement-marquee mb-3 shadow-sm rounded-pill overflow-hidden">
+                <div class="marquee-content d-flex align-items-center">
+                    <span class="badge bg-warning text-dark ms-2 me-3 rounded-pill">DUYURU</span>
+                    <div class="marquee-text-wrapper">
+                        <div class="marquee-text">
+                            {% for ann in active_announcements %}
+                            <span class="me-5"><i class="bi bi-megaphone-fill me-2"></i><strong>{{ ann.title
+                                    }}:</strong> {{
+                                ann.content }}</span>
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-        {% endif %}
+            {% endif %}
 
-        <!-- Modern SaaS Top Bar -->
-        <header class="vidos-top-bar d-flex justify-content-between align-items-center px-4">
-            <!-- Left: Quick Access & Page Title -->
-            <div class="d-flex align-items-center gap-3">
-                <div class="dropdown">
-                    <button
-                        class="btn btn-light btn-sm rounded-pill px-3 dropdown-toggle shadow-sm border-0 d-flex align-items-center gap-2"
-                        type="button" data-bs-toggle="dropdown"
-                        style="background: var(--vidos-bg-main); color: var(--vidos-text-main);">
-                        <i class="bi bi-grid-fill text-primary"></i>
-                        <span class="fw-bold">Hızlı Erişim</span>
-                    </button>
-                    <ul class="dropdown-menu shadow-lg border-0 mt-2 p-2"
-                        style="background: var(--vidos-bg-sidebar); border-radius: 12px; min-width: 200px;">
-                        <li><a class="dropdown-item rounded-3 py-2" href="{{ url_for('main.dashboard') }}"><i
-                                    class="bi bi-speedometer2 me-2"></i> Dashboard</a></li>
-                        <li><a class="dropdown-item rounded-3 py-2" href="{{ url_for('main.xml_urunler') }}"><i
-                                    class="bi bi-box me-2"></i> Ürün Listesi</a></li>
-                        <li><a class="dropdown-item rounded-3 py-2" href="{{ url_for('main.orders_page') }}"><i
-                                    class="bi bi-cart3 me-2"></i> Siparişler</a></li>
-                        <li><a class="dropdown-item rounded-3 py-2" href="{{ url_for('main.auto_sync_page') }}"><i
-                                    class="bi bi-arrow-repeat me-2"></i> Senkronizasyon</a></li>
-                    </ul>
+            <!-- Modern SaaS Top Bar -->
+            <header class="vidos-top-bar d-flex justify-content-between align-items-center px-4">
+                <!-- Left: Quick Access & Page Title -->
+                <div class="d-flex align-items-center gap-3">
+                    <div class="dropdown">
+                        <button
+                            class="btn btn-light btn-sm rounded-pill px-3 dropdown-toggle shadow-sm border-0 d-flex align-items-center gap-2"
+                            type="button" data-bs-toggle="dropdown"
+                            style="background: var(--vidos-bg-main); color: var(--vidos-text-main);">
+                            <i class="bi bi-grid-fill text-primary"></i>
+                            <span class="fw-bold">Hızlı Erişim</span>
+                        </button>
+                        <ul class="dropdown-menu shadow-lg border-0 mt-2 p-2"
+                            style="background: var(--vidos-bg-sidebar); border-radius: 12px; min-width: 200px;">
+                            <li><a class="dropdown-item rounded-3 py-2" href="{{ url_for('main.dashboard') }}"><i
+                                        class="bi bi-speedometer2 me-2"></i> Dashboard</a></li>
+                            <li><a class="dropdown-item rounded-3 py-2" href="{{ url_for('main.xml_urunler') }}"><i
+                                        class="bi bi-box me-2"></i> Ürün Listesi</a></li>
+                            <li><a class="dropdown-item rounded-3 py-2" href="{{ url_for('main.orders_page') }}"><i
+                                        class="bi bi-cart3 me-2"></i> Siparişler</a></li>
+                            <li><a class="dropdown-item rounded-3 py-2" href="{{ url_for('main.auto_sync_page') }}"><i
+                                        class="bi bi-arrow-repeat me-2"></i> Senkronizasyon</a></li>
+                        </ul>
+                    </div>
+                    <div class="vr h-25 opacity-20 d-none d-md-block"></div>
+                    <h5 class="mb-0 fw-bold d-none d-md-block" style="color: var(--vidos-text-main);">
+                        {% block page_name %}Panel{% endblock %}
+                    </h5>
                 </div>
-                <div class="vr h-25 opacity-20 d-none d-md-block"></div>
-                <h5 class="mb-0 fw-bold d-none d-md-block" style="color: var(--vidos-text-main);">
-                    {% block page_name %}Panel{% endblock %}
-                </h5>
-            </div>
 
-            <!-- Center: Search (SaaS Style) -->
-            <div class="top-bar-search d-none d-md-flex align-items-center px-3 rounded-pill"
-                style="background: var(--vidos-bg-main); border: 1px solid var(--vidos-border-color);">
-                <i class="bi bi-search text-muted me-2 small"></i>
-                <input type="text" placeholder="Hızlı ara... (Ctrl+K)" class="bg-transparent border-0 text-body small"
-                    style="outline: none; width: 200px;">
-            </div>
+                <!-- Center: Search (SaaS Style) -->
+                <div class="top-bar-search d-none d-md-flex align-items-center px-3 rounded-pill"
+                    style="background: var(--vidos-bg-main); border: 1px solid var(--vidos-border-color);">
+                    <i class="bi bi-search text-muted me-2 small"></i>
+                    <input type="text" placeholder="Hızlı ara... (Ctrl+K)"
+                        class="bg-transparent border-0 text-body small" style="outline: none; width: 200px;">
+                </div>
 
-            <!-- Right: Actions & Profile -->
-            <div class="d-flex align-items-center gap-3">
-                <!-- Notifications -->
-                <div class="dropdown">
-                    <button class="btn border-0 p-1 text-muted hover-primary position-relative"
-                        data-bs-toggle="dropdown">
-                        <i class="bi bi-bell-fill fs-5"></i>
-                        <span class="position-absolute top-0 start-100 translate-middle p-1 bg-primary rounded-circle"
-                            style="margin-top: 5px; margin-left: -5px;"></span>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-3 p-0 overflow-hidden"
-                        style="width: 320px; background: var(--vidos-bg-sidebar); border-radius: 12px;">
-                        <li class="px-3 py-2 border-bottom border-white border-opacity-5 bg-primary text-white">
-                            <span class="fw-bold small">Bildirimler</span>
-                        </li>
-                        <div class="notification-list custom-scrollbar" style="max-height: 300px; overflow-y: auto;">
-                            {% if active_announcements %}
-                            {% for ann in active_announcements[:5] %}
-                            <li>
-                                <a class="dropdown-item py-3 border-bottom border-white border-opacity-5" href="#">
-                                    <div class="fw-bold small text-body">{{ ann.title }}</div>
-                                    <div class="text-muted extra-small mt-1">{{ ann.content[:60] }}...</div>
-                                </a>
+                <!-- Right: Actions & Profile -->
+                <div class="d-flex align-items-center gap-3">
+                    <!-- Notifications -->
+                    <div class="dropdown">
+                        <button class="btn border-0 p-1 text-muted hover-primary position-relative"
+                            data-bs-toggle="dropdown">
+                            <i class="bi bi-bell-fill fs-5"></i>
+                            <span
+                                class="position-absolute top-0 start-100 translate-middle p-1 bg-primary rounded-circle"
+                                style="margin-top: 5px; margin-left: -5px;"></span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-3 p-0 overflow-hidden"
+                            style="width: 320px; background: var(--vidos-bg-sidebar); border-radius: 12px;">
+                            <li class="px-3 py-2 border-bottom border-white border-opacity-5 bg-primary text-white">
+                                <span class="fw-bold small">Bildirimler</span>
                             </li>
-                            {% endfor %}
-                            {% else %}
-                            <li class="text-center py-4 text-muted small">Her şey güncel.</li>
-                            {% endif %}
-                        </div>
-                    </ul>
-                </div>
-
-                <!-- Theme -->
-                <button id="themeToggle" class="btn border-0 p-1 text-muted hover-primary">
-                    <i class="bi bi-sun-fill fs-5" id="theme-icon"></i>
-                </button>
-
-                <!-- User Dropdown -->
-                <div class="dropdown">
-                    <button
-                        class="btn d-flex align-items-center gap-2 border border-opacity-10 rounded-pill p-1 ps-2 pe-3"
-                        data-bs-toggle="dropdown" style="background: rgba(0,0,0,0.03);">
-                        <img src="{{ url_for('static', filename='logo.png') }}" width="24" class="rounded-circle">
-                        <span class="text-body small fw-bold d-none d-sm-inline">{{ current_user.full_name or 'Hesabım'
-                            }}</span>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-2 p-0 overflow-hidden"
-                        style="background: var(--vidos-bg-sidebar); border-radius: 12px; min-width: 220px;">
-                        <li class="px-3 py-3 border-bottom border-opacity-10">
-                            <div class="text-body fw-bold small text-truncate">{{ current_user.email }}</div>
-                            <div class="badge bg-primary-glow text-primary mt-1" style="font-size: 0.6rem;">Enterprise
+                            <div class="notification-list custom-scrollbar"
+                                style="max-height: 300px; overflow-y: auto;">
+                                {% if active_announcements %}
+                                {% for ann in active_announcements[:5] %}
+                                <li>
+                                    <a class="dropdown-item py-3 border-bottom border-white border-opacity-5" href="#">
+                                        <div class="fw-bold small text-body">{{ ann.title }}</div>
+                                        <div class="text-muted extra-small mt-1">{{ ann.content[:60] }}...</div>
+                                    </a>
+                                </li>
+                                {% endfor %}
+                                {% else %}
+                                <li class="text-center py-4 text-muted small">Her şey güncel.</li>
+                                {% endif %}
                             </div>
-                        </li>
-                        <li><a class="dropdown-item py-2 small" href="{{ url_for('main.settings_page') }}"><i
-                                    class="bi bi-person me-2"></i> Profil Ayarları</a></li>
-                        <li><a class="dropdown-item py-2 small" href="{{ url_for('support.index') }}"><i
-                                    class="bi bi-life-preserver me-2"></i> Destek Al</a></li>
-                        <li>
-                            <hr class="dropdown-divider border-opacity-10">
-                        </li>
-                        {% if current_user.is_admin %}
-                        <li><a class="dropdown-item py-2 small text-danger fw-bold"
-                                href="{{ url_for('admin.dashboard') }}"><i class="bi bi-shield-lock me-2"></i> Yönetici
-                                Paneli</a></li>
-                        <li>
-                            <hr class="dropdown-divider border-opacity-10">
-                        </li>
-                        {% endif %}
-                        <li><a class="dropdown-item py-2 small text-danger" href="{{ url_for('auth.logout') }}"><i
-                                    class="bi bi-box-arrow-right me-2"></i> Güvenli Çıkış</a></li>
-                    </ul>
+                        </ul>
+                    </div>
+
+                    <!-- Theme -->
+                    <button id="themeToggle" class="btn border-0 p-1 text-muted hover-primary">
+                        <i class="bi bi-sun-fill fs-5" id="theme-icon"></i>
+                    </button>
+
+                    <!-- User Dropdown -->
+                    <div class="dropdown">
+                        <button
+                            class="btn d-flex align-items-center gap-2 border border-opacity-10 rounded-pill p-1 ps-2 pe-3"
+                            data-bs-toggle="dropdown" style="background: rgba(0,0,0,0.03);">
+                            <img src="{{ url_for('static', filename='logo.png') }}" width="24" class="rounded-circle">
+                            <span class="text-body small fw-bold d-none d-sm-inline">{{ current_user.full_name or
+                                'Hesabım'
+                                }}</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-2 p-0 overflow-hidden"
+                            style="background: var(--vidos-bg-sidebar); border-radius: 12px; min-width: 220px;">
+                            <li class="px-3 py-3 border-bottom border-opacity-10">
+                                <div class="text-body fw-bold small text-truncate">{{ current_user.email }}</div>
+                                <div class="badge bg-primary-glow text-primary mt-1" style="font-size: 0.6rem;">
+                                    Enterprise
+                                </div>
+                            </li>
+                            <li><a class="dropdown-item py-2 small" href="{{ url_for('main.settings_page') }}"><i
+                                        class="bi bi-person me-2"></i> Profil Ayarları</a></li>
+                            <li><a class="dropdown-item py-2 small" href="{{ url_for('support.index') }}"><i
+                                        class="bi bi-life-preserver me-2"></i> Destek Al</a></li>
+                            <li>
+                                <hr class="dropdown-divider border-opacity-10">
+                            </li>
+                            {% if current_user.is_admin %}
+                            <li><a class="dropdown-item py-2 small text-danger fw-bold"
+                                    href="{{ url_for('admin.dashboard') }}"><i class="bi bi-shield-lock me-2"></i>
+                                    Yönetici
+                                    Paneli</a></li>
+                            <li>
+                                <hr class="dropdown-divider border-opacity-10">
+                            </li>
+                            {% endif %}
+                            <li><a class="dropdown-item py-2 small text-danger" href="{{ url_for('auth.logout') }}"><i
+                                        class="bi bi-box-arrow-right me-2"></i> Güvenli Çıkış</a></li>
+                        </ul>
+                    </div>
                 </div>
+            </header>
+            <div class="vidos-content-area">
+                {% block content %}{% endblock %}
             </div>
-        </header>
-        <div class="vidos-content-area">
-            {% block content %}{% endblock %}
         </div>
-    </div>
 
 
-    <!-- Bootstrap Bundle with Popper (Loaded at the end) -->
+        <!-- Bootstrap Bundle with Popper (Loaded at the end) -->
 
-    {% block scripts %}{% endblock %}
+        {% block scripts %}{% endblock %}
 
-    <script>
-        (function () {
-            const html = document.documentElement;
-            const themeToggle = document.getElementById('themeToggle');
-            const themeIcon = document.getElementById('themeIcon');
+        <script>
+            (function () {
+                const html = document.documentElement;
+                const themeToggle = document.getElementById('themeToggle');
+                const themeIcon = document.getElementById('themeIcon');
 
-            function updateTheme(theme) {
-                html.setAttribute('data-bs-theme', theme);
-                localStorage.setItem('vidos_theme', theme);
-                if (themeIcon) {
-                    themeIcon.className = theme === 'dark' ? 'bi bi-moon-stars-fill' : 'bi bi-sun-fill text-warning';
+                function updateTheme(theme) {
+                    html.setAttribute('data-bs-theme', theme);
+                    localStorage.setItem('vidos_theme', theme);
+                    if (themeIcon) {
+                        themeIcon.className = theme === 'dark' ? 'bi bi-moon-stars-fill' : 'bi bi-sun-fill text-warning';
+                    }
                 }
-            }
 
-            // Init
-            const savedTheme = localStorage.getItem('vidos_theme') || 'dark';
-            updateTheme(savedTheme);
+                // Init
+                const savedTheme = localStorage.getItem('vidos_theme') || 'dark';
+                updateTheme(savedTheme);
 
-            if (themeToggle) {
-                themeToggle.addEventListener('click', () => {
-                    const current = html.getAttribute('data-bs-theme');
-                    const next = current === 'dark' ? 'light' : 'dark';
-                    updateTheme(next);
+                if (themeToggle) {
+                    themeToggle.addEventListener('click', () => {
+                        const current = html.getAttribute('data-bs-theme');
+                        const next = current === 'dark' ? 'light' : 'dark';
+                        updateTheme(next);
+                    });
+                }
+            })();
+
+            // Menu Search Logic
+            const searchInput = document.getElementById('menuSearch');
+            if (searchInput) {
+                searchInput.addEventListener('input', function (e) {
+                    const term = e.target.value.toLowerCase();
+                    const links = document.querySelectorAll('#sidebar .nav-link');
+                    links.forEach(link => {
+                        const text = link.textContent.toLowerCase();
+                        if (text.includes(term)) {
+                            link.style.display = 'block';
+                            link.closest('li').style.display = 'block';
+                        } else {
+                            if (term.length > 0) {
+                                if (!text.includes(term)) {
+                                    link.closest('li').style.display = 'none';
+                                }
+                            } else {
+                                link.closest('li').style.display = 'block';
+                            }
+                        }
+                    });
+                    // Show headers back if search empty
+                    const headers = document.querySelectorAll('#sidebar .nav-item.border-top');
+                    if (term.length > 0) {
+                        headers.forEach(h => h.style.display = 'none');
+                    } else {
+                        headers.forEach(h => h.style.display = 'block');
+                    }
+                });
+
+                // Ctrl+K to focus
+                document.addEventListener('keydown', function (e) {
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                        e.preventDefault();
+                        searchInput.focus();
+                    }
                 });
             }
-        })();
 
-        // Menu Search Logic
-        const searchInput = document.getElementById('menuSearch');
-        if (searchInput) {
-            searchInput.addEventListener('input', function (e) {
-                const term = e.target.value.toLowerCase();
-                const links = document.querySelectorAll('#sidebar .nav-link');
-                links.forEach(link => {
-                    const text = link.textContent.toLowerCase();
-                    if (text.includes(term)) {
-                        link.style.display = 'block';
-                        link.closest('li').style.display = 'block';
-                    } else {
-                        if (term.length > 0) {
-                            if (!text.includes(term)) {
-                                link.closest('li').style.display = 'none';
+            // Global Job Widget Functions (Sidebar Version)
+            (function () {
+                let activeJobId = localStorage.getItem('activeJobId') || null;
+                let jobPollInterval = null;
+
+                window.showJobWidget = function (jobId) {
+                    if (!jobId) return;
+                    activeJobId = jobId;
+                    localStorage.setItem('activeJobId', jobId);
+
+                    const widget = document.getElementById('jobWidget');
+                    if (widget) {
+                        widget.style.display = 'block';
+                    }
+                    startJobPolling();
+                };
+
+                function startJobPolling() {
+                    if (jobPollInterval) clearInterval(jobPollInterval);
+                    updateWidgetUI();
+                    jobPollInterval = setInterval(updateWidgetUI, 2000);
+                }
+
+                async function updateWidgetUI() {
+                    if (!activeJobId) return;
+                    try {
+                        const res = await fetch(`/api/mp_jobs/${activeJobId}`);
+                        if (!res.ok) {
+                            if (res.status === 404) {
+                                localStorage.removeItem('activeJobId');
+                                activeJobId = null;
+                                if (jobPollInterval) clearInterval(jobPollInterval);
+                                const widget = document.getElementById('jobWidget');
+                                if (widget) widget.style.display = 'none';
+                            }
+                            return;
+                        }
+                        const data = await res.json();
+                        if (!data || data.error) return;
+
+                        const status = data.status;
+                        const progress = data.progress || {};
+                        const logs = data.logs || [];
+
+                        const current = progress.current || 0;
+                        const total = progress.total || 1;
+                        const percent = Math.round((current / total) * 100);
+
+                        const progressBar = document.getElementById('jobProgressBar');
+                        const progressText = document.getElementById('jobProgressText');
+                        const batchText = document.getElementById('jobBatchText');
+
+                        if (progressBar) {
+                            progressBar.style.width = `${percent}%`;
+                            progressBar.className = `progress-bar progress-bar-striped progress-bar-animated ${status === 'failed' ? 'bg-danger' : 'bg-primary'}`;
+                        }
+                        if (progressText) progressText.innerText = `${current} / ${total}`;
+                        if (batchText) batchText.innerText = data.batch_id || '';
+
+                        const statusEl = document.getElementById('jobStatusText');
+                        if (statusEl) {
+                            let statusHtml = '';
+                            if (status === 'queued') statusHtml = '<span class="extra-small badge bg-secondary">Sırada</span>';
+                            else if (status === 'running') statusHtml = '<span class="extra-small badge bg-primary">Çalışıyor</span>';
+                            else if (status === 'completed') statusHtml = '<span class="extra-small badge bg-success">Başarılı</span>';
+                            else if (status === 'failed') statusHtml = '<span class="extra-small badge bg-danger">Hata</span>';
+                            if (data.pause_requested && status === 'running') statusHtml = '<span class="extra-small badge bg-warning text-dark">Duraklatılıyor</span>';
+                            statusEl.innerHTML = statusHtml;
+                        }
+
+                        const logsContainer = document.getElementById('jobLogs');
+                        if (logsContainer) {
+                            logsContainer.innerHTML = logs.map(l => `<div class="mb-1 border-bottom border-white border-opacity-5 pb-1">${l.message}</div>`).join('');
+                            logsContainer.scrollTop = logsContainer.scrollHeight;
+                        }
+
+                        const btnPause = document.getElementById('btnJobPause');
+                        const btnResume = document.getElementById('btnJobResume');
+                        const btnCancel = document.getElementById('btnJobCancel');
+                        const btnView = document.getElementById('btnJobView');
+
+                        if (status === 'completed' || status === 'failed' || status === 'cancelled') {
+                            if (jobPollInterval) clearInterval(jobPollInterval);
+                            jobPollInterval = null;
+                            if (btnPause) btnPause.classList.add('d-none');
+                            if (btnResume) btnResume.classList.add('d-none');
+                            if (btnCancel) btnCancel.classList.add('d-none');
+                            if (btnView) {
+                                btnView.classList.remove('d-none');
+                                const batchId = data.batch_id || (data.result && data.result.batch_id) || activeJobId;
+                                btnView.onclick = () => window.location.href = `/batch/${batchId}`;
+                            }
+                            if (typeof Swal !== 'undefined' && !window.notificationShown) {
+                                window.notificationShown = true;
+                                Swal.fire({
+                                    toast: true,
+                                    position: 'top-end',
+                                    icon: status === 'completed' ? 'success' : 'error',
+                                    title: status === 'completed' ? 'İşlem Tamamlandı!' : 'İşlem Başarısız',
+                                    showConfirmButton: false,
+                                    timer: 3000
+                                });
                             }
                         } else {
-                            link.closest('li').style.display = 'block';
+                            window.notificationShown = false;
+                            if (btnView) btnView.classList.add('d-none');
+                            if (status === 'pausing' || data.pause_requested) {
+                                if (btnPause) btnPause.classList.add('d-none');
+                                if (btnResume) btnResume.classList.remove('d-none');
+                            } else {
+                                if (btnPause) btnPause.classList.remove('d-none');
+                                if (btnResume) btnResume.classList.add('d-none');
+                            }
                         }
+                    } catch (e) {
+                        console.error('Widget update error:', e);
                     }
-                });
-                // Show headers back if search empty
-                const headers = document.querySelectorAll('#sidebar .nav-item.border-top');
-                if (term.length > 0) {
-                    headers.forEach(h => h.style.display = 'none');
-                } else {
-                    headers.forEach(h => h.style.display = 'block');
                 }
-            });
 
-            // Ctrl+K to focus
-            document.addEventListener('keydown', function (e) {
-                if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-                    e.preventDefault();
-                    searchInput.focus();
-                }
-            });
-        }
-
-        // Global Job Widget Functions (Sidebar Version)
-        (function () {
-            let activeJobId = localStorage.getItem('activeJobId') || null;
-            let jobPollInterval = null;
-
-            window.showJobWidget = function (jobId) {
-                if (!jobId) return;
-                activeJobId = jobId;
-                localStorage.setItem('activeJobId', jobId);
-
-                const widget = document.getElementById('jobWidget');
-                if (widget) {
-                    widget.style.display = 'block';
-                }
-                startJobPolling();
-            };
-
-            function startJobPolling() {
-                if (jobPollInterval) clearInterval(jobPollInterval);
-                updateWidgetUI();
-                jobPollInterval = setInterval(updateWidgetUI, 2000);
-            }
-
-            async function updateWidgetUI() {
-                if (!activeJobId) return;
-                try {
-                    const res = await fetch(`/api/mp_jobs/${activeJobId}`);
-                    if (!res.ok) {
-                        if (res.status === 404) {
-                            localStorage.removeItem('activeJobId');
-                            activeJobId = null;
-                            if (jobPollInterval) clearInterval(jobPollInterval);
-                            const widget = document.getElementById('jobWidget');
-                            if (widget) widget.style.display = 'none';
-                        }
-                        return;
-                    }
-                    const data = await res.json();
-                    if (!data || data.error) return;
-
-                    const status = data.status;
-                    const progress = data.progress || {};
-                    const logs = data.logs || [];
-
-                    const current = progress.current || 0;
-                    const total = progress.total || 1;
-                    const percent = Math.round((current / total) * 100);
-
-                    const progressBar = document.getElementById('jobProgressBar');
-                    const progressText = document.getElementById('jobProgressText');
-                    const batchText = document.getElementById('jobBatchText');
-
-                    if (progressBar) {
-                        progressBar.style.width = `${percent}%`;
-                        progressBar.className = `progress-bar progress-bar-striped progress-bar-animated ${status === 'failed' ? 'bg-danger' : 'bg-primary'}`;
-                    }
-                    if (progressText) progressText.innerText = `${current} / ${total}`;
-                    if (batchText) batchText.innerText = data.batch_id || '';
-
-                    const statusEl = document.getElementById('jobStatusText');
-                    if (statusEl) {
-                        let statusHtml = '';
-                        if (status === 'queued') statusHtml = '<span class="extra-small badge bg-secondary">Sırada</span>';
-                        else if (status === 'running') statusHtml = '<span class="extra-small badge bg-primary">Çalışıyor</span>';
-                        else if (status === 'completed') statusHtml = '<span class="extra-small badge bg-success">Başarılı</span>';
-                        else if (status === 'failed') statusHtml = '<span class="extra-small badge bg-danger">Hata</span>';
-                        if (data.pause_requested && status === 'running') statusHtml = '<span class="extra-small badge bg-warning text-dark">Duraklatılıyor</span>';
-                        statusEl.innerHTML = statusHtml;
-                    }
-
-                    const logsContainer = document.getElementById('jobLogs');
-                    if (logsContainer) {
-                        logsContainer.innerHTML = logs.map(l => `<div class="mb-1 border-bottom border-white border-opacity-5 pb-1">${l.message}</div>`).join('');
-                        logsContainer.scrollTop = logsContainer.scrollHeight;
-                    }
-
-                    const btnPause = document.getElementById('btnJobPause');
-                    const btnResume = document.getElementById('btnJobResume');
-                    const btnCancel = document.getElementById('btnJobCancel');
-                    const btnView = document.getElementById('btnJobView');
-
-                    if (status === 'completed' || status === 'failed' || status === 'cancelled') {
-                        if (jobPollInterval) clearInterval(jobPollInterval);
-                        jobPollInterval = null;
-                        if (btnPause) btnPause.classList.add('d-none');
-                        if (btnResume) btnResume.classList.add('d-none');
-                        if (btnCancel) btnCancel.classList.add('d-none');
-                        if (btnView) {
-                            btnView.classList.remove('d-none');
-                            const batchId = data.batch_id || (data.result && data.result.batch_id) || activeJobId;
-                            btnView.onclick = () => window.location.href = `/batch/${batchId}`;
-                        }
-                        if (typeof Swal !== 'undefined' && !window.notificationShown) {
-                            window.notificationShown = true;
-                            Swal.fire({
-                                toast: true,
-                                position: 'top-end',
-                                icon: status === 'completed' ? 'success' : 'error',
-                                title: status === 'completed' ? 'İşlem Tamamlandı!' : 'İşlem Başarısız',
-                                showConfirmButton: false,
-                                timer: 3000
-                            });
-                        }
-                    } else {
-                        window.notificationShown = false;
-                        if (btnView) btnView.classList.add('d-none');
-                        if (status === 'pausing' || data.pause_requested) {
-                            if (btnPause) btnPause.classList.add('d-none');
-                            if (btnResume) btnResume.classList.remove('d-none');
-                        } else {
-                            if (btnPause) btnPause.classList.remove('d-none');
-                            if (btnResume) btnResume.classList.add('d-none');
-                        }
-                    }
-                } catch (e) {
-                    console.error('Widget update error:', e);
-                }
-            }
-
-            window.controlJob = async function (action) {
-                if (!activeJobId) return;
-                try {
-                    const res = await fetch(`/api/mp_jobs/${activeJobId}/${action}`, { method: 'POST' });
-                    const data = await res.json();
-                    if (data.success) {
-                        updateWidgetUI();
-                    } else {
-                        if (typeof Swal !== 'undefined') Swal.fire('Hata', data.message || 'İşlem başarısız.', 'error');
-                        else alert(data.message || 'İşlem başarısız.');
-                    }
-                } catch (e) {
-                    console.error('Job control error:', e);
-                }
-            };
-
-            document.addEventListener('DOMContentLoaded', async function () {
-                const jobId = localStorage.getItem('activeJobId');
-                if (jobId) {
+                window.controlJob = async function (action) {
+                    if (!activeJobId) return;
                     try {
-                        const res = await fetch(`/api/mp_jobs/${jobId}`);
-                        if (res.ok) {
-                            const data = await res.json();
-                            if (data && !data.error) {
-                                window.showJobWidget(jobId);
+                        const res = await fetch(`/api/mp_jobs/${activeJobId}/${action}`, { method: 'POST' });
+                        const data = await res.json();
+                        if (data.success) {
+                            updateWidgetUI();
+                        } else {
+                            if (typeof Swal !== 'undefined') Swal.fire('Hata', data.message || 'İşlem başarısız.', 'error');
+                            else alert(data.message || 'İşlem başarısız.');
+                        }
+                    } catch (e) {
+                        console.error('Job control error:', e);
+                    }
+                };
+
+                document.addEventListener('DOMContentLoaded', async function () {
+                    const jobId = localStorage.getItem('activeJobId');
+                    if (jobId) {
+                        try {
+                            const res = await fetch(`/api/mp_jobs/${jobId}`);
+                            if (res.ok) {
+                                const data = await res.json();
+                                if (data && !data.error) {
+                                    window.showJobWidget(jobId);
+                                } else {
+                                    localStorage.removeItem('activeJobId');
+                                }
                             } else {
                                 localStorage.removeItem('activeJobId');
                             }
-                        } else {
-                            localStorage.removeItem('activeJobId');
+                        } catch (e) {
+                            console.error('Widget init check error:', e);
                         }
-                    } catch (e) {
-                        console.error('Widget init check error:', e);
+                    }
+                });
+            })();
+        </script>
+
+        <!-- Chatbot Widget -->
+        <!-- Chatbot Window (Left Positioned) - Enhanced UI -->
+        <div id="chatbot-window" class="d-none animate__animated animate__fadeInUp"
+            style="position: fixed; bottom: 20px; left: 280px; width: 380px; height: 550px; z-index: 1050; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+
+            <!-- Header with Gradient -->
+            <div
+                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 16px; display: flex; align-items: center; justify-content: space-between;">
+                <div class="d-flex align-items-center gap-3">
+                    <div
+                        style="width: 45px; height: 45px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-robot text-white fs-4"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-0 text-white fw-bold">Vidos Asistan</h6>
+                        <small class="text-white-50"><i class="bi bi-circle-fill text-success me-1"
+                                style="font-size: 8px;"></i>Çevrimiçi</small>
+                    </div>
+                </div>
+                <button class="btn btn-link text-white p-0" onclick="toggleChatbot()">
+                    <i class="bi bi-x-lg fs-5"></i>
+                </button>
+            </div>
+
+            <!-- Messages Area -->
+            <div id="chatbot-messages"
+                style="height: calc(100% - 180px); overflow-y: auto; background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%); padding: 16px;">
+                <!-- Welcome Message with Avatar -->
+                <div class="d-flex gap-2 mb-3">
+                    <div
+                        style="width: 32px; height: 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <i class="bi bi-robot text-white" style="font-size: 14px;"></i>
+                    </div>
+                    <div class="bg-white p-3 rounded-3 shadow-sm border" style="max-width: 85%;">
+                        <p class="mb-2">Merhaba! 👋 Ben <strong>Vidos Asistan</strong>.</p>
+                        <p class="mb-0 text-muted">Size nasıl yardımcı olabilirim?</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div style="padding: 12px 16px; background: #fff; border-top: 1px solid #eee;">
+                <div class="d-flex gap-2 flex-wrap">
+                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3"
+                        onclick="sendQuickAction('Ürün nasıl gönderirim?')">
+                        <i class="bi bi-box-seam me-1"></i>Ürün Gönderimi
+                    </button>
+                    <button class="btn btn-sm btn-outline-success rounded-pill px-3"
+                        onclick="sendQuickAction('Stok güncelleme')">
+                        <i class="bi bi-arrow-repeat me-1"></i>Stok
+                    </button>
+                    <button class="btn btn-sm btn-outline-warning rounded-pill px-3"
+                        onclick="sendQuickAction('Sipariş takibi')">
+                        <i class="bi bi-cart3 me-1"></i>Sipariş
+                    </button>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div style="padding: 12px 16px; background: #fff; border-top: 1px solid #eee;">
+                <div class="input-group">
+                    <input type="text" id="chatbot-input" class="form-control border-0 bg-light rounded-pill"
+                        placeholder="Mesajınızı yazın..." onkeypress="handleChatInput(event)"
+                        style="padding-left: 20px;">
+                    <button class="btn btn-primary rounded-circle ms-2" onclick="sendChatMessage()"
+                        style="width: 42px; height: 42px;">
+                        <i class="bi bi-send-fill"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation (Mobile Only) -->
+        <div class="bottom-nav d-lg-none shadow-lg">
+            <a href="{{ url_for('main.dashboard') }}"
+                class="bottom-nav-item {% if request.endpoint == 'main.dashboard' %}active{% endif %}">
+                <i class="bi bi-house-door{% if request.endpoint == 'main.dashboard' %}-fill{% endif %}"></i>
+                <span>Panel</span>
+            </a>
+            <a href="{{ url_for('main.xml_urunler') }}"
+                class="bottom-nav-item {% if request.endpoint == 'main.xml_urunler' %}active{% endif %}">
+                <i class="bi bi-box-seam{% if request.endpoint == 'main.xml_urunler' %}-fill{% endif %}"></i>
+                <span>Ürünler</span>
+            </a>
+            <a href="{{ url_for('main.orders_page') }}"
+                class="bottom-nav-item {% if request.endpoint == 'main.orders_page' or request.endpoint == 'main.order_detail' %}active{% endif %}">
+                <i
+                    class="bi bi-cart3{% if request.endpoint == 'main.orders_page' or request.endpoint == 'main.order_detail' %}-fill{% endif %}"></i>
+                <span>Sipariş</span>
+            </a>
+            <a href="{{ url_for('main.questions_page') }}"
+                class="bottom-nav-item {% if request.endpoint == 'main.questions_page' %}active{% endif %}">
+                <i class="bi bi-chat-dots{% if request.endpoint == 'main.questions_page' %}-fill{% endif %}"></i>
+                <span>Sorular</span>
+            </a>
+        </div>
+
+        <!-- Bootstrap Bundle with Popper -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+        <script>
+            // Initialize Batch Status Window State
+            document.addEventListener('DOMContentLoaded', function () {
+                const statusWindow = document.querySelector('.process-status-window');
+                if (statusWindow) {
+                    // Check localStorage
+                    const isMinimized = localStorage.getItem('batchStatusMinimized') === 'true';
+                    if (isMinimized) {
+                        statusWindow.classList.add('minimized');
+                    }
+
+                    // Add toggle listener if not exists
+                    const header = statusWindow.querySelector('.card-header');
+                    if (header) {
+                        header.addEventListener('click', function () {
+                            statusWindow.classList.toggle('minimized');
+                            localStorage.setItem('batchStatusMinimized', statusWindow.classList.contains('minimized'));
+                        });
                     }
                 }
             });
-        })();
-    </script>
 
-    <!-- Chatbot Widget -->
-    <!-- Chatbot Window (Left Positioned) - Enhanced UI -->
-    <div id="chatbot-window" class="d-none animate__animated animate__fadeInUp"
-        style="position: fixed; bottom: 20px; left: 280px; width: 380px; height: 550px; z-index: 1050; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+            document.addEventListener('DOMContentLoaded', function () {
+                // Re-bind Toggle Function since we removed the wrapper div
+                window.toggleChatbot = function () {
+                    const w = document.getElementById('chatbot-window');
+                    const statusWindow = document.querySelector('.process-status-window');
 
-        <!-- Header with Gradient -->
-        <div
-            style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 16px; display: flex; align-items: center; justify-content: space-between;">
-            <div class="d-flex align-items-center gap-3">
-                <div
-                    style="width: 45px; height: 45px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                    <i class="bi bi-robot text-white fs-4"></i>
-                </div>
-                <div>
-                    <h6 class="mb-0 text-white fw-bold">Vidos Asistan</h6>
-                    <small class="text-white-50"><i class="bi bi-circle-fill text-success me-1"
-                            style="font-size: 8px;"></i>Çevrimiçi</small>
-                </div>
-            </div>
-            <button class="btn btn-link text-white p-0" onclick="toggleChatbot()">
-                <i class="bi bi-x-lg fs-5"></i>
-            </button>
-        </div>
+                    if (w.classList.contains('d-none')) {
+                        // Opening Chatbot
+                        w.classList.remove('d-none');
+                        w.classList.add('animate__fadeInLeft');
+                        document.getElementById('chatbot-input').focus();
 
-        <!-- Messages Area -->
-        <div id="chatbot-messages"
-            style="height: calc(100% - 180px); overflow-y: auto; background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%); padding: 16px;">
-            <!-- Welcome Message with Avatar -->
-            <div class="d-flex gap-2 mb-3">
-                <div
-                    style="width: 32px; height: 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                    <i class="bi bi-robot text-white" style="font-size: 14px;"></i>
-                </div>
-                <div class="bg-white p-3 rounded-3 shadow-sm border" style="max-width: 85%;">
-                    <p class="mb-2">Merhaba! 👋 Ben <strong>Vidos Asistan</strong>.</p>
-                    <p class="mb-0 text-muted">Size nasıl yardımcı olabilirim?</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Quick Actions -->
-        <div style="padding: 12px 16px; background: #fff; border-top: 1px solid #eee;">
-            <div class="d-flex gap-2 flex-wrap">
-                <button class="btn btn-sm btn-outline-primary rounded-pill px-3"
-                    onclick="sendQuickAction('Ürün nasıl gönderirim?')">
-                    <i class="bi bi-box-seam me-1"></i>Ürün Gönderimi
-                </button>
-                <button class="btn btn-sm btn-outline-success rounded-pill px-3"
-                    onclick="sendQuickAction('Stok güncelleme')">
-                    <i class="bi bi-arrow-repeat me-1"></i>Stok
-                </button>
-                <button class="btn btn-sm btn-outline-warning rounded-pill px-3"
-                    onclick="sendQuickAction('Sipariş takibi')">
-                    <i class="bi bi-cart3 me-1"></i>Sipariş
-                </button>
-            </div>
-        </div>
-
-        <!-- Input Area -->
-        <div style="padding: 12px 16px; background: #fff; border-top: 1px solid #eee;">
-            <div class="input-group">
-                <input type="text" id="chatbot-input" class="form-control border-0 bg-light rounded-pill"
-                    placeholder="Mesajınızı yazın..." onkeypress="handleChatInput(event)" style="padding-left: 20px;">
-                <button class="btn btn-primary rounded-circle ms-2" onclick="sendChatMessage()"
-                    style="width: 42px; height: 42px;">
-                    <i class="bi bi-send-fill"></i>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Bottom Navigation (Mobile Only) -->
-    <div class="bottom-nav d-lg-none shadow-lg">
-        <a href="{{ url_for('main.dashboard') }}"
-            class="bottom-nav-item {% if request.endpoint == 'main.dashboard' %}active{% endif %}">
-            <i class="bi bi-house-door{% if request.endpoint == 'main.dashboard' %}-fill{% endif %}"></i>
-            <span>Panel</span>
-        </a>
-        <a href="{{ url_for('main.xml_urunler') }}"
-            class="bottom-nav-item {% if request.endpoint == 'main.xml_urunler' %}active{% endif %}">
-            <i class="bi bi-box-seam{% if request.endpoint == 'main.xml_urunler' %}-fill{% endif %}"></i>
-            <span>Ürünler</span>
-        </a>
-        <a href="{{ url_for('main.orders_page') }}"
-            class="bottom-nav-item {% if request.endpoint == 'main.orders_page' or request.endpoint == 'main.order_detail' %}active{% endif %}">
-            <i
-                class="bi bi-cart3{% if request.endpoint == 'main.orders_page' or request.endpoint == 'main.order_detail' %}-fill{% endif %}"></i>
-            <span>Sipariş</span>
-        </a>
-        <a href="{{ url_for('main.questions_page') }}"
-            class="bottom-nav-item {% if request.endpoint == 'main.questions_page' %}active{% endif %}">
-            <i class="bi bi-chat-dots{% if request.endpoint == 'main.questions_page' %}-fill{% endif %}"></i>
-            <span>Sorular</span>
-        </a>
-    </div>
-
-    <!-- Bootstrap Bundle with Popper -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Initialize Batch Status Window State
-        document.addEventListener('DOMContentLoaded', function () {
-            const statusWindow = document.querySelector('.process-status-window');
-            if (statusWindow) {
-                // Check localStorage
-                const isMinimized = localStorage.getItem('batchStatusMinimized') === 'true';
-                if (isMinimized) {
-                    statusWindow.classList.add('minimized');
-                }
-
-                // Add toggle listener if not exists
-                const header = statusWindow.querySelector('.card-header');
-                if (header) {
-                    header.addEventListener('click', function () {
-                        statusWindow.classList.toggle('minimized');
-                        localStorage.setItem('batchStatusMinimized', statusWindow.classList.contains('minimized'));
-                    });
-                }
-            }
-        });
-
-        document.addEventListener('DOMContentLoaded', function () {
-            // Re-bind Toggle Function since we removed the wrapper div
-            window.toggleChatbot = function () {
-                const w = document.getElementById('chatbot-window');
-                const statusWindow = document.querySelector('.process-status-window');
-
-                if (w.classList.contains('d-none')) {
-                    // Opening Chatbot
-                    w.classList.remove('d-none');
-                    w.classList.add('animate__fadeInLeft');
-                    document.getElementById('chatbot-input').focus();
-
-                    // Auto-minimize Process Status Window
-                    if (statusWindow && !statusWindow.classList.contains('minimized')) {
-                        statusWindow.classList.add('minimized');
-                        localStorage.setItem('batchStatusMinimized', 'true');
+                        // Auto-minimize Process Status Window
+                        if (statusWindow && !statusWindow.classList.contains('minimized')) {
+                            statusWindow.classList.add('minimized');
+                            localStorage.setItem('batchStatusMinimized', 'true');
+                        }
+                    } else {
+                        // Closing Chatbot
+                        w.classList.add('d-none');
                     }
-                } else {
-                    // Closing Chatbot
-                    w.classList.add('d-none');
+                };
+            });
+
+
+
+            function handleChatInput(e) {
+                if (e.key === 'Enter') {
+                    sendChatMessage();
                 }
-            };
-        });
-
-
-
-        function handleChatInput(e) {
-            if (e.key === 'Enter') {
-                sendChatMessage();
             }
-        }
 
-        function appendMessage(text, isUser) {
-            const messagesDiv = document.getElementById('chatbot-messages');
-            const msgHtml = isUser ? `
+            function appendMessage(text, isUser) {
+                const messagesDiv = document.getElementById('chatbot-messages');
+                const msgHtml = isUser ? `
                 <div class="d-flex justify-content-end mb-3">
                     <div class="bg-primary text-white p-3 rounded-3 shadow-sm" style="max-width: 85%;">
                         ${text}
@@ -1082,246 +1082,297 @@
                     </div>
                 </div>
             `;
-            messagesDiv.insertAdjacentHTML('beforeend', msgHtml);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        }
+                messagesDiv.insertAdjacentHTML('beforeend', msgHtml);
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }
 
-        function sendQuickAction(message) {
-            document.getElementById('chatbot-input').value = message;
-            sendChatMessage();
-        }
+            function sendQuickAction(message) {
+                document.getElementById('chatbot-input').value = message;
+                sendChatMessage();
+            }
 
-        // --- Global Job Monitor Logic ---
-        let currentActiveJobId = null;
+            // --- Global Job Monitor Logic ---
+            let currentActiveJobId = null;
 
-        async function checkActiveJob() {
-            try {
-                const resp = await fetch('/api/jobs/active');
-                if (resp.status === 200) {
-                    const job = await resp.json();
-                    if (job && job.id) {
-                        currentActiveJobId = job.id;
-                        startGlobalJobPolling(job.id);
+            window.showJobWidget = function (jobId) {
+                currentActiveJobId = jobId;
+                const widget = document.getElementById('jobWidget');
+                if (widget) {
+                    widget.classList.remove('d-none');
+                    widget.classList.remove('minimized');
+                    widget.classList.remove('completed');
+                    widget.classList.remove('failed');
+                    // Reset spinner
+                    const spinner = widget.querySelector('.job-monitor-spinner');
+                    if (spinner) spinner.style.display = 'inline-block';
+                }
+                pollGlobalJob(jobId);
+            }
+
+            window.toggleJobWidgetBody = function () {
+                const widget = document.getElementById('jobWidget');
+                if (widget) widget.classList.toggle('minimized');
+            }
+
+            async function checkActiveJob() {
+                try {
+                    const resp = await fetch('/api/jobs/active');
+                    if (resp.status === 200) {
+                        const job = await resp.json();
+                        if (job && job.id) {
+                            window.showJobWidget(job.id);
+                        }
                     }
+                } catch (e) {
+                    console.error("Active job check failed", e);
                 }
-            } catch (e) {
-                console.error("Active job check failed", e);
             }
-        }
 
-        function startGlobalJobPolling(jobId) {
-            const widget = document.getElementById('jobWidget');
-            if (widget) widget.style.display = 'block';
-            pollGlobalJob(jobId);
-        }
+            async function pollGlobalJob(jobId) {
+                if (currentActiveJobId !== jobId) return;
 
-        async function pollGlobalJob(jobId) {
-            try {
-                const resp = await fetch(`/api/mp_jobs/${jobId}`);
-                if (!resp.ok) throw new Error("Job not found");
-                const data = await resp.json();
+                try {
+                    const resp = await fetch(`/api/mp_jobs/${jobId}`);
+                    if (!resp.ok) throw new Error("Job not found");
+                    const data = await resp.json();
 
-                updateGlobalJobWidget(data);
+                    updateGlobalJobWidget(data);
 
-                if (['completed', 'failed', 'cancelled', 'cancelled_finished'].includes(data.status)) {
-                    // Stop polling after a delay
-                    setTimeout(() => {
+                    if (['completed', 'failed', 'cancelled', 'cancelled_finished'].includes(data.status)) {
                         const widget = document.getElementById('jobWidget');
-                        if (widget) widget.style.display = 'none';
-                        currentActiveJobId = null;
-                    }, 8000);
-                } else {
-                    setTimeout(() => pollGlobalJob(jobId), 3000);
+                        if (widget) {
+                            if (data.status === 'completed') widget.classList.add('completed');
+                            else if (data.status === 'failed') widget.classList.add('failed');
+
+                            // Hide spinner on finish
+                            const spinner = widget.querySelector('.job-monitor-spinner');
+                            if (spinner) spinner.style.display = 'none';
+                        }
+
+                        // Keep visible for a while then hide if completed successfully
+                        if (data.status === 'completed') {
+                            setTimeout(() => {
+                                if (currentActiveJobId === jobId) {
+                                    const w = document.getElementById('jobWidget');
+                                    if (w) w.classList.add('d-none');
+                                    currentActiveJobId = null;
+                                }
+                            }, 10000);
+                        }
+                    } else {
+                        setTimeout(() => pollGlobalJob(jobId), 3000);
+                    }
+                } catch (e) {
+                    console.error("Job polling failed", e);
+                    // On error, check if still active after a while
+                    setTimeout(() => checkActiveJob(), 10000);
                 }
-            } catch (e) {
-                console.error("Job polling failed", e);
-                // On error, check if still active after a while
-                setTimeout(() => checkActiveJob(), 10000);
-            }
-        }
-
-        function updateGlobalJobWidget(job) {
-            const statusText = document.getElementById('jobStatusText');
-            const progressBar = document.getElementById('jobProgressBar');
-            const progressText = document.getElementById('jobProgressText');
-            const logsDiv = document.getElementById('jobLogs');
-
-            if (statusText) {
-                let statusBadge = '<span class="badge bg-secondary">Bekliyor</span>';
-                if (job.status === 'running') statusBadge = '<span class="badge bg-primary animate__animated animate__pulse animate__infinite">Çalışıyor</span>';
-                else if (job.status === 'completed') statusBadge = '<span class="badge bg-success">Tamamlandı</span>';
-                else if (job.status === 'failed') statusBadge = '<span class="badge bg-danger">Hata</span>';
-                else if (job.status === 'cancelled' || job.status === 'cancelling') statusBadge = '<span class="badge bg-warning text-dark">Durduruluyor</span>';
-                else if (job.status === 'cancelled_finished') statusBadge = '<span class="badge bg-warning text-dark">İptal Edildi</span>';
-
-                statusText.innerHTML = statusBadge;
             }
 
-            // Calculate progress if meta exists
-            if (job.result && (job.result.current !== undefined || job.result.success_count !== undefined)) {
-                const current = job.result.current || (job.result.success_count + (job.result.fail_count || 0)) || 0;
-                const total = job.result.total || job.result.count || 0;
+            function updateGlobalJobWidget(job) {
+                const statusText = document.getElementById('jobStatusText');
+                const progressBar = document.getElementById('jobProgressBar');
+                const progressText = document.getElementById('jobProgressText');
+                const logsDiv = document.getElementById('jobLogs');
+                const cancelBtn = document.getElementById('btnJobCancel');
+
+                if (statusText) {
+                    let statusLabel = 'Bekliyor...';
+                    if (job.status === 'running') statusLabel = 'İşleniyor...';
+                    else if (job.status === 'completed') statusLabel = 'Tamamlandı';
+                    else if (job.status === 'failed') statusLabel = 'Hata Oluştu';
+                    else if (job.status === 'cancelled' || job.status === 'cancelling') statusLabel = 'Durduruluyor...';
+                    else if (job.status === 'cancelled_finished') statusLabel = 'İptal Edildi';
+
+                    statusText.innerText = statusLabel;
+                }
+
+                if (cancelBtn) {
+                    cancelBtn.disabled = ['completed', 'failed', 'cancelled', 'cancelled_finished'].includes(job.status);
+                }
+
+                // Progress logic
+                let current = 0;
+                let total = 0;
+                if (job.result) {
+                    current = job.result.current || (Number(job.result.success_count || 0) + Number(job.result.fail_count || 0)) || 0;
+                    total = job.result.total || job.result.count || 0;
+                }
+
                 const percent = total > 0 ? Math.round((current / total) * 100) : 0;
 
                 if (progressBar) {
                     progressBar.style.width = percent + '%';
-                    progressBar.innerText = percent > 10 ? percent + '%' : '';
                 }
-                if (progressText) progressText.innerText = `${current} / ${total}`;
-            }
+                if (progressText) {
+                    progressText.innerText = `${current} / ${total} Ürün`;
+                }
 
-            // Logs
-            if (logsDiv && job.logs) {
-                logsDiv.innerHTML = job.logs.slice(-5).map(l => `<div class="mb-1 text-truncate" title="${l.message}">• ${l.message}</div>`).join('');
-                logsDiv.scrollTop = logsDiv.scrollHeight;
-            }
-        }
-
-        window.cancelGlobalJob = async function () {
-            if (!currentActiveJobId) return;
-
-            const result = await Swal.fire({
-                title: 'Emin misiniz?',
-                text: "Devam eden işlem durdurulacaktır!",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Evet, Durdur',
-                cancelButtonText: 'Vazgeç'
-            });
-
-            if (result.isConfirmed) {
-                try {
-                    const resp = await fetch(`/api/mp_jobs/${currentActiveJobId}/control`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: 'cancel' })
-                    });
-                    if (resp.ok) {
-                        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'İptal isteği gönderildi', showConfirmButton: false, timer: 2000 });
-                    }
-                } catch (e) {
-                    Swal.fire('Hata', 'İşlem durdurulamadı', 'error');
+                // Logs
+                if (logsDiv && job.logs) {
+                    // Show last 3 logs
+                    const lastLogs = job.logs.slice(-3);
+                    logsDiv.innerHTML = lastLogs.length > 0
+                        ? lastLogs.map(l => `<div class="job-monitor-log-item">${l.message}</div>`).join('')
+                        : '<div class="text-muted small">İşlem devam ediyor...</div>';
+                    logsDiv.scrollTop = logsDiv.scrollHeight;
                 }
             }
-        }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            checkActiveJob();
-        });
-    </script>
-    <script>
-        // Sidebar Toggle for Mobile
-        const sidebarToggle = document.getElementById('sidebar-toggle');
-        const sidebar = document.getElementById('sidebar');
-        const sidebarOverlay = document.getElementById('sidebar-overlay');
-        const mainContent = document.getElementById('main-content');
+            window.cancelGlobalJob = async function () {
+                if (!currentActiveJobId) return;
 
-        function toggleSidebar() {
-            sidebar.classList.toggle('active');
-            sidebarOverlay.classList.toggle('show');
-            document.body.style.overflow = sidebar.classList.contains('active') ? 'hidden' : '';
-        }
+                const result = await Swal.fire({
+                    title: 'Emin misiniz?',
+                    text: "Devam eden işlem durdurulacaktır!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Evet, Durdur',
+                    cancelButtonText: 'Vazgeç'
+                });
 
-        if (sidebarToggle) {
-            sidebarToggle.addEventListener('click', toggleSidebar);
-        }
-
-        if (sidebarOverlay) {
-            sidebarOverlay.addEventListener('click', toggleSidebar);
-        }
-
-        // Close sidebar when clicking links inside on mobile
-        sidebar.querySelectorAll('.nav-link:not(.dropdown-toggle)').forEach(link => {
-            link.addEventListener('click', () => {
-                if (window.innerWidth < 992 && sidebar.classList.contains('active')) {
-                    toggleSidebar();
-                }
-            });
-        });
-
-        // PWA Install Logic
-        let deferredPrompt;
-        const installBtn = document.getElementById('pwa-install-btn');
-        const installItem = document.getElementById('pwa-install-item');
-        const mobileInstall = document.getElementById('pwa-mobile-install');
-        const iosMsg = document.getElementById('pwa-ios-msg');
-
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            if (installItem) installItem.style.display = 'block';
-            if (mobileInstall) mobileInstall.style.display = 'flex';
-
-            // Notify user that app is ready to install
-            const Toast = Swal.mixin({
-                toast: true,
-                position: 'top-end',
-                showConfirmButton: false,
-                timer: 3000,
-                timerProgressBar: true
-            });
-            Toast.fire({
-                icon: 'info',
-                title: 'Vidos Uygulaması Yüklenmeye Hazır!'
-            });
-        });
-
-        async function handleInstallPrompt(e) {
-            if (e) e.preventDefault();
-            if (!deferredPrompt) return;
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            if (outcome === 'accepted') {
-                if (installItem) installItem.style.display = 'none';
-                if (mobileInstall) mobileInstall.style.display = 'none';
-            }
-            deferredPrompt = null;
-        }
-
-        if (installBtn) installBtn.addEventListener('click', handleInstallPrompt);
-        if (mobileInstall) mobileInstall.addEventListener('click', handleInstallPrompt);
-
-        // Landing page buttons integration
-        window.addEventListener('load', () => {
-            const landingAppleBtn = document.getElementById('landing-apple-btn');
-            const landingGoogleBtn = document.getElementById('landing-google-btn');
-
-            if (landingAppleBtn) {
-                landingAppleBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    if (isIos) {
-                        Swal.fire({
-                            title: 'iOS Uygulaması',
-                            html: 'iOS cihazlarda uygulamayı yüklemek için:<br>1. <b>Paylaş</b> simgesine dokunun<br>2. <b>Ana Ekrana Ekle</b> seçeneğini seçin.',
-                            icon: 'info'
+                if (result.isConfirmed) {
+                    try {
+                        const resp = await fetch(`/api/mp_jobs/${currentActiveJobId}/control`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'cancel' })
                         });
-                    } else {
-                        handleInstallPrompt();
+                        if (resp.ok) {
+                            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'İptal isteği gönderildi', showConfirmButton: false, timer: 2000 });
+                        }
+                    } catch (e) {
+                        Swal.fire('Hata', 'İşlem durdurulamadı', 'error');
+                    }
+                }
+            }
+
+            document.addEventListener('DOMContentLoaded', () => {
+                checkActiveJob();
+
+                // Minimize button
+                const minBtn = document.getElementById('jobMonitorMinimize');
+                if (minBtn) {
+                    minBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        window.toggleJobWidgetBody();
+                    });
+                }
+            });
+        </script>
+        <script>
+            // Sidebar Toggle for Mobile
+            const sidebarToggle = document.getElementById('sidebar-toggle');
+            const sidebar = document.getElementById('sidebar');
+            const sidebarOverlay = document.getElementById('sidebar-overlay');
+            const mainContent = document.getElementById('main-content');
+
+            function toggleSidebar() {
+                sidebar.classList.toggle('active');
+                sidebarOverlay.classList.toggle('show');
+                document.body.style.overflow = sidebar.classList.contains('active') ? 'hidden' : '';
+            }
+
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', toggleSidebar);
+            }
+
+            if (sidebarOverlay) {
+                sidebarOverlay.addEventListener('click', toggleSidebar);
+            }
+
+            // Close sidebar when clicking links inside on mobile
+            sidebar.querySelectorAll('.nav-link:not(.dropdown-toggle)').forEach(link => {
+                link.addEventListener('click', () => {
+                    if (window.innerWidth < 992 && sidebar.classList.contains('active')) {
+                        toggleSidebar();
                     }
                 });
-            }
-            if (landingGoogleBtn) {
-                landingGoogleBtn.addEventListener('click', handleInstallPrompt);
-            }
-        });
-
-        // Show iOS instructions if on Safari iOS and not standalone
-        const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-        if (isIos && !isStandalone) {
-            if (iosMsg) iosMsg.style.display = 'block';
-        }
-
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/static/sw.js')
-                    .then(reg => console.log('SW Registered'))
-                    .catch(err => console.log('SW Error', err));
             });
-        }
-    </script>
+
+            // PWA Install Logic
+            let deferredPrompt;
+            const installBtn = document.getElementById('pwa-install-btn');
+            const installItem = document.getElementById('pwa-install-item');
+            const mobileInstall = document.getElementById('pwa-mobile-install');
+            const iosMsg = document.getElementById('pwa-ios-msg');
+
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                if (installItem) installItem.style.display = 'block';
+                if (mobileInstall) mobileInstall.style.display = 'flex';
+
+                // Notify user that app is ready to install
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true
+                });
+                Toast.fire({
+                    icon: 'info',
+                    title: 'Vidos Uygulaması Yüklenmeye Hazır!'
+                });
+            });
+
+            async function handleInstallPrompt(e) {
+                if (e) e.preventDefault();
+                if (!deferredPrompt) return;
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    if (installItem) installItem.style.display = 'none';
+                    if (mobileInstall) mobileInstall.style.display = 'none';
+                }
+                deferredPrompt = null;
+            }
+
+            if (installBtn) installBtn.addEventListener('click', handleInstallPrompt);
+            if (mobileInstall) mobileInstall.addEventListener('click', handleInstallPrompt);
+
+            // Landing page buttons integration
+            window.addEventListener('load', () => {
+                const landingAppleBtn = document.getElementById('landing-apple-btn');
+                const landingGoogleBtn = document.getElementById('landing-google-btn');
+
+                if (landingAppleBtn) {
+                    landingAppleBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        if (isIos) {
+                            Swal.fire({
+                                title: 'iOS Uygulaması',
+                                html: 'iOS cihazlarda uygulamayı yüklemek için:<br>1. <b>Paylaş</b> simgesine dokunun<br>2. <b>Ana Ekrana Ekle</b> seçeneğini seçin.',
+                                icon: 'info'
+                            });
+                        } else {
+                            handleInstallPrompt();
+                        }
+                    });
+                }
+                if (landingGoogleBtn) {
+                    landingGoogleBtn.addEventListener('click', handleInstallPrompt);
+                }
+            });
+
+            // Show iOS instructions if on Safari iOS and not standalone
+            const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+            if (isIos && !isStandalone) {
+                if (iosMsg) iosMsg.style.display = 'block';
+            }
+
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('/static/sw.js')
+                        .then(reg => console.log('SW Registered'))
+                        .catch(err => console.log('SW Error', err));
+                });
+            }
+        </script>
 </body>
 
 </html>
