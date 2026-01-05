@@ -459,9 +459,10 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
             for p in local_list:
                 sc = p.get('stockCode')
                 if sc: local_by_stock[sc] = p
-            append_mp_job_log(job_id, f"Stok kodu eşleşmesi için {len(local_by_stock)} yerel ürün indekslendi.")
-        except Exception as e:
-            append_mp_job_log(job_id, f"Snaphot yükleme hatası: {e}", level='warning')
+    append_mp_job_log(job_id, f"{len(barcodes)} ürün hazırlanıyor...")
+    
+    # SPEED OPTIMIZATION: Cache category matches by path
+    cat_path_cache = {}
     
     for barcode in barcodes:
         product = mp_map.get(barcode)
@@ -536,12 +537,15 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
 
         # Match Category
         cat_id = None
-        if auto_match:
+        if category_path in cat_path_cache:
+            cat_id = cat_path_cache[category_path]
+        elif auto_match:
             match = find_matching_n11_category(f"{title} {category_path}", user_id=user_id, job_id=job_id)
-            if match: cat_id = match['id']
+            if match: 
+                cat_id = match['id']
+                cat_path_cache[category_path] = cat_id
             
         if not cat_id:
-             # Try fallback to global category setting if implemented or prompt user clearly
              skipped.append({'barcode': barcode, 'reason': f"Kategori Eşleşmedi ({category_path}). N11 Kategori Eşleştirme ayarlarını yapınız."})
              continue
              
@@ -704,7 +708,6 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
                 })
 
         payload_item = {
-            "integrator": "VidosEntegrasyon",
             "title": item['title'][:200],
             "description": p.get('details') or item['description'],
             "categoryId": int(item['cat_id']), # FLAT ID
