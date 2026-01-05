@@ -147,51 +147,25 @@ def _build_n11_tfidf():
         logging.error(f"N11 TF-IDF build error: {e}")
 
 def find_matching_n11_category(query: str, user_id: int = None, job_id: str = None) -> Optional[Dict[str, Any]]:
-    """Find best matching N11 category for a given query string (product name/category)."""
-    # Cleanup query: Remove redundant symbols often found in XML paths
-    query_clean = query.replace('>>>', ' ').replace('>', ' ').strip()
-    
-    # 1. PRIORITY: Check manual mapping first
-    if user_id:
-        try:
-            mapping_json = Setting.get('N11_CATEGORY_MAPPING', user_id=user_id)
-            if mapping_json:
-                mapping = json.loads(mapping_json)
-                # Try exact match first
-                if query in mapping:
-                    category_id = mapping[query]
-                    if job_id:
-                        append_mp_job_log(job_id, f"Manuel eşleşme bulundu: '{query}' -> ID={category_id}", level='info')
-                    # Return category dict
-                    if category_id in _N11_CATEGORY_CACHE["by_id"]:
-                        return _N11_CATEGORY_CACHE["by_id"][category_id]
-                    else:
-                        # ID var ama cache'de yok, sadece ID döndür
-                        return {'id': category_id, 'name': 'Manuel Eşleşme', 'path': query}
-                        
-                # Try cleaned query match
-                if query_clean in mapping:
-                    category_id = mapping[query_clean]
-                    if job_id:
-                        append_mp_job_log(job_id, f"Manuel eşleşme bulundu (clean): '{query_clean}' -> ID={category_id}", level='info')
-                    if category_id in _N11_CATEGORY_CACHE["by_id"]:
-                        return _N11_CATEGORY_CACHE["by_id"][category_id]
-                    else:
-                        return {'id': category_id, 'name': 'Manuel Eşleşme', 'path': query_clean}
-        except Exception as e:
-            logging.warning(f"Manuel mapping kontrolü başarısız: {e}")
-    
+    # 1. PRIORITY: Check manual mapping or previously saved matches in DB
+    from app.services.smart_match_service import SmartMatchService
+    db_cat_id, db_cat_path = SmartMatchService.get_category_match(query, 'n11')
+    if db_cat_id:
+        if job_id:
+            append_mp_job_log(job_id, f"Veritabanından eşleşme bulundu: '{query}' -> ID={db_cat_id} ({db_cat_path})", level='info')
+        if db_cat_id in _N11_CATEGORY_CACHE["by_id"]:
+            return _N11_CATEGORY_CACHE["by_id"][db_cat_id]
+        return {'id': db_cat_id, 'name': 'Kayıtlı Eşleşme', 'path': db_cat_path or 'Bilinmiyor'}
+
     # 2. Fallback to TF-IDF auto-matching
-    # Ensure loaded
     if not _N11_CATEGORY_CACHE["loaded"] or not _N11_CATEGORY_CACHE["list"]:
         fetch_and_cache_n11_categories(user_id=user_id)
         
-    # Ensure vectorizer built (even if loaded from DB)
     if not _N11_CAT_TFIDF["vectorizer"] and _N11_CATEGORY_CACHE["list"]:
         _build_n11_tfidf()
     
     if not _N11_CAT_TFIDF["vectorizer"]:
-        if job_id: append_mp_job_log(job_id, "Kategori listesi boş veya yüklenemedi, eşleşme yapılamıyor.", level='warning')
+        if job_id: append_mp_job_log(job_id, "Kategori listesi yüklenemedi, eşleşme yapılamıyor.", level='warning')
         return None
 
     try:
@@ -204,24 +178,19 @@ def find_matching_n11_category(query: str, user_id: int = None, job_id: str = No
         best_idx = sims.argmax()
         score = sims[best_idx]
         
-        # Log match attempt if job context exists
-        if job_id and score > 0.05:
-             match_path = _N11_CAT_TFIDF["leaf"][best_idx]['path']
-             # append_mp_job_log(job_id, f"Kategori Analizi: '{query_clean[:50]}...' -> En yakın: '{match_path}' (Puan: {score:.2f})")
-
-        # Threshold lowered to 0.15 for better category match coverage
-        if score > 0.15: 
-            match = _N11_CAT_TFIDF["leaf"][best_idx]
-            if score < 0.20 and job_id:
-                append_mp_job_log(job_id, f"Çok düşük puanlı kategori eşleşmesi ({score:.2f}): {match['path']}", level='info')
-            elif score < 0.30 and job_id:
-                append_mp_job_log(job_id, f"Düşük puanlı kategori eşleşmesi ({score:.2f}): {match['path']}", level='info')
+        match = _N11_CAT_TFIDF["leaf"][best_idx]
+        
+        # User requested "complete" matching, so we lower threshold and always pick best candidate if not 0
+        if score > 0.05:
+            if score < 0.15 and job_id:
+                append_mp_job_log(job_id, f"Düşük puanlı ancak en yakın aday seçildi ({score:.2f}): {match['path']}", level='info')
+            
+            # Save this match to DB for future use
+            SmartMatchService.save_category_match(query, 'n11', match['id'], match['path'])
             return match
         else:
             if job_id:
-                match_path = _N11_CAT_TFIDF["leaf"][best_idx]['path'] if score > 0 else "Hiçbiri"
-                append_mp_job_log(job_id, f"Eşleşme yetersiz ({score:.2f}). En yakın aday: {match_path}", level='warning')
-                
+                append_mp_job_log(job_id, f"Eşleşme bulunamadı (Puan: {score:.2f})", level='warning')
     except Exception as e:
         logging.error(f"Match error: {e}")
     
@@ -751,8 +720,30 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
              err_msg = f"{item['barcode']} için eksikler: " + ", ".join(validation_errors)
              append_mp_job_log(job_id, err_msg, level='warning')
         
+        # --- PERSIST TO LOCAL DB ---
+        try:
+            from app.models.product import MarketplaceProduct
+            from app import db
+            mp_p = MarketplaceProduct.query.filter_by(user_id=user_id, marketplace='n11', barcode=payload_item['barcode']).first()
+            if not mp_p:
+                mp_p = MarketplaceProduct(user_id=user_id, marketplace='n11', barcode=payload_item['barcode'])
+                db.session.add(mp_p)
+            
+            mp_p.stock_code = payload_item['stockCode']
+            mp_p.title = payload_item['title']
+            mp_p.price = payload_item['listPrice']
+            mp_p.sale_price = payload_item['salePrice']
+            mp_p.quantity = payload_item['quantity']
+            mp_p.category = category_path # XML Path
+            # We can also store the N11 category ID in a field if MarketplaceProduct had it, 
+            # but for now we use 'category' string.
+            mp_p.last_sync_at = datetime.now()
+            db.session.commit()
+        except Exception as e:
+            logging.error(f"Error saving MarketplaceProduct: {e}")
+
         # Log First Payload for Debugging
-        if len(items_to_send) == 0: # This effectively logs the first one being added
+        if len(items_to_send) == 0:
              import json
              debug_pl = json.dumps(payload_item, indent=2, ensure_ascii=False)
              append_mp_job_log(job_id, f"DEBUG - İlk Ürün Verisi:\n{debug_pl}")
