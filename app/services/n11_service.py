@@ -409,9 +409,13 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
     # Use price_multiplier directly
     multiplier = price_multiplier
     shipment_template = Setting.get("N11_DEFAULT_SHIPMENT_TEMPLATE", "Standart", user_id=user_id)
-    default_brand = Setting.get("N11_DEFAULT_BRAND", None, user_id=user_id)
-    default_brand_id = Setting.get("N11_DEFAULT_BRAND_ID", None, user_id=user_id)
-    if default_brand_id: default_brand_id = int(default_brand_id)
+    # Barcode Settings (Sync Page & General)
+    auto_gen_empty = Setting.get("N11_AUTO_GENERATE_BARCODE", "0", user_id=user_id) == "1" or \
+                     Setting.get("AUTO_SYNC_USE_RANDOM_BARCODE_n11", "false", user_id=user_id) == "true" or \
+                     (src and src.use_random_barcode)
+    auto_gen_all = Setting.get("N11_OVERWRITE_BARCODE_ALL", "0", user_id=user_id) == "1" or \
+                   Setting.get("AUTO_SYNC_USE_OVERRIDE_BARCODE_n11", "false", user_id=user_id) == "true"
+    from app.services.xml_service import generate_random_barcode
 
     items_to_send = []
     skipped = []
@@ -525,9 +529,16 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
              skipped.append({'barcode': barcode, 'reason': f"Kategori Eşleşmedi ({category_path}). N11 Kategori Eşleştirme ayarlarını yapınız."})
              continue
              
+        # Application of Barcode Rules
+        target_barcode = barcode
+        if auto_gen_all:
+            target_barcode = generate_random_barcode()
+        elif auto_gen_empty and (not barcode or barcode.strip() == "" or barcode == "0" or barcode.lower() == "bgz0"):
+            target_barcode = generate_random_barcode()
+
         matched_products.append({
-            'barcode': barcode,
-            'target_barcode': target_barcode if match_by == 'stock_code' and 'target_barcode' in locals() else barcode, 
+            'barcode': barcode, # Original identifier
+            'target_barcode': target_barcode, 
             'product': product,
             'cat_id': cat_id,
             'price': price,
@@ -693,9 +704,9 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
             "currencyType": "TL",
             "images": [{"url": u, "order": i+1} for i, u in enumerate(images[:8])],
             "quantity": item['quantity'],
-            "stockCode": p.get('stockCode') or target_code, # XML Stok Kodu
-            "barcode": p.get('barcode', target_code), # XML Barkodu
-            "productMainId": p.get('barcode', target_code), # Model Kodu = Barkod (Kullanıcı talebi)
+            "stockCode": p.get('stockCode') or item['target_barcode'], # XML Stok Kodu
+            "barcode": item['target_barcode'], # Final Barcode
+            "productMainId": item['target_barcode'], # Model Kodu = Barkod (Kullanıcı talebi)
             "shipmentTemplate": shipment_template,
             "preparingDay": 3,
             "maxPurchaseQuantity": 50, # Optional
@@ -1482,6 +1493,13 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
     # Dynamic settings
     shipment_template = Setting.get("N11_DEFAULT_SHIPMENT_TEMPLATE", "Standart", user_id=user_id)
     default_brand = Setting.get("N11_DEFAULT_BRAND", "Vidos", user_id=user_id)
+    
+    # Barcode Settings (Sync Page & General)
+    auto_gen_empty = Setting.get("N11_AUTO_GENERATE_BARCODE", "0", user_id=user_id) == "1" or \
+                     Setting.get("AUTO_SYNC_USE_RANDOM_BARCODE_n11", "false", user_id=user_id) == "true" or \
+                     (src and src.use_random_barcode)
+    auto_gen_all = Setting.get("N11_OVERWRITE_BARCODE_ALL", "0", user_id=user_id) == "1" or \
+                   Setting.get("AUTO_SYNC_USE_OVERRIDE_BARCODE_n11", "false", user_id=user_id) == "true"
 
     total_ops = len(to_update or []) + len(to_create or []) + len(to_zero or [])
     completed_ops = 0
@@ -1571,6 +1589,13 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
                     return res
             
             barcode = xml_item.barcode
+            
+            # Application of Barcode Rules
+            if auto_gen_all:
+                barcode = generate_random_barcode()
+            elif auto_gen_empty and (not barcode or barcode.strip() == "" or barcode == "0" or barcode.lower() == "bgz0"):
+                barcode = generate_random_barcode()
+            
             raw = json.loads(xml_item.raw_data)
             final_price, rule_desc = calculate_price(xml_item.price, 'n11', user_id=user_id, return_details=True)
             
@@ -1653,11 +1678,13 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
                 for i, (item_payload, xml_record, r_desc) in enumerate(batch):
                     if payloads[i] is None: continue # Was skipped
                     
-                    # Duplicate check for safety
-                    existing = MarketplaceProduct.query.filter_by(user_id=user_id, marketplace='n11', stock_code=xml_record.stock_code).first()
+                    barcode = item_payload['barcode']
+
+                    # Duplicate check for safety (DB level)
+                    existing = MarketplaceProduct.query.filter_by(user_id=user_id, marketplace='n11', barcode=barcode).first()
                     if not existing:
                         new_mps.append(MarketplaceProduct(
-                            user_id=user_id, marketplace='n11', barcode=item_payload['barcode'],
+                            user_id=user_id, marketplace='n11', barcode=barcode,
                             stock_code=xml_record.stock_code, title=xml_record.title,
                             price=xml_record.price, # Base
                             sale_price=item_payload.get('salePrice') or item_payload.get('listPrice'), # Calculated
