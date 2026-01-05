@@ -1662,8 +1662,7 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
                             price=xml_record.price, # Base
                             sale_price=item_payload.get('salePrice') or item_payload.get('listPrice'), # Calculated
                             quantity=item_payload['quantity'], status='Pending', on_sale=True,
-                            xml_source_id=src.id,
-                            batch_id=str(task_id) if task_id else None
+                            xml_source_id=src.id
                         ))
                         if job_id:
                             batch_logs.append(f"[YENİ] {xml_record.stock_code} kuyruğa alındı (Task: {task_id}). Fiyat: {item_payload.get('salePrice')} ({r_desc}), Stok: {xml_record.quantity}")
