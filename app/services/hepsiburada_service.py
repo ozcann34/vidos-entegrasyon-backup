@@ -309,17 +309,43 @@ def perform_hepsiburada_batch_update(job_id: str, items: List[Dict[str, Any]], u
         # Send in chunks of 50 (HB limit is 1000 but small chunks safer for logs)
         total_sent = 0
         from app.utils.helpers import chunked
-        for chunk in chunked(payload, 50):
-            try:
-                res = client.upload_products(chunk)
-                total_sent += len(chunk)
-                append_mp_job_log(job_id, f"✅ {len(chunk)} ürün gönderildi. (Toplam: {total_sent}/{len(payload)})")
-                
-                # Check for individual item status if possible via HB (usually it's async but check Response if available)
-                # HB returns status code 202 and a tracking ID.
-                # If we have errors at this stage, they are usually authentication or schema errors.
-            except Exception as batch_err:
-                append_mp_job_log(job_id, f"❌ Chunk gönderim hatası: {str(batch_err)}", level='error')
+        for idx, chunk in enumerate(chunked(payload, 50), start=1):
+            # Retry loop for API Limits (HB: 5 concurrent, 429 on limit)
+            max_retries = 3
+            retry_delay = 30  # 30 seconds for Hepsiburada
+            
+            for attempt in range(max_retries):
+                try:
+                    res = client.upload_products(chunk)
+                    total_sent += len(chunk)
+                    append_mp_job_log(job_id, f"✅ {len(chunk)} ürün gönderildi. (Toplam: {total_sent}/{len(payload)})")
+                    
+                    # Update progress
+                    update_mp_job(job_id, progress={
+                        'current': total_sent,
+                        'total': len(payload),
+                        'message': f"Güncelleniyor: {total_sent}/{len(payload)}"
+                    })
+                    break  # Success, exit retry loop
+                    
+                except Exception as batch_err:
+                    error_str = str(batch_err).lower()
+                    # Check for rate limit (429) or concurrent request errors
+                    if '429' in error_str or 'too many' in error_str or 'concurrent' in error_str:
+                        if attempt < max_retries - 1:
+                            append_mp_job_log(job_id, f"⚠️ Hepsiburada API Limiti (429). {retry_delay} saniye bekleniyor... (Deneme {attempt+1}/{max_retries})", level='warning')
+                            update_mp_job(job_id, progress={
+                                'current': total_sent,
+                                'total': len(payload),
+                                'message': f"API Limiti Bekleniyor ({retry_delay}sn)..."
+                            })
+                            time.sleep(retry_delay)
+                            continue  # Retry
+                        else:
+                            append_mp_job_log(job_id, f"❌ Hepsiburada API limiti aşıldı, maksimum deneme sayısına ulaşıldı.", level='error')
+                    
+                    append_mp_job_log(job_id, f"❌ Chunk gönderim hatası: {str(batch_err)}", level='error')
+                    break  # Non-retryable error
             
             time.sleep(1)
             

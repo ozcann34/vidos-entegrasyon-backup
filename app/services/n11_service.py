@@ -444,6 +444,15 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
     # SPEED OPTIMIZATION: Cache category matches by path
     cat_path_cache = {}
     
+    total_to_process = len(barcodes)
+    for idx, barcode in enumerate(barcodes, start=1):
+        if idx % 10 == 0 or idx == total_to_process:
+             update_mp_job(job_id, progress={
+                 'current': idx,
+                 'total': total_to_process,
+                 'message': f"Ürünler hazırlanıyor: {idx}/{total_to_process}"
+             })
+    
     for barcode in barcodes:
         product = mp_map.get(barcode)
         if not product:
@@ -782,10 +791,34 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
     
     for idx, chunk in enumerate(chunks):
         append_mp_job_log(job_id, f"Part {idx+1}/{len(chunks)} gönderiliyor ({len(chunk)} ürün)...")
-        try:
-            resp = client.create_products(chunk)
-            task_id = resp.get('taskId') or resp.get('id')
-            if task_id:
+        
+        # Retry loop for API Limits
+        max_retries = 3
+        retry_delay = 300 # 5 minutes
+        
+        for attempt in range(max_retries):
+            try:
+                update_mp_job(job_id, progress={
+                    'current': total_sent,
+                    'total': len(items_to_send),
+                    'message': f"Part {idx+1}/{len(chunks)} N11'e iletiliyor..."
+                })
+                resp = client.create_products(chunk)
+                
+                # Check for limit error in response
+                err_msg = str(resp.get('result', {}).get('errorMessage', ''))
+                if "talep limitiniz dolmuştur" in err_msg.lower():
+                    append_mp_job_log(job_id, f"⚠️ N11 API Limiti doldu. {retry_delay} saniye bekleniyor... (Deneme {attempt+1}/{max_retries})", level='warning')
+                    update_mp_job(job_id, progress={
+                        'current': total_sent,
+                        'total': len(items_to_send),
+                        'message': "API Limiti Bekleniyor (5 dk)..."
+                    })
+                    time.sleep(retry_delay)
+                    continue # Retry this chunk
+
+                task_id = resp.get('taskId') or resp.get('id')
+                if task_id:
                 if not main_task_id: main_task_id = task_id
                 append_mp_job_log(job_id, f"Part {idx+1} Başarılı. Task ID: {task_id}")
                 
@@ -848,14 +881,19 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
                 # -------------------------
 
                 total_sent += len(chunk)
+                break # Success, exit retry loop
             else:
                  # Check for immediate errors
                 err = resp.get('result', {}).get('errorMessage') or str(resp)
-                # If "Attribute values must be entered" error, it confirms we need matches.
-                # For now report as error.
                 append_mp_job_log(job_id, f"Part {idx+1} Hata: {err}", level='error')
+                break # Non-retryable error
         except Exception as e:
+            if "talep limitiniz dolmuştur" in str(e).lower():
+                append_mp_job_log(job_id, f"⚠️ N11 API Limiti doldu (Exception). {retry_delay} saniye bekleniyor...", level='warning')
+                time.sleep(retry_delay)
+                continue
             append_mp_job_log(job_id, f"Part {idx+1} Exception: {e}", level='error')
+            break
             
     return {
         'success': True,

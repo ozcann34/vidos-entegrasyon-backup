@@ -481,42 +481,6 @@
         </ul>
     </div><!-- #sidebar end -->
 
-    <!-- Global Job Monitor Floating Panel -->
-    <div id="jobWidget" class="job-monitor-panel d-none" style="z-index: 9999;">
-        <div class="job-monitor-header" onclick="toggleJobWidgetBody()">
-            <div class="d-flex align-items-center gap-2">
-                <div class="job-monitor-spinner spinner-border spinner-border-sm text-light" role="status"></div>
-                <span class="job-monitor-title">İşlem Takibi</span>
-            </div>
-            <div class="job-monitor-controls">
-                <button type="button" class="btn btn-sm btn-link text-white p-0" id="jobMonitorMinimize">
-                    <i class="bi bi-dash-lg"></i>
-                </button>
-            </div>
-        </div>
-        <div class="job-monitor-body" id="jobMonitorBody">
-            <div class="job-monitor-status mb-3">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <div id="jobStatusText" class="small fw-bold"></div>
-                    <span id="jobProgressText" class="small text-white-50">0 / 0</span>
-                </div>
-                <div class="progress" style="height: 6px; background: rgba(255,255,255,0.1);">
-                    <div id="jobProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
-                        role="progressbar" style="width: 0%"></div>
-                </div>
-            </div>
-
-            <div id="jobLogs" class="job-monitor-logs mb-3">
-                <div class="text-muted small">İşlem başlatılıyor...</div>
-            </div>
-
-            <div class="d-grid shadow-sm">
-                <button onclick="cancelGlobalJob()" id="btnJobCancel" class="btn btn-sm btn-danger fw-bold">
-                    <i class="bi bi-x-circle me-1"></i> İşlemi Durdur
-                </button>
-            </div>
-        </div>
-    </div>
 
     <!-- Mobile Bottom Navigation -->
     <!-- Mobile Bottom Navigation Removed (Sidebar is used instead) -->

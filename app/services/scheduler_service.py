@@ -83,7 +83,7 @@ def _load_sync_jobs(job_wrapper_func):
             scheduler.add_job(
                 func=job_wrapper_func,
                 args=[mp],
-                trigger=IntervalTrigger(minutes=360), # Her zaman 360 dk (6 Saat)
+                trigger=IntervalTrigger(minutes=480), # Her zaman 480 dk (8 Saat)
                 id=job_id,
                 name=f"Global Hourly Sync {mp.capitalize()}",
                 replace_existing=True
@@ -162,7 +162,7 @@ def remove_order_sync_job():
         return False
 
 
-def add_sync_job(marketplace: str, interval_minutes: int = 360):
+def add_sync_job(marketplace: str, interval_minutes: int = 480):
     """
     Pazaryeri için senkronizasyon job'u ekle
     
@@ -252,6 +252,13 @@ def sync_marketplace_task(marketplace: str):
             
     except Exception as e:
         logger.exception(f"Global sync task failed for {marketplace}: {e}")
+    finally:
+        # Reschedule next run (8 hours after completion)
+        from app.models import Setting
+        enabled = Setting.get(f"SYNC_ENABLED_{marketplace}") == "true"
+        if enabled:
+            logger.info(f"Rescheduling next sync for {marketplace} in 8 hours.")
+            add_sync_job(marketplace, 480)
 
 
 

@@ -1603,49 +1603,70 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
         update_mp_job(job_id, progress={'current': success_count + fail_count, 'total': len(items_to_send), 'batch': f"{current_batch_num}/{total_batches}"})
 
         batch = items_to_send[i:i+batch_size]
-        try:
-            resp = client.create_products(batch)
-            batch_req_id = resp.get('batchRequestId')
-            batch_ids.append(batch_req_id)
-            append_mp_job_log(job_id, f"Batch {current_batch_num}/{total_batches} gönderildi. ID: {batch_req_id}")
-            
-            # Wait a bit for Trendyol to process
-            time.sleep(3)
-            
-            # Check batch status for detailed results
+        
+        # Retry loop for API Limits (up to 3 retries)
+        max_retries = 3
+        retry_delay = 60  # 1 minute for Trendyol
+        
+        for attempt in range(max_retries):
             try:
-                batch_status = client.check_batch_status(batch_req_id)
-                # append_mp_job_log(job_id, f"Batch durumu: {batch_status.get('status', 'UNKNOWN')}")
+                resp = client.create_products(batch)
+                batch_req_id = resp.get('batchRequestId')
+                batch_ids.append(batch_req_id)
+                append_mp_job_log(job_id, f"Batch {current_batch_num}/{total_batches} gönderildi. ID: {batch_req_id}")
                 
-                # Get item-level details
-                items_detail = batch_status.get('items', [])
-                for item_detail in items_detail:
-                    item_status = item_detail.get('status', '')
-                    barcode = item_detail.get('barcode', '')
+                # Wait a bit for Trendyol to process
+                time.sleep(3)
+                
+                # Check batch status for detailed results
+                try:
+                    batch_status = client.check_batch_status(batch_req_id)
+                    # append_mp_job_log(job_id, f"Batch durumu: {batch_status.get('status', 'UNKNOWN')}")
                     
-                    if item_status == 'SUCCESS':
-                        success_count += 1
-                    else:
-                        fail_count += 1
-                        errors = item_detail.get('failureReasons', [])
-                        error_msg = '; '.join(errors) if errors else 'Bilinmeyen hata'
-                        failures.append({
-                            'barcode': barcode,
-                            'reason': error_msg
-                        })
-                        append_mp_job_log(job_id, f"❌ {barcode}: {error_msg}", level='warning')
-                
-                # Update progress after batch check
-                update_mp_job(job_id, progress={'current': success_count + fail_count, 'total': len(items_to_send), 'batch': f"{current_batch_num}/{total_batches}"})
+                    # Get item-level details
+                    items_detail = batch_status.get('items', [])
+                    for item_detail in items_detail:
+                        item_status = item_detail.get('status', '')
+                        barcode = item_detail.get('barcode', '')
+                        
+                        if item_status == 'SUCCESS':
+                            success_count += 1
+                        else:
+                            fail_count += 1
+                            errors = item_detail.get('failureReasons', [])
+                            error_msg = '; '.join(errors) if errors else 'Bilinmeyen hata'
+                            failures.append({
+                                'barcode': barcode,
+                                'reason': error_msg
+                            })
+                            append_mp_job_log(job_id, f"❌ {barcode}: {error_msg}", level='warning')
+                    
+                    # Update progress after batch check
+                    update_mp_job(job_id, progress={'current': success_count + fail_count, 'total': len(items_to_send), 'batch': f"{current_batch_num}/{total_batches}"})
 
-            except Exception as e:
-                append_mp_job_log(job_id, f"Batch durum sorgulanamadı: {e}", level='warning')
-                success_count += len(batch) # Assume success if check fails? Or fail? Let's assume success to not block flow, but log warning.
+                except Exception as e:
+                    append_mp_job_log(job_id, f"Batch durum sorgulanamadı: {e}", level='warning')
+                    success_count += len(batch) # Assume success if check fails? Or fail? Let's assume success to not block flow, but log warning.
                 
-        except Exception as e:
-            fail_count += len(batch)
-            failures.append({'reason': str(e)})
-            append_mp_job_log(job_id, f"Batch gönderim hatası: {e}", level='error')
+                break  # Success, exit retry loop
+                    
+            except Exception as e:
+                error_str = str(e).lower()
+                # Check for rate limit (429) or similar errors
+                if '429' in error_str or 'too many' in error_str or 'rate limit' in error_str:
+                    if attempt < max_retries - 1:
+                        append_mp_job_log(job_id, f"⚠️ Trendyol API Limiti (429). {retry_delay} saniye bekleniyor... (Deneme {attempt+1}/{max_retries})", level='warning')
+                        update_mp_job(job_id, progress={'current': success_count + fail_count, 'total': len(items_to_send), 'message': f"API Limiti Bekleniyor ({retry_delay}sn)..."})
+                        time.sleep(retry_delay)
+                        continue  # Retry
+                    else:
+                        append_mp_job_log(job_id, f"❌ Trendyol API limiti aşıldı, maksimum deneme sayısına ulaşıldı.", level='error')
+                
+                fail_count += len(batch)
+                failures.append({'reason': str(e)})
+                append_mp_job_log(job_id, f"Batch gönderim hatası: {e}", level='error')
+                break  # Non-retryable error
+
 
     return {
         'success': True,

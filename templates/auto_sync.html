@@ -22,7 +22,7 @@
                     </div>
                     <div class="text-end">
                         <span class="badge bg-light text-secondary border rounded-pill px-3 py-2 small">
-                            <i class="bi bi-clock-history me-1"></i> Her 6 Saatte Bir
+                            <i class="bi bi-clock-history me-1"></i> Her 8 Saatte Bir
                         </span>
                     </div>
                 </div>
@@ -71,31 +71,32 @@
                     </button>
                 </div>
 
-                <!-- Progress Tracking Area (Hidden by default) -->
                 <div class="sync-progress-area d-none mt-4" data-marketplace="{{ key }}">
-                    <div class="card border-info bg-info bg-opacity-10">
+                    <div class="card border-primary bg-primary bg-opacity-5">
                         <div class="card-body p-3">
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="small fw-bold text-info">
-                                    <i class="bi bi-sync me-1 spinner-border spinner-border-sm"></i>
-                                    <span class="sync-status-text">Senkronizasyon Başlatılıyor...</span>
+                                <span class="small fw-bold text-primary">
+                                    <i class="bi bi-arrow-repeat me-1 spinner-border spinner-border-sm"
+                                        style="border-width: 2px;"></i>
+                                    <span class="sync-status-text">Başlatılıyor...</span>
                                 </span>
-                                <span class="sync-percent-text text-info fw-bold">0%</span>
+                                <span class="sync-percent-text text-primary fw-bold">0%</span>
                             </div>
 
-                            <div class="progress mb-2" style="height: 8px;">
-                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-info sync-progress-bar"
+                            <div class="progress mb-2" style="height: 10px; border-radius: 5px;">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary sync-progress-bar"
                                     role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0"
                                     aria-valuemax="100"></div>
                             </div>
 
                             <div class="d-flex justify-content-between align-items-center mb-3">
-                                <span class="small text-muted sync-count-text">0 / 0</span>
-                                <span class="small text-muted sync-eta-text">Hesaplanıyor...</span>
+                                <span class="small text-muted sync-count-text">0 / 0 Ürün</span>
+                                <span class="badge bg-dark-subtle text-dark-emphasis sync-eta-text small">Tahmini:
+                                    --</span>
                             </div>
 
-                            <button class="btn btn-sm btn-danger w-100 sync-cancel-btn">
-                                <i class="bi bi-x-circle me-1"></i> İşlemi Durdur
+                            <button class="btn btn-sm btn-outline-danger w-100 sync-cancel-btn rounded-pill fw-bold">
+                                <i class="bi bi-stop-circle me-1"></i> İşlemi Durdur
                             </button>
                         </div>
                     </div>
@@ -164,12 +165,10 @@
 {% endblock %}
 {% block scripts %}
 <script>
-    (function () {
+    document.addEventListener('DOMContentLoaded', () => {
         const marketplaces = {{ marketplaces | tojson | safe
     }};
     let syncSettings = {};
-    let activeJobs = {};
-
 
     // --- Order Sync Functions ---
     async function loadOrderSettings() {
@@ -239,10 +238,11 @@
 
                     const toggleEl = card.querySelector('.sync-enable');
                     const xmlSelect = card.querySelector('.xml-source-select');
+                    const rndBarcodeCheck = card.querySelector('.random-barcode-check');
+                    const overrideBarcodeCheck = card.querySelector('.override-barcode-check');
+
                     if (toggleEl) toggleEl.checked = setting.enabled;
                     if (xmlSelect) xmlSelect.value = setting.xml_source_id || '';
-                    // Interval select removed from UI
-
                     if (rndBarcodeCheck) {
                         rndBarcodeCheck.checked = setting.use_random_barcode === 'true' || setting.use_random_barcode === true;
                     }
@@ -272,7 +272,7 @@
             const rndBarcodeCheck = card ? card.querySelector('.random-barcode-check') : null;
             const overrideBarcodeCheck = card ? card.querySelector('.override-barcode-check') : null;
 
-            const intervalVal = 360; // Fixed to 360 min (6 hours)
+            const intervalVal = 480; // Fixed to 480 min (8 hours)
             const useRandomBarcode = rndBarcodeCheck ? rndBarcodeCheck.checked : false;
             const useOverrideBarcode = overrideBarcodeCheck ? overrideBarcodeCheck.checked : false;
 
@@ -332,21 +332,14 @@
             const data = await resp.json();
 
             if (data.success && data.job_id) {
-                // Save to localStorage
                 const jobData = {
                     jobId: data.job_id,
                     marketplace: marketplace,
                     startTime: Date.now()
                 };
                 localStorage.setItem(`vidos_sync_job_${marketplace}`, JSON.stringify(jobData));
-
-                // Show progress area for this marketplace
                 showProgressArea(marketplace);
-
-                // Start polling for this specific job
                 pollLocalJob(marketplace, data.job_id);
-
-                // Reload logs after a while
                 setTimeout(loadLogs, 5000);
             } else {
                 throw new Error(data.message || 'İşlem başarısız');
@@ -383,17 +376,14 @@
         const countText = progressArea.querySelector('.sync-count-text');
         const etaText = progressArea.querySelector('.sync-eta-text');
 
-        // Calculate progress
         let current = 0;
         let total = 0;
 
-        // Check result first (completed jobs)
         if (jobData.result) {
             current = jobData.result.current || (Number(jobData.result.success_count || 0) + Number(jobData.result.fail_count || 0)) || 0;
             total = jobData.result.total || jobData.result.count || 0;
         }
 
-        // If result empty or incomplete, check progress object (running jobs)
         if (total === 0 && jobData.progress) {
             current = jobData.progress.current || 0;
             total = jobData.progress.total || 0;
@@ -401,12 +391,9 @@
 
         const percent = total > 0 ? Math.round((current / total) * 100) : 0;
 
-        // Update UI
-        // Update UI
         if (statusText) {
             let statusLabel = 'Bekliyor...';
             if (jobData.status === 'running') {
-                // Backend'den gelen detaylı mesaj varsa onu kullan, yoksa varsayılan
                 statusLabel = (jobData.progress && jobData.progress.message) ? jobData.progress.message : 'İşleniyor...';
             }
             else if (jobData.status === 'completed') statusLabel = 'Tamamlandı';
@@ -414,7 +401,6 @@
             else if (jobData.status === 'cancelled' || jobData.status === 'cancelling') statusLabel = 'Durduruluyor...';
             else if (jobData.status === 'cancelled_finished') statusLabel = 'İptal Edildi';
 
-            // Eğer mesaj çok uzunsa truncate et veya tooltip ekle (Opsiyonel, şimdilik direkt yaz)
             statusText.innerText = statusLabel;
         }
 
@@ -422,7 +408,6 @@
         if (progressBar) progressBar.style.width = `${percent}%`;
         if (countText) countText.innerText = `${current} / ${total}`;
 
-        // Calculate ETA
         if (etaText) {
             const eta = calculateETA(marketplace, current, total);
             etaText.innerText = eta || 'Hesaplanıyor...';
@@ -437,11 +422,11 @@
             const jobData = JSON.parse(jobDataStr);
             const startTime = jobData.startTime;
             const now = Date.now();
-            const elapsed = (now - startTime) / 1000; // seconds
+            const elapsed = (now - startTime) / 1000;
 
             if (current <= 0 || elapsed < 5) return null;
 
-            const rate = current / elapsed; // items per second
+            const rate = current / elapsed;
             const remaining = total - current;
             const etaSeconds = remaining / rate;
 
@@ -459,28 +444,19 @@
     async function pollLocalJob(marketplace, jobId) {
         try {
             const resp = await fetch(`/api/mp_jobs/${jobId}`);
-            if (!resp.ok) {
-                console.error('Job poll failed:', resp.status);
-                return;
-            }
-
+            if (!resp.ok) return;
             const data = await resp.json();
-
-            // Update progress area
             updateProgressArea(marketplace, data);
 
-            // Continue polling if job is still running
-            if (data.status === 'pending' || data.status === 'running') {
+            if (data.status === 'pending' || data.status === 'running' || data.status === 'pausing') {
                 setTimeout(() => pollLocalJob(marketplace, jobId), 2000);
             } else {
-                // Job finished
                 if (data.status === 'completed') {
                     setTimeout(() => {
                         hideProgressArea(marketplace);
                         localStorage.removeItem(`vidos_sync_job_${marketplace}`);
                     }, 8000);
                 } else {
-                    // Failed or cancelled - keep visible longer
                     setTimeout(() => {
                         hideProgressArea(marketplace);
                         localStorage.removeItem(`vidos_sync_job_${marketplace}`);
@@ -535,23 +511,15 @@
     }
 
     function restoreActiveJobs() {
-        // Check localStorage for all marketplace jobs
         const mpList = ['trendyol', 'pazarama', 'hepsiburada', 'n11', 'idefix'];
-
         mpList.forEach(marketplace => {
             const jobDataStr = localStorage.getItem(`vidos_sync_job_${marketplace}`);
             if (jobDataStr) {
                 try {
                     const jobData = JSON.parse(jobDataStr);
-                    const jobId = jobData.jobId;
-
-                    // Show progress area
                     showProgressArea(marketplace);
-
-                    // Resume polling
-                    pollLocalJob(marketplace, jobId);
+                    pollLocalJob(marketplace, jobData.jobId);
                 } catch (e) {
-                    console.error('Failed to restore job for', marketplace, e);
                     localStorage.removeItem(`vidos_sync_job_${marketplace}`);
                 }
             }
@@ -559,11 +527,7 @@
     }
 
 
-    let currentLogPage = 1;
-    let totalLogPages = 1;
-
     async function loadLogs(marketplace = null, page = 1) {
-        currentLogPage = page;
         try {
             const url = marketplace
                 ? `/api/auto_sync/logs?marketplace=${marketplace}&page=${page}&per_page=20`
@@ -577,8 +541,6 @@
                 renderPagination(0, 0);
                 return;
             }
-
-            totalLogPages = data.pages;
 
             tbody.innerHTML = data.logs.map(log => {
                 const date = new Date(log.timestamp);
@@ -613,7 +575,6 @@
             }).join('');
 
             renderPagination(data.current_page, data.pages);
-
         } catch (err) {
             console.error('Error loading logs:', err);
         }
@@ -621,21 +582,13 @@
 
     function renderPagination(current, total) {
         const container = document.getElementById('syncLogsPagination');
-        if (!container) return;
-
-        if (total <= 1) {
-            container.innerHTML = '';
-            return;
-        }
+        if (!container || total <= 1) { if (container) container.innerHTML = ''; return; }
 
         let html = `<ul class="pagination pagination-sm mb-0 justify-content-end">`;
-
-        // Prev
         html += `<li class="page-item ${current === 1 ? 'disabled' : ''}">
                     <a class="page-link" href="#" onclick="loadLogs(document.getElementById('logMarketplaceFilter').value, ${current - 1}); return false;"><i class="bi bi-chevron-left"></i></a>
                  </li>`;
 
-        // Pages
         for (let i = 1; i <= total; i++) {
             if (i === 1 || i === total || (i >= current - 2 && i <= current + 2)) {
                 html += `<li class="page-item ${i === current ? 'active' : ''}">
@@ -646,101 +599,64 @@
             }
         }
 
-        // Next
         html += `<li class="page-item ${current === total ? 'disabled' : ''}">
                     <a class="page-link" href="#" onclick="loadLogs(document.getElementById('logMarketplaceFilter').value, ${current + 1}); return false;"><i class="bi bi-chevron-right"></i></a>
                  </li>`;
-
         html += `</ul>`;
         container.innerHTML = html;
     }
 
-    window.loadLogs = loadLogs;
-
     window.showLogDetails = function (details) {
         const tbody = document.getElementById('logDetailsTableBody');
         if (!tbody) return;
-        if (!details || details.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center">Detay bulunamadı</td></tr>';
-        } else {
-            tbody.innerHTML = details.map(d => {
-                const stockClass = d.stock_changed ? 'text-danger fw-bold' : '';
-                const priceClass = d.price_changed ? 'text-danger fw-bold' : '';
-                return `<tr>
-                        <td>${d.barcode}</td>
-                        <td>${d.old_stock} <i class="bi bi-arrow-right small text-muted"></i> <span class="${stockClass}">${d.new_stock}</span></td>
-                        <td>${d.old_price} <i class="bi bi-arrow-right small text-muted"></i> <span class="${priceClass}">${d.new_price}</span></td>
-                        <td>${d.stock_changed ? '<span class="badge bg-warning text-dark">Stok</span>' : ''}</td>
-                        <td>${d.price_changed ? '<span class="badge bg-info text-dark">Fiyat</span>' : ''}</td>
-                    </tr>`;
-            }).join('');
-        }
+        tbody.innerHTML = (details || []).map(d => {
+            const stockClass = d.stock_changed ? 'text-danger fw-bold' : '';
+            const priceClass = d.price_changed ? 'text-danger fw-bold' : '';
+            return `<tr>
+                    <td>${d.barcode}</td>
+                    <td>${d.old_stock} <i class="bi bi-arrow-right small text-muted"></i> <span class="${stockClass}">${d.new_stock}</span></td>
+                    <td>${d.old_price} <i class="bi bi-arrow-right small text-muted"></i> <span class="${priceClass}">${d.new_price}</span></td>
+                    <td>${d.stock_changed ? '<span class="badge bg-warning text-dark">Stok</span>' : ''}</td>
+                    <td>${d.price_changed ? '<span class="badge bg-info text-dark">Fiyat</span>' : ''}</td>
+                </tr>`;
+        }).join('') || '<tr><td colspan="5" class="text-center">Detay bulunamadı</td></tr>';
         const modal = document.getElementById('logDetailsModal');
         if (modal) new bootstrap.Modal(modal).show();
     };
 
-    document.addEventListener('DOMContentLoaded', () => {
-        // Sync toggles
-        document.querySelectorAll('.sync-enable').forEach(toggle => {
-            toggle.addEventListener('change', (e) => toggleSync(e.target.dataset.marketplace, e.target.checked));
-        });
-
-        // Interval changes REMOVED as UI is fixed to 6 hours
-
-        // XML source changes
-        document.querySelectorAll('.xml-source-select').forEach(select => {
-            select.addEventListener('change', (e) => {
-                const mp = e.target.dataset.marketplace;
-                const toggleEl = document.getElementById(`enable_${mp}`);
-                if (toggleEl && toggleEl.checked) {
-                    toggleSync(mp, true);
-                }
-            });
-        });
-
-        // Manual sync buttons
-        document.querySelectorAll('.manual-sync-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => triggerManualSync(e.target.closest('button').dataset.marketplace));
-        });
-
-        // Cancel buttons for local progress
-        document.querySelectorAll('.sync-cancel-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const progressArea = e.target.closest('.sync-progress-area');
-                if (progressArea) {
-                    const marketplace = progressArea.dataset.marketplace;
-                    cancelLocalJob(marketplace);
-                }
-            });
-        });
-
-        const logFilter = document.getElementById('logMarketplaceFilter');
-        if (logFilter) {
-            logFilter.addEventListener('change', (e) => loadLogs(e.target.value || null));
-        }
-
-        // Order sync toggles
-        const orderToggle = document.getElementById('order-sync-toggle');
-        if (orderToggle) orderToggle.addEventListener('change', saveOrderSettings);
-
-        const orderInterval = document.getElementById('order-sync-interval');
-        if (orderInterval) orderInterval.addEventListener('change', saveOrderSettings);
-
-        // Restore active jobs from localStorage on page load
-        restoreActiveJobs();
-
-        // Initialize
-        loadOrderSettings();
-        loadSettings();
-        loadLogs();
-
-        // Auto refresh logs
-        setInterval(() => {
-            const filter = document.getElementById('logMarketplaceFilter');
-            loadLogs(filter ? filter.value : null);
-        }, 30000);
+    // --- Event Listeners ---
+    document.querySelectorAll('.sync-enable').forEach(toggle => {
+        toggle.addEventListener('change', (e) => toggleSync(e.target.dataset.marketplace, e.target.checked));
     });
-}) ();
+
+    document.querySelectorAll('.xml-source-select').forEach(select => {
+        select.addEventListener('change', (e) => {
+            const mp = e.target.dataset.marketplace;
+            const toggleEl = document.getElementById(`enable_${mp}`);
+            if (toggleEl && toggleEl.checked) toggleSync(mp, true);
+        });
+    });
+
+    document.querySelectorAll('.manual-sync-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => triggerManualSync(e.target.closest('button').dataset.marketplace));
+    });
+
+    document.querySelectorAll('.sync-cancel-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const mp = e.target.closest('.sync-progress-area').dataset.marketplace;
+            cancelLocalJob(mp);
+        });
+    });
+
+    const logFilter = document.getElementById('logMarketplaceFilter');
+    if (logFilter) logFilter.addEventListener('change', (e) => loadLogs(e.target.value || null));
+
+    restoreActiveJobs();
+    loadOrderSettings();
+    loadSettings();
+    loadLogs();
+    setInterval(() => loadLogs(logFilter ? logFilter.value : null), 30000);
+});
 </script>
 
 <style>
@@ -774,8 +690,7 @@
                                 <th>Fiyat Değ.</th>
                             </tr>
                         </thead>
-                        <tbody id="logDetailsTableBody">
-                        </tbody>
+                        <tbody id="logDetailsTableBody"></tbody>
                     </table>
                 </div>
             </div>

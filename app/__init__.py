@@ -8,7 +8,14 @@ from sqlalchemy import MetaData
 import logging
 
 # Configure logging
+import time
+def customTime(*args):
+    # UTC+3 offset: 3 * 3600 seconds
+    utc_plus_3 = time.time() + (3 * 3600)
+    return datetime.utcfromtimestamp(utc_plus_3).timetuple()
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.Formatter.converter = customTime
 
 naming_convention = {
     "ix": 'ix_%(column_0_label)s',

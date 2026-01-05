@@ -341,28 +341,48 @@ items: List[Dict[str, Any]],
         
         payload = {"items": processed_items}
         
-        try:
-            response = self.session.post(
-                url,
-                headers=self._get_headers(),
-                json=payload,
-                timeout=30
-            )
-            
-            response.raise_for_status()
-            result = response.json()
-            
-            if batch_callback and 'batchRequestId' in result:
-                batch_callback(result['batchRequestId'], result)
+        # Retry loop for API Limits (Idefix uses Retry-After header)
+        max_retries = 3
+        
+        for attempt in range(max_retries):
+            try:
+                response = self.session.post(
+                    url,
+                    headers=self._get_headers(),
+                    json=payload,
+                    timeout=30
+                )
                 
-            return result
-            
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Idefix API request failed: {str(e)}")
-            if hasattr(e, 'response') and e.response is not None:
-                logger.error(f"Response status: {e.response.status_code}")
-                logger.error(f"Response body: {e.response.text}")
-            raise
+                response.raise_for_status()
+                result = response.json()
+                
+                if batch_callback and 'batchRequestId' in result:
+                    batch_callback(result['batchRequestId'], result)
+                    
+                return result
+                
+            except requests.exceptions.RequestException as e:
+                # Check for rate limit (429) and respect Retry-After header
+                if hasattr(e, 'response') and e.response is not None:
+                    if e.response.status_code == 429:
+                        retry_after = e.response.headers.get('Retry-After', '5')
+                        try:
+                            wait_time = float(retry_after)
+                        except (ValueError, TypeError):
+                            wait_time = 5.0
+                        
+                        if attempt < max_retries - 1:
+                            logger.warning(f"Idefix API rate limit (429). Waiting {wait_time} seconds... (Attempt {attempt+1}/{max_retries})")
+                            time.sleep(wait_time)
+                            continue  # Retry
+                        else:
+                            logger.error(f"Idefix API rate limit exceeded, max retries reached.")
+                    
+                    logger.error(f"Response status: {e.response.status_code}")
+                    logger.error(f"Response body: {e.response.text}")
+                
+                logger.error(f"Idefix API request failed: {str(e)}")
+                raise
     
     def get_inventory_status(self, batch_request_id: str) -> Dict[str, Any]:
         """
