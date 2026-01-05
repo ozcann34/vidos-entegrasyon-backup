@@ -147,6 +147,9 @@ def _build_n11_tfidf():
         logging.error(f"N11 TF-IDF build error: {e}")
 
 def find_matching_n11_category(query: str, user_id: int = None, job_id: str = None) -> Optional[Dict[str, Any]]:
+    # Cleanup query: Remove redundant symbols often found in XML paths
+    query_clean = query.replace('>>>', ' ').replace('>', ' ').strip()
+    
     # 1. PRIORITY: Check manual mapping or previously saved matches in DB
     from app.services.smart_match_service import SmartMatchService
     db_cat_id, db_cat_path = SmartMatchService.get_category_match(query, 'n11')
