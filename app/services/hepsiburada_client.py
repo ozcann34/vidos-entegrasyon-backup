@@ -103,7 +103,7 @@ class HepsiburadaClient:
         return {"success": False, "details": results}
 
     def _get_auth_headers(self) -> Dict[str, str]:
-        """Helper method with correct auth format"""
+        """Helper method with correct auth format as per HB guidelines (Strategy 1: UA=MerchantID)"""
         import base64
         m_id = self.merchant_id.strip()
         s_key = self.service_key.strip()
@@ -112,8 +112,7 @@ class HepsiburadaClient:
         return {
             "Authorization": f"Basic {encoded}",
             "User-Agent": f"{m_id}",
-            "Accept": "application/json",
-            "Content-Type": "application/json"
+            "Accept": "application/json"
         }
 
     def import_products_file(self, json_file_content: str, file_name: str = "products.json") -> Dict[str, Any]:
@@ -124,18 +123,10 @@ class HepsiburadaClient:
         # Production URL for Catalog Import
         url = "https://mpop.hepsiburada.com/product/api/products/import"
         
-        m_id = self.merchant_id.strip()
-        s_key = self.service_key.strip()
-        
-        # Manual Basic Auth as requested by user debugging
-        import base64
-        auth_str = f"{m_id}:{s_key}"
-        encoded_auth = base64.b64encode(auth_str.encode('utf-8')).decode('utf-8')
-        
-        headers = {
-            "Authorization": f"Basic {encoded_auth}",
-            "User-Agent": "VidosEntegrasyon/1.0"
-        }
+        headers = self._get_auth_headers()
+        # Ensure we don't have Content-Type here because 'requests' will set it for multipart/form-data
+        if "Content-Type" in headers:
+            del headers["Content-Type"]
         
         # Multipart upload
         files = {
@@ -448,22 +439,6 @@ class HepsiburadaClient:
             logging.error(f"Hepsiburada reject_claim error: {e}")
             raise
 
-    def _get_auth_headers(self) -> Dict[str, str]:
-        """Helper method with correct auth format"""
-        import base64
-        m_id = self.merchant_id.strip()
-        s_key = self.service_key.strip()
-        
-        # Correct format: merchantId:serviceKey
-        auth_string = f"{m_id}:{s_key}"
-        encoded = base64.b64encode(auth_string.encode('utf-8')).decode('utf-8')
-        
-        return {
-            "Authorization": f"Basic {encoded}",
-            "User-Agent": f"VidosE_{m_id}", 
-            "Accept": "application/json",
-            "Content-Type": "application/json"
-        }
 
     def search_brands(self, name: str) -> List[Dict[str, Any]]:
         """Search for brands by name."""

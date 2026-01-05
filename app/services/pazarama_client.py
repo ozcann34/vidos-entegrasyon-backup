@@ -395,7 +395,8 @@ class PazaramaClient:
             return data.get("data") or {}
         return {}
 
-    def update_price(self, items: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def update_prices(self, items: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Update products prices using v2 API."""
         if not items:
             raise ValueError("En az bir fiyat kaydı gönderilmelidir.")
         url = f"{BASE_URL}/product/updatePrice-v2"
@@ -407,7 +408,8 @@ class PazaramaClient:
         )
         return resp.json()
 
-    def update_stock(self, items: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def update_stocks(self, items: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Update products stocks using v2 API."""
         if not items:
             raise ValueError("En az bir stok kaydı gönderilmelidir.")
         url = f"{BASE_URL}/product/updateStock-v2"

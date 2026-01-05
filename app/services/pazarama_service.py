@@ -1020,7 +1020,7 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
         append_mp_job_log(job_id, f"Kayitli marka ID kullaniliyor: {saved_brand_id[:20]}...")
     
     DEFAULT_DESI = 1
-    DEFAULT_VAT_RATE = 10
+    DEFAULT_VAT_RATE = 20
     
     for idx, barcode in enumerate(barcodes, 1):
         # Check for pause/cancel
@@ -1254,13 +1254,17 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
             if not product_images:
                 product_images = [{'imageurl': 'https://via.placeholder.com/500'}]
             
+            # Dynamic settings for Pazarama
+            p_desi = to_int(Setting.get("PAZARAMA_DEFAULT_DESI", "1", user_id=user_id), 1)
+            p_vat_rate = to_int(Setting.get("PAZARAMA_DEFAULT_VAT_RATE", "20", user_id=user_id), 20)
+            
             # Build Pazarama product payload
             product_data = {
                 'name': title[:100],
                 'displayName': title[:250],
                 'description': product.get('details') or description,
                 'brandId': brand_id,
-                'desi': DEFAULT_DESI,
+                'desi': p_desi,
                 'code': barcode,
                 'groupCode': (product.get('parent_barcode') or product.get('modelCode') or product.get('productCode') or product.get('stock_code') or barcode)[:100],
                 'stockCode': (product.get('stock_code') or barcode)[:100],
@@ -1269,7 +1273,7 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
                 'salePrice': price,
                 'productSaleLimitQuantity': 0,
                 'currencyType': 'TRY',
-                'vatRate': DEFAULT_VAT_RATE,
+                'vatRate': p_vat_rate,
                 'images': product_images,
                 'categoryId': category_id,
                 'attributes': attributes
@@ -1570,7 +1574,7 @@ def perform_pazarama_product_update(barcode: str, data: Dict[str, Any]) -> Dict[
     if 'quantity' in data:
         try:
             qty = int(data['quantity'])
-            client.update_stock([{'code': code, 'stockCount': qty}])
+            client.update_stocks([{'code': code, 'stockCount': qty}])
             messages.append("Stok güncellendi.")
         except Exception as e:
             messages.append(f"Stok hatası: {e}")
@@ -1580,7 +1584,7 @@ def perform_pazarama_product_update(barcode: str, data: Dict[str, Any]) -> Dict[
         try:
             p = float(data.get('salePrice') or data.get('listPrice'))
             # Pazarama expects both
-            client.update_price([{'code': code, 'listPrice': p, 'salePrice': p}])
+            client.update_prices([{'code': code, 'listPrice': p, 'salePrice': p}])
             messages.append("Fiyat güncellendi.")
         except Exception as e:
             messages.append(f"Fiyat hatası: {e}")
@@ -1739,7 +1743,7 @@ def perform_pazarama_batch_update(job_id: str, items: List[Dict[str, Any]], user
         
         if stock_updates:
             for chunk in chunked(stock_updates, 25):
-                client.update_stock(chunk)
+                client.update_stocks(chunk)
                 total_sent += len(chunk)
                 append_mp_job_log(job_id, f"✅ {total_sent}/{len(stock_updates)} stok gönderildi.")
                 time.sleep(2)
@@ -1747,7 +1751,7 @@ def perform_pazarama_batch_update(job_id: str, items: List[Dict[str, Any]], user
         if price_updates:
             total_sent = 0
             for chunk in chunked(price_updates, 25):
-                client.update_price(chunk)
+                client.update_prices(chunk)
                 total_sent += len(chunk)
                 append_mp_job_log(job_id, f"✅ {total_sent}/{len(price_updates)} fiyat gönderildi.")
                 time.sleep(2)
@@ -1794,8 +1798,8 @@ def perform_pazarama_direct_push_actions(user_id: int, to_update: List[Any], to_
             
             final_price, rule_desc = calculate_price(xml_item.price, 'pazarama', user_id=user_id, return_details=True)
             
-            update_payloads_stock.append({"StockCode": local_item.stock_code, "Quantity": xml_item.quantity})
-            update_payloads_price.append({"StockCode": local_item.stock_code, "ListPrice": final_price, "SalePrice": final_price})
+            update_payloads_stock.append({"code": local_item.stock_code, "stockCount": xml_item.quantity})
+            update_payloads_price.append({"code": local_item.stock_code, "listPrice": final_price, "salePrice": final_price})
             
             db_mappings.append({
                 'id': local_item.id,

@@ -354,10 +354,12 @@ def sync_hepsiburada_with_xml_diff(job_id: str, xml_source_id: Any, user_id: int
     if to_zero_barcodes:
         zero_payload = []
         for bc in to_zero_barcodes:
+            # Use dynamic cargo company from settings
+            h_cargo = Setting.get("HEPSIBURADA_CARGO_COMPANY", "Hepsijet", user_id=user_id)
             zero_payload.append({
                 "MerchantSku": bc,
                 "AvailableStock": 0,
-                "CargoCompany": "Yurtiçi Kargo" # Required by HB Listing API
+                "CargoCompany": h_cargo # Dynamic
             })
         
         for chunk in chunked(zero_payload, 100):

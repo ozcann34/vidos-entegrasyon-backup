@@ -148,7 +148,19 @@
 - [x] Ödeme sayfası syntax hatasının giderilmesi
 
 ---
+## 🛠 SPRINT 7: N11 DIRECT PUSH & API UYUMLULUK HATALARI (P0)
+**Durum**: [/] Devam Ediyor
+
+### A. N11 Gönderim ve Hata Yönetimi 🐛
+- [/] [n11_service.py] → `perform_n11_direct_push_actions` hata yönetimi iyileştirmesi
+- [ ] API'den dönen `REJECT` durumunun ve sebeplerinin loglanması
+- [ ] Kargo şablonunun (`shipmentTemplate`) hardcoded yapıdan Setting'e taşınması
+- [ ] Başarılı gönderimlerde `taskId` bilgisinin loglara eklenmesi
+- [ ] Ürün hazırlama aşamasındaki zorunlu alan kontrolünün (attributes) sıkılaştırılması
+
+---
 ## 📊 İLERLEME ÖZETİ
-- **Sprint 1, 2, 3, 4, 5**: %100 Tamamlandı
-- **Sprint 6**: %0 Başlıyor
-- **Genel İlerleme**: Shopier entegrasyonu tamamlandı, şimdi son kullanıcı deneyimi iyileştiriliyor.
+- **Sprint 1-5**: %100 Tamamlandı
+- **Sprint 6**: %90 Tamamlandı
+- **Sprint 7**: %10 Başlıyor
+- **Genel İlerleme**: Pazaryeri API uyumluluğu ve stabilite üzerinde çalışılıyor.

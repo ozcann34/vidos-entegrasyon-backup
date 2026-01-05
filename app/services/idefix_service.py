@@ -1861,6 +1861,11 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
         # Determine grouping ID - Fixed priority: parent_barcode > modelCode > productCode
         pm_id = rec.get('parent_barcode') or rec.get('modelCode') or rec.get('productCode') or item.get('vendorStockCode', item['barcode'])
         
+        # Dynamic settings for Idefix
+        i_desi = to_int(Setting.get("IDEFIX_DEFAULT_DESI", "1", user_id=user_id), 1)
+        i_delivery_duration = to_int(Setting.get("IDEFIX_DELIVERY_DURATION", "3", user_id=user_id), 3)
+        i_delivery_type = Setting.get("IDEFIX_DELIVERY_TYPE", "regular", user_id=user_id)
+
         new_prod = {
             "barcode": item['barcode'],
             "title": item['title'],
@@ -1869,13 +1874,13 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
             "categoryId": int(item_cat_id),
             "inventoryQuantity": int(item.get('inventoryQuantity', 0)),
             "vendorStockCode": pm_id, # Idefix often uses vendorStockCode as grouping anchor in some flows
-            "desi": item.get('desi', 1),
+            "desi": i_desi,
             "description": rec.get('details') or item.get('description') or item.get('title', ''),
             "price": float(item.get('price', 0)),
             "comparePrice": float(item.get('comparePrice', item.get('price', 0))),
             "vatRate": idefix_vat,
-            "deliveryDuration": 3,
-            "deliveryType": "regular",
+            "deliveryDuration": i_delivery_duration,
+            "deliveryType": i_delivery_type,
             "images": fixed_images if fixed_images else [],
             "attributes": product_attributes  # Required category attributes
         }
@@ -2029,42 +2034,6 @@ def perform_idefix_send_all(job_id: str, xml_source_id: Any, user_id: int = None
     append_mp_job_log(job_id, f"Toplam {len(all_barcodes)} ürün bulundu. Gönderim başlıyor...")
     return perform_idefix_send_products(job_id, all_barcodes, xml_source_id, user_id=user_id, **kwargs)
 
-def perform_idefix_batch_update(job_id: str, items: List[Dict[str, Any]], user_id: int = None) -> Dict[str, Any]:
-    """
-    Batch update Idefix stock/price from local data.
-    items: [{'barcode': '...', 'stock': 10, 'price': 100.0}, ...]
-    """
-    try:
-        from app.services.job_queue import append_mp_job_log
-        client = get_idefix_client(user_id=user_id)
-        append_mp_job_log(job_id, f"Idefix toplu güncelleme başlatıldı. {len(items)} ürün.")
-        
-        formatted_items = []
-        for item in items:
-            f_item = {'barcode': item['barcode']}
-            if 'stock' in item:
-                f_item['stockCount'] = int(item['stock'])
-            if 'price' in item:
-                f_item['salePrice'] = float(item['price'])
-                f_item['listPrice'] = float(item['price'])
-            formatted_items.append(f_item)
-            
-        if not formatted_items:
-             return {'success': False, 'message': 'Güncellenecek veri bulunamadı.'}
-             
-        # Idefix client.update_inventory_and_price handles chunking internally or just take all?
-        # Usually it's better to chunk here too
-        total_sent = 0
-        from app.utils.helpers import chunked
-        for chunk in chunked(formatted_items, 50):
-            client.update_inventory_and_price(chunk)
-            total_sent += len(chunk)
-            append_mp_job_log(job_id, f"✅ {total_sent}/{len(formatted_items)} ürün gönderildi.")
-            time.sleep(1)
-            
-        return {'success': True, 'count': total_sent}
-    except Exception as e:
-        return {'success': False, 'message': str(e)}
 
 def fetch_all_idefix_products(user_id: Optional[int] = None, job_id: Optional[str] = None) -> List[Dict[str, Any]]:
     """Fetch all products from Idefix API across all status pools."""
@@ -2379,33 +2348,32 @@ def perform_idefix_batch_update(job_id: str, items: List[Dict[str, Any]], user_i
         
         payload = []
         for item in items:
-            barcode = item['barcode']
-            idefix_item = {'barcode': barcode}
-            
-            if 'stock' in item:
-                idefix_item['inventoryQuantity'] = int(item['stock'])
-            
+            p_item = {
+                'barcode': item['barcode'],
+                'inventoryQuantity': int(item.get('stock', 0))
+            }
             if 'price' in item:
-                # Idefix update usually wants both if they are strict, but let's try partial
-                idefix_item['price'] = float(item['price'])
-                idefix_item['comparePrice'] = float(item['price']) # Default same
-                
-            payload.append(idefix_item)
+                price = float(item['price'])
+                p_item['price'] = price
+                p_item['comparePrice'] = price
+            
+            payload.append(p_item)
             
         if not payload:
             return {'success': False, 'message': 'Güncellenecek veri bulunamadı.'}
             
-        # Idefix batch limit is usually 100
         total_sent = 0
         from app.utils.helpers import chunked
-        for chunk in chunked(payload, 50):
-            client.update_inventory_and_price(chunk)
-            total_sent += len(chunk)
-            append_mp_job_log(job_id, f"{total_sent}/{len(payload)} ürün gönderildi.")
-            time.sleep(1)
+        for chunk in chunked(payload, 100):
+            try:
+                client.update_inventory_and_price(chunk)
+                total_sent += len(chunk)
+                append_mp_job_log(job_id, f"✅ {total_sent}/{len(payload)} ürün İdefix'e iletildi.")
+                time.sleep(0.5)
+            except Exception as e:
+                append_mp_job_log(job_id, f"Batch hatası: {e}", level='error')
             
-        append_mp_job_log(job_id, "Idefix güncelleme işlemi tamamlandı.")
-        return {'success': True, 'count': total_sent}
+        return {'success': True, 'count': total_sent, 'updated_count': total_sent}
         
     except Exception as e:
         msg = f"Idefix batch update hatası: {str(e)}"
@@ -2449,14 +2417,12 @@ def perform_idefix_direct_push_actions(user_id: int, to_update: List[Any], to_cr
                     return res
             
             final_price, rule_desc = calculate_price(xml_item.price, 'idefix', user_id=user_id, return_details=True)
-            # Idefix expects kuruş (integer)
-            price_kuruş = int(round(final_price, 2) * 100)
             
             update_payloads.append({
                 "barcode": local_item.barcode,
-                "price": price_kuruş,
-                "comparePrice": price_kuruş, # Default same as price
-                "inventoryQuantity": xml_item.quantity
+                "price": float(final_price),
+                "comparePrice": float(final_price),
+                "inventoryQuantity": int(xml_item.quantity)
             })
             
             db_mappings.append({
@@ -2480,7 +2446,7 @@ def perform_idefix_direct_push_actions(user_id: int, to_update: List[Any], to_cr
                         append_mp_job_log(job_id, "İptal edildi (Batch sırasında)", level='warning')
                         return res
                 
-                client.update_products(batch)
+                client.update_inventory_and_price(batch)
                 res['updated_count'] += len(batch)
                 
                 # Corresponding DB updates

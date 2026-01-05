@@ -240,73 +240,60 @@ def get_n11_category_attributes(category_id: int, user_id: int = None):
     client = get_n11_client(user_id=user_id)
     if not client: return []
     
-    # Need to implement get_category_attributes in N11Client if not exists
-    # If not exists, we assume we need to skip deep matching for now or hack it.
-    # Assuming we add it to client or simulate it.
-    # N11 endpoint: GET /category/attributes?categoryId=...
-    # Let's hope client has it or we use requests directly.
-    # client.get_category_attributes(category_id)
+    # Call the client method which is implemented in n11_client.py
     try:
-        # Check if method exists, else fallback
-        if hasattr(client, 'get_category_attributes'):
-             attrs = client.get_category_attributes(category_id)
-        else:
-             # Manual call
-             url = f"{client.PRODUCT_BASE_URL}/category/attributes?categoryId={category_id}" # Approx URL
-             # Wait, N11 usually is /category/attributes or similar.
-             # Actually N11 REST is usually XML based for detailed attrs or different endpoint.
-             # n11api.txt says "GetCategoryAttributesList".
-             # Assuming standard REST:
-             url = f"https://api.n11.com/ms/category/attributes?categoryId={category_id}"
-             resp = client.requests.get(url, headers=client.headers) # Hacky access to requests?
-             # Let's assume client.get_category_attributes() IS implemented or we implement it now.
-             # Given I can't easily edit client in this same step without multiple calls,
-             # I will skip real HTTP call if method missing and return empty.
-             # BUT user wants brand match.
-             # I will assume `client.get_category_attributes` will be added.
-             return [] 
-
-        _N11_ATTR_CACHE[category_id] = attrs
-        return attrs
-    except:
+        attrs = client.get_category_attributes(category_id)
+        if attrs:
+             _N11_ATTR_CACHE[category_id] = attrs
+             return attrs
+        return []
+    except Exception as e:
+        import logging
+        logging.error(f"Error fetching N11 attributes for {category_id}: {e}")
         return []
 
 
-def search_n11_brand(name: str, user_id: int = None) -> Optional[Dict[str, Any]]:
+def search_n11_brand(name: str, user_id: int = None, cat_id: Optional[int] = None) -> Optional[Dict[str, Any]]:
     """
     Search for a brand in N11 via Category Attributes (Attribute ID 1).
-    Since N11 doesn't have a global brand search, we look into a common category
-    or iterate cached attributes if possible.
     """
     if not name: return None
     
     name = name.lower().strip()
     
-    # 1. Try to find in already cached attributes (if any)
-    # We look for Attribute ID 1 (Marka)
-    found_brand = None
-    
-    # Debug: Use a specific category that usually has brands (e.g. Phones or Accessories)
-    # 1000482 = Screen Protector, 1000476 = Mobile Phone, 1000273 = General Electronics
-    target_cats = [1000476, 1000482, 1000273, 1002571] # Added Mobile Phone (1000476) and Makeup (1002571) for broader range
-    
     client = get_n11_client(user_id=user_id)
     if not client: return None
+
+    # 1. If cat_id provided, search there first (Most accurate)
+    target_cats = []
+    if cat_id:
+        target_cats.append(cat_id)
     
-    for cat_id in target_cats:
-        attrs = get_n11_category_attributes(cat_id, user_id=user_id)
-        for attr in attrs:
-             if str(attr.get('id')) == '1': # Brand Attribute
-                  # Check values
-                  values = attr.get('values') or attr.get('valueList') or []
-                  for v in values:
-                       v_name = v.get('name') or v.get('value') or ''
-                       if v_name.lower().strip() == name:
-                            return {'id': v.get('id'), 'name': v_name}
-                       
-                       # Partial/Loose match check
-                       if name in v_name.lower():
-                            if not found_brand: found_brand = {'id': v.get('id'), 'name': v_name}
+    # 2. Add common fallback categories
+    fallback_cats = [1000476, 1000482, 1000273, 1002571]
+    for fc in fallback_cats:
+        if fc not in target_cats:
+            target_cats.append(fc)
+    
+    found_brand = None
+    for cid in target_cats:
+        try:
+            attrs = get_n11_category_attributes(cid, user_id=user_id)
+            for attr in attrs:
+                 if str(attr.get('id')) == '1': # Brand Attribute
+                      values = attr.get('values') or attr.get('valueList') or []
+                      for v in values:
+                           v_name = v.get('name') or v.get('value') or ''
+                           if v_name.lower().strip() == name:
+                                return {'id': v.get('id'), 'name': v_name}
+                           
+                           # Partial/Loose match check
+                           if name in v_name.lower() or v_name.lower() in name:
+                                if not found_brand: found_brand = {'id': v.get('id'), 'name': v_name}
+        except Exception:
+            continue
+    
+    return found_brand
     
     return found_brand
 
@@ -456,6 +443,9 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
 
     items_to_send = []
     skipped = []
+    failures_list = []
+    success_count = 0
+    fail_count = 0
 
     # 2. Match Categories First (Collect IDs to fetch attributes)
     matched_products = [] # list of (barcode, product_data, cat_id)
@@ -615,15 +605,30 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
                  mandatory = cat_attr.get('mandatory') or cat_attr.get('isMandatory') or False
                  attr_name = cat_attr.get('name') or cat_attr.get('attributeName') or ''
                  
-                 # Handling Brand Specifics (ID 1 is usually Brand)
+                 # Brand Mapping (ID 1)
                  if str(attr_id) == '1':
-                     if default_brand:
-                         attributes.append({
-                             "id": 1,
-                             "valueId": None,
-                             "customValue": default_brand 
-                         })
-                         brand_added = True
+                     # PRIORITY: 1. Default Setting, 2. XML Brand
+                     brand_name_to_use = default_brand or p.get('brand')
+                     
+                     if brand_name_to_use:
+                         # Attempt to resolve brand to N11 ID
+                         n11_brand = search_n11_brand(brand_name_to_use, user_id=user_id, cat_id=item['cat_id'])
+                         if n11_brand:
+                             attributes.append({
+                                 "id": 1,
+                                 "valueId": n11_brand['id']
+                             })
+                             append_mp_job_log(job_id, f"MARKA EŞLEŞTİ: {brand_name_to_use} -> ID:{n11_brand['id']}")
+                             brand_added = True
+                         else:
+                             # Fallback to customValue if not found in list
+                             attributes.append({
+                                 "id": 1,
+                                 "valueId": None,
+                                 "customValue": brand_name_to_use
+                             })
+                             append_mp_job_log(job_id, f"MARKA ÖZEL DEĞER: {brand_name_to_use} (N11 listesinde bulunamadı)")
+                             brand_added = True
                      continue
 
                  # Ensure mandatory attributes are handled
@@ -688,32 +693,30 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
         except Exception as e:
             append_mp_job_log(job_id, f"Özellik eşleştirme hatası: {e}", level='error')
 
-        # Fallback for Brand if not added via loop
-        if not brand_added and default_brand:
-             attributes.append({
-                "id": 1,
-                "valueId": None,
-                "customValue": default_brand
-            })
+        # Final Fallback for Brand if not added via loop (Category might not have attribute 1 but N11 might need it?)
+        if not brand_added:
+             brand_val = default_brand or p.get('brand')
+             if brand_val:
+                attributes.append({
+                    "id": 1,
+                    "valueId": None,
+                    "customValue": brand_val
+                })
 
-        # FIX: Payload must match n11api.txt "Tekil Ürün Yükleme" example (Flat structure)
-        target_code = item.get('target_barcode') or item['barcode']
-        
         payload_item = {
             "integrator": "VidosEntegrasyon",
             "title": item['title'][:200],
             "description": p.get('details') or item['description'],
             "categoryId": int(item['cat_id']), # FLAT ID
-            # "price": float(f"{item['price']:.2f}"), # Removed as it's redundant/wrong if salePrice exists
             "salePrice": float(f"{item['price']:.2f}"),
             "listPrice": float(f"{item['price']:.2f}"),
             "vatRate": 20, # Mandatory. Defaulting to 20%
             "currencyType": "TL",
             "images": [{"url": u, "order": i+1} for i, u in enumerate(images[:8])],
             "quantity": item['quantity'],
-            "stockCode": target_code, # Mandatory
-            "barcode": target_code, # Optional but good
-            "productMainId": p.get('parent_barcode') or p.get('modelCode') or p.get('productCode') or target_code, # Fixed priority for variant grouping
+            "stockCode": p.get('stockCode') or target_code, # XML Stok Kodu
+            "barcode": p.get('barcode', target_code), # XML Barkodu
+            "productMainId": p.get('barcode', target_code), # Model Kodu = Barkod (Kullanıcı talebi)
             "shipmentTemplate": shipment_template,
             "preparingDay": 3,
             "maxPurchaseQuantity": 50, # Optional
@@ -788,46 +791,41 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
                             continue
                             
                         # Check if any item is still non-final
-                        # Statuses: WAITING, DOING, DONE, ERROR, REJECTED
+                        # Statuses: WAITING, DOING, DONE, ERROR, REJECTED, REJECT
                         pending_count = 0
-                        done_count = 0
-                        error_count = 0
-                        error_messages = set()
+                        batch_done = 0
+                        batch_fail = 0
                         
                         for task_info in content:
                             st = task_info.get('status', '').upper()
                             if st in ['WAITING', 'DOING']:
                                 pending_count += 1
                             elif st == 'DONE':
-                                done_count += 1
+                                batch_done += 1
                             else:
-                                error_count += 1
-                                # Collect error message
-                                msg = task_info.get('statusDescription') or task_info.get('message') or ""
-                                if not msg and task_info.get('reasons'):
-                                    msg = ", ".join(task_info['reasons'])
-                                if msg:
-                                    error_messages.add(msg)
+                                batch_fail += 1
+                                bc = task_info.get('sellerStockCode') or task_info.get('barcode') or 'Bilinmeyen'
+                                e_msg = task_info.get('statusDescription') or task_info.get('message') or ""
+                                if not e_msg and task_info.get('reasons'):
+                                    e_msg = ", ".join(task_info['reasons'])
+                                failures_list.append({'barcode': bc, 'reason': e_msg or 'N11 Red/Hata'})
+                                if len(failures_list) <= 15:
+                                     append_mp_job_log(job_id, f"   ❌ {bc}: {e_msg}", level='error')
                         
                         if pending_count == 0:
                             # All items reached a final state
-                            if error_count == 0:
-                                append_mp_job_log(job_id, f"✅ Task {task_id}: Tüm ürünler ({done_count}) başarıyla işlendi.", level='info')
+                            success_count += batch_done
+                            fail_count += batch_fail
+                            if batch_fail == 0:
+                                append_mp_job_log(job_id, f"✅ Task {task_id}: Tüm ürünler ({batch_done}) başarıyla işlendi.", level='info')
                             else:
-                                append_mp_job_log(job_id, f"⚠️ Task {task_id}: {done_count} başarılı, {error_count} HATALI ürün.", level='warning')
-                                for task_info in content:
-                                    if task_info.get('status', '').upper() not in ['DONE', 'WAITING', 'DOING']:
-                                        bc = task_info.get('sellerStockCode', 'Bilinmeyen')
-                                        e_msg = task_info.get('statusDescription') or task_info.get('message') or "Bilinmeyen hata"
-                                        failures_list.append({'barcode': bc, 'reason': e_msg})
-                                        if len(failures_list) <= 10:
-                                             append_mp_job_log(job_id, f"   ❌ {bc}: {e_msg}", level='error')
+                                append_mp_job_log(job_id, f"⚠️ Task {task_id}: {batch_done} başarılı, {batch_fail} HATALI ürün.", level='warning')
                             
                             final_results_received = True
                             break
                         else:
                             if _check % 3 == 0:
-                                append_mp_job_log(job_id, f"⏳ Task {task_id}: {pending_count} ürün hala işleniyor...", level='info')
+                                append_mp_job_log(job_id, f"⏳ Task {task_id}: {pending_count}/{len(content)} ürün hala işleniyor...", level='info')
                                 
                     except Exception as chk_err:
                         append_mp_job_log(job_id, f"Task durum kontrol hatası: {chk_err}", level='warning')
@@ -1480,11 +1478,19 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
     client = get_n11_client(user_id=user_id)
     res = {'updated_count': 0, 'created_count': 0, 'zeroed_count': 0}
     
+    # Dynamic settings
+    shipment_template = Setting.get("N11_DEFAULT_SHIPMENT_TEMPLATE", "Standart", user_id=user_id)
+    default_brand = Setting.get("N11_DEFAULT_BRAND", "Vidos", user_id=user_id)
+
     total_ops = len(to_update or []) + len(to_create or []) + len(to_zero or [])
     completed_ops = 0
     if job_id:
         update_job_progress(job_id, 0, total_ops, 'İşlemler başlatılıyor...')
     
+    # --- 1. GÜNCELLEMELER (Update) ---
+    if to_update:
+        if job_id: update_job_progress(job_id, completed_ops, total_ops, f'Güncellemeler hazırlanıyor ({len(to_update)} ürün)...')
+        
         update_payloads = []
         db_mappings = []
         batch_logs = []
@@ -1585,7 +1591,7 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
                 "stockCode": xml_item.stock_code,
                 "barcode": barcode,
                 "productMainId": xml_item.stock_code,
-                "shipmentTemplate": "Varsayılan",
+                "shipmentTemplate": shipment_template,
                 "preparingDay": 3,
                 "attributes": [] # Mandatory
             }
@@ -1600,7 +1606,6 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
             item_payload['categoryId'] = int(match['id'])
             
             # Brand Attribute (Mandatory ID 1)
-            default_brand = Setting.get("N11_DEFAULT_BRAND", "Vidos", user_id=user_id)
             item_payload['attributes'].append({
                 "id": 1,
                 "valueId": None,
@@ -1628,12 +1633,16 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
                     continue
 
                 res_api = client.create_products(final_payloads)
+                task_id = res_api.get('taskId') or res_api.get('id')
                 
                 # Check for API level error
-                if res_api.get('result', {}).get('status') == 'ERROR':
-                    err_msg = res_api.get('result', {}).get('errorMessage', 'Bilinmeyen API Hatası')
+                if res_api.get('result', {}).get('status') == 'ERROR' or res_api.get('status') == 'REJECT':
+                    err_msg = res_api.get('result', {}).get('errorMessage') or \
+                             res_api.get('message') or \
+                             (", ".join(res_api.get('reasons', [])) if res_api.get('reasons') else 'Bilinmeyen API Hatası')
+                    
                     if job_id: append_mp_job_log(job_id, f"N11 API Hatası (Batch): {err_msg}", level='error')
-                    completed_ops += len(batch) # Still count for progress even if API failed
+                    completed_ops += len(batch)
                     if job_id:
                         update_job_progress(job_id, completed_ops, total_ops, f"Yeni Ürünler Ekleniyor ({completed_ops}/{total_ops})...")
                     continue # Skip DB update for this failed batch
@@ -1649,14 +1658,15 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
                     if not existing:
                         new_mps.append(MarketplaceProduct(
                             user_id=user_id, marketplace='n11', barcode=item_payload['barcode'],
-                            stock_code=xml_item.stock_code, title=xml_item.title,
-                            price=xml_item.price, # Base
-                            sale_price=item_payload['price'] if 'price' in item_payload else item_payload['salePrice'], # Calculated
-                            quantity=item_payload['quantity'], status='Pending', on_sale=True, # FIXED quantity access
-                            xml_source_id=src.id
+                            stock_code=xml_record.stock_code, title=xml_record.title,
+                            price=xml_record.price, # Base
+                            sale_price=item_payload.get('salePrice') or item_payload.get('listPrice'), # Calculated
+                            quantity=item_payload['quantity'], status='Pending', on_sale=True,
+                            xml_source_id=src.id,
+                            batch_id=str(task_id) if task_id else None
                         ))
                         if job_id:
-                            batch_logs.append(f"[YENİ] {xml_item.stock_code} yüklendi. Fiyat: {item_payload.get('salePrice')} ({r_desc}), Stok: {xml_item.quantity}")
+                            batch_logs.append(f"[YENİ] {xml_record.stock_code} kuyruğa alındı (Task: {task_id}). Fiyat: {item_payload.get('salePrice')} ({r_desc}), Stok: {xml_record.quantity}")
                 
                 if new_mps:
                     db.session.bulk_save_objects(new_mps)
@@ -1671,6 +1681,7 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
                     update_job_progress(job_id, completed_ops, total_ops, f"Yeni Ürünler Ekleniyor ({completed_ops}/{total_ops})...")
             except Exception as e:
                 db.session.rollback()
+                if job_id: append_mp_job_log(job_id, f"N11 ürün oluşturma hatası: {str(e)}", level='error')
     # --- 3. STOK SIFIRLAMA (Zero) ---
     if to_zero:
         if job_id: update_job_progress(job_id, completed_ops, total_ops, f'Stok sıfırlama hazırlanıyor ({len(to_zero)} ürün)...')

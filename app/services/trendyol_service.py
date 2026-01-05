@@ -1523,13 +1523,13 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
             "categoryId": category_id,
             "quantity": stock,
             "stockCode": product.get('stock_code') or barcode,
-            "dimensionalWeight": 2,
+            "dimensionalWeight": to_int(Setting.get("TRENDYOL_DEFAULT_DESI", "2", user_id=user_id), 2),
             "description": final_desc,
             "currencyType": "TRY",
             "listPrice": listPrice,
             "salePrice": salePrice,
             "vatRate": item_vat,
-            "cargoCompanyId": 10,
+            "cargoCompanyId": to_int(Setting.get("TRENDYOL_CARGO_COMPANY_ID", "10", user_id=user_id), 10),
             "images": [{"url": url} for url in product_images],
             "attributes": attributes_payload
         }
