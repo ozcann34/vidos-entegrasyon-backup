@@ -1649,14 +1649,14 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
                     if not existing:
                         new_mps.append(MarketplaceProduct(
                             user_id=user_id, marketplace='n11', barcode=item_payload['barcode'],
-                            stock_code=xml_record.stock_code, title=xml_record.title,
-                            price=xml_record.price, # Base
-                            sale_price=item_payload['price'], # Calculated
-                            quantity=item_payload['stockItems'][0]['quantity'], status='Pending', on_sale=True,
+                            stock_code=xml_item.stock_code, title=xml_item.title,
+                            price=xml_item.price, # Base
+                            sale_price=item_payload['price'] if 'price' in item_payload else item_payload['salePrice'], # Calculated
+                            quantity=item_payload['quantity'], status='Pending', on_sale=True, # FIXED quantity access
                             xml_source_id=src.id
                         ))
                         if job_id:
-                            batch_logs.append(f"[YENİ] {xml_record.stock_code} yüklendi. Fiyat: {item_payload['price']} ({r_desc}), Stok: {xml_record.quantity}")
+                            batch_logs.append(f"[YENİ] {xml_item.stock_code} yüklendi. Fiyat: {item_payload.get('salePrice')} ({r_desc}), Stok: {xml_item.quantity}")
                 
                 if new_mps:
                     db.session.bulk_save_objects(new_mps)

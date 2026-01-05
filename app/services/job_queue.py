@@ -157,8 +157,8 @@ def control_mp_job(job_id: str, action: str) -> bool:
     
     if action == 'cancel':
         job.cancel_requested = True
-        job.status = 'cancelling'
-        logging.info(f"Job {job_id} cancel requested in DB")
+        job.status = 'cancelled'
+        logging.info(f"Job {job_id} cancelled (state set) in DB")
     elif action == 'pause':
         # job.pause_requested = True # Not in model yet, use params
         job.status = 'pausing'

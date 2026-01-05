@@ -585,7 +585,7 @@ def perform_hepsiburada_direct_push_actions(user_id: int, to_update: List[Any], 
                 "Price": local_item.sale_price,
                 "AvailableStock": 0,
                 "DispatchTime": dispatch_time,
-                "CargoCompany": cargo_company
+                "CargoCompany1": cargo_company
             })
             zero_mappings.append({'id': local_item.id, 'quantity': 0})
 

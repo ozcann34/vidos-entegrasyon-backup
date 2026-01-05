@@ -330,7 +330,9 @@ items: List[Dict[str, Any]],
         processed_items = []
         for item in items:
             processed_item = item.copy()
+            # Idefix inventory-upload expects KURUS (int)
             processed_item['price'] = int(float(item['price']) * 100)
+            # comparePrice is MANDATORY in docs for inventory updates
             if 'comparePrice' in item and item['comparePrice']:
                 processed_item['comparePrice'] = int(float(item['comparePrice']) * 100)
             else:
@@ -502,7 +504,7 @@ items: List[Dict[str, Any]],
                 'barcode': p.get('barcode'),
                 'vendorStockCode': p.get('vendorStockCode'),
                 'price': float(p.get('price', 0)),
-                'comparePrice': float(p.get('comparePrice', 0)),
+                'comparePrice': float(p.get('comparePrice') if p.get('comparePrice') else p.get('price', 0)),
                 'inventoryQuantity': int(p.get('inventoryQuantity', 0))
             }
             # Add brandId if available
