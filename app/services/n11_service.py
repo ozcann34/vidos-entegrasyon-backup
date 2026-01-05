@@ -1593,22 +1593,46 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
                         append_mp_job_log(job_id, "İptal edildi (Batch sırasında)", level='warning')
                         return res
                 
-                client.update_products_price_and_stock(batch)
-                res['updated_count'] += len(batch)
+                # Retry loop for API Limits
+                max_retries = 3
+                retry_delay = 300
                 
-                # Corresponding DB updates
-                batch_mappings = db_mappings[i*100 : (i+1)*100]
-                db.session.bulk_update_mappings(MarketplaceProduct, batch_mappings)
-                db.session.commit()
+                for attempt in range(max_retries):
+                    try:
+                        client.update_products_price_and_stock(batch)
+                        
+                        # Corresponding DB updates
+                        batch_mappings = db_mappings[i*100 : (i+1)*100]
+                        db.session.bulk_update_mappings(MarketplaceProduct, batch_mappings)
+                        db.session.commit()
 
-                # Batch Logs
-                if job_id:
-                    curr_batch_logs = batch_logs[i*100 : (i+1)*100]
-                    append_mp_job_logs(job_id, curr_batch_logs)
+                        # Batch Logs
+                        if job_id:
+                            curr_batch_logs = batch_logs[i*100 : (i+1)*100]
+                            append_mp_job_logs(job_id, curr_batch_logs)
 
-                completed_ops += len(batch)
-                if job_id:
-                    update_job_progress(job_id, completed_ops, total_ops, f"Güncelleniyor ({completed_ops}/{total_ops})...")
+                        completed_ops += len(batch)
+                        if job_id:
+                            update_job_progress(job_id, completed_ops, total_ops, f"Güncelleniyor ({completed_ops}/{total_ops})...")
+                        
+                        break # Success
+                        
+                    except Exception as e:
+                        if "talep limitiniz dolmuştur" in str(e).lower():
+                            if attempt < max_retries - 1:
+                                if job_id:
+                                    append_mp_job_log(job_id, f"⚠️ N11 API Limiti doldu. {retry_delay} sn bekleniyor... (Deneme {attempt+1}/{max_retries})", level='warning')
+                                    update_job_progress(job_id, completed_ops, total_ops, "API Limiti Bekleniyor (5 dk)...")
+                                time.sleep(retry_delay)
+                                continue
+                            else:
+                                if job_id: append_mp_job_log(job_id, "API limiti aşıldı, işlem iptal ediliyor.", level='error')
+                                raise e
+                        else:
+                            if job_id: append_mp_job_log(job_id, f"Batch hatası: {e}", level='error')
+                            raise e
+                        
+                res['updated_count'] += len(batch)
             
         except Exception as e:
             db.session.rollback()
@@ -1696,14 +1720,58 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
                         update_job_progress(job_id, completed_ops, total_ops, f"Yeni Ürünler Ekleniyor ({completed_ops}/{total_ops})...")
                     continue
 
-                res_api = client.create_products(final_payloads)
-                task_id = res_api.get('taskId') or res_api.get('id')
+                # Retry Loop for Create
+                max_retries = 3
+                retry_delay = 300
                 
-                # Check for API level error
-                if res_api.get('result', {}).get('status') == 'ERROR' or res_api.get('status') == 'REJECT':
-                    err_msg = res_api.get('result', {}).get('errorMessage') or \
-                             res_api.get('message') or \
-                             (", ".join(res_api.get('reasons', [])) if res_api.get('reasons') else 'Bilinmeyen API Hatası')
+                for attempt in range(max_retries):
+                    try:
+                        res_api = client.create_products(final_payloads)
+                        
+                        # Check for Limit Error in Response Body
+                        err_msg = str(res_api.get('result', {}).get('errorMessage', ''))
+                        if "talep limitiniz dolmuştur" in err_msg.lower():
+                            if attempt < max_retries - 1:
+                                if job_id:
+                                    append_mp_job_log(job_id, f"⚠️ N11 API Limiti doldu (Body). {retry_delay} sn bekleniyor... (Deneme {attempt+1}/{max_retries})", level='warning')
+                                    update_job_progress(job_id, completed_ops, total_ops, "API Limiti Bekleniyor (5 dk)...")
+                                time.sleep(retry_delay)
+                                continue
+                            # If retries exhausted, let it fall through to normal error handling or break
+                        
+                        task_id = res_api.get('taskId') or res_api.get('id')
+                        
+                        # Check for API level error
+                        if res_api.get('result', {}).get('status') == 'ERROR' or res_api.get('status') == 'REJECT':
+                            err_msg = res_api.get('result', {}).get('errorMessage') or \
+                                     res_api.get('message') or \
+                                     (", ".join(res_api.get('reasons', [])) if res_api.get('reasons') else 'Bilinmeyen API Hatası')
+                            
+                            # If it was limit error caught above but retries exhausted, we log it here
+                            if "talep limitiniz dolmuştur" in err_msg.lower():
+                                if job_id: append_mp_job_log(job_id, "API limiti aşıldı (Create), işlem iptal ediliyor.", level='error')
+                                raise Exception(err_msg)
+                            
+                            # Normal Error
+                            if job_id: append_mp_job_log(job_id, f"Batch isteği reddedildi: {err_msg}", level='error')
+                            break # Non-retryable error
+                        
+                        break # Success
+                        
+                    except Exception as e:
+                        if "talep limitiniz dolmuştur" in str(e).lower():
+                            if attempt < max_retries - 1:
+                                if job_id:
+                                    append_mp_job_log(job_id, f"⚠️ N11 API Limiti doldu (Exception). {retry_delay} sn bekleniyor... (Deneme {attempt+1}/{max_retries})", level='warning')
+                                    update_job_progress(job_id, completed_ops, total_ops, "API Limiti Bekleniyor (5 dk)...")
+                                time.sleep(retry_delay)
+                                continue
+                            else:
+                                if job_id: append_mp_job_log(job_id, "API limiti aşıldı (Create), işlem iptal ediliyor.", level='error')
+                                raise e
+                        else:
+                            if job_id: append_mp_job_log(job_id, f"Create Batch Exception: {e}", level='error')
+                            raise e
                     
                     if job_id: append_mp_job_log(job_id, f"N11 API Hatası (Batch): {err_msg}", level='error')
                     completed_ops += len(batch)
@@ -1776,16 +1844,39 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
                         append_mp_job_log(job_id, "İptal edildi (Zero sırasında)", level='warning')
                         return res
                 
-                client.update_products_price_and_stock(batch)
-                res['zeroed_count'] += len(batch)
+                # Retry Loop for Zero
+                max_retries = 3
+                retry_delay = 300
                 
-                batch_mappings = zero_mappings[i*100 : (i+1)*100]
-                db.session.bulk_update_mappings(MarketplaceProduct, batch_mappings)
-                db.session.commit()
-                
-                completed_ops += len(batch)
-                if job_id:
-                    update_job_progress(job_id, completed_ops, total_ops, f"Stoklar Sıfırlanıyor ({completed_ops}/{total_ops})...")
+                for attempt in range(max_retries):
+                    try:
+                        client.update_products_price_and_stock(batch)
+                        res['zeroed_count'] += len(batch)
+                        
+                        batch_mappings = zero_mappings[i*100 : (i+1)*100]
+                        db.session.bulk_update_mappings(MarketplaceProduct, batch_mappings)
+                        db.session.commit()
+                        
+                        completed_ops += len(batch)
+                        if job_id:
+                            update_job_progress(job_id, completed_ops, total_ops, f"Stoklar Sıfırlanıyor ({completed_ops}/{total_ops})...")
+                        
+                        break # Success
+                        
+                    except Exception as e:
+                        if "talep limitiniz dolmuştur" in str(e).lower():
+                            if attempt < max_retries - 1:
+                                if job_id:
+                                    append_mp_job_log(job_id, f"⚠️ N11 API Limiti doldu (Zero). {retry_delay} sn bekleniyor... (Deneme {attempt+1}/{max_retries})", level='warning')
+                                    update_job_progress(job_id, completed_ops, total_ops, "API Limiti Bekleniyor (5 dk)...")
+                                time.sleep(retry_delay)
+                                continue
+                            else:
+                                if job_id: append_mp_job_log(job_id, "API limiti aşıldı (Zero), işlem iptal ediliyor.", level='error')
+                                raise e
+                        else:
+                            if job_id: append_mp_job_log(job_id, f"Zero Batch hatası: {e}", level='error')
+                            raise e
         except Exception as e:
             db.session.rollback()
             if job_id: append_mp_job_log(job_id, f"N11 stok sıfırlama hatası: {str(e)}", level='error')
