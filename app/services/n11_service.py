@@ -1579,7 +1579,6 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
             if len(safe_title) > 100: safe_title = safe_title[:100]
  
             item_payload = {
-                "integrator": "VidosEntegrasyon",
                 "title": safe_title,
                 "description": raw.get('details') or raw.get('description') or xml_item.title,
                 "categoryId": None, # Will be filled below
