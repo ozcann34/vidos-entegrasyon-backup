@@ -459,6 +459,10 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
             for p in local_list:
                 sc = p.get('stockCode')
                 if sc: local_by_stock[sc] = p
+            append_mp_job_log(job_id, f"Stok kodu eşleşmesi için {len(local_by_stock)} yerel ürün indekslendi.")
+        except Exception as e:
+            append_mp_job_log(job_id, f"Snapshot yükleme hatası: {e}", level='warning')
+    
     append_mp_job_log(job_id, f"{len(barcodes)} ürün hazırlanıyor...")
     
     # SPEED OPTIMIZATION: Cache category matches by path
