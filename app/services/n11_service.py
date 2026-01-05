@@ -815,85 +815,86 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
                         'message': "API Limiti Bekleniyor (5 dk)..."
                     })
                     time.sleep(retry_delay)
-                    continue # Retry this chunk
+                    continue  # Retry this chunk
 
                 task_id = resp.get('taskId') or resp.get('id')
                 if task_id:
                     if not main_task_id: main_task_id = task_id
                     append_mp_job_log(job_id, f"Part {idx+1} Başarılı. Task ID: {task_id}")
                 
-                # --- STATUS CHECK LOOP (IMPROVED) ---
-                append_mp_job_log(job_id, f"Task {task_id} onay durumu kontrol ediliyor (maks 45sn)...", level='info')
-                
-                final_results_received = False
-                for _check in range(15): # 15 * 3s = 45s
-                    time.sleep(3)
-                    try:
-                        t_status = client.check_task_status(task_id)
-                        content = t_status.get('content', [])
-                        
-                        if not content:
-                            continue
+                    # --- STATUS CHECK LOOP (IMPROVED) ---
+                    append_mp_job_log(job_id, f"Task {task_id} onay durumu kontrol ediliyor (maks 45sn)...", level='info')
+                    
+                    final_results_received = False
+                    for _check in range(15):  # 15 * 3s = 45s
+                        time.sleep(3)
+                        try:
+                            t_status = client.check_task_status(task_id)
+                            content = t_status.get('content', [])
                             
-                        # Check if any item is still non-final
-                        # Statuses: WAITING, DOING, DONE, ERROR, REJECTED, REJECT
-                        pending_count = 0
-                        batch_done = 0
-                        batch_fail = 0
-                        
-                        for task_info in content:
-                            st = task_info.get('status', '').upper()
-                            if st in ['WAITING', 'DOING']:
-                                pending_count += 1
-                            elif st == 'DONE':
-                                batch_done += 1
-                            else:
-                                batch_fail += 1
-                                bc = task_info.get('sellerStockCode') or task_info.get('barcode') or 'Bilinmeyen'
-                                e_msg = task_info.get('statusDescription') or task_info.get('message') or ""
-                                if not e_msg and task_info.get('reasons'):
-                                    e_msg = ", ".join(task_info['reasons'])
-                                failures_list.append({'barcode': bc, 'reason': e_msg or 'N11 Red/Hata'})
-                                if len(failures_list) <= 15:
-                                     append_mp_job_log(job_id, f"   ❌ {bc}: {e_msg}", level='error')
-                        
-                        if pending_count == 0:
-                            # All items reached a final state
-                            success_count += batch_done
-                            fail_count += batch_fail
-                            if batch_fail == 0:
-                                append_mp_job_log(job_id, f"✅ Task {task_id}: Tüm ürünler ({batch_done}) başarıyla işlendi.", level='info')
-                            else:
-                                append_mp_job_log(job_id, f"⚠️ Task {task_id}: {batch_done} başarılı, {batch_fail} HATALI ürün.", level='warning')
-                            
-                            final_results_received = True
-                            break
-                        else:
-                            if _check % 3 == 0:
-                                append_mp_job_log(job_id, f"⏳ Task {task_id}: {pending_count}/{len(content)} ürün hala işleniyor...", level='info')
+                            if not content:
+                                continue
                                 
-                    except Exception as chk_err:
-                        append_mp_job_log(job_id, f"Task durum kontrol hatası: {chk_err}", level='warning')
-                        break
-                
-                if not final_results_received:
-                    append_mp_job_log(job_id, f"🕒 Task {task_id}: İşlem henüz tamamlanmadı, kontrol zaman aşımına uğradı.", level='warning')
-                # -------------------------
+                            # Check if any item is still non-final
+                            # Statuses: WAITING, DOING, DONE, ERROR, REJECTED, REJECT
+                            pending_count = 0
+                            batch_done = 0
+                            batch_fail = 0
+                            
+                            for task_info in content:
+                                st = task_info.get('status', '').upper()
+                                if st in ['WAITING', 'DOING']:
+                                    pending_count += 1
+                                elif st == 'DONE':
+                                    batch_done += 1
+                                else:
+                                    batch_fail += 1
+                                    bc = task_info.get('sellerStockCode') or task_info.get('barcode') or 'Bilinmeyen'
+                                    e_msg = task_info.get('statusDescription') or task_info.get('message') or ""
+                                    if not e_msg and task_info.get('reasons'):
+                                        e_msg = ", ".join(task_info['reasons'])
+                                    failures_list.append({'barcode': bc, 'reason': e_msg or 'N11 Red/Hata'})
+                                    if len(failures_list) <= 15:
+                                         append_mp_job_log(job_id, f"   ❌ {bc}: {e_msg}", level='error')
+                            
+                            if pending_count == 0:
+                                # All items reached a final state
+                                success_count += batch_done
+                                fail_count += batch_fail
+                                if batch_fail == 0:
+                                    append_mp_job_log(job_id, f"✅ Task {task_id}: Tüm ürünler ({batch_done}) başarıyla işlendi.", level='info')
+                                else:
+                                    append_mp_job_log(job_id, f"⚠️ Task {task_id}: {batch_done} başarılı, {batch_fail} HATALI ürün.", level='warning')
+                                
+                                final_results_received = True
+                                break
+                            else:
+                                if _check % 3 == 0:
+                                    append_mp_job_log(job_id, f"⏳ Task {task_id}: {pending_count}/{len(content)} ürün hala işleniyor...", level='info')
+                                    
+                        except Exception as chk_err:
+                            append_mp_job_log(job_id, f"Task durum kontrol hatası: {chk_err}", level='warning')
+                            break
+                    
+                    if not final_results_received:
+                        append_mp_job_log(job_id, f"🕒 Task {task_id}: İşlem henüz tamamlanmadı, kontrol zaman aşımına uğradı.", level='warning')
+                    # -------------------------
+                else:
+                    # Check for immediate errors
+                    err = resp.get('result', {}).get('errorMessage') or str(resp)
+                    append_mp_job_log(job_id, f"Part {idx+1} Hata: {err}", level='error')
+                    break  # Non-retryable error
 
                 total_sent += len(chunk)
-                break # Success, exit retry loop
-            else:
-                 # Check for immediate errors
-                err = resp.get('result', {}).get('errorMessage') or str(resp)
-                append_mp_job_log(job_id, f"Part {idx+1} Hata: {err}", level='error')
-                break # Non-retryable error
-        except Exception as e:
-            if "talep limitiniz dolmuştur" in str(e).lower():
-                append_mp_job_log(job_id, f"⚠️ N11 API Limiti doldu (Exception). {retry_delay} saniye bekleniyor...", level='warning')
-                time.sleep(retry_delay)
-                continue
-            append_mp_job_log(job_id, f"Part {idx+1} Exception: {e}", level='error')
-            break
+                break  # Success, exit retry loop
+                
+            except Exception as e:
+                if "talep limitiniz dolmuştur" in str(e).lower():
+                    append_mp_job_log(job_id, f"⚠️ N11 API Limiti doldu (Exception). {retry_delay} saniye bekleniyor...", level='warning')
+                    time.sleep(retry_delay)
+                    continue
+                append_mp_job_log(job_id, f"Part {idx+1} Exception: {e}", level='error')
+                break
             
     return {
         'success': True,
