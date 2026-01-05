@@ -381,16 +381,16 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
     skip_no_image = kwargs.get('skip_no_image', False)
     zero_stock_as_one = kwargs.get('zero_stock_as_one', False)
     
-    # Resolve User ID from XML Source if not provided
-    if not user_id and xml_source_id:
+    src = None
+    if xml_source_id:
         try:
             from app.models import SupplierXML
             s_id = str(xml_source_id)
             if s_id.isdigit():
                 src = SupplierXML.query.get(int(s_id))
-                if src: user_id = src.user_id
+                if src and not user_id: user_id = src.user_id
         except Exception as e:
-            logging.warning(f"Failed to resolve user_id: {e}")
+            logging.warning(f"Failed to resolve user_id or src: {e}")
 
     client = get_n11_client(user_id=user_id)
     if not client:

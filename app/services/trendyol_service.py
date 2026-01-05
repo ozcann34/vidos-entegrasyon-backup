@@ -1103,15 +1103,15 @@ def ensure_tfidf_ready():
             logging.error(f"Error preparing TF-IDF: {e}")
 
 def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_id: Any, auto_match: bool = False, match_by: str = 'barcode', title_prefix: str = None, user_id: int = None, **kwargs) -> Dict[str, Any]:
-    # Resolve User ID from XML Source if not provided
-    if not user_id and xml_source_id:
+    src = None
+    if xml_source_id:
         try:
              s_id = str(xml_source_id)
              if s_id.isdigit():
                  src = SupplierXML.query.get(int(s_id))
-                 if src: user_id = src.user_id
+                 if src and not user_id: user_id = src.user_id
         except Exception as e:
-             logging.warning(f"Failed to resolve user_id: {e}")
+             logging.warning(f"Failed to resolve user_id or src: {e}")
 
     client = get_trendyol_client(user_id=user_id)
     append_mp_job_log(job_id, f"Trendyol istemcisi başlatıldı (User ID: {user_id}).")
@@ -1128,9 +1128,13 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
     xml_index = load_xml_source_index(xml_source_id)
     mp_map = xml_index.get('by_barcode') or {}
     
-    # We use price_multiplier directly if provided, otherwise fallback to settings multiplier if apply_multiplier was intended
-    # But now we passed it explicitly from UI.
-    multiplier = price_multiplier
+    # Barcode Settings (Sync Page & General)
+    auto_gen_empty = Setting.get("TRENDYOL_AUTO_GENERATE_BARCODE", "0", user_id=user_id) == "1" or \
+                     Setting.get("AUTO_SYNC_USE_RANDOM_BARCODE_trendyol", "false", user_id=user_id) == "true" or \
+                     (src and src.use_random_barcode)
+    auto_gen_all = Setting.get("TRENDYOL_OVERWRITE_BARCODE_ALL", "0", user_id=user_id) == "1" or \
+                   Setting.get("AUTO_SYNC_USE_OVERRIDE_BARCODE_trendyol", "false", user_id=user_id) == "true"
+    from app.services.xml_service import generate_random_barcode
     
     # Debug logging
     append_mp_job_log(job_id, f"Kaynak tipi: {str(xml_source_id)[:20]}...")
@@ -1352,6 +1356,10 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
             continue
 
         target_barcode = barcode
+        if auto_gen_all:
+            target_barcode = generate_random_barcode()
+        elif auto_gen_empty and (not barcode or barcode.strip() == "" or barcode == "0" or barcode.lower() == "bgz0"):
+            target_barcode = generate_random_barcode()
         if match_by == 'stock_code':
             sc = product.get('stockCode')
             if sc and sc in local_by_stock:
@@ -1516,7 +1524,7 @@ def perform_trendyol_send_products(job_id: str, barcodes: List[str], xml_source_
 
         # Build V2 Payload Item
         item = {
-            "barcode": barcode,
+            "barcode": target_barcode,
             "title": title[:100],
             "productMainId": pm_id,
             "brandId": brand_id,
@@ -2081,20 +2089,30 @@ def perform_trendyol_direct_push_actions(user_id: int, to_update: List[Any], to_
  
             final_price, rule_desc = calculate_price(xml_item.price, 'trendyol', user_id=user_id, return_details=True)
             
+            safe_title = (xml_item.title or "").strip()
+            if len(safe_title) < 3: safe_title = f"{safe_title} - Ürün"
+            if len(safe_title) > 100: safe_title = safe_title[:100]
+
+            if not barcode or len(str(barcode)) < 2 or len(str(barcode)) > 40:
+                if job_id: append_mp_job_log(job_id, f"[HATA] {xml_item.stock_code} için geçersiz barkod ({barcode}). Atlanıyor.", level='error')
+                continue
+
             item_payload = {
-                "barcode": barcode,
-                "title": xml_item.title,
+                "barcode": str(barcode),
+                "title": safe_title,
                 "productMainId": xml_item.stock_code,
                 "brandId": raw.get('brandId') or 1,
                 "categoryId": raw.get('categoryId') or 1,
                 "quantity": xml_item.quantity,
                 "stockCode": xml_item.stock_code,
+                "dimensionalWeight": 2,
+                "description": raw.get('details') or xml_item.title or safe_title,
+                "currencyType": "TRY",
                 "listPrice": final_price,
                 "salePrice": final_price,
                 "vatRate": raw.get('vatRate') or 20,
                 "images": [{"url": img['url']} for img in raw.get('images', []) if img.get('url')],
                 "attributes": raw.get('attributes') or [],
-                "description": raw.get('details') or xml_item.title
             }
             valid_creates.append((item_payload, xml_item, rule_desc))
 

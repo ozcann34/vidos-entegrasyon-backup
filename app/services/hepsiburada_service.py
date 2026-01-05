@@ -32,14 +32,15 @@ def perform_hepsiburada_send_products(job_id: str, barcodes: List[str], xml_sour
     append_mp_job_log(job_id, "Hepsiburada gönderim işlemi başlatılıyor...")
     
     try:
-        if not user_id and xml_source_id:
+        src = None
+        if xml_source_id:
             try:
                 s_id = str(xml_source_id)
                 if s_id.isdigit():
                     src = SupplierXML.query.get(int(s_id))
-                    if src: user_id = src.user_id
+                    if src and not user_id: user_id = src.user_id
             except Exception as e:
-                logging.warning(f"Failed to resolve user_id: {e}")
+                logging.warning(f"Failed to resolve user_id or src: {e}")
 
         client = get_hepsiburada_client(user_id=user_id)
     except Exception as e:
@@ -56,11 +57,21 @@ def perform_hepsiburada_send_products(job_id: str, barcodes: List[str], xml_sour
     skip_no_barcode = kwargs.get('skip_no_barcode', False)
     zero_stock_as_one = kwargs.get('zero_stock_as_one', False)
     
+    # Barcode Settings (Sync Page & General)
+    auto_gen_empty = Setting.get("HB_AUTO_GENERATE_BARCODE", "0", user_id=user_id) == "1" or \
+                     Setting.get("AUTO_SYNC_USE_RANDOM_BARCODE_hepsiburada", "false", user_id=user_id) == "true" or \
+                     (src and src.use_random_barcode)
+    auto_gen_all = Setting.get("HB_OVERWRITE_BARCODE_ALL", "0", user_id=user_id) == "1" or \
+                   Setting.get("AUTO_SYNC_USE_OVERRIDE_BARCODE_hepsiburada", "false", user_id=user_id) == "true"
+    from app.services.xml_service import generate_random_barcode
+    
     products_to_send = []
     skipped = []
     
     processed_count = 0
     total_count = len(barcodes)
+    
+    from app.services.xml_service import generate_random_barcode
     
     for barcode in barcodes:
         processed_count += 1
@@ -75,6 +86,12 @@ def perform_hepsiburada_send_products(job_id: str, barcodes: List[str], xml_sour
         if not product:
             skipped.append({'barcode': barcode, 'reason': 'XML verisi bulunamadı'})
             continue
+            
+        target_barcode = barcode
+        if auto_gen_all:
+            target_barcode = generate_random_barcode()
+        elif auto_gen_empty and (not barcode or barcode.strip() == "" or barcode == "0" or barcode.lower() == "bgz0"):
+            target_barcode = generate_random_barcode()
             
         # Blacklist check
         forbidden_reason = is_product_forbidden(user_id, title=product.get('title'), brand=product.get('brand'), category=product.get('category'))
@@ -142,7 +159,8 @@ def perform_hepsiburada_send_products(job_id: str, barcodes: List[str], xml_sour
         # Payload for Inventory Uploads (Listing API)
         
         item = {
-            "MerchantSku": barcode,
+            "MerchantSku": product.get('stockCode') or target_barcode,
+            "Barcode": target_barcode,
             "ProductName": title[:200], # Added title if needed
             "VaryantGroupID": product.get('parent_barcode') or product.get('modelCode') or product.get('productCode') or barcode, 
             "Price": {

@@ -945,15 +945,16 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
     from app.services.xml_service import load_xml_source_index
     
     # Resolve User ID from XML Source if not provided
-    if not user_id and xml_source_id:
+    src = None
+    if xml_source_id:
         try:
             from app.models import SupplierXML
             s_id = str(xml_source_id)
             if s_id.isdigit():
                 src = SupplierXML.query.get(int(s_id))
-                if src: user_id = src.user_id
+                if src and not user_id: user_id = src.user_id
         except Exception as e:
-            logging.warning(f"Failed to resolve user_id: {e}")
+            logging.warning(f"Failed to resolve user_id or src: {e}")
 
     client = get_pazarama_client(user_id=user_id)
     append_mp_job_log(job_id, f"Pazarama istemcisi hazir (User ID: {user_id})")
@@ -967,6 +968,14 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
     zero_stock_as_one = kwargs.get('zero_stock_as_one', False)
     
     append_mp_job_log(job_id, f"Seçenekler: Çarpan={price_multiplier}, Varsayılan Fiyat={default_price_val}, Barkodsuz Atla={skip_no_barcode}, Resimsiz Atla={skip_no_image}")
+
+    # Barcode Settings (Sync Page & General)
+    auto_gen_empty = Setting.get("PAZARAMA_AUTO_GENERATE_BARCODE", "0", user_id=user_id) == "1" or \
+                     Setting.get("AUTO_SYNC_USE_RANDOM_BARCODE_pazarama", "false", user_id=user_id) == "true" or \
+                     (src and src.use_random_barcode)
+    auto_gen_all = Setting.get("PAZARAMA_OVERWRITE_BARCODE_ALL", "0", user_id=user_id) == "1" or \
+                   Setting.get("AUTO_SYNC_USE_OVERRIDE_BARCODE_pazarama", "false", user_id=user_id) == "true"
+    from app.services.xml_service import generate_random_barcode
     
     xml_index = load_xml_source_index(xml_source_id)
     mp_map = xml_index.get('by_barcode') or {}
@@ -1041,6 +1050,12 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
         if not product:
             skipped.append({'barcode': barcode, 'reason': 'XML\'de bulunamadi'})
             continue
+
+        target_barcode = barcode
+        if auto_gen_all:
+            target_barcode = generate_random_barcode()
+        elif auto_gen_empty and (not barcode or barcode.strip() == "" or barcode == "0" or barcode.lower() == "bgz0"):
+            target_barcode = generate_random_barcode()
         
         # Blacklist check
         forbidden_reason = is_product_forbidden(user_id, title=product.get('title'), brand=product.get('brand'), category=product.get('category'))
@@ -1060,7 +1075,7 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
             
             # Create log helper for this product
             def category_log(msg, level='info'):
-                append_mp_job_log(job_id, f"[{barcode[:20]}] {msg}", level=level)
+                append_mp_job_log(job_id, f"[{target_barcode[:20]}] {msg}", level=level)
             
             # Log what category values we have (first product only for debug)
             if idx == 1:
@@ -1265,9 +1280,9 @@ def perform_pazarama_send_products(job_id: str, barcodes: List[str], xml_source_
                 'description': product.get('details') or description,
                 'brandId': brand_id,
                 'desi': p_desi,
-                'code': barcode,
-                'groupCode': (product.get('parent_barcode') or product.get('modelCode') or product.get('productCode') or product.get('stock_code') or barcode)[:100],
-                'stockCode': (product.get('stock_code') or barcode)[:100],
+                'code': target_barcode,
+                'groupCode': (product.get('parent_barcode') or product.get('modelCode') or product.get('productCode') or product.get('stock_code') or target_barcode)[:100],
+                'stockCode': (product.get('stock_code') or target_barcode)[:100],
                 'stockCount': stock,
                 'listPrice': list_price,
                 'salePrice': price,

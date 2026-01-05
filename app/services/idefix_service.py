@@ -1568,13 +1568,14 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
     default_cat_id = Setting.get("IDEFIX_DEFAULT_CATEGORY_ID", "", user_id=user_id)
     default_brand_id = Setting.get("IDEFIX_BRAND_ID", "", user_id=user_id)  # Fallback brand ID
     
-    # Barcode settings
-    # Barcode settings
     barcode_prefix = Setting.get("IDEFIX_BARCODE_PREFIX", "", user_id=user_id)
-    # Support both old manual setting and new Auto Sync toggle
-    use_random_old = Setting.get("IDEFIX_USE_RANDOM_BARCODE", "off", user_id=user_id) == "on"
-    use_random_new = Setting.get(f"AUTO_SYNC_USE_RANDOM_BARCODE_idefix", user_id=user_id) == "true"
-    use_random_barcode = use_random_old or use_random_new
+    # Barcode Settings (Sync Page & General)
+    auto_gen_empty = Setting.get("IDEFIX_AUTO_GENERATE_BARCODE", "0", user_id=user_id) == "1" or \
+                     Setting.get(f"AUTO_SYNC_USE_RANDOM_BARCODE_idefix", "false", user_id=user_id) == "true" or \
+                     (src and src.use_random_barcode)
+    auto_gen_all = Setting.get("IDEFIX_OVERWRITE_BARCODE_ALL", "0", user_id=user_id) == "1" or \
+                   Setting.get(f"AUTO_SYNC_USE_OVERRIDE_BARCODE_idefix", "false", user_id=user_id) == "true"
+    from app.services.xml_service import generate_random_barcode
     
     # Brand resolution - API-first approach with local cache
     local_brand_cache = {}
@@ -1656,18 +1657,18 @@ def perform_idefix_send_products(job_id: str, barcodes: List[str], xml_source_id
         if barcode_prefix and final_barcode.startswith(barcode_prefix):
             final_barcode = final_barcode[len(barcode_prefix):]
             append_mp_job_log(job_id, f"🧹 Barkod temizlendi: {barcode} -> {final_barcode}")
-            
-        if not final_barcode and use_random_barcode:
-            # Generate random if empty after clean
-            import random, string
-            suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-            final_barcode = f"GEN-{suffix}"
-            append_mp_job_log(job_id, f"🎲 Rastgele barkod oluşturuldu: {final_barcode}")
-        elif not final_barcode:
-             skipped_count += 1
-             skipped_list.append({'barcode': barcode, 'reason': 'Barkod temizlendi ve boş kaldı'})
-             append_mp_job_log(job_id, f"❌ {barcode}: Temizlik sonrası boş kaldı, atlanıyor.", level='warning')
-             continue
+
+        if auto_gen_all:
+            final_barcode = generate_random_barcode()
+            append_mp_job_log(job_id, f"🎲 Rastgele barkod oluşturuldu (Tümü): {final_barcode}")
+        elif not final_barcode or final_barcode.strip() == "" or final_barcode == "0" or final_barcode.lower() == "bgz0":
+             if auto_gen_empty:
+                final_barcode = generate_random_barcode()
+                append_mp_job_log(job_id, f"🎲 Rastgele barkod oluşturuldu (Boşlar): {final_barcode}")
+             else:
+                skipped_count += 1
+                skipped_list.append({'barcode': barcode, 'reason': 'Barkod yok'})
+                continue
 
         price = float(rec.get('price', 0))
         # Artık GLOBAL_PRICE_RULES kullanılıyor (multiplier kaldırıldı)
