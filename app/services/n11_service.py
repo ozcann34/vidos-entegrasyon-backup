@@ -819,8 +819,8 @@ def perform_n11_send_products(job_id: str, barcodes: List[str], xml_source_id: A
 
                 task_id = resp.get('taskId') or resp.get('id')
                 if task_id:
-                if not main_task_id: main_task_id = task_id
-                append_mp_job_log(job_id, f"Part {idx+1} Başarılı. Task ID: {task_id}")
+                    if not main_task_id: main_task_id = task_id
+                    append_mp_job_log(job_id, f"Part {idx+1} Başarılı. Task ID: {task_id}")
                 
                 # --- STATUS CHECK LOOP (IMPROVED) ---
                 append_mp_job_log(job_id, f"Task {task_id} onay durumu kontrol ediliyor (maks 45sn)...", level='info')
