@@ -1644,11 +1644,15 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
         from app.services.xml_service import generate_random_barcode
         
         valid_creates = []
-        for xml_item in to_create:
-            if len(valid_creates) % 50 == 0 and job_id:
+        for i, xml_item in enumerate(to_create):
+            # Progress Update & Cancel Check (Every 5 items)
+            if job_id and i % 5 == 0:
+                update_job_progress(job_id, completed_ops, total_ops, f'Yeni ürünler hazırlanıyor ({i}/{len(to_create)})...')
+                
+                # Check cancellation more frequently
                 js = get_mp_job(job_id)
                 if js and js.get('cancel_requested'):
-                    append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi.", level='warning')
+                    append_mp_job_log(job_id, "İşlem kullanıcı tarafından iptal edildi (Hazırlık aşaması).", level='warning')
                     return res
             
             barcode = xml_item.barcode
