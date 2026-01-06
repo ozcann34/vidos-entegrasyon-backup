@@ -43,58 +43,149 @@ MARKETPLACES = {
     'ikas': 'İkas',
 }
 
-def get_mp_count(mp_name, u_id):
-    """Get product count for a marketplace (Hybrid: DB + API fallback)"""
+def fetch_realtime_stats(mp_name: str, user_id: int) -> dict:
+    """
+    Fetch real-time product statistics directly from Marketplace APIs.
+    Returns dict with count, active, passive, approved.
+    """
+    stats = {'count': 0, 'active': 0, 'passive': 0, 'approved': 0}
     try:
-        from app.models import MarketplaceProduct
-        # 1. Try Local DB (Detailed Data)
-        stats = db.session.query(
-            db.func.count(MarketplaceProduct.id).label('total'),
-            db.func.sum(db.case((MarketplaceProduct.status == 'Aktif', 1), else_=0)).label('active'),
-            db.func.sum(db.case((MarketplaceProduct.status == 'Pasif', 1), else_=0)).label('passive'),
-            # Genişletilmiş onay durumu: Hem 'Onaylandı' hem 'Approved' kelimelerini ara, harf duyarlılığını boşver
-            db.func.sum(db.case((MarketplaceProduct.approval_status.ilike('%onay%'), 1), (MarketplaceProduct.approval_status.ilike('%approved%'), 1), else_=0)).label('approved')
-        ).filter_by(user_id=u_id, marketplace=mp_name).first()
-        
-        if stats and stats.total > 0:
-            return {
-                'count': stats.total,
-                'active': int(stats.active or 0),
-                'passive': int(stats.passive or 0),
-                'approved': int(stats.approved or 0)
-            }
-            
-        # 2. API Fallback if DB is empty (Lightweight total count)
-        total_api = 0
-        try:
-            if mp_name == 'trendyol':
-                from app.services.trendyol_service import get_trendyol_client
-                client = get_trendyol_client(user_id=u_id)
-                total_api = client.get_product_count()
-            elif mp_name == 'pazarama':
-                from app.services.pazarama_service import get_pazarama_client
-                client = get_pazarama_client(user_id=u_id)
-                total_api = client.get_product_count()
-            elif mp_name == 'hepsiburada':
-                from app.services.hepsiburada_service import get_hepsiburada_client
-                client = get_hepsiburada_client(user_id=u_id)
-                total_api = client.get_product_count()
-            elif mp_name == 'idefix':
-                from app.services.idefix_service import get_idefix_client
-                client = get_idefix_client(user_id=u_id)
-                total_api = client.get_product_count()
-            elif mp_name == 'n11':
-                from app.services.n11_client import get_n11_client
-                client = get_n11_client(user_id=u_id)
-                if client:
-                    total_api = client.get_product_count()
-        except Exception as api_err:
-            logging.warning(f"Fallback API count failed for {mp_name}: {api_err}")
-            
-        return {'count': total_api, 'active': total_api, 'passive': 0, 'approved': 0}
+        if mp_name == 'n11':
+            from app.services.n11_client import get_n11_client
+            client = get_n11_client(user_id=user_id)
+            if client:
+                # 1. Total Count
+                total = client.get_product_count()
+                # 2. Active Count (On_Sale)
+                # Note: N11 API saleStatus: Before_Sale, On_Sale, Out_Of_Stock, Sale_Closed
+                res_active = client.get_products(page=0, size=1, sale_status='On_Sale')
+                active = int(res_active.get('totalElements', 0)) if res_active else 0
+                
+                stats['count'] = total
+                stats['active'] = active
+                stats['passive'] = max(0, total - active)
+                stats['approved'] = active # N11 products on sale are implicitly approved
+
+        elif mp_name == 'pazarama':
+            from app.services.pazarama_service import get_pazarama_client
+            client = get_pazarama_client(user_id=user_id)
+            if client:
+                # get_product_count in client sums approved + unapproved
+                total = client.get_product_count()
+                # Get strictly approved items
+                res_active = client.list_products(approved=True, size=1)
+                active = int(res_active.get('totalCount', 0)) if res_active else 0
+                
+                stats['count'] = total
+                stats['active'] = active
+                stats['passive'] = max(0, total - active)
+                stats['approved'] = active
+
+        elif mp_name == 'trendyol':
+            from app.services.trendyol_service import get_trendyol_client
+            client = get_trendyol_client(user_id=user_id)
+            if client:
+                total = client.get_product_count() # This is usually total approved items in TY
+                # Trendyol get_product_count usually returns total items.
+                # Assuming all fetched are "approved" or "active" unless filtered.
+                # For basic visibility, Total is key.
+                stats['count'] = total
+                stats['active'] = total
+                stats['approved'] = total
+
+        elif mp_name == 'hepsiburada':
+            from app.services.hepsiburada_service import get_hepsiburada_client
+            client = get_hepsiburada_client(user_id=user_id)
+            if client:
+                total = client.get_product_count()
+                stats['count'] = total
+                stats['active'] = total
+                stats['approved'] = total
+
+        elif mp_name == 'idefix':
+            from app.services.idefix_service import get_idefix_client
+            client = get_idefix_client(user_id=user_id)
+            if client:
+                # get_product_count sums all pools (Approved, Waiting, Rejected etc)
+                total = client.get_product_count() 
+                # Active = APPROVED pool
+                res_active = client.list_products(page=0, limit=1, pool_state='APPROVED')
+                active = int(res_active.get('totalElements', 0)) if res_active else 0
+                
+                stats['count'] = total
+                stats['active'] = active
+                stats['passive'] = max(0, total - active) # Rejected/Waiting/Deleted
+                stats['approved'] = active
+
     except Exception as e:
-        logging.error(f"Error count for {mp_name}: {e}")
-        return {'count': 0, 'active': 0, 'passive': 0, 'approved': 0}
+        logging.error(f"[Dashboard] {mp_name} API fetch error: {e}")
+        return None
+        
+    return stats
+
+def get_mp_count(mp_name, u_id):
+    """
+    Get product count for a marketplace with API-first strategy and caching.
+    Cache Duration: 15 minutes (900 seconds)
+    """
+    from app.models import Setting
+    import json
+    
+    cache_key = f"MP_STATS_CACHE_{mp_name}_{u_id}"
+    cache_duration = 900 # 15 minutes
+    
+    # 1. Try Cache
+    cached_data = Setting.get(cache_key, None, user_id=u_id)
+    if cached_data:
+        try:
+            cache_obj = json.loads(cached_data)
+            timestamp = cache_obj.get('ts', 0)
+            if time.time() - timestamp < cache_duration:
+                # logging.debug(f"[Dashboard] Returning cached stats for {mp_name}")
+                return cache_obj.get('data')
+        except:
+            pass # Invalid cache, ignore
+
+    # 2. Fetch from API (Real-time)
+    # logging.info(f"[Dashboard] Fetching fresh stats for {mp_name}...")
+    stats = fetch_realtime_stats(mp_name, u_id)
+    
+    # 3. Fallback to Local DB (if API failed)
+    if stats is None:
+        try:
+            from app.models import MarketplaceProduct
+            db_stats = db.session.query(
+                db.func.count(MarketplaceProduct.id).label('total'),
+                db.func.sum(db.case((MarketplaceProduct.status == 'Aktif', 1), else_=0)).label('active'),
+                db.func.sum(db.case((MarketplaceProduct.status == 'Pasif', 1), else_=0)).label('passive'),
+                db.func.sum(db.case((MarketplaceProduct.approval_status.ilike('%onay%'), 1), (MarketplaceProduct.approval_status.ilike('%approved%'), 1), else_=0)).label('approved')
+            ).filter_by(user_id=u_id, marketplace=mp_name).first()
+            
+            if db_stats and db_stats.total > 0:
+                stats = {
+                    'count': db_stats.total,
+                    'active': int(db_stats.active or 0),
+                    'passive': int(db_stats.passive or 0),
+                    'approved': int(db_stats.approved or 0)
+                }
+            else:
+                stats = {'count': 0, 'active': 0, 'passive': 0, 'approved': 0}
+        except Exception as e:
+            logging.error(f"[Dashboard] DB fallback error for {mp_name}: {e}")
+            stats = {'count': 0, 'active': 0, 'passive': 0, 'approved': 0}
+    
+    # 4. Save to Cache (only if we have valid stats)
+    if stats:
+        try:
+            cache_val = json.dumps({
+                'ts': time.time(),
+                'data': stats
+            })
+            Setting.set(cache_key, cache_val, user_id=u_id)
+        except Exception as e:
+            logging.error(f"[Dashboard] Cache save error: {e}")
+
+    return stats
 
 
 def permission_required(permission_name):
