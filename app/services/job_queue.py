@@ -126,6 +126,12 @@ def serialize_job(job: PersistentJob) -> Dict[str, Any]:
         'progress_current': job.progress_current,
         'progress_total': job.progress_total,
         'progress_message': job.progress_message,
+        # Frontend compatibility layer
+        'progress': {
+            'current': job.progress_current,
+            'total': job.progress_total,
+            'message': job.progress_message
+        },
         'params': job.get_params(),
         'result': json.loads(job.result_json) if job.result_json else None,
         'logs': job.get_logs(),
@@ -179,7 +185,12 @@ def update_mp_job(job_id: str, **fields: Any) -> Optional[Dict[str, Any]]:
         return None
     
     for key, value in fields.items():
-        if hasattr(job, key):
+        if key == 'progress' and isinstance(value, dict):
+            # Handle dictionary progress update (compatibility)
+            if 'current' in value: job.progress_current = value['current']
+            if 'total' in value: job.progress_total = value['total']
+            if 'message' in value: job.progress_message = value['message']
+        elif hasattr(job, key):
             setattr(job, key, value)
         elif key == 'result':
             job.result_json = json.dumps(value)
@@ -239,6 +250,7 @@ def append_mp_job_logs(job_id: str, messages: List[str], level: str = 'info') ->
 
 def update_job_progress(job_id: str, current: int, total: int = None, message: str = None):
     """Accurate progress update helper."""
+    db.session.expire_all() # Ensure fresh session
     job = PersistentJob.query.get(job_id)
     if job:
         job.progress_current = current
