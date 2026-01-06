@@ -3,164 +3,241 @@
 {% block page_title %}{{ marketplace_name or marketplace|capitalize }} Ürünleri{% endblock %}
 
 {% block content %}
-<div id="tabMarketplace">
-  <!-- Modern Toolbar & Filter System -->
+<ul class="nav nav-tabs mb-4 px-2" id="mpTab" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active fw-bold" id="link-tab-mp" data-bs-toggle="tab" data-bs-target="#tabMarketplace"
+      type="button" role="tab">
+      <i class="bi bi-shop me-1"></i> Pazaryeri (Canlı)
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link fw-bold" id="link-tab-xml" data-bs-toggle="tab" data-bs-target="#tabXML" type="button"
+      role="tab">
+      <i class="bi bi-filetype-xml me-1"></i> XML Kaynak
+    </button>
+  </li>
+</ul>
+
+<div class="tab-content p-1">
+  <div class="tab-pane fade show active" id="tabMarketplace" role="tabpanel">
+    <!-- Modern Toolbar & Filter System -->
+    <div class="card vidos-card border-0 mb-4">
+      <div class="card-body p-3">
+        <div class="d-flex flex-wrap gap-3 align-items-center justify-content-between">
+          <!-- Search Bar (Flexible Pivot) -->
+          <div class="input-group w-auto flex-grow-1" style="min-width: 280px; max-width: 600px;">
+            <span class="input-group-text bg-light border-0"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" id="searchInput" class="form-control bg-light border-0"
+              placeholder="Ürün adı, barkod veya stok kodu ara...">
+            {% if marketplace in ['n11', 'trendyol', 'idefix'] %}
+            <button id="btnFetchFromMp" class="btn btn-warning shadow-sm fw-bold text-white ms-2 rounded"
+              title="Pazaryerinden Veri Çek"><i class="bi bi-cloud-download me-1"></i>Çek</button>
+            {% endif %}
+          </div>
+
+          <!-- Toolbar Right: View Toggles & Bulk Actions -->
+          <div class="d-flex gap-2 align-items-center flex-wrap">
+            <!-- Advanced Filter Toggle -->
+            <button class="btn btn-white border shadow-sm btn-sm fw-bold" type="button" data-bs-toggle="collapse"
+              data-bs-target="#advancedFilterPanel" aria-expanded="false" aria-controls="advancedFilterPanel">
+              <i class="bi bi-sliders me-1"></i> Filtrele
+            </button>
+
+            <div class="vr mx-1 d-none d-md-block text-secondary opacity-25"></div>
+
+            <!-- View Toggles -->
+            <div class="btn-group shadow-sm" role="group" aria-label="Görünüm">
+              <button type="button" class="btn btn-white border btn-sm view-toggle active" data-view="table"
+                title="Tablo"><i class="bi bi-table"></i></button>
+              <button type="button" class="btn btn-white border btn-sm view-toggle" data-view="grid" title="Kart"><i
+                  class="bi bi-grid-3x3-gap"></i></button>
+              <button type="button" class="btn btn-white border btn-sm view-toggle" data-view="compact"
+                title="Kompakt"><i class="bi bi-list"></i></button>
+            </div>
+
+            <div class="vr mx-1 d-none d-md-block text-secondary opacity-25"></div>
+
+            <!-- Bulk Actions -->
+            <div class="dropdown">
+              <button class="btn btn-white border shadow-sm btn-sm dropdown-toggle fw-bold" type="button"
+                id="mainActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                İşlemler
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end shadow border-0" aria-labelledby="mainActionsDropdown">
+                <li><button id="btnBulkUpdate" class="dropdown-item" disabled><i
+                      class="bi bi-pencil-square me-2 text-primary"></i>Seçiliyi Güncelle</button></li>
+                <li><button id="btnBulkDelete" class="dropdown-item text-danger" disabled><i
+                      class="bi bi-trash me-2"></i>Seçiliyi Sil</button></li>
+                <li>
+                  <hr class="dropdown-divider">
+                </li>
+                <li><button id="btnRefreshList" class="dropdown-item"><i class="bi bi-arrow-repeat me-2"></i>Listeyi
+                    Yenile</button></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Collapsible Advanced Filter Panel -->
+    <div class="collapse mb-4" id="advancedFilterPanel">
+      <div class="card vidos-card border-0 p-4">
+        <div class="row g-4">
+          <!-- Status Filters -->
+          <div class="col-md-6 col-lg-4">
+            <label class="form-label small text-muted fw-bold text-uppercase">Durum</label>
+            <div class="btn-group w-100 shadow-sm" role="group">
+              <button type="button" class="btn btn-white border btn-sm filter-btn fw-bold" data-filter="status"
+                data-value="all">Tümü</button>
+              <button type="button" class="btn btn-white border btn-sm filter-btn text-success" data-filter="status"
+                data-value="active">Aktif</button>
+              <button type="button" class="btn btn-white border btn-sm filter-btn text-warning" data-filter="status"
+                data-value="pending">Onay</button>
+              <button type="button" class="btn btn-white border btn-sm filter-btn text-muted" data-filter="status"
+                data-value="passive">Pasif</button>
+            </div>
+          </div>
+
+          <!-- Stock Level Filters -->
+          <div class="col-md-6 col-lg-3">
+            <label class="form-label small text-muted fw-bold text-uppercase">Stok Durumu</label>
+            <div class="btn-group w-100 shadow-sm" role="group">
+              <button type="button" class="btn btn-white border btn-sm filter-btn fw-bold" data-filter="stock"
+                data-value="all">Tümü</button>
+              <button type="button" class="btn btn-white border btn-sm filter-btn text-danger" data-filter="stock"
+                data-value="low">Kritik (&lt;10)</button>
+              <button type="button" class="btn btn-white border btn-sm filter-btn text-secondary" data-filter="stock"
+                data-value="out">Tükenmiş</button>
+            </div>
+          </div>
+
+          <!-- Range Inputs -->
+          <div class="col-md-6 col-lg-3">
+            <label class="form-label small text-muted fw-bold text-uppercase">Fiyat Aralığı</label>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-light border-0">Min</span>
+              <input type="number" id="filterPriceMin" class="form-control bg-light border-0" placeholder="0">
+              <span class="input-group-text bg-light border-0">Max</span>
+              <input type="number" id="filterPriceMax" class="form-control bg-light border-0" placeholder="∞">
+            </div>
+          </div>
+          <div class="col-md-6 col-lg-2">
+            <label class="form-label small text-muted fw-bold text-uppercase">Stok Aralığı</label>
+            <div class="input-group input-group-sm">
+              <input type="number" id="filterStockMin" class="form-control bg-light border-0" placeholder="Min">
+              <span class="input-group-text bg-light border-0">-</span>
+              <input type="number" id="filterStockMax" class="form-control bg-light border-0" placeholder="Max">
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="col-12 d-flex justify-content-end gap-2 border-top pt-3">
+            <button id="clearFiltersBtn" class="btn btn-sm btn-link text-muted text-decoration-none fw-bold">Temizle ve
+              Kapat</button>
+            <button id="applyFiltersBtn" class="btn btn-sm btn-primary px-4 fw-bold shadow-sm">Filtreleri
+              Uygula</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+    <span id="productCount" class="text-muted small fw-semibold">Toplam 0 ürün</span>
+  </div>
+
+  <div class="table-responsive shadow" id="viewTableWrapper">
+    <table class="table table-hover align-middle mb-0" id="mpTableView">
+      <thead>
+        <tr>
+          <th style="width:40px;"><input type="checkbox" id="mpSelectAll"></th>
+          <th style="width:80px;">Görsel</th>
+          <th style="width:25%">Ürün Adı</th>
+          <th>Barkod / Stok Kodu</th>
+          <th>Fiyat / Stok</th>
+          <th>Durum</th>
+          <th>İşlem</th>
+        </tr>
+      </thead>
+      <tbody id="productListBody" data-page-size="{{ 20 if marketplace == 'pazarama' else 25 }}"></tbody>
+    </table>
+  </div>
+  <div id="viewGridWrapper" class="d-none">
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 row-cols-xxl-4 g-3" id="productGridBody"></div>
+  </div>
+  <div id="viewCompactWrapper" class="d-none">
+    <div class="list-group" id="productCompactBody"></div>
+  </div>
+  <nav class="mt-4">
+    <ul class="pagination justify-content-center" id="pagination"></ul>
+  </nav>
+</div>
+
+
+
+
+
+
+</div> <!-- End tabMarketplace -->
+
+<!-- XML TAB CONTENT -->
+<div class="tab-pane fade" id="tabXML" role="tabpanel">
   <div class="card vidos-card border-0 mb-4">
     <div class="card-body p-3">
-      <div class="d-flex flex-wrap gap-3 align-items-center justify-content-between">
-        <!-- Search Bar (Flexible Pivot) -->
-        <div class="input-group w-auto flex-grow-1" style="min-width: 280px; max-width: 600px;">
-          <span class="input-group-text bg-light border-0"><i class="bi bi-search text-muted"></i></span>
-          <input type="text" id="searchInput" class="form-control bg-light border-0"
-            placeholder="Ürün adı, barkod veya stok kodu ara...">
-          {% if marketplace in ['n11', 'trendyol', 'idefix'] %}
-          <button id="btnFetchFromMp" class="btn btn-warning shadow-sm fw-bold text-white ms-2 rounded"
-            title="Pazaryerinden Veri Çek"><i class="bi bi-cloud-download me-1"></i>Çek</button>
-          {% endif %}
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div class="d-flex gap-2 align-items-center flex-grow-1">
+          <select id="mpXmlSourceSelect" class="form-select shadow-sm" style="max-width: 300px;">
+            <option value="">XML Kaynağı Yükleniyor...</option>
+          </select>
+          <div class="vr mx-2 text-secondary opacity-25"></div>
+          <div class="input-group">
+            <span class="input-group-text bg-light border-0"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" id="xmlSearchInput" class="form-control bg-light border-0"
+              placeholder="XML içinde ara...">
+          </div>
         </div>
-
-        <!-- Toolbar Right: View Toggles & Bulk Actions -->
-        <div class="d-flex gap-2 align-items-center flex-wrap">
-          <!-- Advanced Filter Toggle -->
-          <button class="btn btn-white border shadow-sm btn-sm fw-bold" type="button" data-bs-toggle="collapse"
-            data-bs-target="#advancedFilterPanel" aria-expanded="false" aria-controls="advancedFilterPanel">
-            <i class="bi bi-sliders me-1"></i> Filtrele
+        <div class="d-flex gap-2">
+          <button id="btnAdvancedSync" class="btn btn-primary fw-bold shadow-sm text-nowrap">
+            <i class="bi bi-arrow-repeat me-1"></i> Gelişmiş Senkronizasyon
           </button>
-
-          <div class="vr mx-1 d-none d-md-block text-secondary opacity-25"></div>
-
-          <!-- View Toggles -->
-          <div class="btn-group shadow-sm" role="group" aria-label="Görünüm">
-            <button type="button" class="btn btn-white border btn-sm view-toggle active" data-view="table"
-              title="Tablo"><i class="bi bi-table"></i></button>
-            <button type="button" class="btn btn-white border btn-sm view-toggle" data-view="grid" title="Kart"><i
-                class="bi bi-grid-3x3-gap"></i></button>
-            <button type="button" class="btn btn-white border btn-sm view-toggle" data-view="compact" title="Kompakt"><i
-                class="bi bi-list"></i></button>
-          </div>
-
-          <div class="vr mx-1 d-none d-md-block text-secondary opacity-25"></div>
-
-          <!-- Bulk Actions -->
-          <div class="dropdown">
-            <button class="btn btn-white border shadow-sm btn-sm dropdown-toggle fw-bold" type="button"
-              id="mainActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-              İşlemler
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end shadow border-0" aria-labelledby="mainActionsDropdown">
-              <li><button id="btnBulkUpdate" class="dropdown-item" disabled><i
-                    class="bi bi-pencil-square me-2 text-primary"></i>Seçiliyi Güncelle</button></li>
-              <li><button id="btnBulkDelete" class="dropdown-item text-danger" disabled><i
-                    class="bi bi-trash me-2"></i>Seçiliyi Sil</button></li>
-              <li>
-                <hr class="dropdown-divider">
-              </li>
-              <li><button id="btnRefreshList" class="dropdown-item"><i class="bi bi-arrow-repeat me-2"></i>Listeyi
-                  Yenile</button></li>
-            </ul>
-          </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Collapsible Advanced Filter Panel -->
-  <div class="collapse mb-4" id="advancedFilterPanel">
-    <div class="card vidos-card border-0 p-4">
-      <div class="row g-4">
-        <!-- Status Filters -->
-        <div class="col-md-6 col-lg-4">
-          <label class="form-label small text-muted fw-bold text-uppercase">Durum</label>
-          <div class="btn-group w-100 shadow-sm" role="group">
-            <button type="button" class="btn btn-white border btn-sm filter-btn fw-bold" data-filter="status"
-              data-value="all">Tümü</button>
-            <button type="button" class="btn btn-white border btn-sm filter-btn text-success" data-filter="status"
-              data-value="active">Aktif</button>
-            <button type="button" class="btn btn-white border btn-sm filter-btn text-warning" data-filter="status"
-              data-value="pending">Onay</button>
-            <button type="button" class="btn btn-white border btn-sm filter-btn text-muted" data-filter="status"
-              data-value="passive">Pasif</button>
-          </div>
-        </div>
+  <div class="table-responsive shadow bg-white rounded">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="bg-light">
+        <tr>
+          <th style="width: 40px;"><input type="checkbox" id="xmlSelectAll"></th>
+          <th>Görsel</th>
+          <th>Barkod / Stok Kodu</th>
+          <th>Ürün Adı</th>
+          <th>Stok</th>
+          <th>Fiyat</th>
+          <th>Durum</th>
+        </tr>
+      </thead>
+      <tbody id="xmlListBody">
+        <tr>
+          <td colspan="7" class="text-center p-5 text-muted">
+            <div class="spinner-border spinner-border-sm text-secondary me-2" role="status"></div>
+            XML verisi bekleniyor...
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 
-        <!-- Stock Level Filters -->
-        <div class="col-md-6 col-lg-3">
-          <label class="form-label small text-muted fw-bold text-uppercase">Stok Durumu</label>
-          <div class="btn-group w-100 shadow-sm" role="group">
-            <button type="button" class="btn btn-white border btn-sm filter-btn fw-bold" data-filter="stock"
-              data-value="all">Tümü</button>
-            <button type="button" class="btn btn-white border btn-sm filter-btn text-danger" data-filter="stock"
-              data-value="low">Kritik (&lt;10)</button>
-            <button type="button" class="btn btn-white border btn-sm filter-btn text-secondary" data-filter="stock"
-              data-value="out">Tükenmiş</button>
-          </div>
-        </div>
-
-        <!-- Range Inputs -->
-        <div class="col-md-6 col-lg-3">
-          <label class="form-label small text-muted fw-bold text-uppercase">Fiyat Aralığı</label>
-          <div class="input-group input-group-sm">
-            <span class="input-group-text bg-light border-0">Min</span>
-            <input type="number" id="filterPriceMin" class="form-control bg-light border-0" placeholder="0">
-            <span class="input-group-text bg-light border-0">Max</span>
-            <input type="number" id="filterPriceMax" class="form-control bg-light border-0" placeholder="∞">
-          </div>
-        </div>
-        <div class="col-md-6 col-lg-2">
-          <label class="form-label small text-muted fw-bold text-uppercase">Stok Aralığı</label>
-          <div class="input-group input-group-sm">
-            <input type="number" id="filterStockMin" class="form-control bg-light border-0" placeholder="Min">
-            <span class="input-group-text bg-light border-0">-</span>
-            <input type="number" id="filterStockMax" class="form-control bg-light border-0" placeholder="Max">
-          </div>
-        </div>
-
-        <!-- Actions -->
-        <div class="col-12 d-flex justify-content-end gap-2 border-top pt-3">
-          <button id="clearFiltersBtn" class="btn btn-sm btn-link text-muted text-decoration-none fw-bold">Temizle ve
-            Kapat</button>
-          <button id="applyFiltersBtn" class="btn btn-sm btn-primary px-4 fw-bold shadow-sm">Filtreleri Uygula</button>
-        </div>
-      </div>
-    </div>
+  <div class="d-flex justify-content-between align-items-center mt-3 px-2">
+    <span id="xmlCountSpan" class="text-muted small fw-bold"></span>
+    <nav>
+      <ul class="pagination mb-0" id="xmlPagination"></ul>
+    </nav>
   </div>
 </div>
-
-<div class="d-flex justify-content-between align-items-center mb-2 px-1">
-  <span id="productCount" class="text-muted small fw-semibold">Toplam 0 ürün</span>
-</div>
-
-<div class="table-responsive shadow" id="viewTableWrapper">
-  <table class="table table-hover align-middle mb-0" id="mpTableView">
-    <thead>
-      <tr>
-        <th style="width:40px;"><input type="checkbox" id="mpSelectAll"></th>
-        <th style="width:80px;">Görsel</th>
-        <th style="width:25%">Ürün Adı</th>
-        <th>Barkod / Stok Kodu</th>
-        <th>Fiyat / Stok</th>
-        <th>Durum</th>
-        <th>İşlem</th>
-      </tr>
-    </thead>
-    <tbody id="productListBody" data-page-size="{{ 20 if marketplace == 'pazarama' else 25 }}"></tbody>
-  </table>
-</div>
-<div id="viewGridWrapper" class="d-none">
-  <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 row-cols-xxl-4 g-3" id="productGridBody"></div>
-</div>
-<div id="viewCompactWrapper" class="d-none">
-  <div class="list-group" id="productCompactBody"></div>
-</div>
-<nav class="mt-4">
-  <ul class="pagination justify-content-center" id="pagination"></ul>
-</nav>
-</div>
-
-
-
-
-
+</div> <!-- End tab-content -->
 
 <!-- Product Details Edit Modal -->
 <div class="modal fade" id="productEditModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
@@ -274,6 +351,7 @@
 
   // Define mpXmlSourceSelect
   const mpXmlSourceSelect = document.getElementById('mpXmlSourceSelect');
+  const btnAdvancedSync = document.getElementById('btnAdvancedSync');
 
 
   const tabMarketplace = document.getElementById('tabMarketplace');
@@ -1551,7 +1629,7 @@
     }).then((result) => {
       if (result.isConfirmed) {
         let url = '';
-        if (CURRENT_MARKETPLACE === 'n11') url = '/api/n11/fetch_products';
+        if (CURRENT_MARKETPLACE === 'n11') url = '/api/n11/refresh_marketplace';
         else if (CURRENT_MARKETPLACE === 'trendyol') url = '/api/trendyol/refresh_cache';
         else if (CURRENT_MARKETPLACE === 'idefix') url = '/api/idefix/refresh_cache';
 
@@ -1577,6 +1655,125 @@
   // Export to global scope
   window.openUpdateModal = openUpdateModal;
   window.deleteProduct = deleteProduct;
+
+  // --- XML & ADVANCED SYNC FUNCTIONS ---
+
+  let xmlPage = 1;
+  let xmlQuery = '';
+  // xmlSourceId is managed by listener
+
+  function fetchXmlProducts() {
+    const sourceId = mpXmlSourceId || localStorage.getItem(`vidos_${CURRENT_MARKETPLACE}_xml_source_id`);
+    if (!sourceId) {
+      xmlListBody.innerHTML = '<tr><td colspan="7" class="text-center p-5 text-muted">Lütfen bir XML kaynağı seçiniz.</td></tr>';
+      return;
+    }
+
+    xmlListBody.innerHTML = '<tr><td colspan="7" class="text-center p-5"><div class="spinner-border text-primary spinner-border-sm me-2"></div>XML verileri yükleniyor...</td></tr>';
+
+    const url = `/api/xml_source_products?source_id=${sourceId}&page=${xmlPage}&size=${XML_ITEMS_PER_PAGE}&q=${encodeURIComponent(xmlQuery || '')}`;
+
+    fetch(url)
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          renderXmlTable(data.items || []);
+          if (xmlCountSpan) xmlCountSpan.textContent = `Toplam ${data.total} kaynak ürün`;
+
+          // Render XML Pagination
+          const totalPages = Math.ceil(data.total / XML_ITEMS_PER_PAGE);
+          buildPagination(xmlPagination, totalPages, xmlPage, (p) => {
+            xmlPage = p;
+            fetchXmlProducts();
+          });
+        } else {
+          xmlListBody.innerHTML = `<tr><td colspan="7" class="text-center text-danger p-4">${data.message || 'Veri yüklenemedi'}</td></tr>`;
+        }
+      })
+      .catch(err => {
+        xmlListBody.innerHTML = `<tr><td colspan="7" class="text-center text-danger p-4">Hata: ${err}</td></tr>`;
+      });
+  }
+
+  function renderXmlTable(items) {
+    if (!items.length) {
+      xmlListBody.innerHTML = '<tr><td colspan="7" class="text-center p-5 text-muted">Sonuç bulunamadı.</td></tr>';
+      return;
+    }
+
+    const rows = items.map(p => {
+      let img = '<div class="bg-light rounded d-flex align-items-center justify-content-center text-muted small" style="width:40px;height:40px;">IMG</div>';
+      if (p.image_url) img = `<img src="${p.image_url}" class="rounded object-fit-cover" style="width:40px;height:40px;">`;
+
+      return `<tr>
+            <td><input type="checkbox" class="form-check-input xmlSel" data-bc="${p.barcode}"></td>
+            <td>${img}</td>
+            <td>
+                <div class="fw-bold text-dark small">${p.barcode}</div>
+                <div class="text-muted small">${p.stock_code || '-'}</div>
+            </td>
+            <td>
+                <div class="text-truncate" style="max-width: 250px;" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</div>
+            </td>
+            <td><span class="fw-bold ${p.quantity < 5 ? 'text-danger' : 'text-success'}">${p.quantity}</span></td>
+            <td>${Number(p.list_price || 0).toFixed(2)} TL</td>
+            <td class="small text-muted">${p.category || '-'}</td>
+          </tr>`;
+    }).join('');
+
+    xmlListBody.innerHTML = rows;
+    bindXmlSelectionHandlers();
+  }
+
+  if (btnAdvancedSync) {
+    btnAdvancedSync.addEventListener('click', () => {
+      const sourceId = mpXmlSourceId;
+      if (!sourceId) { Swal.fire('Uyarı', 'Lütfen önce bir XML kaynağı seçiniz.', 'warning'); return; }
+
+      Swal.fire({
+        title: 'Gelişmiş Senkronizasyon',
+        html: `
+              <div class="text-start">
+                  <p>Bu işlem 4 aşamadan oluşur:</p>
+                  <ol class="small text-muted">
+                      <li>Pazaryeri verisi (Canlı) yenilenir.</li>
+                      <li>XML verisi (Kaynak) güncellenir.</li>
+                      <li>Fiyat/Stok eşitlemesi yapılır.</li>
+                      <li>Eksik ürünler yüklenir.</li>
+                  </ol>
+                  <div class="alert alert-info small"><i class="bi bi-info-circle me-1"></i> "12k/3k" sorunu bu işlemle çözülecektir.</div>
+              </div>
+              `,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Başlat',
+        cancelButtonText: 'İptal'
+      }).then((res) => {
+        if (res.isConfirmed) {
+          fetch('/api/n11/advanced_sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ source_id: sourceId })
+          })
+            .then(r => r.json())
+            .then(d => {
+              if (d.success) {
+                pollMpJob(d.job_id, 'Gelişmiş Senkronizasyon', () => {
+                  fetchProducts({ forceRefresh: true });
+                  fetchXmlProducts();
+                });
+              } else {
+                Swal.fire('Hata', d.message, 'error');
+              }
+            })
+            .catch(e => Swal.fire('Hata', String(e), 'error'));
+        }
+      });
+    });
+  }
+
+  // Trigger XML fetch if source ID changes (existing listener handles standard behavior, we ensure fetchXmlProducts is called)
+  // The existing listener at line 1560 calls fetchXmlProducts, so we are good.
 
   // Restore any active job on page load
   restoreJobState();
