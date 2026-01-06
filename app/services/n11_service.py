@@ -1782,14 +1782,18 @@ def perform_n11_direct_push_actions(user_id: int, to_update: List[Any], to_creat
                 # Bulk DB Create
                 new_mps = []
                 batch_logs = []
+                processed_barcodes = set()
+                
                 for i, (item_payload, xml_record, r_desc) in enumerate(batch):
                     if payloads[i] is None: continue # Was skipped
                     
                     barcode = item_payload['barcode']
 
-                    # Duplicate check for safety (DB level)
+                    # Duplicate check for safety (DB level + In-Batch level)
                     existing = MarketplaceProduct.query.filter_by(user_id=user_id, marketplace='n11', barcode=barcode).first()
-                    if not existing:
+                    
+                    if not existing and barcode not in processed_barcodes:
+                        processed_barcodes.add(barcode)
                         new_mps.append(MarketplaceProduct(
                             user_id=user_id, marketplace='n11', barcode=barcode,
                             stock_code=xml_record.stock_code, title=xml_record.title,
